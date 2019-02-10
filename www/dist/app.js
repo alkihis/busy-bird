@@ -1523,6 +1523,7 @@ define("default_form", ["require", "exports"], function (require, exports) {
         }
     }
     exports.onFormReady = onFormReady;
+    let test;
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
     // La clé du formulaire par défaut est contenu dans "default_form_name"
     (function () {
