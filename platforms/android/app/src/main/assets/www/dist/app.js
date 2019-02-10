@@ -1494,6 +1494,9 @@ define("artyom", ["require", "exports"], function (require, exports) {
 define("default_form", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Type à préciser dans le JSON, clé "type"
+     */
     var FormEntityType;
     (function (FormEntityType) {
         FormEntityType["integer"] = "integer";

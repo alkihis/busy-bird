@@ -23,6 +23,9 @@ interface SelectOption {
     voice_hints?: string[];
 }
 
+/**
+ * Type à préciser dans le JSON, clé "type"
+ */
 export enum FormEntityType {
     integer = "integer", float = "float", select = "select", string = "string", bigstring = "textaera", 
     checkbox = "checkbox", file = "file", date = "date", time = "time", divider = "divider"
@@ -54,7 +57,7 @@ export function onFormReady(callback: () => any) : void {
         if (typeof json === 'string') {
             json = JSON.parse(json);
         }
-        
+
         // Le JSON est reçu, on l'enregistre dans available_forms
         available_forms = json;
         // On met le form à ready
