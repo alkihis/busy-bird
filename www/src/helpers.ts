@@ -1,5 +1,4 @@
 import { PRELOADER } from "./main";
-import { current_form } from "./default_form";
 
 export function getBase() : HTMLElement {
     return document.getElementById('main_block');
@@ -15,7 +14,7 @@ export function getPreloader(text: string) {
 }
 
 export function saveDefaultForm() {
-    writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
+    // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
 }
 
 const FOLDER = "cdvfile://localhost/persistent/";

@@ -1,4 +1,4 @@
-import Artyom from './artyom';
+import Artyom from './arytom/artyom';
 
 export const KEYWORD = "Jarvis";
 export const Jarvis = new class {

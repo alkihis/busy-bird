@@ -1,7 +1,6 @@
 import { test_jarvis, Jarvis } from "./test_aytom";
-import * as FORMS from "./default_form"; // évite de charger la variable current_form, si jamais elle change
-import { FormEntityType, FormEntity } from './default_form';
-import Artyom from "./artyom";
+import { FormEntityType, FormEntity, Forms } from './form_schema';
+import Artyom from "./arytom/artyom";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -286,17 +285,16 @@ function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) 
  * @param base 
  */
 export function initFormPage(base: HTMLElement) {
-    FORMS.onFormReady(function() { loadFormPage(base); });
+    Forms.onReady(function(available, current) { 
+        loadFormPage(base, current); 
+    });
 }
 
 /**
  * Charge la page de formulaire (point d'entrée)
  * @param base Element dans lequel écrire la page
  */
-export function loadFormPage(base: HTMLElement) {
-    // Construction du formulaire
-    let c_f = FORMS.current_form;
-
+export function loadFormPage(base: HTMLElement, current_form: FormEntity[]) {
     base.innerHTML = "";
 
     const base_block = document.createElement('div');
@@ -308,20 +306,20 @@ export function loadFormPage(base: HTMLElement) {
     base_block.appendChild(placeh);
 
     // Appelle la fonction pour construire
-    constructForm(placeh, c_f, Jarvis.Jarvis);
+    constructForm(placeh, current_form, Jarvis.Jarvis);
 
     base.appendChild(base_block);
 
-    base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
-        <a class="btn-floating btn-large red" id="operate_listen">
-            <i class="large material-icons">mic</i>
-        </a>
-    </div>`);
+    // Initialisateur du bouton micro
+    // base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
+    //     <a class="btn-floating btn-large red" id="operate_listen">
+    //         <i class="large material-icons">mic</i>
+    //     </a>
+    // </div>`);
+    // document.getElementById('operate_listen').onclick = function() {
+    //     test_jarvis();
+    // };
 
     M.updateTextFields();
     $('select').formSelect();
-
-    document.getElementById('operate_listen').onclick = function() {
-        test_jarvis();
-    };
 }

@@ -2,13 +2,7 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
+// Lance main.ts
 require(['main']);
 /**
  * Artyom.js is a voice control, speech recognition and speech synthesis JavaScript library.
@@ -21,7 +15,7 @@ require(['main']);
  * @see https://sdkcarlos.github.io/sites/artyom.html
  * @see http://docs.ourcodeworld.com/projects/artyom-js
  */
-define("artyom", ["require", "exports"], function (require, exports) {
+define("arytom/artyom", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /// <reference path="artyom.d.ts" />
@@ -1491,64 +1485,7 @@ define("artyom", ["require", "exports"], function (require, exports) {
     }
     exports.default = Artyom;
 });
-define("default_form", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Type à préciser dans le JSON, clé "type"
-     */
-    var FormEntityType;
-    (function (FormEntityType) {
-        FormEntityType["integer"] = "integer";
-        FormEntityType["float"] = "float";
-        FormEntityType["select"] = "select";
-        FormEntityType["string"] = "string";
-        FormEntityType["bigstring"] = "textaera";
-        FormEntityType["checkbox"] = "checkbox";
-        FormEntityType["file"] = "file";
-        FormEntityType["date"] = "date";
-        FormEntityType["time"] = "time";
-        FormEntityType["divider"] = "divider";
-    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    exports.default_form_name = "Cincle plongeur";
-    let form_ready = false;
-    let on_forms_ready = [];
-    // Exécute une fonction quand le formulaire est chargé
-    function onFormReady(callback) {
-        if (form_ready) {
-            callback();
-        }
-        else {
-            on_forms_ready.push(callback);
-        }
-    }
-    exports.onFormReady = onFormReady;
-    let test;
-    // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
-    // La clé du formulaire par défaut est contenu dans "default_form_name"
-    (function () {
-        $.get('assets/form.json', {}, function (json) {
-            // Si jamais le JSON arrive sous forme de string (pas parsé), on le parse
-            if (typeof json === 'string') {
-                json = JSON.parse(json);
-            }
-            // Le JSON est reçu, on l'enregistre dans available_forms
-            exports.available_forms = json;
-            // On met le form à ready
-            form_ready = true;
-            // On enregistre le formulaire par défaut
-            exports.current_form = exports.available_forms[exports.default_form_name];
-            console.log(exports.available_forms, exports.current_form);
-            // On exécute les fonctions en attente
-            for (const func of on_forms_ready) {
-                func();
-            }
-            // On les supprime
-            on_forms_ready = [];
-        });
-    })();
-});
-define("test_aytom", ["require", "exports", "artyom"], function (require, exports, artyom_1) {
+define("test_aytom", ["require", "exports", "arytom/artyom"], function (require, exports, artyom_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     artyom_1 = __importDefault(artyom_1);
@@ -1614,10 +1551,62 @@ define("test_aytom", ["require", "exports", "artyom"], function (require, export
     }
     exports.test_jarvis = test_jarvis;
 });
-define("form", ["require", "exports", "test_aytom", "default_form", "default_form"], function (require, exports, test_aytom_1, FORMS, default_form_1) {
+define("form_schema", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    FORMS = __importStar(FORMS);
+    /**
+     * Type à préciser dans le JSON, clé "type"
+     */
+    var FormEntityType;
+    (function (FormEntityType) {
+        FormEntityType["integer"] = "integer";
+        FormEntityType["float"] = "float";
+        FormEntityType["select"] = "select";
+        FormEntityType["string"] = "string";
+        FormEntityType["bigstring"] = "textaera";
+        FormEntityType["checkbox"] = "checkbox";
+        FormEntityType["file"] = "file";
+        FormEntityType["date"] = "date";
+        FormEntityType["time"] = "time";
+        FormEntityType["divider"] = "divider";
+    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
+    exports.default_form_name = "Cincle plongeur";
+    // Classe contenant le formulaire JSON chargé et parsé
+    exports.Forms = new class {
+        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
+        // La clé du formulaire par défaut est contenu dans "default_form_name"
+        constructor() {
+            this.form_ready = false;
+            this.waiting_callee = [];
+            this.current = [];
+            $.get('assets/form.json', {}, (json) => {
+                // Le JSON est reçu, on l'enregistre dans available_forms
+                this.available_forms = json;
+                // On met le form à ready
+                this.form_ready = true;
+                // On enregistre le formulaire par défaut (si la clé définie existe)
+                if (exports.default_form_name in this.available_forms)
+                    this.current = this.available_forms[exports.default_form_name];
+                // On exécute les fonctions en attente
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func(this.available_forms, this.current);
+                }
+            }, 'json');
+        }
+        onReady(callback) {
+            if (this.form_ready) {
+                callback(this.available_forms, this.current);
+            }
+            else {
+                this.waiting_callee.push(callback);
+            }
+        }
+    };
+});
+define("form", ["require", "exports", "test_aytom", "form_schema"], function (require, exports, test_aytom_1, form_schema_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
         const e = document.createElement('div');
         e.classList.add("row", "input-field", "col", "s12");
@@ -1696,7 +1685,7 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
     function constructForm(placeh, c_f, jarvis) {
         for (const ele of c_f) {
             let element_to_add = null;
-            if (ele.type === default_form_1.FormEntityType.divider) {
+            if (ele.type === form_schema_1.FormEntityType.divider) {
                 // C'est un titre
                 let htmle = document.createElement('h4');
                 htmle.innerText = ele.label;
@@ -1704,7 +1693,7 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
                 placeh.appendChild(htmle);
                 continue;
             }
-            if (ele.type === default_form_1.FormEntityType.integer || ele.type === default_form_1.FormEntityType.float) {
+            if (ele.type === form_schema_1.FormEntityType.integer || ele.type === form_schema_1.FormEntityType.float) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('input');
                 const label = document.createElement('label');
@@ -1738,7 +1727,7 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
                         else if (typeof ele.range.max !== 'undefined' && value > ele.range.max) {
                             valid = false;
                         }
-                        if (ele.type === default_form_1.FormEntityType.float) {
+                        if (ele.type === form_schema_1.FormEntityType.float) {
                             if (ele.float_precision) {
                                 // Si on a demandé à avoir un nombre de flottant précis
                                 const floating_point = this.value.split('.');
@@ -1766,7 +1755,7 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
                 });
                 element_to_add = wrapper;
             }
-            if (ele.type === default_form_1.FormEntityType.string) {
+            if (ele.type === form_schema_1.FormEntityType.string) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('input');
                 const label = document.createElement('label');
@@ -1802,7 +1791,7 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
                 });
                 element_to_add = wrapper;
             }
-            if (ele.type === default_form_1.FormEntityType.select) {
+            if (ele.type === form_schema_1.FormEntityType.select) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
@@ -1822,7 +1811,7 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            if (ele.type === default_form_1.FormEntityType.checkbox) {
+            if (ele.type === form_schema_1.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -1849,16 +1838,16 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
      * @param base
      */
     function initFormPage(base) {
-        FORMS.onFormReady(function () { loadFormPage(base); });
+        form_schema_1.Forms.onReady(function (available, current) {
+            loadFormPage(base, current);
+        });
     }
     exports.initFormPage = initFormPage;
     /**
      * Charge la page de formulaire (point d'entrée)
      * @param base Element dans lequel écrire la page
      */
-    function loadFormPage(base) {
-        // Construction du formulaire
-        let c_f = FORMS.current_form;
+    function loadFormPage(base, current_form) {
         base.innerHTML = "";
         const base_block = document.createElement('div');
         base_block.classList.add('row', 'container');
@@ -1866,18 +1855,19 @@ define("form", ["require", "exports", "test_aytom", "default_form", "default_for
         placeh.classList.add('col', 's12');
         base_block.appendChild(placeh);
         // Appelle la fonction pour construire
-        constructForm(placeh, c_f, test_aytom_1.Jarvis.Jarvis);
+        constructForm(placeh, current_form, test_aytom_1.Jarvis.Jarvis);
         base.appendChild(base_block);
-        base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
-        <a class="btn-floating btn-large red" id="operate_listen">
-            <i class="large material-icons">mic</i>
-        </a>
-    </div>`);
+        // Initialisateur du bouton micro
+        // base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
+        //     <a class="btn-floating btn-large red" id="operate_listen">
+        //         <i class="large material-icons">mic</i>
+        //     </a>
+        // </div>`);
+        // document.getElementById('operate_listen').onclick = function() {
+        //     test_jarvis();
+        // };
         M.updateTextFields();
         $('select').formSelect();
-        document.getElementById('operate_listen').onclick = function () {
-            test_aytom_1.test_jarvis();
-        };
     }
     exports.loadFormPage = loadFormPage;
 });
@@ -2102,7 +2092,7 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("helpers", ["require", "exports", "main", "default_form"], function (require, exports, main_2, default_form_2) {
+define("helpers", ["require", "exports", "main"], function (require, exports, main_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function getBase() {
@@ -2119,7 +2109,7 @@ define("helpers", ["require", "exports", "main", "default_form"], function (requ
     }
     exports.getPreloader = getPreloader;
     function saveDefaultForm() {
-        writeFile('schemas/', 'default.json', new Blob([JSON.stringify(default_form_2.current_form)], { type: "application/json" }));
+        // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
     }
     exports.saveDefaultForm = saveDefaultForm;
     const FOLDER = "cdvfile://localhost/persistent/";
