@@ -1,0 +1,11 @@
+{
+  "background_color": "#FFF",
+  "display": "standalone",
+  "name": "Busy Bird",
+  "short_name": "Busy Bird",
+  "version": "com.lbbe.busybird",
+  "description": "Une superbe app pour enregistrer des oiseaux",
+  "author": "Romuald Marin, Émilien N'Guyen, Louis Béranger",
+  "icons": [],
+  "start_url": "index.html"
+}
