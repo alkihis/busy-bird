@@ -74,6 +74,7 @@ export const Forms = new class {
     protected waiting_callee: FormCallback[] = [];
     protected available_forms: {[formName: string] : Form};
     protected current: Form = null;
+    protected current_key: string = null;
 
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
     // La clé du formulaire par défaut est contenu dans "default_form_name"
@@ -84,10 +85,13 @@ export const Forms = new class {
             // On met le form à ready
             this.form_ready = true;
             // On enregistre le formulaire par défaut (si la clé définie existe)
-            if (default_form_name in this.available_forms)
-                this.current = this.available_forms[default_form_name];
-            else
+            if (default_form_name in this.available_forms) {
+                this.current = this.available_forms[default_form_name]; 
+                this.current_key = default_form_name;
+            }
+            else {
                 this.current = {name: null, fields: [], locations: []};
+            }
     
             // On exécute les fonctions en attente
             let func: FormCallback;
@@ -105,5 +109,23 @@ export const Forms = new class {
             this.waiting_callee.push(callback);
         }
     }
+
+    getCurrentKey() : string {
+        return this.current_key;
+    }
 };
 
+/**
+ * Interfaces représentant la sauvegarde d'un formulaire
+ */
+
+export interface FormSave {
+    type: string;
+    fields: FormSaveEntities;
+    location: string;
+}
+
+export interface FormSaveEntities {
+    [formInputName: string]: string | boolean | string[] | number;
+    /* string pour tout champ, boolean pour les checkbox, string[] pour les select multiples et number pour les nombres */
+}

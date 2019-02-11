@@ -57,6 +57,18 @@ export function getModalPreloader(text: string) {
     `;
 }
 
+// dec2hex :: Integer -> String
+function dec2hex(dec: number) : string {
+    return ('0' + dec.toString(16)).substr(-2);
+}
+  
+  // generateId :: Integer -> String
+export function generateId(len: number) : string {
+    const arr = new Uint8Array((len || 40) / 2);
+    window.crypto.getRandomValues(arr);
+    return Array.from(arr, dec2hex).join('');
+}
+
 export function saveDefaultForm() {
     // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
 }
@@ -99,13 +111,21 @@ export function getDir(callback, dirName?: string) {
     // @ts-ignore
     window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {    
         DIR_ENTRY = dirEntry;
-        if (callback) {
+
+        if (dirName) {
+            dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
+                if (callback) {
+                    callback(newEntry);
+                }
+            }, () => { console.log("Unable to create dir"); });
+        }
+        else if (callback) {
             callback(dirEntry);
         }
     }, function(err) { console.log("Persistent not available", err.message); });
 }
 
-export function writeFile(dirName: string, fileName: string, blob: Blob, callback?) {
+export function writeFile(dirName: string, fileName: string, blob: Blob, callback?, onFailure?) {
     getDir(function(dirEntry) {
         dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
             write(fileEntry, blob).then(function(){
@@ -113,7 +133,7 @@ export function writeFile(dirName: string, fileName: string, blob: Blob, callbac
                     callback();
                 }
             });
-        }, function(err) { console.log("Error in writing file", err.message); });
+        }, function(err) { console.log("Error in writing file", err.message); if (onFailure) { onFailure(err); } });
     }, dirName);
 
     function write(fileEntry, dataObj) {
@@ -155,6 +175,10 @@ export function listDir(path = FOLDER){
             console.log(err);
         }
     );
+}
+
+export function printObj(ele: HTMLElement, obj: any) : void {
+    ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
 }
 
 export function getLocation(onSuccess: (coords: Position) => any, onFailed?) {

@@ -1,8 +1,9 @@
 import { test_jarvis, Jarvis } from "./test_aytom";
-import { FormEntityType, FormEntity, Forms, Form, FormLocation } from './form_schema';
+import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
+import { changePage } from "./interface";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -107,7 +108,7 @@ function isModuloZero(num1: number, num2: number) : boolean {
  * Construit le formulaire automatiquement passé via "c_f"
  * @param placeh Élement HTML dans lequel écrire le formulaire
  * @param c_f Tableau d'éléments de formulaire
- * @param jarvis Instance d'Arytom à configurer
+ * @param jarvis Instance d'Artyom à configurer
  */
 function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom) : void {
     // Crée le champ de lieu
@@ -120,7 +121,7 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
     location.id = "__location__id";
     location.addEventListener('click', function(this: HTMLInputElement) {
         this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
-        callLocationSelector(current_form);
+        callLocationSelector(current_form); // Appelle le modal pour changer de lieu
     });
 
     loc_wrapper.appendChild(location);
@@ -156,6 +157,7 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             fillStandardInputValues(htmle, ele, label);
 
             htmle.type = "number";
+            htmle.classList.add('input-form-element');
             
             if (ele.range) {
                 if (typeof ele.range.min !== 'undefined') {
@@ -261,6 +263,8 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
                 htmle = document.createElement('textarea');
                 htmle.classList.add('materialize-textarea');
             }
+
+            htmle.classList.add('input-form-element');
                 
             const label = document.createElement('label');
             
@@ -307,6 +311,7 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             const wrapper = createInputWrapper();
             const htmle = document.createElement('select');
             const label = document.createElement('label');
+            htmle.classList.add('input-form-element');
             
             fillStandardInputValues(htmle, ele, label);
 
@@ -340,7 +345,7 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             fillStandardInputValues(input, ele, span as HTMLLabelElement);
 
             wrapper.classList.add('row', 'col', 's12', 'input-checkbox');
-            input.classList.add('filled-in');
+            input.classList.add('filled-in', 'input-form-element');
             input.type = "checkbox";
             input.checked = ele.default_value as boolean;
 
@@ -362,6 +367,7 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             // Pour que le label ne recouvre pas le texte du champ
             label.classList.add('active');
             input.type = "datetime-local";
+            input.classList.add('input-form-element');
 
             fillStandardInputValues(input, ele, label);
 
@@ -381,6 +387,121 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
         if (element_to_add)
             placeh.appendChild(element_to_add);
     }
+}
+
+/**
+ * Initie la sauvegarde: présente et vérifie les champs
+ *  @param type 
+ */
+function initFormSave(type: string) : void {
+    // Démarre le modal
+
+    // Vérifie les champs invalides
+
+    // Si champ invalide requis, affiche un message d'erreur avec champs à modifier
+
+    // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
+    // sauvegarde possible
+
+    // Bouton de sauvegarde
+
+    // Inscription dans le JSON (lecture des champs un à un et sauvegarde)
+}
+/**
+ * Sauvegarde le formulaire actuel dans un fichier .json
+ *  @param type 
+ */
+function saveForm(type: string) : void {
+    const form_values: FormSave = {
+        fields: {},
+        type,
+        location: (document.getElementById('__location__id') as HTMLInputElement).dataset.reallocation
+    };
+
+    for (const input of document.getElementsByClassName('input-form-element')) {
+        const i = input as HTMLInputElement;
+        if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
+            const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
+            form_values.fields[i.name] = selected;
+        }
+        else if (i.type === "checkbox") {
+            form_values.fields[i.name] = i.checked;
+        }
+        else if (i.type === "number") {
+            form_values.fields[i.name] = Number(i.value);
+        }
+        else {
+            form_values.fields[i.name] = i.value;
+        }
+    }
+
+    const name_id = generateId(20);
+    writeImagesThenForm(name_id, form_values);
+
+    console.log(form_values);
+}
+
+/**
+ * Ecrit les images présentes dans le formulaire dans un dossier spécifique,
+ * puis crée le formulaire
+ * @param name Nom du formulaire (sans le .json)
+ */
+function writeImagesThenForm(name: string, form_values: FormSave) : void {
+    getDir(function(dirEntry) {
+        // Crée le dossier images si besoin
+
+        // Récupère les images du formulaire
+        const images_from_form = document.getElementsByClassName('input-image-element');
+
+        // Sauvegarde les images !
+        const promises = [];
+
+        for (const img of images_from_form) {
+            promises.push(
+                new Promise(function(resolve, reject) {
+                    const file = (img as HTMLInputElement).files[0];
+                    const filename = file.name;
+        
+                    const r = new FileReader();
+        
+                    r.onload = function() {
+                        writeFile('images/' + name, filename, new Blob([this.result]), function() {
+                            // Enregistre le nom de l'image sauvegardée dans le formulaire, 
+                            // dans la valeur du champ fiel
+                            form_values.fields[(img as HTMLInputElement).name] = 'images/' + name + '/' + filename;
+
+                            // Résout la promise
+                            resolve();
+                        }, function(error) {
+                            // Erreur d'écriture du fichier => on rejette
+                            M.toast({html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage."});
+                            reject(error);
+                        });
+                    }
+        
+                    r.onerror = function(error) {
+                        // Erreur de lecture du fichier => on rejette
+                        reject(error);
+                    }
+        
+                    r.readAsArrayBuffer(file);
+                })
+            );
+        }
+        
+        Promise.all(promises)
+            .then(function() {
+                // On écrit enfin le formulaire !
+                writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
+                    M.toast({html: "Écriture du formulaire et de ses données réussie."});
+                    changePage('form');
+                });
+            })
+            .catch(function(error) {
+                console.log(error);
+                M.toast({html: "Impossible d'écrire le formulaire."});
+            });
+    }, 'images');
 }
 
 /**
@@ -435,6 +556,18 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     if ($textarea.length > 0) {
         M.textareaAutoResize($textarea);
     }
+
+    // Création du bouton de sauvegarde
+    const btn = document.createElement('div');
+    btn.classList.add('btn-flat', 'right', 'red-text');
+    btn.innerText = "Enregistrer";
+
+    const current_form_key = Forms.getCurrentKey();
+    btn.addEventListener('click', function() {
+        saveForm(current_form_key);
+    });
+
+    base_block.appendChild(btn);
 }
 
 function callLocationSelector(current_form: Form) : void {
@@ -512,6 +645,12 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
     modal.innerHTML = "";
     modal.appendChild(content);
 
+    // Création d'un objet label => value
+    const labels_to_name = {};
+    for (const lieu of locations) {
+        labels_to_name[lieu.label] = lieu.name;
+    }
+
     // Lance l'autocomplétion materialize
     M.Autocomplete.init(input, {
         data: auto_complete_data,
@@ -519,10 +658,10 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
         onAutocomplete: function() {
             // Remplacement du label par le nom réel
             const location = input.value;
-            for (const lieu of locations) {
-                if (lieu.label === location) {
-                    input.value = lieu.name;
-                }
+
+            // Recherche le label sélectionné dans l'objet les contenants
+            if (location in labels_to_name) {
+                input.value = location;
             }
         }
     });
@@ -531,7 +670,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
     if (current_location) {
         // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
         function clickOnLocation(this: HTMLElement) {
-            input.value = this.dataset.name;
+            input.value = this.dataset.label;
             M.updateTextFields();
         }
 
@@ -566,6 +705,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
                 <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
             `;
             elem.dataset.name = lieux_dispo[i].name;
+            elem.dataset.label = lieux_dispo[i].label;
             elem.addEventListener('click', clickOnLocation);
 
             collection.appendChild(elem);
@@ -587,7 +727,6 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
     }
 
     // Création du footer
-    // <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>
     const ok = document.createElement('a');
     ok.href = "#!";
     ok.innerText = "Confirmer";
@@ -596,10 +735,16 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
         if (input.value.trim() === "") {
             M.toast({html: "Vous devez préciser un lieu."});
         }
-        else {
-            (document.getElementById('__location__id') as HTMLInputElement).value = input.value;
+        else if (input.value in labels_to_name) {
+            const loc_input = document.getElementById('__location__id') as HTMLInputElement;
+            loc_input.value = input.value;
+            loc_input.dataset.reallocation = labels_to_name[input.value];
+
             getModalInstance().close();
             modal.classList.remove('modal-fixed-footer');
+        }
+        else {
+            M.toast({html: "Le lieu entré n'a aucune correspondance dans la base de données."});
         }
     });
     footer.appendChild(ok);

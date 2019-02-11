@@ -1595,16 +1595,20 @@ define("form_schema", ["require", "exports"], function (require, exports) {
             this.form_ready = false;
             this.waiting_callee = [];
             this.current = null;
+            this.current_key = null;
             $.get('assets/form.json', {}, (json) => {
                 // Le JSON est reçu, on l'enregistre dans available_forms
                 this.available_forms = json;
                 // On met le form à ready
                 this.form_ready = true;
                 // On enregistre le formulaire par défaut (si la clé définie existe)
-                if (exports.default_form_name in this.available_forms)
+                if (exports.default_form_name in this.available_forms) {
                     this.current = this.available_forms[exports.default_form_name];
-                else
+                    this.current_key = exports.default_form_name;
+                }
+                else {
                     this.current = { name: null, fields: [], locations: [] };
+                }
                 // On exécute les fonctions en attente
                 let func;
                 while (func = this.waiting_callee.pop()) {
@@ -1619,6 +1623,9 @@ define("form_schema", ["require", "exports"], function (require, exports) {
             else {
                 this.waiting_callee.push(callback);
             }
+        }
+        getCurrentKey() {
+            return this.current_key;
         }
     };
 });
@@ -1681,6 +1688,17 @@ define("helpers", ["require", "exports"], function (require, exports) {
     `;
     }
     exports.getModalPreloader = getModalPreloader;
+    // dec2hex :: Integer -> String
+    function dec2hex(dec) {
+        return ('0' + dec.toString(16)).substr(-2);
+    }
+    // generateId :: Integer -> String
+    function generateId(len) {
+        const arr = new Uint8Array((len || 40) / 2);
+        window.crypto.getRandomValues(arr);
+        return Array.from(arr, dec2hex).join('');
+    }
+    exports.generateId = generateId;
     function saveDefaultForm() {
         // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
     }
@@ -1720,13 +1738,20 @@ define("helpers", ["require", "exports"], function (require, exports) {
         // @ts-ignore
         window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {
             DIR_ENTRY = dirEntry;
-            if (callback) {
+            if (dirName) {
+                dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
+                    if (callback) {
+                        callback(newEntry);
+                    }
+                }, () => { console.log("Unable to create dir"); });
+            }
+            else if (callback) {
                 callback(dirEntry);
             }
         }, function (err) { console.log("Persistent not available", err.message); });
     }
     exports.getDir = getDir;
-    function writeFile(dirName, fileName, blob, callback) {
+    function writeFile(dirName, fileName, blob, callback, onFailure) {
         getDir(function (dirEntry) {
             dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
                 write(fileEntry, blob).then(function () {
@@ -1734,7 +1759,9 @@ define("helpers", ["require", "exports"], function (require, exports) {
                         callback();
                     }
                 });
-            }, function (err) { console.log("Error in writing file", err.message); });
+            }, function (err) { console.log("Error in writing file", err.message); if (onFailure) {
+                onFailure(err);
+            } });
         }, dirName);
         function write(fileEntry, dataObj) {
             return new Promise(function (resolve, reject) {
@@ -1771,6 +1798,10 @@ define("helpers", ["require", "exports"], function (require, exports) {
         });
     }
     exports.listDir = listDir;
+    function printObj(ele, obj) {
+        ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
+    }
+    exports.printObj = printObj;
     function getLocation(onSuccess, onFailed) {
         navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
     }
@@ -1797,15 +1828,47 @@ define("settings_page", ["require", "exports"], function (require, exports) {
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports"], function (require, exports) {
+define("saved_forms", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    function appendFileEntry(json, ph) {
+        const selector = document.createElement('div');
+        selector.classList.add('row');
+        const container = document.createElement('div');
+        container.classList.add('col', 's12');
+        selector.appendChild(container);
+        const text = document.createElement('div');
+        container.appendChild(text);
+        helpers_1.printObj(text, json);
+        ph.appendChild(selector);
+    }
     function initSavedForm(base) {
+        const placeholder = document.createElement('div');
+        helpers_1.getDir(function (dirEntry) {
+            // Lecture de tous les fichiers du répertoire
+            const reader = dirEntry.createReader();
+            reader.readEntries(function (entries) {
+                for (const entry of entries) {
+                    entry.file(function (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = function () {
+                            appendFileEntry(JSON.parse(this.result), placeholder);
+                        };
+                        reader.readAsText(file);
+                    }, function (err) {
+                        console.log("fileerr:", err);
+                    });
+                }
+            }, function (err) {
+                console.log(err);
+            });
+        }, 'forms');
         base.innerHTML = "";
+        base.appendChild(placeholder);
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_1, form_1, settings_page_1, saved_forms_1, main_1) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_2, form_1, settings_page_1, saved_forms_1, main_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -1836,8 +1899,8 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
      * @param AppPageName page
      */
     function changePage(page) {
-        const base = helpers_1.getBase();
-        base.innerHTML = helpers_1.getPreloader("Chargement");
+        const base = helpers_2.getBase();
+        base.innerHTML = helpers_2.getPreloader("Chargement");
         if (window.history) {
             window.history.pushState({}, "", "/?" + page);
         }
@@ -1855,44 +1918,6 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     exports.changePage = changePage;
     function initHomePage(base) {
         base.innerHTML = "<h2 class='center'>" + exports.APP_NAME + "</h2>" + `
-    <!-- <div class="row">
-        <form class="col s12">
-            <div class="row">
-                <div class="input-field col s6">
-                    <input id="last_name" type="number" class="validate">
-                    <label for="last_name">Identifiant</label>
-                </div>
-                <div class="input-field col s6">
-                    <input placeholder="Pipou" id="first_name" type="text" class="validate">
-                    <label for="first_name">Nom</label>
-                </div>
-            </div>
-            <div class="row">
-                <div class="input-field col s12">
-                    <input value="" id="disabled2" type="number" class="validate">
-                    <label for="disabled2">Poids</label>
-                </div>
-
-                <div class="input-field col s12">
-                    <select name="lieu">
-                        <option value="1">Près du ruisseau</option>
-                        <option value="2">Vers le gros chêne</option>
-                    </select>
-                    <label>Lieux</label>
-                </div>
-            </div>
-        </form>
-    </div>
-    <div class="row">
-        <a class="blue-text btn-flat right">Enregistrer</a>
-        <a class="red-text btn-flat left">Réinitialiser</a>
-    </div>
-    <div class="fixed-action-btn">
-        <a class="btn-floating btn-large red" id="operate_listen">
-            <i class="large material-icons">mic</i>
-        </a>
-    </div> -->
-
     <div class="container">
         <p class="flow-text">
             Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
@@ -1907,7 +1932,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     }
     exports.initHomePage = initHomePage;
 });
-define("main", ["require", "exports", "interface", "helpers"], function (require, exports, interface_1, helpers_2) {
+define("main", ["require", "exports", "interface", "helpers"], function (require, exports, interface_1, helpers_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -1964,7 +1989,7 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
         };
         exports.app.initialize();
         initDebug();
-        helpers_2.initModal();
+        helpers_3.initModal();
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
@@ -1989,17 +2014,17 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
     function initDebug() {
         window["DEBUG"] = {
             changePage: interface_1.changePage,
-            readFromFile: helpers_2.readFromFile,
-            listDir: helpers_2.listDir,
-            saveDefaultForm: helpers_2.saveDefaultForm,
-            createDir: helpers_2.createDir,
-            getLocation: helpers_2.getLocation,
-            testDistance: helpers_2.testDistance
+            readFromFile: helpers_3.readFromFile,
+            listDir: helpers_3.listDir,
+            saveDefaultForm: helpers_3.saveDefaultForm,
+            createDir: helpers_3.createDir,
+            getLocation: helpers_3.getLocation,
+            testDistance: helpers_3.testDistance
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "main"], function (require, exports, test_aytom_1, form_schema_1, helpers_3, main_2) {
+define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "main", "interface"], function (require, exports, test_aytom_1, form_schema_1, helpers_4, main_2, interface_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2088,7 +2113,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
      * Construit le formulaire automatiquement passé via "c_f"
      * @param placeh Élement HTML dans lequel écrire le formulaire
      * @param c_f Tableau d'éléments de formulaire
-     * @param jarvis Instance d'Arytom à configurer
+     * @param jarvis Instance d'Artyom à configurer
      */
     function constructForm(placeh, current_form, jarvis) {
         // Crée le champ de lieu
@@ -2101,7 +2126,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         location.id = "__location__id";
         location.addEventListener('click', function () {
             this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
-            callLocationSelector(current_form);
+            callLocationSelector(current_form); // Appelle le modal pour changer de lieu
         });
         loc_wrapper.appendChild(location);
         const loc_title = document.createElement('h4');
@@ -2129,6 +2154,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 const label = document.createElement('label');
                 fillStandardInputValues(htmle, ele, label);
                 htmle.type = "number";
+                htmle.classList.add('input-form-element');
                 if (ele.range) {
                     if (typeof ele.range.min !== 'undefined') {
                         htmle.min = String(ele.range.min);
@@ -2222,6 +2248,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                     htmle = document.createElement('textarea');
                     htmle.classList.add('materialize-textarea');
                 }
+                htmle.classList.add('input-form-element');
                 const label = document.createElement('label');
                 fillStandardInputValues(htmle, ele, label);
                 wrapper.appendChild(label);
@@ -2258,6 +2285,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
+                htmle.classList.add('input-form-element');
                 fillStandardInputValues(htmle, ele, label);
                 // Création des options
                 htmle.multiple = ele.select_options.multiple;
@@ -2281,7 +2309,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 const span = document.createElement('span');
                 fillStandardInputValues(input, ele, span);
                 wrapper.classList.add('row', 'col', 's12', 'input-checkbox');
-                input.classList.add('filled-in');
+                input.classList.add('filled-in', 'input-form-element');
                 input.type = "checkbox";
                 input.checked = ele.default_value;
                 wrapper.appendChild(label);
@@ -2298,6 +2326,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 // Pour que le label ne recouvre pas le texte du champ
                 label.classList.add('active');
                 input.type = "datetime-local";
+                input.classList.add('input-form-element');
                 fillStandardInputValues(input, ele, label);
                 // Problème: la date à entrer dans l'input est la date UTC
                 // On "corrige" ça par manipulation de la date (on rajoute l'offset)
@@ -2312,6 +2341,100 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             if (element_to_add)
                 placeh.appendChild(element_to_add);
         }
+    }
+    /**
+     * Initie la sauvegarde: présente et vérifie les champs
+     *  @param type
+     */
+    function initFormSave(type) {
+        // Démarre le modal
+        // Vérifie les champs invalides
+        // Si champ invalide requis, affiche un message d'erreur avec champs à modifier
+        // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
+        // sauvegarde possible
+        // Bouton de sauvegarde
+        // Inscription dans le JSON (lecture des champs un à un et sauvegarde)
+    }
+    /**
+     * Sauvegarde le formulaire actuel dans un fichier .json
+     *  @param type
+     */
+    function saveForm(type) {
+        const form_values = {
+            fields: {},
+            type,
+            location: document.getElementById('__location__id').dataset.reallocation
+        };
+        for (const input of document.getElementsByClassName('input-form-element')) {
+            const i = input;
+            if (input.tagName === "SELECT" && input.multiple) {
+                const selected = [...input.options].filter(option => option.selected).map(option => option.value);
+                form_values.fields[i.name] = selected;
+            }
+            else if (i.type === "checkbox") {
+                form_values.fields[i.name] = i.checked;
+            }
+            else if (i.type === "number") {
+                form_values.fields[i.name] = Number(i.value);
+            }
+            else {
+                form_values.fields[i.name] = i.value;
+            }
+        }
+        const name_id = helpers_4.generateId(20);
+        writeImagesThenForm(name_id, form_values);
+        console.log(form_values);
+    }
+    /**
+     * Ecrit les images présentes dans le formulaire dans un dossier spécifique,
+     * puis crée le formulaire
+     * @param name Nom du formulaire (sans le .json)
+     */
+    function writeImagesThenForm(name, form_values) {
+        helpers_4.getDir(function (dirEntry) {
+            // Crée le dossier images si besoin
+            // Récupère les images du formulaire
+            const images_from_form = document.getElementsByClassName('input-image-element');
+            // Sauvegarde les images !
+            const promises = [];
+            for (const img of images_from_form) {
+                promises.push(new Promise(function (resolve, reject) {
+                    const file = img.files[0];
+                    const filename = file.name;
+                    const r = new FileReader();
+                    r.onload = function () {
+                        helpers_4.writeFile('images/' + name, filename, new Blob([this.result]), function () {
+                            // Enregistre le nom de l'image sauvegardée dans le formulaire, 
+                            // dans la valeur du champ fiel
+                            form_values.fields[img.name] = 'images/' + name + '/' + filename;
+                            // Résout la promise
+                            resolve();
+                        }, function (error) {
+                            // Erreur d'écriture du fichier => on rejette
+                            M.toast({ html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
+                            reject(error);
+                        });
+                    };
+                    r.onerror = function (error) {
+                        // Erreur de lecture du fichier => on rejette
+                        reject(error);
+                    };
+                    r.readAsArrayBuffer(file);
+                }));
+            }
+            Promise.all(promises)
+                .then(function () {
+                // On écrit enfin le formulaire !
+                helpers_4.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
+                    M.toast({ html: "Écriture du formulaire et de ses données réussie." });
+                    interface_2.changePage('form');
+                });
+            })
+                .catch(function (error) {
+                console.log(error);
+                M.toast({ html: "Impossible d'écrire le formulaire." });
+            });
+        }, 'images');
     }
     /**
      * Fonction qui va faire attendre l'arrivée du formulaire,
@@ -2356,19 +2479,28 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         if ($textarea.length > 0) {
             M.textareaAutoResize($textarea);
         }
+        // Création du bouton de sauvegarde
+        const btn = document.createElement('div');
+        btn.classList.add('btn-flat', 'right', 'red-text');
+        btn.innerText = "Enregistrer";
+        const current_form_key = form_schema_1.Forms.getCurrentKey();
+        btn.addEventListener('click', function () {
+            saveForm(current_form_key);
+        });
+        base_block.appendChild(btn);
     }
     exports.loadFormPage = loadFormPage;
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_3.getModal();
-        helpers_3.initModal({
+        const modal = helpers_4.getModal();
+        helpers_4.initModal({
             dismissible: false
         });
         // Ouvre le modal et insère un chargeur
-        helpers_3.getModalInstance().open();
-        modal.innerHTML = helpers_3.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
+        helpers_4.getModalInstance().open();
+        modal.innerHTML = helpers_4.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
         // Cherche la localisation et remplit le modal
-        helpers_3.getLocation(function (coords) {
+        helpers_4.getLocation(function (coords) {
             locationSelector(modal, current_form.locations, coords);
         }, function () {
             locationSelector(modal, current_form.locations);
@@ -2419,6 +2551,11 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         // Vide le modal actuel et le remplace par le contenu et footer créés
         modal.innerHTML = "";
         modal.appendChild(content);
+        // Création d'un objet label => value
+        const labels_to_name = {};
+        for (const lieu of locations) {
+            labels_to_name[lieu.label] = lieu.name;
+        }
         // Lance l'autocomplétion materialize
         M.Autocomplete.init(input, {
             data: auto_complete_data,
@@ -2426,10 +2563,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             onAutocomplete: function () {
                 // Remplacement du label par le nom réel
                 const location = input.value;
-                for (const lieu of locations) {
-                    if (lieu.label === location) {
-                        input.value = lieu.name;
-                    }
+                // Recherche le label sélectionné dans l'objet les contenants
+                if (location in labels_to_name) {
+                    input.value = location;
                 }
             }
         });
@@ -2437,7 +2573,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         if (current_location) {
             // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
             function clickOnLocation() {
-                input.value = this.dataset.name;
+                input.value = this.dataset.label;
                 M.updateTextFields();
             }
             // Calcul de la distance entre chaque lieu et le lieu actuel
@@ -2446,7 +2582,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 lieux_dispo.push({
                     name: lieu.name,
                     label: lieu.label,
-                    distance: helpers_3.calculateDistance(current_location.coords, lieu)
+                    distance: helpers_4.calculateDistance(current_location.coords, lieu)
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -2466,6 +2602,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
             `;
                 elem.dataset.name = lieux_dispo[i].name;
+                elem.dataset.label = lieux_dispo[i].label;
                 elem.addEventListener('click', clickOnLocation);
                 collection.appendChild(elem);
             }
@@ -2483,7 +2620,6 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             content.appendChild(subtext);
         }
         // Création du footer
-        // <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>
         const ok = document.createElement('a');
         ok.href = "#!";
         ok.innerText = "Confirmer";
@@ -2492,10 +2628,15 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             if (input.value.trim() === "") {
                 M.toast({ html: "Vous devez préciser un lieu." });
             }
-            else {
-                document.getElementById('__location__id').value = input.value;
-                helpers_3.getModalInstance().close();
+            else if (input.value in labels_to_name) {
+                const loc_input = document.getElementById('__location__id');
+                loc_input.value = input.value;
+                loc_input.dataset.reallocation = labels_to_name[input.value];
+                helpers_4.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
+            }
+            else {
+                M.toast({ html: "Le lieu entré n'a aucune correspondance dans la base de données." });
             }
         });
         footer.appendChild(ok);

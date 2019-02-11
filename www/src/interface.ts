@@ -63,44 +63,6 @@ export function changePage(page: AppPageName) : void {
 
 export function initHomePage(base: HTMLElement) : void {
     base.innerHTML = "<h2 class='center'>"+ APP_NAME +"</h2>" + `
-    <!-- <div class="row">
-        <form class="col s12">
-            <div class="row">
-                <div class="input-field col s6">
-                    <input id="last_name" type="number" class="validate">
-                    <label for="last_name">Identifiant</label>
-                </div>
-                <div class="input-field col s6">
-                    <input placeholder="Pipou" id="first_name" type="text" class="validate">
-                    <label for="first_name">Nom</label>
-                </div>
-            </div>
-            <div class="row">
-                <div class="input-field col s12">
-                    <input value="" id="disabled2" type="number" class="validate">
-                    <label for="disabled2">Poids</label>
-                </div>
-
-                <div class="input-field col s12">
-                    <select name="lieu">
-                        <option value="1">Près du ruisseau</option>
-                        <option value="2">Vers le gros chêne</option>
-                    </select>
-                    <label>Lieux</label>
-                </div>
-            </div>
-        </form>
-    </div>
-    <div class="row">
-        <a class="blue-text btn-flat right">Enregistrer</a>
-        <a class="red-text btn-flat left">Réinitialiser</a>
-    </div>
-    <div class="fixed-action-btn">
-        <a class="btn-floating btn-large red" id="operate_listen">
-            <i class="large material-icons">mic</i>
-        </a>
-    </div> -->
-
     <div class="container">
         <p class="flow-text">
             Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
