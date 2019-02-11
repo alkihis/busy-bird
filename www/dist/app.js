@@ -1551,11 +1551,27 @@ define("test_aytom", ["require", "exports", "arytom/artyom"], function (require,
     }
     exports.test_jarvis = test_jarvis;
 });
+////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
+/*
+{
+    "nom_formel/clé_du_formulaire": {
+        "name": "Nom réel (possiblement à afficher à l'écran)"
+        "fields": [
+            {}: FormEntity
+        ],
+        "locations": [
+            {}: FormLocation
+        ]
+    },
+    "nom_d_un_autre_formulaire": Form
+}
+*/
 define("form_schema", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
      * Type à préciser dans le JSON, clé "type"
+     * Le type à préciser est la chaîne de caractères
      */
     var FormEntityType;
     (function (FormEntityType) {
@@ -1563,14 +1579,14 @@ define("form_schema", ["require", "exports"], function (require, exports) {
         FormEntityType["float"] = "float";
         FormEntityType["select"] = "select";
         FormEntityType["string"] = "string";
-        FormEntityType["bigstring"] = "textaera";
+        FormEntityType["bigstring"] = "textarea";
         FormEntityType["checkbox"] = "checkbox";
         FormEntityType["file"] = "file";
-        FormEntityType["date"] = "date";
-        FormEntityType["time"] = "time";
+        FormEntityType["datetime"] = "datetime";
         FormEntityType["divider"] = "divider";
     })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    exports.default_form_name = "Cincle plongeur";
+    // Clé du JSON à charger automatiquement
+    exports.default_form_name = "cincle_plongeur";
     // Classe contenant le formulaire JSON chargé et parsé
     exports.Forms = new class {
         // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
@@ -1578,7 +1594,7 @@ define("form_schema", ["require", "exports"], function (require, exports) {
         constructor() {
             this.form_ready = false;
             this.waiting_callee = [];
-            this.current = [];
+            this.current = null;
             $.get('assets/form.json', {}, (json) => {
                 // Le JSON est reçu, on l'enregistre dans available_forms
                 this.available_forms = json;
@@ -1587,6 +1603,8 @@ define("form_schema", ["require", "exports"], function (require, exports) {
                 // On enregistre le formulaire par défaut (si la clé définie existe)
                 if (exports.default_form_name in this.available_forms)
                     this.current = this.available_forms[exports.default_form_name];
+                else
+                    this.current = { name: null, fields: [], locations: [] };
                 // On exécute les fonctions en attente
                 let func;
                 while (func = this.waiting_callee.pop()) {
@@ -1604,272 +1622,172 @@ define("form_schema", ["require", "exports"], function (require, exports) {
         }
     };
 });
-define("form", ["require", "exports", "test_aytom", "form_schema"], function (require, exports, test_aytom_1, form_schema_1) {
+define("helpers", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function createInputWrapper() {
-        const e = document.createElement('div');
-        e.classList.add("row", "input-field", "col", "s12");
-        return e;
+    exports.PRELOADER_BASE = `
+<div class="spinner-layer spinner-blue-only">
+    <div class="circle-clipper left">
+        <div class="circle"></div>
+    </div><div class="gap-patch">
+        <div class="circle"></div>
+    </div><div class="circle-clipper right">
+        <div class="circle"></div>
+    </div>
+</div>`;
+    exports.PRELOADER = `
+<div class="preloader-wrapper active">
+    ${exports.PRELOADER_BASE}
+</div>`;
+    exports.SMALL_PRELOADER = `
+<div class="preloader-wrapper small active">
+    ${exports.PRELOADER_BASE}
+</div>`;
+    function getBase() {
+        return document.getElementById('main_block');
     }
-    function createTip(wrapper, ele) {
-        if (ele.tip_on_invalid) {
-            const tip = document.createElement('div');
-            tip.classList.add('invalid-tip');
-            tip.innerText = ele.tip_on_invalid;
-            tip.style.display = 'none';
-            wrapper.appendChild(tip);
-        }
-        return wrapper;
+    exports.getBase = getBase;
+    function initModal(options = {}, content) {
+        const modal = getModal();
+        if (content)
+            modal.innerHTML = content;
+        M.Modal.init(modal, options);
     }
-    function showHideTip(current, show) {
-        if (current.nextElementSibling && current.nextElementSibling.classList.contains("invalid-tip")) {
-            // Si il y a un tip, on le fait appraître
-            if (show)
-                $(current.nextElementSibling).slideDown(200);
-            else
-                $(current.nextElementSibling).slideUp(200);
-        }
+    exports.initModal = initModal;
+    function getModal() {
+        return document.getElementById('modal_placeholder');
     }
-    /**
-     * Classe le champ comme valide.
-     * @param e Element input
-     */
-    function setValid(e) {
-        e.classList.add('valid');
-        e.classList.remove('invalid');
-        e.dataset.valid = "1";
-        showHideTip(e, false);
+    exports.getModal = getModal;
+    function getModalInstance() {
+        return M.Modal.getInstance(getModal());
     }
-    /**
-     * Classe le champ comme invalide.
-     * @param e Element input
-     */
-    function setInvalid(e) {
-        if (e.value === "" && !e.required) {
-            setValid(e);
-            return;
-        }
-        e.classList.add('invalid');
-        e.classList.remove('valid');
-        e.dataset.valid = "0";
-        showHideTip(e, true);
+    exports.getModalInstance = getModalInstance;
+    function getPreloader(text) {
+        return `
+    <center style="margin-top: 35vh;">
+        ${exports.PRELOADER}
+    </center>
+    <center class="flow-text" style="margin-top: 10px">${text}</center>
+    `;
     }
-    /**
-     * Remplit les champs standards de l'input (id, name, required)...
-     * @param htmle
-     * @param ele
-     * @param label
-     */
-    function fillStandardInputValues(htmle, ele, label) {
-        htmle.id = "id_" + ele.name;
-        htmle.name = ele.name;
-        htmle.required = ele.required;
-        if (htmle.tagName === "INPUT" && ele.placeholder) {
-            htmle.placeholder = ele.placeholder;
-        }
-        if (label) {
-            label.htmlFor = htmle.id;
-            label.innerText = ele.label;
-        }
-        htmle.dataset.valid = ele.required ? "0" : "1";
-        htmle.value = ele.default_value;
-        return htmle;
+    exports.getPreloader = getPreloader;
+    function getModalPreloader(text) {
+        return `<div class="modal-content">
+    <center>
+        ${exports.SMALL_PRELOADER}
+    </center>
+    <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
+    </div>
+    `;
     }
-    /**
-     * Construit le formulaire automatiquement passé via "c_f"
-     * @param placeh Élement HTML dans lequel écrire le formulaire
-     * @param c_f Tableau d'éléments de formulaire
-     * @param jarvis Instance d'Arytom à configurer
-     */
-    function constructForm(placeh, c_f, jarvis) {
-        for (const ele of c_f) {
-            let element_to_add = null;
-            if (ele.type === form_schema_1.FormEntityType.divider) {
-                // C'est un titre
-                let htmle = document.createElement('h4');
-                htmle.innerText = ele.label;
-                htmle.id = "id_" + ele.name;
-                placeh.appendChild(htmle);
-                continue;
-            }
-            if (ele.type === form_schema_1.FormEntityType.integer || ele.type === form_schema_1.FormEntityType.float) {
-                const wrapper = createInputWrapper();
-                const htmle = document.createElement('input');
-                const label = document.createElement('label');
-                fillStandardInputValues(htmle, ele, label);
-                htmle.type = "number";
-                if (ele.range) {
-                    if (typeof ele.range.min !== 'undefined') {
-                        htmle.min = String(ele.range.min);
-                    }
-                    if (typeof ele.range.max !== 'undefined') {
-                        htmle.max = String(ele.range.max);
-                    }
+    exports.getModalPreloader = getModalPreloader;
+    function saveDefaultForm() {
+        // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
+    }
+    exports.saveDefaultForm = saveDefaultForm;
+    const FOLDER = "cdvfile://localhost/persistent/";
+    let DIR_ENTRY = null;
+    function readFromFile(fileName, callback, callbackIfFailed) {
+        // @ts-ignore
+        const pathToFile = FOLDER + fileName;
+        // @ts-ignore
+        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
+            fileEntry.file(function (file) {
+                const reader = new FileReader();
+                reader.onloadend = function (e) {
+                    callback(this.result);
+                };
+                reader.readAsText(file);
+            }, function () {
+                if (callbackIfFailed) {
+                    callbackIfFailed();
                 }
-                wrapper.appendChild(label);
-                wrapper.appendChild(htmle);
-                createTip(wrapper, ele);
-                // Attachage de l'évènement de vérification
-                htmle.addEventListener('change', function () {
-                    let valid = true;
-                    let value;
-                    try {
-                        value = Number(this.value);
-                    }
-                    catch (e) {
-                        valid = false;
-                    }
-                    if (typeof value === 'number' && value === value) {
-                        if (typeof ele.range.min !== 'undefined' && value < ele.range.min) {
-                            valid = false;
-                        }
-                        else if (typeof ele.range.max !== 'undefined' && value > ele.range.max) {
-                            valid = false;
-                        }
-                        if (ele.type === form_schema_1.FormEntityType.float) {
-                            if (ele.float_precision) {
-                                // Si on a demandé à avoir un nombre de flottant précis
-                                const floating_point = this.value.split('.');
-                                if (floating_point.length < 2 || floating_point[1].length !== ele.float_precision) {
-                                    // Si il n'y a pas de . ou si le nombre de chiffres après la virgule n'est pas le bon
-                                    valid = false;
-                                }
-                            }
-                        }
-                        else if (this.value.indexOf(".") !== -1) {
-                            // Ce doit forcément être un entier,
-                            // donc si on trouve un point
-                            valid = false;
-                        }
-                    }
-                    else {
-                        valid = false;
-                    }
-                    if (valid) {
-                        setValid(this);
-                    }
-                    else {
-                        setInvalid(this);
-                    }
-                });
-                element_to_add = wrapper;
-            }
-            if (ele.type === form_schema_1.FormEntityType.string) {
-                const wrapper = createInputWrapper();
-                const htmle = document.createElement('input');
-                const label = document.createElement('label');
-                fillStandardInputValues(htmle, ele, label);
-                htmle.type = "text";
-                wrapper.appendChild(label);
-                wrapper.appendChild(htmle);
-                createTip(wrapper, ele);
-                // Attachage de l'évènement de vérification
-                htmle.addEventListener('change', function () {
-                    let valid = true;
-                    let value = this.value;
-                    if (typeof value === 'string') {
-                        if (typeof ele.range.min !== 'undefined' && value.length < ele.range.min) {
-                            valid = false;
-                        }
-                        else if (typeof ele.range.max !== 'undefined' && value.length > ele.range.max) {
-                            valid = false;
-                        }
-                        if (value.length === 0 && ele.suggested_not_blank) {
-                            valid = false;
-                        }
-                    }
-                    else {
-                        valid = false;
-                    }
-                    if (valid) {
-                        setValid(this);
-                    }
-                    else {
-                        setInvalid(this);
-                    }
-                });
-                element_to_add = wrapper;
-            }
-            if (ele.type === form_schema_1.FormEntityType.select) {
-                const wrapper = createInputWrapper();
-                const htmle = document.createElement('select');
-                const label = document.createElement('label');
-                fillStandardInputValues(htmle, ele, label);
-                // Création des options
-                htmle.multiple = ele.select_options.multiple;
-                for (const opt of ele.select_options.options) {
-                    const htmlopt = document.createElement('option');
-                    htmlopt.selected = opt.selected;
-                    htmlopt.value = opt.value;
-                    htmlopt.innerText = opt.label;
-                    htmle.appendChild(htmlopt);
+                else {
+                    console.log("not readable");
                 }
-                wrapper.appendChild(htmle);
-                wrapper.appendChild(label);
-                // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
-                // Il faudra par contrer créer (plus tard les input vocaux)
-                element_to_add = wrapper;
+            });
+        }, function () {
+            if (callbackIfFailed) {
+                callbackIfFailed();
             }
-            if (ele.type === form_schema_1.FormEntityType.checkbox) {
-                const wrapper = document.createElement('p');
-                const label = document.createElement('label');
-                const input = document.createElement('input');
-                const span = document.createElement('span');
-                fillStandardInputValues(input, ele, span);
-                wrapper.classList.add('row', 'col', 's12');
-                input.classList.add('filled-in');
-                input.type = "checkbox";
-                input.checked = ele.default_value;
-                wrapper.appendChild(label);
-                label.appendChild(input);
-                label.appendChild(span);
-                // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
-                // Il faudra par contrer créer (plus tard les input vocaux)
-                element_to_add = wrapper;
+            else {
+                console.log("not found");
             }
-            if (element_to_add)
-                placeh.appendChild(element_to_add);
-        }
-    }
-    /**
-     * Fonction qui va faire attendre l'arrivée du formulaire,
-     * puis charger la page
-     * @param base
-     */
-    function initFormPage(base) {
-        form_schema_1.Forms.onReady(function (available, current) {
-            loadFormPage(base, current);
         });
     }
-    exports.initFormPage = initFormPage;
-    /**
-     * Charge la page de formulaire (point d'entrée)
-     * @param base Element dans lequel écrire la page
-     */
-    function loadFormPage(base, current_form) {
-        base.innerHTML = "";
-        const base_block = document.createElement('div');
-        base_block.classList.add('row', 'container');
-        const placeh = document.createElement('form');
-        placeh.classList.add('col', 's12');
-        base_block.appendChild(placeh);
-        // Appelle la fonction pour construire
-        constructForm(placeh, current_form, test_aytom_1.Jarvis.Jarvis);
-        base.appendChild(base_block);
-        // Initialisateur du bouton micro
-        // base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
-        //     <a class="btn-floating btn-large red" id="operate_listen">
-        //         <i class="large material-icons">mic</i>
-        //     </a>
-        // </div>`);
-        // document.getElementById('operate_listen').onclick = function() {
-        //     test_jarvis();
-        // };
-        M.updateTextFields();
-        $('select').formSelect();
+    exports.readFromFile = readFromFile;
+    function getDir(callback, dirName) {
+        // @ts-ignore
+        window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {
+            DIR_ENTRY = dirEntry;
+            if (callback) {
+                callback(dirEntry);
+            }
+        }, function (err) { console.log("Persistent not available", err.message); });
     }
-    exports.loadFormPage = loadFormPage;
+    exports.getDir = getDir;
+    function writeFile(dirName, fileName, blob, callback) {
+        getDir(function (dirEntry) {
+            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
+                write(fileEntry, blob).then(function () {
+                    if (callback) {
+                        callback();
+                    }
+                });
+            }, function (err) { console.log("Error in writing file", err.message); });
+        }, dirName);
+        function write(fileEntry, dataObj) {
+            return new Promise(function (resolve, reject) {
+                fileEntry.createWriter(function (fileWriter) {
+                    fileWriter.onwriteend = function () {
+                        resolve();
+                    };
+                    fileWriter.onerror = function (e) {
+                        reject(e);
+                    };
+                    fileWriter.write(dataObj);
+                });
+            });
+        }
+    }
+    exports.writeFile = writeFile;
+    function createDir(name, onSuccess, onError) {
+        getDir(function (dirEntry) {
+            dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
+        });
+    }
+    exports.createDir = createDir;
+    function listDir(path = FOLDER) {
+        // @ts-ignore
+        window.resolveLocalFileSystemURL(path, function (fileSystem) {
+            var reader = fileSystem.createReader();
+            reader.readEntries(function (entries) {
+                console.log(entries);
+            }, function (err) {
+                console.log(err);
+            });
+        }, function (err) {
+            console.log(err);
+        });
+    }
+    exports.listDir = listDir;
+    function getLocation(onSuccess, onFailed) {
+        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 1000 });
+    }
+    exports.getLocation = getLocation;
+    function calculateDistance(coords1, coords2) {
+        // @ts-ignore
+        return geolib.getDistance({ latitude: coords1.latitude, longitude: coords1.longitude }, { latitude: coords2.latitude, longitude: coords2.longitude });
+    }
+    exports.calculateDistance = calculateDistance;
+    function testDistance(latitude = 45.353421, longitude = 5.836441) {
+        getLocation(function (res) {
+            console.log(calculateDistance(res.coords, { latitude, longitude }));
+        }, function (error) {
+            console.log(error);
+        });
+    }
+    exports.testDistance = testDistance;
 });
 define("settings_page", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -1992,20 +1910,8 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
 define("main", ["require", "exports", "interface", "helpers"], function (require, exports, interface_1, helpers_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.PRELOADER = `
-<div class="preloader-wrapper active">
-    <div class="spinner-layer spinner-blue-only">
-        <div class="circle-clipper left">
-            <div class="circle"></div>
-        </div><div class="gap-patch">
-            <div class="circle"></div>
-        </div><div class="circle-clipper right">
-            <div class="circle"></div>
-        </div>
-    </div>
-</div>
-`;
     exports.SIDENAV_OBJ = null;
+    exports.MAX_LIEUX_AFFICHES = 20;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -2058,6 +1964,7 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
         };
         exports.app.initialize();
         initDebug();
+        helpers_2.initModal();
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
@@ -2092,127 +1999,478 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("helpers", ["require", "exports", "main"], function (require, exports, main_2) {
+define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "main"], function (require, exports, test_aytom_1, form_schema_1, helpers_3, main_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function getBase() {
-        return document.getElementById('main_block');
+    function createInputWrapper() {
+        const e = document.createElement('div');
+        e.classList.add("row", "input-field", "col", "s12");
+        return e;
     }
-    exports.getBase = getBase;
-    function getPreloader(text) {
-        return `
-    <center style="margin-top: 35vh;">
-        ${main_2.PRELOADER}
-    </center>
-    <center class="flow-text" style="margin-top: 10px">${text}</center>
-    `;
+    function createTip(wrapper, ele) {
+        if (ele.tip_on_invalid) {
+            const tip = document.createElement('div');
+            tip.classList.add('invalid-tip');
+            tip.innerText = ele.tip_on_invalid;
+            tip.style.display = 'none';
+            wrapper.appendChild(tip);
+        }
+        return wrapper;
     }
-    exports.getPreloader = getPreloader;
-    function saveDefaultForm() {
-        // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
-    }
-    exports.saveDefaultForm = saveDefaultForm;
-    const FOLDER = "cdvfile://localhost/persistent/";
-    let DIR_ENTRY = null;
-    function readFromFile(fileName, callback, callbackIfFailed) {
-        // @ts-ignore
-        const pathToFile = FOLDER + fileName;
-        // @ts-ignore
-        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-            fileEntry.file(function (file) {
-                const reader = new FileReader();
-                reader.onloadend = function (e) {
-                    callback(this.result);
-                };
-                reader.readAsText(file);
-            }, function () {
-                if (callbackIfFailed) {
-                    callbackIfFailed();
-                }
-                else {
-                    console.log("not readable");
-                }
-            });
-        }, function () {
-            if (callbackIfFailed) {
-                callbackIfFailed();
-            }
-            else {
-                console.log("not found");
-            }
-        });
-    }
-    exports.readFromFile = readFromFile;
-    function getDir(callback, dirName) {
-        // @ts-ignore
-        window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {
-            DIR_ENTRY = dirEntry;
-            if (callback) {
-                callback(dirEntry);
-            }
-        }, function (err) { console.log("Persistent not available", err.message); });
-    }
-    exports.getDir = getDir;
-    function writeFile(dirName, fileName, blob, callback) {
-        getDir(function (dirEntry) {
-            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                write(fileEntry, blob).then(function () {
-                    if (callback) {
-                        callback();
-                    }
-                });
-            }, function (err) { console.log("Error in writing file", err.message); });
-        }, dirName);
-        function write(fileEntry, dataObj) {
-            return new Promise(function (resolve, reject) {
-                fileEntry.createWriter(function (fileWriter) {
-                    fileWriter.onwriteend = function () {
-                        resolve();
-                    };
-                    fileWriter.onerror = function (e) {
-                        reject(e);
-                    };
-                    fileWriter.write(dataObj);
-                });
-            });
+    function showHideTip(current, show) {
+        if (current.nextElementSibling && current.nextElementSibling.classList.contains("invalid-tip")) {
+            // Si il y a un tip, on le fait appraître
+            if (show)
+                $(current.nextElementSibling).slideDown(200);
+            else
+                $(current.nextElementSibling).slideUp(200);
         }
     }
-    exports.writeFile = writeFile;
-    function createDir(name, onSuccess, onError) {
-        getDir(function (dirEntry) {
-            dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
+    /**
+     * Classe le champ comme valide.
+     * @param e Element input
+     */
+    function setValid(e) {
+        e.classList.add('valid');
+        e.classList.remove('invalid');
+        e.dataset.valid = "1";
+        showHideTip(e, false);
+    }
+    /**
+     * Classe le champ comme invalide.
+     * @param e Element input
+     */
+    function setInvalid(e) {
+        if (e.value === "" && !e.required) {
+            setValid(e);
+            return;
+        }
+        e.classList.add('invalid');
+        e.classList.remove('valid');
+        e.dataset.valid = "0";
+        showHideTip(e, true);
+    }
+    /**
+     * Remplit les champs standards de l'input (id, name, required)...
+     * @param htmle
+     * @param ele
+     * @param label
+     */
+    function fillStandardInputValues(htmle, ele, label) {
+        htmle.id = "id_" + ele.name;
+        htmle.name = ele.name;
+        htmle.required = ele.required;
+        if (htmle.tagName !== "SELECT" && ele.placeholder) {
+            htmle.placeholder = ele.placeholder;
+        }
+        if (label) {
+            label.htmlFor = htmle.id;
+            label.innerText = ele.label;
+        }
+        htmle.dataset.valid = ele.required ? "0" : "1";
+        htmle.value = ele.default_value || "";
+        return htmle;
+    }
+    /**
+     * Polyfill for modulo (seems to work unproperly on flaoting point)
+     * @param num1
+     * @param num2
+     */
+    function isModuloZero(num1, num2) {
+        let reste = num1;
+        while (reste > 0) {
+            reste -= num2;
+        }
+        // Arrondit le nombre pour éviter les problèmes de précision
+        return Number(reste.toFixed(5)) === 0;
+    }
+    /**
+     * Construit le formulaire automatiquement passé via "c_f"
+     * @param placeh Élement HTML dans lequel écrire le formulaire
+     * @param c_f Tableau d'éléments de formulaire
+     * @param jarvis Instance d'Arytom à configurer
+     */
+    function constructForm(placeh, c_f, jarvis) {
+        // Crée le champ de lieu
+        const location = document.createElement('input');
+        location.type = "hidden";
+        location.name = "__location__";
+        location.id = "__location__id";
+        placeh.appendChild(location);
+        for (const ele of c_f) {
+            let element_to_add = null;
+            if (ele.type === form_schema_1.FormEntityType.divider) {
+                // C'est un titre
+                let htmle = document.createElement('h4');
+                htmle.innerText = ele.label;
+                htmle.id = "id_" + ele.name;
+                placeh.appendChild(htmle);
+                continue;
+            }
+            if (ele.type === form_schema_1.FormEntityType.integer || ele.type === form_schema_1.FormEntityType.float) {
+                const wrapper = createInputWrapper();
+                const htmle = document.createElement('input');
+                const label = document.createElement('label');
+                fillStandardInputValues(htmle, ele, label);
+                htmle.type = "number";
+                if (ele.range) {
+                    if (typeof ele.range.min !== 'undefined') {
+                        htmle.min = String(ele.range.min);
+                    }
+                    if (typeof ele.range.max !== 'undefined') {
+                        htmle.max = String(ele.range.max);
+                    }
+                }
+                wrapper.appendChild(label);
+                wrapper.appendChild(htmle);
+                createTip(wrapper, ele);
+                // Calcul de nombre de décimales requises
+                // si le nombre demandé est un float
+                let NB_DECIMALES = 0;
+                if (ele.type === form_schema_1.FormEntityType.float && ele.float_precision) {
+                    // Récupération de la partie décimale sous forme de string
+                    const dec_part = ele.float_precision.toString().split('.');
+                    // Calcul du nombre de décimales
+                    if (dec_part.length > 1) {
+                        NB_DECIMALES = dec_part[1].length;
+                    }
+                    else {
+                        throw new Error(`La précision pour la partie décimale spécifiée pour le champ "${ele.name}" est invalide: Elle ne comporte pas de décimales.`);
+                    }
+                }
+                // Attachage de l'évènement de vérification
+                htmle.addEventListener('change', function () {
+                    let valid = true;
+                    let value;
+                    try {
+                        value = Number(this.value);
+                    }
+                    catch (e) {
+                        valid = false;
+                    }
+                    if (typeof value === 'number' && value === value) {
+                        if (typeof ele.range.min !== 'undefined' && value < ele.range.min) {
+                            valid = false;
+                        }
+                        else if (typeof ele.range.max !== 'undefined' && value > ele.range.max) {
+                            valid = false;
+                        }
+                        // if différent, il est juste en else if pour éviter de faire les
+                        // calculs si le valid est déjà à false
+                        else if (ele.type === form_schema_1.FormEntityType.float) {
+                            if (ele.float_precision) {
+                                // Si on a demandé à avoir un nombre de flottant précis
+                                const floating_point = this.value.split('.');
+                                if (floating_point.length > 1) {
+                                    // Récupération de la partie décimale avec le bon nombre de décimales
+                                    // (round obligatoire, à cause de la gestion des float imprécise)
+                                    const partie_decimale = Number((value % 1).toFixed(NB_DECIMALES));
+                                    // Si le nombre de chiffres après la virgule n'est pas le bon
+                                    // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
+                                    if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, ele.float_precision)) {
+                                        valid = false;
+                                    }
+                                }
+                                else {
+                                    //Il n'y a pas de . dans le nombre
+                                    valid = false;
+                                }
+                            }
+                        }
+                        else if (this.value.indexOf(".") !== -1) {
+                            // Ce doit forcément être un entier,
+                            // donc si on trouve un point
+                            valid = false;
+                        }
+                    }
+                    else {
+                        valid = false;
+                    }
+                    if (valid) {
+                        setValid(this);
+                    }
+                    else {
+                        setInvalid(this);
+                    }
+                });
+                element_to_add = wrapper;
+            }
+            if (ele.type === form_schema_1.FormEntityType.string || ele.type === form_schema_1.FormEntityType.bigstring) {
+                const wrapper = createInputWrapper();
+                let htmle;
+                if (ele.type === form_schema_1.FormEntityType.string) {
+                    htmle = document.createElement('input');
+                    htmle.type = "text";
+                }
+                else {
+                    htmle = document.createElement('textarea');
+                    htmle.classList.add('materialize-textarea');
+                }
+                const label = document.createElement('label');
+                fillStandardInputValues(htmle, ele, label);
+                wrapper.appendChild(label);
+                wrapper.appendChild(htmle);
+                createTip(wrapper, ele);
+                // Attachage de l'évènement de vérification
+                htmle.addEventListener('change', function () {
+                    let valid = true;
+                    let value = this.value;
+                    if (typeof value === 'string') {
+                        if (typeof ele.range.min !== 'undefined' && value.length < ele.range.min) {
+                            valid = false;
+                        }
+                        else if (typeof ele.range.max !== 'undefined' && value.length > ele.range.max) {
+                            valid = false;
+                        }
+                        if (value.length === 0 && ele.suggested_not_blank) {
+                            valid = false;
+                        }
+                    }
+                    else {
+                        valid = false;
+                    }
+                    if (valid) {
+                        setValid(this);
+                    }
+                    else {
+                        setInvalid(this);
+                    }
+                });
+                element_to_add = wrapper;
+            }
+            if (ele.type === form_schema_1.FormEntityType.select) {
+                const wrapper = createInputWrapper();
+                const htmle = document.createElement('select');
+                const label = document.createElement('label');
+                fillStandardInputValues(htmle, ele, label);
+                // Création des options
+                htmle.multiple = ele.select_options.multiple;
+                for (const opt of ele.select_options.options) {
+                    const htmlopt = document.createElement('option');
+                    htmlopt.selected = opt.selected;
+                    htmlopt.value = opt.value;
+                    htmlopt.innerText = opt.label;
+                    htmle.appendChild(htmlopt);
+                }
+                wrapper.appendChild(htmle);
+                wrapper.appendChild(label);
+                // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
+                // Il faudra par contrer créer (plus tard les input vocaux)
+                element_to_add = wrapper;
+            }
+            if (ele.type === form_schema_1.FormEntityType.checkbox) {
+                const wrapper = document.createElement('p');
+                const label = document.createElement('label');
+                const input = document.createElement('input');
+                const span = document.createElement('span');
+                fillStandardInputValues(input, ele, span);
+                wrapper.classList.add('row', 'col', 's12', 'input-checkbox');
+                input.classList.add('filled-in');
+                input.type = "checkbox";
+                input.checked = ele.default_value;
+                wrapper.appendChild(label);
+                label.appendChild(input);
+                label.appendChild(span);
+                // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
+                // Il faudra par contrer créer (plus tard les input vocaux)
+                element_to_add = wrapper;
+            }
+            if (ele.type === form_schema_1.FormEntityType.datetime) {
+                const wrapper = createInputWrapper();
+                const input = document.createElement('input');
+                const label = document.createElement('label');
+                // Pour que le label ne recouvre pas le texte du champ
+                label.classList.add('active');
+                input.type = "datetime-local";
+                fillStandardInputValues(input, ele, label);
+                // Problème: la date à entrer dans l'input est la date UTC
+                // On "corrige" ça par manipulation de la date (on rajoute l'offset)
+                let date_plus_timezone = new Date();
+                date_plus_timezone.setTime(date_plus_timezone.getTime() + (-date_plus_timezone.getTimezoneOffset() * 60 * 1000));
+                const date_str = date_plus_timezone.toISOString();
+                input.value = date_str.substring(0, date_str.length - 8);
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                element_to_add = wrapper;
+            }
+            if (element_to_add)
+                placeh.appendChild(element_to_add);
+        }
+    }
+    /**
+     * Fonction qui va faire attendre l'arrivée du formulaire,
+     * puis charger la page
+     * @param base
+     */
+    function initFormPage(base) {
+        form_schema_1.Forms.onReady(function (available, current) {
+            loadFormPage(base, current);
         });
     }
-    exports.createDir = createDir;
-    function listDir(path = FOLDER) {
-        // @ts-ignore
-        window.resolveLocalFileSystemURL(path, function (fileSystem) {
-            var reader = fileSystem.createReader();
-            reader.readEntries(function (entries) {
-                console.log(entries);
-            }, function (err) {
-                console.log(err);
+    exports.initFormPage = initFormPage;
+    /**
+     * Charge la page de formulaire (point d'entrée)
+     * @param base Element dans lequel écrire la page
+     */
+    function loadFormPage(base, current_form) {
+        base.innerHTML = "";
+        const base_block = document.createElement('div');
+        base_block.classList.add('row', 'container');
+        const placeh = document.createElement('form');
+        placeh.classList.add('col', 's12');
+        base_block.appendChild(placeh);
+        // Appelle la fonction pour construire
+        constructForm(placeh, current_form.fields, test_aytom_1.Jarvis.Jarvis);
+        base.appendChild(base_block);
+        // Initialisateur du bouton micro
+        // base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
+        //     <a class="btn-floating btn-large red" id="operate_listen">
+        //         <i class="large material-icons">mic</i>
+        //     </a>
+        // </div>`);
+        // document.getElementById('operate_listen').onclick = function() {
+        //     test_jarvis();
+        // };
+        M.updateTextFields();
+        $('select').formSelect();
+        // Lance le sélecteur de localisation
+        // Obtient l'élément HTML du modal
+        const modal = helpers_3.getModal();
+        helpers_3.initModal({
+            dismissible: false
+        });
+        // Ouvre le modal et insère un chargeur
+        helpers_3.getModalInstance().open();
+        modal.innerHTML = helpers_3.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
+        setTimeout(function () {
+            // Cherche la localisation et remplit le modal
+            helpers_3.getLocation(function (coords) {
+                locationSelector(modal, current_form.locations, coords);
+            }, function () {
+                locationSelector(modal, current_form.locations);
             });
-        }, function (err) {
-            console.log(err);
+        }, 1000 * 5);
+        // Autoredimensionnement des textaera si valeur par défaut
+        const $textarea = $('textarea');
+        if ($textarea.length > 0) {
+            M.textareaAutoResize($textarea);
+        }
+    }
+    exports.loadFormPage = loadFormPage;
+    function textDistance(distance) {
+        const unit = (distance >= 1000 ? "km" : "m");
+        const str_distance = (distance >= 1000 ? (distance / 1000).toFixed(1) : distance.toString());
+        return `${str_distance} ${unit}`;
+    }
+    function locationSelector(modal, locations, current_location) {
+        // Met le modal en modal avec footer fixé
+        modal.classList.add('modal-fixed-footer');
+        // Crée le contenu du modal et son footer
+        const content = document.createElement('div');
+        content.classList.add('modal-content');
+        const footer = document.createElement('div');
+        footer.classList.add('modal-footer');
+        // Création de l'input qui va contenir le lieu
+        const input = document.createElement('input');
+        // Sélection manuelle
+        const title = document.createElement('h5');
+        title.innerText = "Sélection manuelle";
+        content.appendChild(title);
+        // Création du champ à autocompléter
+        // Conteneur
+        const row = document.createElement('div');
+        row.classList.add('row');
+        content.appendChild(row);
+        // Input field
+        const input_f = document.createElement('div');
+        input_f.classList.add('input-field', 'col', 's12');
+        row.appendChild(input_f);
+        // Champ input réel et son label
+        const label = document.createElement('label');
+        input.type = "text";
+        input.id = "autocomplete_field_id";
+        label.htmlFor = "autocomplete_field_id";
+        label.textContent = "Lieu";
+        input.classList.add('autocomplete');
+        input_f.appendChild(input);
+        input_f.appendChild(label);
+        // Initialisation de l'autocomplétion
+        const auto_complete_data = {};
+        for (const lieu of locations) {
+            auto_complete_data[lieu.label] = null;
+        }
+        // Vide le modal actuel et le remplace par le contenu et footer créés
+        modal.innerHTML = "";
+        modal.appendChild(content);
+        // Lance l'autocomplétion materialize
+        M.Autocomplete.init(input, {
+            data: auto_complete_data,
+            limit: 5,
+            onAutocomplete: function () {
+                // Remplacement du label par le nom réel
+                const location = input.value;
+                for (const lieu of locations) {
+                    if (lieu.label === location) {
+                        input.value = lieu.name;
+                    }
+                }
+            }
         });
-    }
-    exports.listDir = listDir;
-    function getLocation(onSuccess, onFailed) {
-        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
-    }
-    exports.getLocation = getLocation;
-    function calculateDistance(coords1, coords2) {
-        // @ts-ignore
-        return geolib.getDistance({ latitude: coords1.latitude, longitude: coords1.longitude }, { latitude: coords2.latitude, longitude: coords2.longitude });
-    }
-    exports.calculateDistance = calculateDistance;
-    function testDistance(latitude = 45.353421, longitude = 5.836441) {
-        getLocation(function (res) {
-            console.log(calculateDistance(res.coords, { latitude, longitude }));
-        }, function (error) {
-            console.log(error);
+        // Construction de la liste de lieux si la location est trouvée
+        if (current_location) {
+            // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
+            function clickOnLocation() {
+                input.value = this.dataset.name;
+                M.updateTextFields();
+            }
+            // Calcul de la distance entre chaque lieu et le lieu actuel
+            let lieux_dispo = [];
+            for (const lieu of locations) {
+                lieux_dispo.push({
+                    name: lieu.name,
+                    label: lieu.label,
+                    distance: helpers_3.calculateDistance(current_location.coords, lieu)
+                });
+            }
+            lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
+            // Titre
+            const title = document.createElement('h5');
+            title.innerText = "Lieux disponibles";
+            content.appendChild(title);
+            // Construction de la liste des lieux proches
+            const collection = document.createElement('div');
+            collection.classList.add('collection');
+            for (let i = 0; i < lieux_dispo.length && i < main_2.MAX_LIEUX_AFFICHES; i++) {
+                const elem = document.createElement('a');
+                elem.href = "#!";
+                elem.classList.add('collection-item');
+                elem.innerHTML = `
+                ${lieux_dispo[i].label}
+                <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
+            `;
+                elem.dataset.name = lieux_dispo[i].name;
+                elem.addEventListener('click', clickOnLocation);
+                collection.appendChild(elem);
+            }
+            content.appendChild(collection);
+        }
+        // Création du footer
+        // <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>
+        const ok = document.createElement('a');
+        ok.href = "#!";
+        ok.innerText = "Confirmer";
+        ok.classList.add("btn-flat", "green-text", "right");
+        ok.addEventListener('click', function () {
+            if (input.value.trim() === "") {
+                M.toast({ html: "Vous devez préciser un lieu." });
+            }
+            else {
+                document.getElementById('__location__id').value = input.value;
+                helpers_3.getModalInstance().close();
+                modal.classList.remove('modal-fixed-footer');
+            }
         });
+        footer.appendChild(ok);
+        modal.appendChild(footer);
     }
-    exports.testDistance = testDistance;
 });

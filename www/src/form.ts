@@ -1,6 +1,8 @@
 import { test_jarvis, Jarvis } from "./test_aytom";
-import { FormEntityType, FormEntity, Forms } from './form_schema';
+import { FormEntityType, FormEntity, Forms, Form, FormLocation } from './form_schema';
 import Artyom from "./arytom/artyom";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal } from "./helpers";
+import { MAX_LIEUX_AFFICHES } from "./main";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -65,12 +67,12 @@ function setInvalid(e: HTMLElement) : void {
  * @param ele 
  * @param label 
  */
-function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement, ele: FormEntity, label?: HTMLLabelElement) : HTMLElement {
+function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, ele: FormEntity, label?: HTMLLabelElement) : HTMLElement {
     htmle.id = "id_" + ele.name;
     htmle.name = ele.name;
     htmle.required = ele.required;
 
-    if (htmle.tagName === "INPUT" && ele.placeholder) {
+    if (htmle.tagName !== "SELECT" && ele.placeholder) {
         (htmle as HTMLInputElement).placeholder = ele.placeholder;
     }
     
@@ -80,9 +82,25 @@ function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement, el
     }
 
     htmle.dataset.valid = ele.required ? "0" : "1";
-    htmle.value = ele.default_value as string;
+    htmle.value = ele.default_value as string || "";
 
     return htmle;
+}
+
+/**
+ * Polyfill for modulo (seems to work unproperly on flaoting point)
+ * @param num1 
+ * @param num2 
+ */
+function isModuloZero(num1: number, num2: number) : boolean {
+    let reste = num1;
+
+    while (reste > 0) {
+        reste -= num2;
+    }
+
+    // Arrondit le nombre pour éviter les problèmes de précision
+    return Number(reste.toFixed(5)) === 0;
 }
 
 /**
@@ -92,6 +110,13 @@ function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement, el
  * @param jarvis Instance d'Arytom à configurer
  */
 function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) : void {
+    // Crée le champ de lieu
+    const location = document.createElement('input');
+    location.type = "hidden";
+    location.name = "__location__";
+    location.id = "__location__id";
+    placeh.appendChild(location);
+
     for (const ele of c_f) {
         let element_to_add: HTMLElement = null;
 
@@ -127,6 +152,21 @@ function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) 
             wrapper.appendChild(htmle);
             createTip(wrapper, ele);
 
+            // Calcul de nombre de décimales requises
+            // si le nombre demandé est un float
+            let NB_DECIMALES: number = 0;
+            if (ele.type === FormEntityType.float && ele.float_precision) {
+                // Récupération de la partie décimale sous forme de string
+                const dec_part = ele.float_precision.toString().split('.');
+                // Calcul du nombre de décimales
+                if (dec_part.length > 1) {
+                    NB_DECIMALES = dec_part[1].length;
+                }
+                else {
+                    throw new Error(`La précision pour la partie décimale spécifiée pour le champ "${ele.name}" est invalide: Elle ne comporte pas de décimales.`);
+                }
+            }
+
             // Attachage de l'évènement de vérification
             htmle.addEventListener('change', function() {
                 let valid = true;
@@ -145,13 +185,27 @@ function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) 
                     else if (typeof ele.range.max !== 'undefined' && value > ele.range.max) {
                         valid = false;
                     }
-
-                    if (ele.type === FormEntityType.float) {
+                    
+                    // if différent, il est juste en else if pour éviter de faire les
+                    // calculs si le valid est déjà à false
+                    else if (ele.type === FormEntityType.float) {
                         if (ele.float_precision) {
                             // Si on a demandé à avoir un nombre de flottant précis
                             const floating_point = this.value.split('.');
-                            if (floating_point.length < 2 || floating_point[1].length !== ele.float_precision) {
-                                // Si il n'y a pas de . ou si le nombre de chiffres après la virgule n'est pas le bon
+
+                            if (floating_point.length > 1) {
+                                // Récupération de la partie décimale avec le bon nombre de décimales
+                                // (round obligatoire, à cause de la gestion des float imprécise)
+                                const partie_decimale = Number((value % 1).toFixed(NB_DECIMALES));
+
+                                // Si le nombre de chiffres après la virgule n'est pas le bon
+                                // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
+                                if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, ele.float_precision)) {
+                                    valid = false;
+                                }
+                            }
+                            else {
+                                //Il n'y a pas de . dans le nombre
                                 valid = false;
                             }
                         }
@@ -177,14 +231,22 @@ function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) 
             element_to_add = wrapper;
         }
 
-        if (ele.type === FormEntityType.string) {
+        if (ele.type === FormEntityType.string || ele.type === FormEntityType.bigstring) {
             const wrapper = createInputWrapper();
-            const htmle = document.createElement('input');
+
+            let htmle: HTMLInputElement | HTMLTextAreaElement;
+            if (ele.type === FormEntityType.string) {
+                htmle = document.createElement('input');
+                htmle.type = "text";
+            }
+            else {
+                htmle = document.createElement('textarea');
+                htmle.classList.add('materialize-textarea');
+            }
+                
             const label = document.createElement('label');
             
             fillStandardInputValues(htmle, ele, label);
-
-            htmle.type = "text";
 
             wrapper.appendChild(label);
             wrapper.appendChild(htmle);
@@ -259,7 +321,7 @@ function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) 
 
             fillStandardInputValues(input, ele, span as HTMLLabelElement);
 
-            wrapper.classList.add('row', 'col', 's12');
+            wrapper.classList.add('row', 'col', 's12', 'input-checkbox');
             input.classList.add('filled-in');
             input.type = "checkbox";
             input.checked = ele.default_value as boolean;
@@ -271,6 +333,30 @@ function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) 
             // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
             // Il faudra par contrer créer (plus tard les input vocaux)
 
+            element_to_add = wrapper;
+        }
+
+        if (ele.type === FormEntityType.datetime) {
+            const wrapper = createInputWrapper();
+            const input = document.createElement('input');
+            const label = document.createElement('label');
+
+            // Pour que le label ne recouvre pas le texte du champ
+            label.classList.add('active');
+            input.type = "datetime-local";
+
+            fillStandardInputValues(input, ele, label);
+
+            // Problème: la date à entrer dans l'input est la date UTC
+            // On "corrige" ça par manipulation de la date (on rajoute l'offset)
+            let date_plus_timezone = new Date();
+            date_plus_timezone.setTime(date_plus_timezone.getTime() + (-date_plus_timezone.getTimezoneOffset()*60*1000));
+
+            const date_str = date_plus_timezone.toISOString();
+            input.value = date_str.substring(0, date_str.length-8);
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
             element_to_add = wrapper;
         }
 
@@ -294,7 +380,7 @@ export function initFormPage(base: HTMLElement) {
  * Charge la page de formulaire (point d'entrée)
  * @param base Element dans lequel écrire la page
  */
-export function loadFormPage(base: HTMLElement, current_form: FormEntity[]) {
+export function loadFormPage(base: HTMLElement, current_form: Form) {
     base.innerHTML = "";
 
     const base_block = document.createElement('div');
@@ -306,7 +392,7 @@ export function loadFormPage(base: HTMLElement, current_form: FormEntity[]) {
     base_block.appendChild(placeh);
 
     // Appelle la fonction pour construire
-    constructForm(placeh, current_form, Jarvis.Jarvis);
+    constructForm(placeh, current_form.fields, Jarvis.Jarvis);
 
     base.appendChild(base_block);
 
@@ -322,4 +408,170 @@ export function loadFormPage(base: HTMLElement, current_form: FormEntity[]) {
 
     M.updateTextFields();
     $('select').formSelect();
+
+    // Lance le sélecteur de localisation
+    // Obtient l'élément HTML du modal
+    const modal = getModal();
+    initModal({
+        dismissible: false
+    });
+    // Ouvre le modal et insère un chargeur
+    getModalInstance().open();
+    modal.innerHTML = getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
+
+    setTimeout(function() {
+// Cherche la localisation et remplit le modal
+getLocation(function(coords: Position) {
+    locationSelector(modal, current_form.locations, coords);
+}, function() {
+    locationSelector(modal, current_form.locations);
+});
+    }, 1000 * 5)
+    
+
+    // Autoredimensionnement des textaera si valeur par défaut
+    const $textarea = $('textarea');
+    if ($textarea.length > 0) {
+        M.textareaAutoResize($textarea);
+    }
+}
+
+function textDistance(distance: number) : string {
+    const unit = (distance >= 1000 ? "km" : "m");
+    const str_distance = (distance >= 1000 ? (distance / 1000).toFixed(1) : distance.toString());
+
+    return `${str_distance} ${unit}`;
+}
+
+function locationSelector(modal: HTMLElement, locations: FormLocation[], current_location?: Position) {
+    // Met le modal en modal avec footer fixé
+    modal.classList.add('modal-fixed-footer');
+
+    // Crée le contenu du modal et son footer
+    const content = document.createElement('div');
+    content.classList.add('modal-content');
+    const footer = document.createElement('div');
+    footer.classList.add('modal-footer');
+
+    // Création de l'input qui va contenir le lieu
+    const input = document.createElement('input');
+
+    // Sélection manuelle
+    const title = document.createElement('h5');
+    title.innerText = "Sélection manuelle";
+    content.appendChild(title);
+
+    // Création du champ à autocompléter
+    // Conteneur
+    const row = document.createElement('div');
+    row.classList.add('row');
+    content.appendChild(row);
+
+    // Input field
+    const input_f = document.createElement('div');
+    input_f.classList.add('input-field', 'col', 's12');
+    row.appendChild(input_f);
+
+    // Champ input réel et son label
+    const label = document.createElement('label');
+    input.type = "text";
+    input.id = "autocomplete_field_id";
+    label.htmlFor = "autocomplete_field_id";
+    label.textContent = "Lieu";
+    input.classList.add('autocomplete');
+    
+    input_f.appendChild(input);
+    input_f.appendChild(label);
+
+    // Initialisation de l'autocomplétion
+    const auto_complete_data: any = {};
+    for (const lieu of locations) {
+        auto_complete_data[lieu.label] = null;
+    }
+
+    // Vide le modal actuel et le remplace par le contenu et footer créés
+    modal.innerHTML = "";
+    modal.appendChild(content);
+
+    // Lance l'autocomplétion materialize
+    M.Autocomplete.init(input, {
+        data: auto_complete_data,
+        limit: 5,
+        onAutocomplete: function() {
+            // Remplacement du label par le nom réel
+            const location = input.value;
+            for (const lieu of locations) {
+                if (lieu.label === location) {
+                    input.value = lieu.name;
+                }
+            }
+        }
+    });
+
+    // Construction de la liste de lieux si la location est trouvée
+    if (current_location) {
+        // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
+        function clickOnLocation(this: HTMLElement) {
+            input.value = this.dataset.name;
+            M.updateTextFields();
+        }
+
+        // Calcul de la distance entre chaque lieu et le lieu actuel
+        let lieux_dispo: {name: string; label: string; distance: number}[] = [];
+        
+        for (const lieu of locations) {
+            lieux_dispo.push({
+                name: lieu.name,
+                label: lieu.label,
+                distance: calculateDistance(current_location.coords, lieu)
+            });
+        }
+
+        lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
+
+        // Titre
+        const title = document.createElement('h5');
+        title.innerText = "Lieux disponibles";
+        content.appendChild(title);
+
+        // Construction de la liste des lieux proches
+        const collection = document.createElement('div');
+        collection.classList.add('collection');
+
+        for (let i = 0; i < lieux_dispo.length && i < MAX_LIEUX_AFFICHES; i++) {
+            const elem = document.createElement('a');
+            elem.href = "#!";
+            elem.classList.add('collection-item');
+            elem.innerHTML = `
+                ${lieux_dispo[i].label}
+                <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
+            `;
+            elem.dataset.name = lieux_dispo[i].name;
+            elem.addEventListener('click', clickOnLocation);
+
+            collection.appendChild(elem);
+        }
+
+        content.appendChild(collection);
+    }
+
+    // Création du footer
+    // <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>
+    const ok = document.createElement('a');
+    ok.href = "#!";
+    ok.innerText = "Confirmer";
+    ok.classList.add("btn-flat", "green-text", "right");
+    ok.addEventListener('click', function() {
+        if (input.value.trim() === "") {
+            M.toast({html: "Vous devez préciser un lieu."});
+        }
+        else {
+            (document.getElementById('__location__id') as HTMLInputElement).value = input.value;
+            getModalInstance().close();
+            modal.classList.remove('modal-fixed-footer');
+        }
+    });
+    footer.appendChild(ok);
+
+    modal.appendChild(footer);
 }

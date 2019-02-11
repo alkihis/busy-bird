@@ -1,7 +1,41 @@
-import { PRELOADER } from "./main";
+export const PRELOADER_BASE = `
+<div class="spinner-layer spinner-blue-only">
+    <div class="circle-clipper left">
+        <div class="circle"></div>
+    </div><div class="gap-patch">
+        <div class="circle"></div>
+    </div><div class="circle-clipper right">
+        <div class="circle"></div>
+    </div>
+</div>`;
+export const PRELOADER = `
+<div class="preloader-wrapper active">
+    ${PRELOADER_BASE}
+</div>`;
+export const SMALL_PRELOADER = `
+<div class="preloader-wrapper small active">
+    ${PRELOADER_BASE}
+</div>`;
 
 export function getBase() : HTMLElement {
     return document.getElementById('main_block');
+}
+
+export function initModal(options: M.ModalOptions | {} = {}, content?: string) : void {
+    const modal = getModal();
+    
+    if (content)
+        modal.innerHTML = content;
+
+    M.Modal.init(modal, options);
+}
+
+export function getModal() : HTMLElement {
+    return document.getElementById('modal_placeholder');
+}
+
+export function getModalInstance() : M.Modal {
+    return M.Modal.getInstance(getModal());
 }
 
 export function getPreloader(text: string) {
@@ -10,6 +44,16 @@ export function getPreloader(text: string) {
         ${PRELOADER}
     </center>
     <center class="flow-text" style="margin-top: 10px">${text}</center>
+    `;
+}
+
+export function getModalPreloader(text: string) {
+    return `<div class="modal-content">
+    <center>
+        ${SMALL_PRELOADER}
+    </center>
+    <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
+    </div>
     `;
 }
 
@@ -116,11 +160,11 @@ export function listDir(path = FOLDER){
 export function getLocation(onSuccess: (coords: Position) => any, onFailed?) {
     navigator.geolocation.getCurrentPosition(onSuccess,
         onFailed,
-        { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 }
+        { timeout: 30 * 1000, maximumAge: 1000 }
     );
 }
 
-export function calculateDistance(coords1: {latitude: number, longitude: number}, coords2: {latitude: number, longitude: number}) {
+export function calculateDistance(coords1: {latitude: number, longitude: number}, coords2: {latitude: number | string, longitude: number | string}) {
     // @ts-ignore
     return geolib.getDistance(
         {latitude: coords1.latitude, longitude: coords1.longitude},

@@ -85,10 +85,22 @@ main {
     }
 }
 
+.no-margin-bottom {
+    margin-bottom: 0 !important;
+}
+
 [type="checkbox"].filled-in + span:not(.lever):before, [type="checkbox"].filled-in + span:not(.lever):after  {
     margin-top: 2px;
 }
 
 [type="checkbox"].filled-in:checked + span:not(.lever):before {
     top: 2px;
+}
+
+.input-checkbox {
+    margin-bottom: 1rem;
+}
+
+.pre-wrapper {
+    white-space: pre-wrap;
 }

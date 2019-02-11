@@ -1,21 +1,8 @@
 import { changePage, AppPages, AppPageName } from "./interface";
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance } from "./helpers";
-
-export const PRELOADER = `
-<div class="preloader-wrapper active">
-    <div class="spinner-layer spinner-blue-only">
-        <div class="circle-clipper left">
-            <div class="circle"></div>
-        </div><div class="gap-patch">
-            <div class="circle"></div>
-        </div><div class="circle-clipper right">
-            <div class="circle"></div>
-        </div>
-    </div>
-</div>
-`;
+import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal } from "./helpers";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
+export const MAX_LIEUX_AFFICHES = 20;
 
 export const app = {
     // Application Constructor
@@ -72,6 +59,7 @@ function initApp() {
 
     app.initialize();
     initDebug();
+    initModal();
 
     // Check si on est à une page spéciale
     let href: string | string[] = "";

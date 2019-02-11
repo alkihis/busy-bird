@@ -1,51 +1,129 @@
 {
-    "Cincle plongeur": [ {
-        "name": "title_general",
-        "label": "Général",
-        "type": "divider"
-    }, {
-        "name": "id",
-        "label": "Identifiant",
-        "required": true,
-        "type": "integer",
-        "range": {"min": 1},
-        "tip_on_invalid": "Doit être un entier"
-    }, {
-        "name": "mass",
-        "label": "Poids",
-        "type": "float",
-        "range": {"min": 0, "max": 100},
-        "float_precision": 2,
-        "placeholder": "Mesure en grammes",
-        "tip_on_invalid": "Doit être compris entre 0 et 100. Précision: 2 décimales."
-    }, {
-        "name": "lieu",
-        "label": "Lieu",
-        "type": "select",
-        "select_options": {
-            "multiple": false,
-            "options": [ {
-                "label": "Sous le vieux chêne",
-                "value": "chene"
-            }, {
-                "label": "Vers le ruisseau",
-                "value": "ruisseau"
-            }, {
-                "label": "Proche de la route 134",
-                "value": "rd134"
-            } ]
-        }
-    }, {
-        "name": "taille",
-        "label": "Taille",
-        "type": "float",
-        "float_precision": 3,
-        "range": {"min": 0},
-        "placeholder": "Mesure en centimètres",
-        "tip_on_invalid": "Doit dépasser 0. Précision: 3 décimales."
-    }, {
-        "name": "distress",
-        "label": "Stress",
-        "type": "checkbox"
-    } ]
+    "cincle_plongeur": {
+        "name": "Cincle plongeur",
+        "fields": [ {
+            "name": "title_general",
+            "label": "Général",
+            "type": "divider"
+        }, {
+            "name": "datet",
+            "label": "Date",
+            "type": "datetime",
+            "required": true
+        }, {
+            "name": "id",
+            "label": "Identifiant",
+            "required": true,
+            "type": "integer",
+            "range": {"min": 1},
+            "tip_on_invalid": "Doit être un entier"
+        }, {
+            "name": "mass",
+            "label": "Poids",
+            "type": "float",
+            "range": {"min": 3, "max": 100},
+            "float_precision": 0.01,
+            "placeholder": "Mesure en grammes",
+            "tip_on_invalid": "Doit être compris entre 3 et 100. Précision: 0.01"
+        }, {
+            "name": "lieu",
+            "label": "Lieu",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Sous le vieux chêne",
+                    "value": "chene"
+                }, {
+                    "label": "Vers le ruisseau",
+                    "value": "ruisseau"
+                }, {
+                    "label": "Proche de la route 134",
+                    "value": "rd134"
+                } ]
+            }
+        }, {
+            "name": "taille",
+            "label": "Taille",
+            "type": "float",
+            "float_precision": 0.005,
+            "range": {"min": 0},
+            "placeholder": "Mesure en centimètres",
+            "tip_on_invalid": "Doit dépasser 0. Précision: 0.005"
+        }, {
+            "name": "distress",
+            "label": "Stress",
+            "type": "checkbox"
+        }, {
+            "name": "commentaires",
+            "label": "Commentaires",
+            "type": "textarea"
+        } ],
+        "locations": [ {
+            "name": "ruisseau_nid_ouest_aval",
+            "label": "Ruisseau nid ouest aval",
+            "latitude": 45.319466,
+            "longitude": 5.809790
+        }, {
+            "name": "ruisseau_nid_est_aval",
+            "label": "Ruisseau nid est aval",
+            "latitude": 45.325562,
+            "longitude": 5.796895
+        }, {
+            "name": "ruisseau_nid_ouest_amont",
+            "label": "Ruisseau nid ouest amont",
+            "latitude": 45.332116,
+            "longitude": 5.820513
+        }, {
+            "name": "ruisseau_nid_ouest_amont",
+            "label": "Ruisseau nid est amont",
+            "latitude": 45.338869,
+            "longitude": 5.822489
+        }, {
+            "name": "chene_rive_aval",
+            "label": "Chêne de la rive aval",
+            "latitude": 45.344347,
+            "longitude": 5.828112
+        }, {
+            "name": "chene_rive_amont",
+            "label": "Chêne de la rive amont",
+            "latitude": 45.345398,
+            "longitude": 5.822643
+        }, {
+            "name": "hdv",
+            "label": "Hôtel de Ville - Louis Pradel",
+            "latitude": 45.767236,
+            "longitude": 4.836093
+        }, {
+            "name": "cordeliers",
+            "label": "Cordeliers",
+            "latitude": 45.763277,
+            "longitude": 4.835794
+        }, {
+            "name": "saintpaul",
+            "label": "Gare Saint-Paul",
+            "latitude": 45.765994,
+            "longitude": 4.826986
+        }, {
+            "name": "foch",
+            "label": "Foch",
+            "latitude": 45.768780,
+            "longitude": 4.844406
+        }, {
+            "name": "terr_feuill",
+            "label": "Terreaux - La feuillée",
+            "latitude": 45.767306,
+            "longitude": 4.831260
+        }, {
+            "name": "croixpaquet",
+            "label": "Croix-Paquet",
+            "latitude": 45.770806,
+            "longitude": 4.836442
+        }, {
+            "name": "croixrousse",
+            "label": "Croix-Rousse",
+            "latitude": 45.774364,
+            "longitude": 4.831939
+        } ]
+    }
 }
