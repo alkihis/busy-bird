@@ -32,6 +32,9 @@
     },
     "cordova-plugin-geolocation": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-device": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {}

@@ -384,6 +384,40 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             element_to_add = wrapper;
         }
 
+        if (ele.type === FormEntityType.file) {
+            // Input de type file
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('file-field', 'input-field', 'row', 'col', 's12');
+            const divbtn = document.createElement('div');
+            divbtn.classList.add('btn');
+
+            const span = document.createElement('span');
+            span.innerText = "Fichier";
+            const input = document.createElement('input');
+            input.type = "file";
+            input.id = "id_" + ele.name;
+            input.name = ele.name;
+            input.required = ele.required;
+            input.accept = ele.file_type || "";
+            input.classList.add('input-image-element');
+
+            divbtn.appendChild(span);
+            divbtn.appendChild(input);
+
+            wrapper.appendChild(divbtn);
+
+            const fwrapper = document.createElement('div');
+            fwrapper.classList.add('file-path-wrapper');
+            const f_input = document.createElement('input');
+            f_input.type = "text"; f_input.classList.add('file-path', 'validate');
+            f_input.value = ele.label;
+
+            fwrapper.appendChild(f_input);
+            wrapper.appendChild(fwrapper);
+
+            element_to_add = wrapper;
+        }
+
         if (element_to_add)
             placeh.appendChild(element_to_add);
     }
@@ -410,8 +444,9 @@ function initFormSave(type: string) : void {
 /**
  * Sauvegarde le formulaire actuel dans un fichier .json
  *  @param type 
+ *  @param force_name? Force un nom pour le formulaire
  */
-function saveForm(type: string) : void {
+function saveForm(type: string, force_name?: string) : void {
     const form_values: FormSave = {
         fields: {},
         type,
@@ -435,10 +470,7 @@ function saveForm(type: string) : void {
         }
     }
 
-    const name_id = generateId(20);
-    writeImagesThenForm(name_id, form_values);
-
-    console.log(form_values);
+    writeImagesThenForm(force_name || generateId(20), form_values);
 }
 
 /**
@@ -447,7 +479,7 @@ function saveForm(type: string) : void {
  * @param name Nom du formulaire (sans le .json)
  */
 function writeImagesThenForm(name: string, form_values: FormSave) : void {
-    getDir(function(dirEntry) {
+    getDir(function() {
         // Crée le dossier images si besoin
 
         // Récupère les images du formulaire
@@ -460,31 +492,37 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
             promises.push(
                 new Promise(function(resolve, reject) {
                     const file = (img as HTMLInputElement).files[0];
-                    const filename = file.name;
-        
-                    const r = new FileReader();
-        
-                    r.onload = function() {
-                        writeFile('images/' + name, filename, new Blob([this.result]), function() {
-                            // Enregistre le nom de l'image sauvegardée dans le formulaire, 
-                            // dans la valeur du champ fiel
-                            form_values.fields[(img as HTMLInputElement).name] = 'images/' + name + '/' + filename;
 
-                            // Résout la promise
-                            resolve();
-                        }, function(error) {
-                            // Erreur d'écriture du fichier => on rejette
-                            M.toast({html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage."});
+                    if (file) {
+                        const filename = file.name;
+        
+                        const r = new FileReader();
+            
+                        r.onload = function() {
+                            writeFile('images/' + name, filename, new Blob([this.result]), function() {
+                                // Enregistre le nom de l'image sauvegardée dans le formulaire, 
+                                // dans la valeur du champ fiel
+                                form_values.fields[(img as HTMLInputElement).name] = 'images/' + name + '/' + filename;
+    
+                                // Résout la promise
+                                resolve();
+                            }, function(error) {
+                                // Erreur d'écriture du fichier => on rejette
+                                M.toast({html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage."});
+                                reject(error);
+                            });
+                        }
+            
+                        r.onerror = function(error) {
+                            // Erreur de lecture du fichier => on rejette
                             reject(error);
-                        });
+                        }
+            
+                        r.readAsArrayBuffer(file);
                     }
-        
-                    r.onerror = function(error) {
-                        // Erreur de lecture du fichier => on rejette
-                        reject(error);
+                    else {
+                        resolve();
                     }
-        
-                    r.readAsArrayBuffer(file);
                 })
             );
         }
@@ -495,6 +533,7 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
                 writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
                     M.toast({html: "Écriture du formulaire et de ses données réussie."});
                     changePage('form');
+                    console.log(form_values);
                 });
             })
             .catch(function(error) {
@@ -570,6 +609,21 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     base_block.appendChild(btn);
 }
 
+function cancelGeoLocModal() : void {
+    // On veut fermer; Deux possibilités.
+    // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
+    if ((document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
+        // On ferme juste le modal
+    }
+    else {
+        // Sinon, on ramène à la page d'accueil
+        changePage('home');
+    }
+
+    getModalInstance().close();
+    getModal().classList.remove('modal-fixed-footer');
+}
+
 function callLocationSelector(current_form: Form) : void {
     // Obtient l'élément HTML du modal
     const modal = getModal();
@@ -578,7 +632,14 @@ function callLocationSelector(current_form: Form) : void {
     });
     // Ouvre le modal et insère un chargeur
     getModalInstance().open();
-    modal.innerHTML = getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
+    modal.innerHTML = getModalPreloader(
+        "Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.",
+        `<div class="modal-footer" >
+            <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
+        </div>`
+    );
+
+    document.getElementById("close-footer-geoloc").onclick = cancelGeoLocModal;
 
     // Cherche la localisation et remplit le modal
     getLocation(function(coords: Position) {
@@ -748,6 +809,14 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
         }
     });
     footer.appendChild(ok);
+
+    // Création du bouton annuler
+    const cancel = document.createElement('a');
+    cancel.href = "#!";
+    cancel.innerText = "Annuler";
+    cancel.classList.add("btn-flat", "red-text", "left");
+    cancel.addEventListener('click', cancelGeoLocModal);
+    footer.appendChild(cancel);
 
     modal.appendChild(footer);
 }

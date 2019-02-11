@@ -108,3 +108,12 @@ main {
 .clearb {
     clear: both;
 }
+
+.empty {
+    color: rgba(134, 134, 134, 0.76);
+}
+
+.vertical-center {
+    margin-top: calc(40vh - 1.64rem);
+    text-align: center;
+}

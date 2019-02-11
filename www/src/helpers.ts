@@ -47,13 +47,14 @@ export function getPreloader(text: string) {
     `;
 }
 
-export function getModalPreloader(text: string) {
+export function getModalPreloader(text: string, footer?: string) : string {
     return `<div class="modal-content">
     <center>
         ${SMALL_PRELOADER}
     </center>
     <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
     </div>
+    ${footer}
     `;
 }
 
@@ -73,9 +74,24 @@ export function saveDefaultForm() {
     // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
 }
 
-const FOLDER = "cdvfile://localhost/persistent/";
-let DIR_ENTRY = null;
+// @ts-ignore 
+// Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
+// utilise le répertoire data (partition /data) de Android
+let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
 
+export function changeDir() {
+    // @ts-ignore
+    if (device.platform === "browser") {
+        FOLDER = "cdvfile://localhost/persistent/";
+    }
+    // @ts-ignore
+    else if (device.platform === "iOS") {
+        // @ts-ignore
+        FOLDER = cordova.file.dataDirectory;
+    }
+}
+
+let DIR_ENTRY = null;
 export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function) {
     // @ts-ignore
     const pathToFile = FOLDER + fileName;
@@ -107,7 +123,9 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
     });
 }
 
-export function getDir(callback, dirName?: string) {
+export function getDir(callback, dirName?: string, onError?) {
+    // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
+
     // @ts-ignore
     window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {    
         DIR_ENTRY = dirEntry;
@@ -117,12 +135,22 @@ export function getDir(callback, dirName?: string) {
                 if (callback) {
                     callback(newEntry);
                 }
-            }, () => { console.log("Unable to create dir"); });
+            }, (err) => { 
+                console.log("Unable to create dir"); 
+                if (onError) {
+                    onError(err);
+                }
+            });
         }
         else if (callback) {
             callback(dirEntry);
         }
-    }, function(err) { console.log("Persistent not available", err.message); });
+    }, (err) => { 
+        console.log("Persistent not available", err.message); 
+        if (onError) {
+            onError(err);
+        }
+    });
 }
 
 export function writeFile(dirName: string, fileName: string, blob: Blob, callback?, onFailure?) {
@@ -158,23 +186,19 @@ export function createDir(name: string, onSuccess?: Function, onError?: Function
     });
 }
 
-export function listDir(path = FOLDER){
+export function listDir(path = ""){
     // @ts-ignore
-    window.resolveLocalFileSystemURL(path,
-        function (fileSystem) {
-            var reader = fileSystem.createReader();
-            reader.readEntries(
-                function (entries) {
-                    console.log(entries);
-                },
-                function (err) {
-                    console.log(err);
-                }
-            );
-        }, function (err) {
-            console.log(err);
-        }
-    );
+    getDir(function (fileSystem) {
+        const reader = fileSystem.createReader();
+        reader.readEntries(
+            function (entries) {
+                console.log(entries);
+            },
+            function (err) {
+                console.log(err);
+            }
+        );
+    }, path);
 }
 
 export function printObj(ele: HTMLElement, obj: any) : void {
@@ -202,4 +226,45 @@ export function testDistance(latitude = 45.353421, longitude = 5.836441) {
     }, function(error) {
         console.log(error);
     });
+}
+
+/**
+ * Delete all files in directory, recursively, without himself
+ * @param dirName? 
+ */
+export function rmrf(dirName?: string, callback?: () => void) : void {
+    function removeEntry(entry, callback?: () => void) {
+        entry.remove(function() { 
+            // Fichier supprimé !
+            if (callback) callback();
+        }, function(err) {
+            console.log("error", err);
+            if (callback) callback();
+        }, function() {
+            console.log("file not found");
+            if (callback) callback();
+        });
+    }
+
+    // Récupère le dossier dirName (ou la racine du système de fichiers)
+    getDir(function(dirEntry) {
+        const reader = dirEntry.createReader();
+        // Itère sur les entrées du répertoire via readEntries
+        reader.readEntries(function (entries) {
+            // Pour chaque entrée du dossier
+            for (const entry of entries) {
+                if (entry.isDirectory) { 
+                    // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                    rmrf(entry.fullPath, function() {
+                        // Puis on le supprime lui-même
+                        removeEntry(entry, callback);
+                    });
+                }
+                else {
+                    // Si c'est un fichier, on le supprime
+                    removeEntry(entry, callback);
+                }
+            }
+        });
+    }, dirName);
 }

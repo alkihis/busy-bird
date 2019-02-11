@@ -6,7 +6,7 @@
             "label": "Général",
             "type": "divider"
         }, {
-            "name": "datet",
+            "name": "__date__",
             "label": "Date",
             "type": "datetime",
             "required": true
@@ -54,6 +54,11 @@
             "range": {"min": 0},
             "placeholder": "Mesure en centimètres",
             "tip_on_invalid": "Doit dépasser 0. Précision: 0.005"
+        }, {
+            "name": "photo_tete",
+            "label": "Photo de la tête",
+            "type": "file",
+            "file_type": "image/*"
         }, {
             "name": "distress",
             "label": "Stress",

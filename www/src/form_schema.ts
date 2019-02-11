@@ -12,6 +12,11 @@
     },
     "nom_d_un_autre_formulaire": Form
 }
+
+Le formulaire DOIT comporter un champ de type "datetime",
+nommé "__date__" pour être affiché correctement dans 
+la liste des formulaires enregistrés.
+Il peut être n'importe où dans le formulaire.
 */
 
 /**
@@ -39,7 +44,7 @@ export interface FormEntity {
     type: FormEntityType;
     range?: {min?: number, max?: number}; /* for type.integer && type.float */
     select_options?: {options: SelectOption[], multiple: boolean}; /* for type.select */
-    file_type?: "image/png" | "image/jpeg" | "image" | "images"; /* for type.file */
+    file_type?: string; /* for type.file */
     float_precision?: number; /* for type.float */
     default_value?: string | boolean;
     tip_on_invalid?: string;

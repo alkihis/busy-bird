@@ -1565,6 +1565,11 @@ define("test_aytom", ["require", "exports", "arytom/artyom"], function (require,
     },
     "nom_d_un_autre_formulaire": Form
 }
+
+Le formulaire DOIT comporter un champ de type "datetime",
+nommé "__date__" pour être affiché correctement dans
+la liste des formulaires enregistrés.
+Il peut être n'importe où dans le formulaire.
 */
 define("form_schema", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -1678,13 +1683,14 @@ define("helpers", ["require", "exports"], function (require, exports) {
     `;
     }
     exports.getPreloader = getPreloader;
-    function getModalPreloader(text) {
+    function getModalPreloader(text, footer) {
         return `<div class="modal-content">
     <center>
         ${exports.SMALL_PRELOADER}
     </center>
     <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
     </div>
+    ${footer}
     `;
     }
     exports.getModalPreloader = getModalPreloader;
@@ -1703,7 +1709,22 @@ define("helpers", ["require", "exports"], function (require, exports) {
         // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
     }
     exports.saveDefaultForm = saveDefaultForm;
-    const FOLDER = "cdvfile://localhost/persistent/";
+    // @ts-ignore 
+    // Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
+    // utilise le répertoire data (partition /data) de Android
+    let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
+    function changeDir() {
+        // @ts-ignore
+        if (device.platform === "browser") {
+            FOLDER = "cdvfile://localhost/persistent/";
+        }
+        // @ts-ignore
+        else if (device.platform === "iOS") {
+            // @ts-ignore
+            FOLDER = cordova.file.dataDirectory;
+        }
+    }
+    exports.changeDir = changeDir;
     let DIR_ENTRY = null;
     function readFromFile(fileName, callback, callbackIfFailed) {
         // @ts-ignore
@@ -1734,7 +1755,8 @@ define("helpers", ["require", "exports"], function (require, exports) {
         });
     }
     exports.readFromFile = readFromFile;
-    function getDir(callback, dirName) {
+    function getDir(callback, dirName, onError) {
+        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
         // @ts-ignore
         window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {
             DIR_ENTRY = dirEntry;
@@ -1743,12 +1765,22 @@ define("helpers", ["require", "exports"], function (require, exports) {
                     if (callback) {
                         callback(newEntry);
                     }
-                }, () => { console.log("Unable to create dir"); });
+                }, (err) => {
+                    console.log("Unable to create dir");
+                    if (onError) {
+                        onError(err);
+                    }
+                });
             }
             else if (callback) {
                 callback(dirEntry);
             }
-        }, function (err) { console.log("Persistent not available", err.message); });
+        }, (err) => {
+            console.log("Persistent not available", err.message);
+            if (onError) {
+                onError(err);
+            }
+        });
     }
     exports.getDir = getDir;
     function writeFile(dirName, fileName, blob, callback, onFailure) {
@@ -1784,18 +1816,16 @@ define("helpers", ["require", "exports"], function (require, exports) {
         });
     }
     exports.createDir = createDir;
-    function listDir(path = FOLDER) {
+    function listDir(path = "") {
         // @ts-ignore
-        window.resolveLocalFileSystemURL(path, function (fileSystem) {
-            var reader = fileSystem.createReader();
+        getDir(function (fileSystem) {
+            const reader = fileSystem.createReader();
             reader.readEntries(function (entries) {
                 console.log(entries);
             }, function (err) {
                 console.log(err);
             });
-        }, function (err) {
-            console.log(err);
-        });
+        }, path);
     }
     exports.listDir = listDir;
     function printObj(ele, obj) {
@@ -1819,6 +1849,49 @@ define("helpers", ["require", "exports"], function (require, exports) {
         });
     }
     exports.testDistance = testDistance;
+    /**
+     * Delete all files in directory, recursively, without himself
+     * @param dirName?
+     */
+    function rmrf(dirName, callback) {
+        function removeEntry(entry, callback) {
+            entry.remove(function () {
+                // Fichier supprimé !
+                if (callback)
+                    callback();
+            }, function (err) {
+                console.log("error", err);
+                if (callback)
+                    callback();
+            }, function () {
+                console.log("file not found");
+                if (callback)
+                    callback();
+            });
+        }
+        // Récupère le dossier dirName (ou la racine du système de fichiers)
+        getDir(function (dirEntry) {
+            const reader = dirEntry.createReader();
+            // Itère sur les entrées du répertoire via readEntries
+            reader.readEntries(function (entries) {
+                // Pour chaque entrée du dossier
+                for (const entry of entries) {
+                    if (entry.isDirectory) {
+                        // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                        rmrf(entry.fullPath, function () {
+                            // Puis on le supprime lui-même
+                            removeEntry(entry, callback);
+                        });
+                    }
+                    else {
+                        // Si c'est un fichier, on le supprime
+                        removeEntry(entry, callback);
+                    }
+                }
+            });
+        }, dirName);
+    }
+    exports.rmrf = rmrf;
 });
 define("settings_page", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -1842,29 +1915,64 @@ define("saved_forms", ["require", "exports", "helpers"], function (require, expo
         helpers_1.printObj(text, json);
         ph.appendChild(selector);
     }
+    function readAllFilesOfDirectory(dirName) {
+        const dirreader = new Promise(function (resolve, reject) {
+            helpers_1.getDir(function (dirEntry) {
+                // Lecture de tous les fichiers du répertoire
+                const reader = dirEntry.createReader();
+                reader.readEntries(function (entries) {
+                    const promises = [];
+                    for (const entry of entries) {
+                        promises.push(new Promise(function (resolve, reject) {
+                            entry.file(function (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = function () {
+                                    resolve(JSON.parse(this.result));
+                                };
+                                reader.onerror = function (err) {
+                                    reject(err);
+                                };
+                                reader.readAsText(file);
+                            }, function (err) {
+                                reject(err);
+                            });
+                        }));
+                    }
+                    // Renvoie le tableau de promesses lancées
+                    resolve(promises);
+                }, function (err) {
+                    reject(err);
+                    console.log(err);
+                });
+            }, dirName, function (err) {
+                reject(err);
+            });
+        });
+        // @ts-ignore
+        return dirreader;
+    }
     function initSavedForm(base) {
         const placeholder = document.createElement('div');
-        helpers_1.getDir(function (dirEntry) {
-            // Lecture de tous les fichiers du répertoire
-            const reader = dirEntry.createReader();
-            reader.readEntries(function (entries) {
-                for (const entry of entries) {
-                    entry.file(function (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = function () {
-                            appendFileEntry(JSON.parse(this.result), placeholder);
-                        };
-                        reader.readAsText(file);
-                    }, function (err) {
-                        console.log("fileerr:", err);
-                    });
+        placeholder.classList.add('container');
+        readAllFilesOfDirectory('forms').then(function (all_promises) {
+            Promise.all(all_promises).then(function (files) {
+                files = files.sort((a, b) => new Date(b.fields.__date__).getTime() - new Date(a.fields.__date__).getTime());
+                for (const f of files) {
+                    appendFileEntry(f, placeholder);
                 }
-            }, function (err) {
-                console.log(err);
+                base.innerHTML = "";
+                base.appendChild(placeholder);
+                if (files.length === 0) {
+                    placeholder.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
+                }
+            }).catch(function (err) {
+                throw err;
             });
-        }, 'forms');
-        base.innerHTML = "";
-        base.appendChild(placeholder);
+        }).catch(function (err) {
+            console.log(err);
+            placeholder.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
+            base.appendChild(placeholder);
+        });
     }
     exports.initSavedForm = initSavedForm;
 });
@@ -1967,6 +2075,10 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
         }
     };
     function initApp() {
+        // Change le répertoire de données
+        // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
+        // Sinon, si mobile, on passe sur dataDirectory
+        helpers_3.changeDir();
         // Initialise le sidenav
         const elem = document.querySelector('.sidenav');
         exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
@@ -2019,7 +2131,8 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
             saveDefaultForm: helpers_3.saveDefaultForm,
             createDir: helpers_3.createDir,
             getLocation: helpers_3.getLocation,
-            testDistance: helpers_3.testDistance
+            testDistance: helpers_3.testDistance,
+            rmrf: helpers_3.rmrf
         };
     }
     document.addEventListener('deviceready', initApp, false);
@@ -2338,6 +2451,34 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
+            if (ele.type === form_schema_1.FormEntityType.file) {
+                // Input de type file
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('file-field', 'input-field', 'row', 'col', 's12');
+                const divbtn = document.createElement('div');
+                divbtn.classList.add('btn');
+                const span = document.createElement('span');
+                span.innerText = "Fichier";
+                const input = document.createElement('input');
+                input.type = "file";
+                input.id = "id_" + ele.name;
+                input.name = ele.name;
+                input.required = ele.required;
+                input.accept = ele.file_type || "";
+                input.classList.add('input-image-element');
+                divbtn.appendChild(span);
+                divbtn.appendChild(input);
+                wrapper.appendChild(divbtn);
+                const fwrapper = document.createElement('div');
+                fwrapper.classList.add('file-path-wrapper');
+                const f_input = document.createElement('input');
+                f_input.type = "text";
+                f_input.classList.add('file-path', 'validate');
+                f_input.value = ele.label;
+                fwrapper.appendChild(f_input);
+                wrapper.appendChild(fwrapper);
+                element_to_add = wrapper;
+            }
             if (element_to_add)
                 placeh.appendChild(element_to_add);
         }
@@ -2358,8 +2499,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
     /**
      * Sauvegarde le formulaire actuel dans un fichier .json
      *  @param type
+     *  @param force_name? Force un nom pour le formulaire
      */
-    function saveForm(type) {
+    function saveForm(type, force_name) {
         const form_values = {
             fields: {},
             type,
@@ -2381,9 +2523,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 form_values.fields[i.name] = i.value;
             }
         }
-        const name_id = helpers_4.generateId(20);
-        writeImagesThenForm(name_id, form_values);
-        console.log(form_values);
+        writeImagesThenForm(force_name || helpers_4.generateId(20), form_values);
     }
     /**
      * Ecrit les images présentes dans le formulaire dans un dossier spécifique,
@@ -2391,7 +2531,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
      * @param name Nom du formulaire (sans le .json)
      */
     function writeImagesThenForm(name, form_values) {
-        helpers_4.getDir(function (dirEntry) {
+        helpers_4.getDir(function () {
             // Crée le dossier images si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
@@ -2400,26 +2540,31 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             for (const img of images_from_form) {
                 promises.push(new Promise(function (resolve, reject) {
                     const file = img.files[0];
-                    const filename = file.name;
-                    const r = new FileReader();
-                    r.onload = function () {
-                        helpers_4.writeFile('images/' + name, filename, new Blob([this.result]), function () {
-                            // Enregistre le nom de l'image sauvegardée dans le formulaire, 
-                            // dans la valeur du champ fiel
-                            form_values.fields[img.name] = 'images/' + name + '/' + filename;
-                            // Résout la promise
-                            resolve();
-                        }, function (error) {
-                            // Erreur d'écriture du fichier => on rejette
-                            M.toast({ html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
+                    if (file) {
+                        const filename = file.name;
+                        const r = new FileReader();
+                        r.onload = function () {
+                            helpers_4.writeFile('images/' + name, filename, new Blob([this.result]), function () {
+                                // Enregistre le nom de l'image sauvegardée dans le formulaire, 
+                                // dans la valeur du champ fiel
+                                form_values.fields[img.name] = 'images/' + name + '/' + filename;
+                                // Résout la promise
+                                resolve();
+                            }, function (error) {
+                                // Erreur d'écriture du fichier => on rejette
+                                M.toast({ html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
+                                reject(error);
+                            });
+                        };
+                        r.onerror = function (error) {
+                            // Erreur de lecture du fichier => on rejette
                             reject(error);
-                        });
-                    };
-                    r.onerror = function (error) {
-                        // Erreur de lecture du fichier => on rejette
-                        reject(error);
-                    };
-                    r.readAsArrayBuffer(file);
+                        };
+                        r.readAsArrayBuffer(file);
+                    }
+                    else {
+                        resolve();
+                    }
                 }));
             }
             Promise.all(promises)
@@ -2428,6 +2573,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 helpers_4.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                     interface_2.changePage('form');
+                    console.log(form_values);
                 });
             })
                 .catch(function (error) {
@@ -2490,6 +2636,19 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         base_block.appendChild(btn);
     }
     exports.loadFormPage = loadFormPage;
+    function cancelGeoLocModal() {
+        // On veut fermer; Deux possibilités.
+        // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
+        if (document.getElementById("__location__id").value.trim() !== "") {
+            // On ferme juste le modal
+        }
+        else {
+            // Sinon, on ramène à la page d'accueil
+            interface_2.changePage('home');
+        }
+        helpers_4.getModalInstance().close();
+        helpers_4.getModal().classList.remove('modal-fixed-footer');
+    }
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
         const modal = helpers_4.getModal();
@@ -2498,7 +2657,10 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         });
         // Ouvre le modal et insère un chargeur
         helpers_4.getModalInstance().open();
-        modal.innerHTML = helpers_4.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
+        modal.innerHTML = helpers_4.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer" >
+            <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
+        </div>`);
+        document.getElementById("close-footer-geoloc").onclick = cancelGeoLocModal;
         // Cherche la localisation et remplit le modal
         helpers_4.getLocation(function (coords) {
             locationSelector(modal, current_form.locations, coords);
@@ -2640,6 +2802,13 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             }
         });
         footer.appendChild(ok);
+        // Création du bouton annuler
+        const cancel = document.createElement('a');
+        cancel.href = "#!";
+        cancel.innerText = "Annuler";
+        cancel.classList.add("btn-flat", "red-text", "left");
+        cancel.addEventListener('click', cancelGeoLocModal);
+        footer.appendChild(cancel);
         modal.appendChild(footer);
     }
 });

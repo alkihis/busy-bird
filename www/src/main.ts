@@ -1,5 +1,5 @@
 import { changePage, AppPages, AppPageName } from "./interface";
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal } from "./helpers";
+import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir } from "./helpers";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -35,6 +35,11 @@ export const app = {
 };
 
 function initApp() {
+    // Change le répertoire de données
+    // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
+    // Sinon, si mobile, on passe sur dataDirectory
+    changeDir();
+
     // Initialise le sidenav
     const elem = document.querySelector('.sidenav');
     SIDENAV_OBJ = M.Sidenav.init(elem, {});
@@ -94,7 +99,8 @@ function initDebug() {
         saveDefaultForm,
         createDir,
         getLocation,
-        testDistance
+        testDistance,
+        rmrf
     };
 }
 
