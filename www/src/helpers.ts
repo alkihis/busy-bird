@@ -160,7 +160,7 @@ export function listDir(path = FOLDER){
 export function getLocation(onSuccess: (coords: Position) => any, onFailed?) {
     navigator.geolocation.getCurrentPosition(onSuccess,
         onFailed,
-        { timeout: 30 * 1000, maximumAge: 1000 }
+        { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 }
     );
 }
 

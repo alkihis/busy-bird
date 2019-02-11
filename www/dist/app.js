@@ -1772,7 +1772,7 @@ define("helpers", ["require", "exports"], function (require, exports) {
     }
     exports.listDir = listDir;
     function getLocation(onSuccess, onFailed) {
-        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 1000 });
+        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
     }
     exports.getLocation = getLocation;
     function calculateDistance(coords1, coords2) {
@@ -2090,18 +2090,34 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
      * @param c_f Tableau d'éléments de formulaire
      * @param jarvis Instance d'Arytom à configurer
      */
-    function constructForm(placeh, c_f, jarvis) {
+    function constructForm(placeh, current_form, jarvis) {
         // Crée le champ de lieu
+        const loc_wrapper = document.createElement('div');
+        loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
         const location = document.createElement('input');
-        location.type = "hidden";
+        location.type = "text";
+        location.readOnly = true;
         location.name = "__location__";
         location.id = "__location__id";
-        placeh.appendChild(location);
-        for (const ele of c_f) {
+        location.addEventListener('click', function () {
+            this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
+            callLocationSelector(current_form);
+        });
+        loc_wrapper.appendChild(location);
+        const loc_title = document.createElement('h4');
+        loc_title.innerText = "Lieu";
+        placeh.appendChild(loc_title);
+        placeh.appendChild(loc_wrapper);
+        // Fin champ de lieu, itération sur champs
+        for (const ele of current_form.fields) {
             let element_to_add = null;
             if (ele.type === form_schema_1.FormEntityType.divider) {
                 // C'est un titre
-                let htmle = document.createElement('h4');
+                // On divide
+                const clearer = document.createElement('div');
+                clearer.classList.add('clearb');
+                placeh.appendChild(clearer);
+                const htmle = document.createElement('h4');
                 htmle.innerText = ele.label;
                 htmle.id = "id_" + ele.name;
                 placeh.appendChild(htmle);
@@ -2320,7 +2336,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         placeh.classList.add('col', 's12');
         base_block.appendChild(placeh);
         // Appelle la fonction pour construire
-        constructForm(placeh, current_form.fields, test_aytom_1.Jarvis.Jarvis);
+        constructForm(placeh, current_form, test_aytom_1.Jarvis.Jarvis);
         base.appendChild(base_block);
         // Initialisateur du bouton micro
         // base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
@@ -2334,6 +2350,15 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         M.updateTextFields();
         $('select').formSelect();
         // Lance le sélecteur de localisation
+        callLocationSelector(current_form);
+        // Autoredimensionnement des textaera si valeur par défaut
+        const $textarea = $('textarea');
+        if ($textarea.length > 0) {
+            M.textareaAutoResize($textarea);
+        }
+    }
+    exports.loadFormPage = loadFormPage;
+    function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
         const modal = helpers_3.getModal();
         helpers_3.initModal({
@@ -2342,21 +2367,13 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         // Ouvre le modal et insère un chargeur
         helpers_3.getModalInstance().open();
         modal.innerHTML = helpers_3.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
-        setTimeout(function () {
-            // Cherche la localisation et remplit le modal
-            helpers_3.getLocation(function (coords) {
-                locationSelector(modal, current_form.locations, coords);
-            }, function () {
-                locationSelector(modal, current_form.locations);
-            });
-        }, 1000 * 5);
-        // Autoredimensionnement des textaera si valeur par défaut
-        const $textarea = $('textarea');
-        if ($textarea.length > 0) {
-            M.textareaAutoResize($textarea);
-        }
+        // Cherche la localisation et remplit le modal
+        helpers_3.getLocation(function (coords) {
+            locationSelector(modal, current_form.locations, coords);
+        }, function () {
+            locationSelector(modal, current_form.locations);
+        });
     }
-    exports.loadFormPage = loadFormPage;
     function textDistance(distance) {
         const unit = (distance >= 1000 ? "km" : "m");
         const str_distance = (distance >= 1000 ? (distance / 1000).toFixed(1) : distance.toString());
@@ -2453,6 +2470,17 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 collection.appendChild(elem);
             }
             content.appendChild(collection);
+        }
+        else {
+            // Affichage d'une erreur: géolocalisation impossible
+            const error = document.createElement('h6');
+            error.classList.add('red-text');
+            error.innerText = "Impossible de vous géolocaliser.";
+            const subtext = document.createElement('div');
+            subtext.classList.add('red-text', 'flow-text');
+            subtext.innerText = "Choisissez un lieu manuellement.";
+            content.appendChild(error);
+            content.appendChild(subtext);
         }
         // Création du footer
         // <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>

@@ -26,6 +26,10 @@
             "placeholder": "Mesure en grammes",
             "tip_on_invalid": "Doit être compris entre 3 et 100. Précision: 0.01"
         }, {
+            "name": "title_other",
+            "label": "Autres",
+            "type": "divider"
+        }, {
             "name": "lieu",
             "label": "Lieu",
             "type": "select",

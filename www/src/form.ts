@@ -109,20 +109,38 @@ function isModuloZero(num1: number, num2: number) : boolean {
  * @param c_f Tableau d'éléments de formulaire
  * @param jarvis Instance d'Arytom à configurer
  */
-function constructForm(placeh: HTMLElement, c_f: FormEntity[], jarvis?: Artyom) : void {
+function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom) : void {
     // Crée le champ de lieu
+    const loc_wrapper = document.createElement('div');
+    loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
     const location = document.createElement('input');
-    location.type = "hidden";
+    location.type = "text";
+    location.readOnly = true;
     location.name = "__location__";
     location.id = "__location__id";
-    placeh.appendChild(location);
+    location.addEventListener('click', function(this: HTMLInputElement) {
+        this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
+        callLocationSelector(current_form);
+    });
 
-    for (const ele of c_f) {
+    loc_wrapper.appendChild(location);
+    const loc_title = document.createElement('h4');
+    loc_title.innerText = "Lieu";
+    placeh.appendChild(loc_title);
+    placeh.appendChild(loc_wrapper);
+    // Fin champ de lieu, itération sur champs
+
+    for (const ele of current_form.fields) {
         let element_to_add: HTMLElement = null;
 
         if (ele.type === FormEntityType.divider) {
             // C'est un titre
-            let htmle = document.createElement('h4');
+            // On divide
+            const clearer = document.createElement('div');
+            clearer.classList.add('clearb');
+            placeh.appendChild(clearer);
+
+            const htmle = document.createElement('h4');
             htmle.innerText = ele.label;
             htmle.id = "id_" + ele.name;
 
@@ -392,7 +410,7 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     base_block.appendChild(placeh);
 
     // Appelle la fonction pour construire
-    constructForm(placeh, current_form.fields, Jarvis.Jarvis);
+    constructForm(placeh, current_form, Jarvis.Jarvis);
 
     base.appendChild(base_block);
 
@@ -410,6 +428,16 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     $('select').formSelect();
 
     // Lance le sélecteur de localisation
+    callLocationSelector(current_form);
+
+    // Autoredimensionnement des textaera si valeur par défaut
+    const $textarea = $('textarea');
+    if ($textarea.length > 0) {
+        M.textareaAutoResize($textarea);
+    }
+}
+
+function callLocationSelector(current_form: Form) : void {
     // Obtient l'élément HTML du modal
     const modal = getModal();
     initModal({
@@ -419,21 +447,12 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     getModalInstance().open();
     modal.innerHTML = getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.");
 
-    setTimeout(function() {
-// Cherche la localisation et remplit le modal
-getLocation(function(coords: Position) {
-    locationSelector(modal, current_form.locations, coords);
-}, function() {
-    locationSelector(modal, current_form.locations);
-});
-    }, 1000 * 5)
-    
-
-    // Autoredimensionnement des textaera si valeur par défaut
-    const $textarea = $('textarea');
-    if ($textarea.length > 0) {
-        M.textareaAutoResize($textarea);
-    }
+    // Cherche la localisation et remplit le modal
+    getLocation(function(coords: Position) {
+        locationSelector(modal, current_form.locations, coords);
+    }, function() {
+        locationSelector(modal, current_form.locations);
+    });
 }
 
 function textDistance(distance: number) : string {
@@ -553,6 +572,18 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
         }
 
         content.appendChild(collection);
+    }
+    else {
+        // Affichage d'une erreur: géolocalisation impossible
+        const error = document.createElement('h6');
+        error.classList.add('red-text');
+        error.innerText = "Impossible de vous géolocaliser.";
+        const subtext = document.createElement('div');
+        subtext.classList.add('red-text', 'flow-text');
+        subtext.innerText = "Choisissez un lieu manuellement.";
+
+        content.appendChild(error);
+        content.appendChild(subtext);
     }
 
     // Création du footer

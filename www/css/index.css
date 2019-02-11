@@ -104,3 +104,7 @@ main {
 .pre-wrapper {
     white-space: pre-wrap;
 }
+
+.clearb {
+    clear: both;
+}
