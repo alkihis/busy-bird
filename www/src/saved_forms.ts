@@ -1,6 +1,54 @@
-import { getDir, printObj, formatDate, rmrf, removeFile, getBottomModal, initBottomModal, getBottomModalInstance } from "./helpers";
+import { getDir, printObj, formatDate, rmrf, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { changePage } from "./interface";
+import { constructForm, saveForm } from "./form";
+
+function editAForm(form: FormSave, name: string) {
+    // Vérifie que le formulaire est d'un type disponible
+    if (!Forms.formExists(form.type)) {
+        M.toast({html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible."});
+        return;
+    }
+
+    const current_form = Forms.getForm(form.type);
+
+    const base = getBase();
+    base.innerHTML = "";
+
+    const base_block = document.createElement('div');
+    base_block.classList.add('row', 'container');
+
+    const placeh = document.createElement('form');
+    placeh.classList.add('col', 's12');
+
+    base_block.appendChild(placeh);
+
+    // Appelle la fonction pour construire
+    constructForm(placeh, current_form, form);
+
+    base.appendChild(base_block);
+    
+    M.updateTextFields();
+    $('select').formSelect();
+
+    // Autoredimensionnement des textaera si valeur par défaut
+    const $textarea = $('textarea');
+    if ($textarea.length > 0) {
+        M.textareaAutoResize($textarea);
+    }
+
+    // Création du bouton de sauvegarde
+    const btn = document.createElement('div');
+    btn.classList.add('btn-flat', 'right', 'red-text');
+    btn.innerText = "Enregistrer";
+
+    const current_form_key = Forms.current_key;
+    btn.addEventListener('click', function() {
+        saveForm(current_form_key, name, form);
+    });
+
+    base_block.appendChild(btn);
+}
 
 function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     const save = json[1];
@@ -22,7 +70,7 @@ function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     container.innerHTML = `
         <div class="left">
             ${id} <br> 
-            Entré le ${formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${formatDate(new Date(json[0].lastModified), true)}
         </div>`;
 
     // Ajoute le bouton de suppression
@@ -36,12 +84,19 @@ function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     delete_btn.appendChild(im);
     container.appendChild(delete_btn);
     const file_name = json[0].name;
-    delete_btn.addEventListener('click', function() {
+    delete_btn.addEventListener('click', function(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
         modalDeleteForm(file_name);
     });
 
     // Clear le float
     container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
+
+    // Définit l'événement d'édition
+    selector.addEventListener('click', function() {
+        editAForm(json[1], json[0].name.split(/\.json$/)[0]);
+    });
 
     // Ajoute les éléments dans le conteneur final
     selector.appendChild(container);
@@ -64,7 +119,13 @@ function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormS
                                 console.log(file);
                         
                                 reader.onloadend = function() {
-                                    resolve([file, JSON.parse(this.result as string)]);
+                                    try {
+                                        resolve([file, JSON.parse(this.result as string)]);
+                                    } catch (e) {
+                                        console.log("JSON mal formé:", this.result);
+                                        resolve([file, { fields: {}, type: "", location: "" }])
+                                    }
+                                    
                                 };
 
                                 reader.onerror = function(err) {

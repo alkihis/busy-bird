@@ -1849,21 +1849,37 @@ define("helpers", ["require", "exports"], function (require, exports) {
                     if (callback) {
                         callback();
                     }
-                });
+                }).catch(error => { if (onFailure)
+                    onFailure(error); });
             }, function (err) { console.log("Error in writing file", err.message); if (onFailure) {
                 onFailure(err);
             } });
         }, dirName);
         function write(fileEntry, dataObj) {
+            // Prend l'entry du fichier et son blob à écrire en paramètre
             return new Promise(function (resolve, reject) {
+                // Fonction pour écrire le fichier après vidage
+                function finally_write() {
+                    fileEntry.createWriter(function (fileWriter) {
+                        fileWriter.onerror = function (e) {
+                            reject(e);
+                        };
+                        fileWriter.onwriteend = null;
+                        fileWriter.write(dataObj);
+                        fileWriter.onwriteend = function () {
+                            resolve();
+                        };
+                    });
+                }
+                // Vide le fichier
                 fileEntry.createWriter(function (fileWriter) {
-                    fileWriter.onwriteend = function () {
-                        resolve();
-                    };
                     fileWriter.onerror = function (e) {
                         reject(e);
                     };
-                    fileWriter.write(dataObj);
+                    // Vide le fichier
+                    fileWriter.truncate(0);
+                    // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
+                    fileWriter.onwriteend = finally_write;
                 });
             });
         }
@@ -1908,6 +1924,14 @@ define("helpers", ["require", "exports"], function (require, exports) {
         });
     }
     exports.testDistance = testDistance;
+    function removeFileByName(dirName, fileName, callback) {
+        getDir(function (dirEntry) {
+            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
+                removeFile(fileEntry, callback);
+            });
+        }, dirName);
+    }
+    exports.removeFileByName = removeFileByName;
     function removeFile(entry, callback) {
         entry.remove(function () {
             // Fichier supprimé !
@@ -1977,9 +2001,43 @@ define("settings_page", ["require", "exports"], function (require, exports) {
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_1, form_schema_1, interface_1) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "form"], function (require, exports, helpers_1, form_schema_1, interface_1, form_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    function editAForm(form, name) {
+        // Vérifie que le formulaire est d'un type disponible
+        if (!form_schema_1.Forms.formExists(form.type)) {
+            M.toast({ html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible." });
+            return;
+        }
+        const current_form = form_schema_1.Forms.getForm(form.type);
+        const base = helpers_1.getBase();
+        base.innerHTML = "";
+        const base_block = document.createElement('div');
+        base_block.classList.add('row', 'container');
+        const placeh = document.createElement('form');
+        placeh.classList.add('col', 's12');
+        base_block.appendChild(placeh);
+        // Appelle la fonction pour construire
+        form_1.constructForm(placeh, current_form, form);
+        base.appendChild(base_block);
+        M.updateTextFields();
+        $('select').formSelect();
+        // Autoredimensionnement des textaera si valeur par défaut
+        const $textarea = $('textarea');
+        if ($textarea.length > 0) {
+            M.textareaAutoResize($textarea);
+        }
+        // Création du bouton de sauvegarde
+        const btn = document.createElement('div');
+        btn.classList.add('btn-flat', 'right', 'red-text');
+        btn.innerText = "Enregistrer";
+        const current_form_key = form_schema_1.Forms.current_key;
+        btn.addEventListener('click', function () {
+            form_1.saveForm(current_form_key, name, form);
+        });
+        base_block.appendChild(btn);
+    }
     function appendFileEntry(json, ph) {
         const save = json[1];
         const selector = document.createElement('li');
@@ -1997,7 +2055,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         container.innerHTML = `
         <div class="left">
             ${id} <br> 
-            Entré le ${helpers_1.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_1.formatDate(new Date(json[0].lastModified), true)}
         </div>`;
         // Ajoute le bouton de suppression
         const delete_btn = document.createElement('a');
@@ -2009,11 +2067,17 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         delete_btn.appendChild(im);
         container.appendChild(delete_btn);
         const file_name = json[0].name;
-        delete_btn.addEventListener('click', function () {
+        delete_btn.addEventListener('click', function (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
             modalDeleteForm(file_name);
         });
         // Clear le float
         container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
+        // Définit l'événement d'édition
+        selector.addEventListener('click', function () {
+            editAForm(json[1], json[0].name.split(/\.json$/)[0]);
+        });
         // Ajoute les éléments dans le conteneur final
         selector.appendChild(container);
         ph.appendChild(selector);
@@ -2031,7 +2095,13 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
                                 const reader = new FileReader();
                                 console.log(file);
                                 reader.onloadend = function () {
-                                    resolve([file, JSON.parse(this.result)]);
+                                    try {
+                                        resolve([file, JSON.parse(this.result)]);
+                                    }
+                                    catch (e) {
+                                        console.log("JSON mal formé:", this.result);
+                                        resolve([file, { fields: {}, type: "", location: "" }]);
+                                    }
                                 };
                                 reader.onerror = function (err) {
                                     reject(err);
@@ -2119,7 +2189,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_2, form_1, settings_page_1, saved_forms_1, main_1) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_2, form_2, settings_page_1, saved_forms_1, main_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -2130,7 +2200,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     exports.AppPages = {
         form: {
             name: "Nouvelle entrée",
-            callback: form_1.initFormPage
+            callback: form_2.initFormPage
         },
         settings: {
             name: "Paramètres",
@@ -2280,7 +2350,7 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "main", "interface"], function (require, exports, test_aytom_1, form_schema_2, helpers_4, main_2, interface_3) {
+define("form", ["require", "exports", "form_schema", "helpers", "main", "interface"], function (require, exports, form_schema_2, helpers_4, main_2, interface_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2369,9 +2439,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
      * Construit le formulaire automatiquement passé via "current_form"
      * @param placeh Élement HTML dans lequel écrire le formulaire
      * @param current_form Formulaire courant
-     * @param jarvis Instance d'Artyom à configurer
+     * @param filled_form Formulaire déjà rempli (utilisé pour l'édition)
      */
-    function constructForm(placeh, current_form, jarvis) {
+    function constructForm(placeh, current_form, filled_form) {
         // Crée le champ de lieu
         const loc_wrapper = document.createElement('div');
         loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
@@ -2384,6 +2454,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
             callLocationSelector(current_form); // Appelle le modal pour changer de lieu
         });
+        if (filled_form) {
+            location.value = location.dataset.reallocation = filled_form.location;
+        }
         loc_wrapper.appendChild(location);
         const loc_title = document.createElement('h4');
         loc_title.innerText = "Lieu";
@@ -2422,6 +2495,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 wrapper.appendChild(label);
                 wrapper.appendChild(htmle);
                 createTip(wrapper, ele);
+                if (filled_form && ele.name in filled_form.fields) {
+                    htmle.value = filled_form.fields[ele.name];
+                }
                 // Calcul de nombre de décimales requises
                 // si le nombre demandé est un float
                 let NB_DECIMALES = 0;
@@ -2507,6 +2583,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 htmle.classList.add('input-form-element');
                 const label = document.createElement('label');
                 fillStandardInputValues(htmle, ele, label);
+                if (filled_form && ele.name in filled_form.fields) {
+                    htmle.value = filled_form.fields[ele.name];
+                }
                 wrapper.appendChild(label);
                 wrapper.appendChild(htmle);
                 createTip(wrapper, ele);
@@ -2554,6 +2633,14 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                     htmlopt.innerText = opt.label;
                     htmle.appendChild(htmlopt);
                 }
+                if (filled_form && ele.name in filled_form.fields) {
+                    if (ele.select_options.multiple) {
+                        $(htmle).val(filled_form.fields[ele.name]);
+                    }
+                    else {
+                        htmle.value = filled_form.fields[ele.name];
+                    }
+                }
                 wrapper.appendChild(htmle);
                 wrapper.appendChild(label);
                 // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
@@ -2570,6 +2657,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 input.classList.add('filled-in', 'input-form-element');
                 input.type = "checkbox";
                 input.checked = ele.default_value;
+                if (filled_form && ele.name in filled_form.fields) {
+                    input.checked = filled_form.fields[ele.name];
+                }
                 wrapper.appendChild(label);
                 label.appendChild(input);
                 label.appendChild(span);
@@ -2586,12 +2676,17 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 input.type = "datetime-local";
                 input.classList.add('input-form-element');
                 fillStandardInputValues(input, ele, label);
-                // Problème: la date à entrer dans l'input est la date UTC
-                // On "corrige" ça par manipulation de la date (on rajoute l'offset)
-                let date_plus_timezone = new Date();
-                date_plus_timezone.setTime(date_plus_timezone.getTime() + (-date_plus_timezone.getTimezoneOffset() * 60 * 1000));
-                const date_str = date_plus_timezone.toISOString();
-                input.value = date_str.substring(0, date_str.length - 8);
+                if (filled_form && ele.name in filled_form.fields) {
+                    input.value = filled_form.fields[ele.name];
+                }
+                else {
+                    // Problème: la date à entrer dans l'input est la date UTC
+                    // On "corrige" ça par manipulation de la date (on rajoute l'offset)
+                    let date_plus_timezone = new Date();
+                    date_plus_timezone.setTime(date_plus_timezone.getTime() + (-date_plus_timezone.getTimezoneOffset() * 60 * 1000));
+                    const date_str = date_plus_timezone.toISOString();
+                    input.value = date_str.substring(0, date_str.length - 8);
+                }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
@@ -2620,6 +2715,10 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 f_input.type = "text";
                 f_input.classList.add('file-path', 'validate');
                 f_input.value = ele.label;
+                if (filled_form && ele.name in filled_form) {
+                    // Afficher un aperçu de l'image
+                    // TODO
+                }
                 fwrapper.appendChild(f_input);
                 wrapper.appendChild(fwrapper);
                 element_to_add = wrapper;
@@ -2645,6 +2744,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 // Insertion des deux options dans l'input en data-
                 input.dataset.ifunchecked = ele.slider_options[0].name;
                 input.dataset.ifchecked = ele.slider_options[1].name;
+                if (filled_form && ele.name in filled_form.fields) {
+                    input.checked = ele.slider_options[1].name === filled_form.fields[ele.name];
+                }
                 // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
@@ -2653,6 +2755,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 placeh.appendChild(element_to_add);
         }
     }
+    exports.constructForm = constructForm;
     /**
      * Initie la sauvegarde: présente et vérifie les champs
      *  @param type
@@ -2671,7 +2774,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
      *  @param type
      *  @param force_name? Force un nom pour le formulaire
      */
-    function saveForm(type, force_name) {
+    function saveForm(type, force_name, form_save) {
         const form_values = {
             fields: {},
             type,
@@ -2700,14 +2803,15 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 form_values.fields[i.name] = i.value;
             }
         }
-        writeImagesThenForm(force_name || helpers_4.generateId(20), form_values);
+        writeImagesThenForm(force_name || helpers_4.generateId(20), form_values, form_save);
     }
+    exports.saveForm = saveForm;
     /**
      * Ecrit les images présentes dans le formulaire dans un dossier spécifique,
      * puis crée le formulaire
      * @param name Nom du formulaire (sans le .json)
      */
-    function writeImagesThenForm(name, form_values) {
+    function writeImagesThenForm(name, form_values, older_save) {
         helpers_4.getDir(function () {
             // Crée le dossier images si besoin
             // Récupère les images du formulaire
@@ -2717,6 +2821,7 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
             for (const img of images_from_form) {
                 promises.push(new Promise(function (resolve, reject) {
                     const file = img.files[0];
+                    const input_name = img.name;
                     if (file) {
                         const filename = file.name;
                         const r = new FileReader();
@@ -2724,7 +2829,18 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                             helpers_4.writeFile('form_data/' + name, filename, new Blob([this.result]), function () {
                                 // Enregistre le nom de l'image sauvegardée dans le formulaire, 
                                 // dans la valeur du champ fiel
-                                form_values.fields[img.name] = 'form_data/' + name + '/' + filename;
+                                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+                                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                                    // Si une image était déjà présente 
+                                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                                        // Si l'image enregistrée est différente de l'image actuelle
+                                        // Suppression de l'ancienne image
+                                        const parts = older_save.fields[input_name].split('/');
+                                        const file_name = parts.pop();
+                                        const dir_name = parts.join('/');
+                                        helpers_4.removeFileByName(dir_name, file_name);
+                                    }
+                                }
                                 // Résout la promise
                                 resolve();
                             }, function (error) {
@@ -2740,7 +2856,12 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                         r.readAsArrayBuffer(file);
                     }
                     else {
-                        form_values.fields[img.name] = null;
+                        if (older_save && input_name in older_save.fields) {
+                            form_values.fields[input_name] = older_save.fields[input_name];
+                        }
+                        else {
+                            form_values.fields[input_name] = null;
+                        }
                         resolve();
                     }
                 }));
@@ -2750,7 +2871,13 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 // On écrit enfin le formulaire !
                 helpers_4.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
-                    interface_3.changePage('form');
+                    if (older_save) {
+                        // On vient de la page d'édition de formulaire déjà créés
+                        interface_3.changePage('saved');
+                    }
+                    else {
+                        interface_3.changePage('form');
+                    }
                     console.log(form_values);
                 });
             })
@@ -2783,17 +2910,8 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
         placeh.classList.add('col', 's12');
         base_block.appendChild(placeh);
         // Appelle la fonction pour construire
-        constructForm(placeh, current_form, test_aytom_1.Jarvis.Jarvis);
+        constructForm(placeh, current_form);
         base.appendChild(base_block);
-        // Initialisateur du bouton micro
-        // base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
-        //     <a class="btn-floating btn-large red" id="operate_listen">
-        //         <i class="large material-icons">mic</i>
-        //     </a>
-        // </div>`);
-        // document.getElementById('operate_listen').onclick = function() {
-        //     test_jarvis();
-        // };
         M.updateTextFields();
         $('select').formSelect();
         // Lance le sélecteur de localisation

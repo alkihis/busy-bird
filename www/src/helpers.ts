@@ -178,21 +178,41 @@ export function writeFile(dirName: string, fileName: string, blob: Blob, callbac
                 if (callback) {
                     callback();
                 }
-            });
+            }).catch(error => { if (onFailure) onFailure(error); });
         }, function(err) { console.log("Error in writing file", err.message); if (onFailure) { onFailure(err); } });
     }, dirName);
 
     function write(fileEntry, dataObj) {
+        // Prend l'entry du fichier et son blob à écrire en paramètre
+
         return new Promise(function (resolve, reject) {
+            // Fonction pour écrire le fichier après vidage
+            function finally_write() {
+                fileEntry.createWriter(function (fileWriter) {
+                    fileWriter.onerror = function (e) {
+                        reject(e);
+                    };
+    
+                    fileWriter.onwriteend = null;
+                    fileWriter.write(dataObj);
+
+                    fileWriter.onwriteend = function () {
+                        resolve();
+                    };
+                });
+            }
+
+            // Vide le fichier
             fileEntry.createWriter(function (fileWriter) {
-                fileWriter.onwriteend = function () {
-                    resolve();
-                };
                 fileWriter.onerror = function (e) {
                     reject(e);
                 };
 
-                fileWriter.write(dataObj);
+                // Vide le fichier
+                fileWriter.truncate(0);
+
+                // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
+                fileWriter.onwriteend = finally_write;
             });
         });
     }
@@ -244,6 +264,14 @@ export function testDistance(latitude = 45.353421, longitude = 5.836441) {
     }, function(error) {
         console.log(error);
     });
+}
+
+export function removeFileByName(dirName: string, fileName: string, callback?: () => void) : void {
+    getDir(function(dirEntry) {
+        dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
+            removeFile(fileEntry, callback);
+        });
+    }, dirName);
 }
 
 export function removeFile(entry, callback?: () => void) : void {

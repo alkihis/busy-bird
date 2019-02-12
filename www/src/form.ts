@@ -1,7 +1,7 @@
 import { test_jarvis, Jarvis } from "./test_aytom";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
 import { changePage } from "./interface";
 
@@ -108,9 +108,9 @@ function isModuloZero(num1: number, num2: number) : boolean {
  * Construit le formulaire automatiquement passé via "current_form"
  * @param placeh Élement HTML dans lequel écrire le formulaire
  * @param current_form Formulaire courant
- * @param jarvis Instance d'Artyom à configurer
+ * @param filled_form Formulaire déjà rempli (utilisé pour l'édition)
  */
-function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom) : void {
+export function constructForm(placeh: HTMLElement, current_form: Form, filled_form?: FormSave) : void {
     // Crée le champ de lieu
     const loc_wrapper = document.createElement('div');
     loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
@@ -123,6 +123,10 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
         this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
         callLocationSelector(current_form); // Appelle le modal pour changer de lieu
     });
+
+    if (filled_form) {
+        location.value = location.dataset.reallocation = filled_form.location;
+    }
 
     loc_wrapper.appendChild(location);
     const loc_title = document.createElement('h4');
@@ -171,6 +175,10 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             wrapper.appendChild(label);
             wrapper.appendChild(htmle);
             createTip(wrapper, ele);
+
+            if (filled_form && ele.name in filled_form.fields) {
+                htmle.value = filled_form.fields[ele.name] as string;
+            }
 
             // Calcul de nombre de décimales requises
             // si le nombre demandé est un float
@@ -270,6 +278,10 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             
             fillStandardInputValues(htmle, ele, label);
 
+            if (filled_form && ele.name in filled_form.fields) {
+                htmle.value = filled_form.fields[ele.name] as string;
+            }
+
             wrapper.appendChild(label);
             wrapper.appendChild(htmle);
             createTip(wrapper, ele);
@@ -329,6 +341,15 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
                 htmle.appendChild(htmlopt);
             }
 
+            if (filled_form && ele.name in filled_form.fields) {
+                if (ele.select_options.multiple) {
+                    $(htmle).val(filled_form.fields[ele.name] as string[]);
+                }
+                else {
+                    htmle.value = filled_form.fields[ele.name] as string;
+                }
+            }
+
             wrapper.appendChild(htmle);
             wrapper.appendChild(label);
 
@@ -350,6 +371,10 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             input.classList.add('filled-in', 'input-form-element');
             input.type = "checkbox";
             input.checked = ele.default_value as boolean;
+
+            if (filled_form && ele.name in filled_form.fields) {
+                input.checked = filled_form.fields[ele.name] as boolean;
+            }
 
             wrapper.appendChild(label);
             label.appendChild(input);
@@ -373,13 +398,18 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
 
             fillStandardInputValues(input, ele, label);
 
-            // Problème: la date à entrer dans l'input est la date UTC
-            // On "corrige" ça par manipulation de la date (on rajoute l'offset)
-            let date_plus_timezone = new Date();
-            date_plus_timezone.setTime(date_plus_timezone.getTime() + (-date_plus_timezone.getTimezoneOffset()*60*1000));
+            if (filled_form && ele.name in filled_form.fields) {
+                input.value = filled_form.fields[ele.name] as string;
+            }
+            else {
+                // Problème: la date à entrer dans l'input est la date UTC
+                // On "corrige" ça par manipulation de la date (on rajoute l'offset)
+                let date_plus_timezone = new Date();
+                date_plus_timezone.setTime(date_plus_timezone.getTime() + (-date_plus_timezone.getTimezoneOffset()*60*1000));
 
-            const date_str = date_plus_timezone.toISOString();
-            input.value = date_str.substring(0, date_str.length-8);
+                const date_str = date_plus_timezone.toISOString();
+                input.value = date_str.substring(0, date_str.length-8);
+            }
 
             wrapper.appendChild(label);
             wrapper.appendChild(input);
@@ -413,6 +443,11 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             const f_input = document.createElement('input');
             f_input.type = "text"; f_input.classList.add('file-path', 'validate');
             f_input.value = ele.label;
+
+            if (filled_form && ele.name in filled_form) {
+                // Afficher un aperçu de l'image
+                // TODO
+            }
 
             fwrapper.appendChild(f_input);
             wrapper.appendChild(fwrapper);
@@ -448,6 +483,10 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
             input.dataset.ifunchecked = ele.slider_options[0].name;
             input.dataset.ifchecked = ele.slider_options[1].name;
 
+            if (filled_form && ele.name in filled_form.fields) {
+                input.checked = ele.slider_options[1].name === filled_form.fields[ele.name];
+            }
+
             // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
             // Il faudra par contrer créer (plus tard les input vocaux)
 
@@ -482,7 +521,7 @@ function initFormSave(type: string) : void {
  *  @param type 
  *  @param force_name? Force un nom pour le formulaire
  */
-function saveForm(type: string, force_name?: string) : void {
+export function saveForm(type: string, force_name?: string, form_save?: FormSave) : void {
     const form_values: FormSave = {
         fields: {},
         type,
@@ -513,7 +552,7 @@ function saveForm(type: string, force_name?: string) : void {
         }
     }
 
-    writeImagesThenForm(force_name || generateId(20), form_values);
+    writeImagesThenForm(force_name || generateId(20), form_values, form_save);
 }
 
 /**
@@ -521,7 +560,7 @@ function saveForm(type: string, force_name?: string) : void {
  * puis crée le formulaire
  * @param name Nom du formulaire (sans le .json)
  */
-function writeImagesThenForm(name: string, form_values: FormSave) : void {
+function writeImagesThenForm(name: string, form_values: FormSave, older_save?: FormSave) : void {
     getDir(function() {
         // Crée le dossier images si besoin
 
@@ -535,6 +574,7 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
             promises.push(
                 new Promise(function(resolve, reject) {
                     const file = (img as HTMLInputElement).files[0];
+                    const input_name = (img as HTMLInputElement).name;
 
                     if (file) {
                         const filename = file.name;
@@ -545,7 +585,19 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
                             writeFile('form_data/' + name, filename, new Blob([this.result]), function() {
                                 // Enregistre le nom de l'image sauvegardée dans le formulaire, 
                                 // dans la valeur du champ fiel
-                                form_values.fields[(img as HTMLInputElement).name] = 'form_data/' + name + '/' + filename;
+                                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+
+                                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                                    // Si une image était déjà présente 
+                                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                                        // Si l'image enregistrée est différente de l'image actuelle
+                                        // Suppression de l'ancienne image
+                                        const parts = (older_save.fields[input_name] as string).split('/');
+                                        const file_name = parts.pop();
+                                        const dir_name = parts.join('/');
+                                        removeFileByName(dir_name, file_name);
+                                    }
+                                }
     
                                 // Résout la promise
                                 resolve();
@@ -564,7 +616,13 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
                         r.readAsArrayBuffer(file);
                     }
                     else {
-                        form_values.fields[(img as HTMLInputElement).name] = null;
+                        if (older_save && input_name in older_save.fields) {
+                            form_values.fields[input_name] = older_save.fields[input_name];
+                        }
+                        else {
+                            form_values.fields[input_name] = null;
+                        }
+                        
                         resolve();
                     }
                 })
@@ -576,7 +634,15 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
                 // On écrit enfin le formulaire !
                 writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
                     M.toast({html: "Écriture du formulaire et de ses données réussie."});
-                    changePage('form');
+
+                    if (older_save) {
+                        // On vient de la page d'édition de formulaire déjà créés
+                        changePage('saved');
+                    }
+                    else {
+                        changePage('form');
+                    }
+                    
                     console.log(form_values);
                 });
             })
@@ -614,20 +680,10 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     base_block.appendChild(placeh);
 
     // Appelle la fonction pour construire
-    constructForm(placeh, current_form, Jarvis.Jarvis);
+    constructForm(placeh, current_form);
 
     base.appendChild(base_block);
-
-    // Initialisateur du bouton micro
-    // base.insertAdjacentHTML('beforeend', `<div class="fixed-action-btn">
-    //     <a class="btn-floating btn-large red" id="operate_listen">
-    //         <i class="large material-icons">mic</i>
-    //     </a>
-    // </div>`);
-    // document.getElementById('operate_listen').onclick = function() {
-    //     test_jarvis();
-    // };
-
+    
     M.updateTextFields();
     $('select').formSelect();
 
