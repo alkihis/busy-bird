@@ -2977,15 +2977,27 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         });
         // Ouvre le modal et insère un chargeur
         helpers_4.getModalInstance().open();
-        modal.innerHTML = helpers_4.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer" >
+        modal.innerHTML = helpers_4.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+            <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
+            <div class="clearb"></div>
         </div>`);
-        document.getElementById("close-footer-geoloc").onclick = cancelGeoLocModal;
+        let is_loc_canceled = false;
+        document.getElementById("close-footer-geoloc").onclick = function () {
+            is_loc_canceled = true;
+            cancelGeoLocModal();
+        };
+        document.getElementById('dontloc-footer-geoloc').onclick = function () {
+            is_loc_canceled = true;
+            locationSelector(modal, current_form.locations);
+        };
         // Cherche la localisation et remplit le modal
         helpers_4.getLocation(function (coords) {
-            locationSelector(modal, current_form.locations, coords);
+            if (!is_loc_canceled)
+                locationSelector(modal, current_form.locations, coords);
         }, function () {
-            locationSelector(modal, current_form.locations);
+            if (!is_loc_canceled)
+                locationSelector(modal, current_form.locations);
         });
     }
     function textDistance(distance) {

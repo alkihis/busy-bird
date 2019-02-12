@@ -752,18 +752,30 @@ function callLocationSelector(current_form: Form) : void {
     getModalInstance().open();
     modal.innerHTML = getModalPreloader(
         "Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.",
-        `<div class="modal-footer" >
+        `<div class="modal-footer">
+            <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
+            <div class="clearb"></div>
         </div>`
     );
 
-    document.getElementById("close-footer-geoloc").onclick = cancelGeoLocModal;
+    let is_loc_canceled = false;
+    document.getElementById("close-footer-geoloc").onclick = function() {
+        is_loc_canceled = true;
+        cancelGeoLocModal();
+    };
+    document.getElementById('dontloc-footer-geoloc').onclick = function() {
+        is_loc_canceled = true;
+        locationSelector(modal, current_form.locations);
+    };
 
     // Cherche la localisation et remplit le modal
     getLocation(function(coords: Position) {
-        locationSelector(modal, current_form.locations, coords);
+        if (!is_loc_canceled)
+            locationSelector(modal, current_form.locations, coords);
     }, function() {
-        locationSelector(modal, current_form.locations);
+        if (!is_loc_canceled)
+            locationSelector(modal, current_form.locations);
     });
 }
 
