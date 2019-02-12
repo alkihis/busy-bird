@@ -496,7 +496,14 @@ function saveForm(type: string, force_name?: string) : void {
             form_values.fields[i.name] = selected;
         }
         else if (i.type === "checkbox") {
-            form_values.fields[i.name] = i.checked;
+            if (i.classList.contains("input-slider-element")) {
+                // C'est un slider
+                form_values.fields[i.name] = (i.checked ? i.dataset.ifchecked : i.dataset.ifunchecked);
+            }
+            else {
+                // C'est une checkbox classique
+                form_values.fields[i.name] = i.checked;
+            }
         }
         else if (i.type === "number") {
             form_values.fields[i.name] = Number(i.value);

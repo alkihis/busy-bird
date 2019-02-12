@@ -23,6 +23,7 @@ export function getBase() : HTMLElement {
 
 export function initModal(options: M.ModalOptions | {} = {}, content?: string) : void {
     const modal = getModal();
+    modal.classList.remove('modal-fixed-footer');
     
     if (content)
         modal.innerHTML = content;

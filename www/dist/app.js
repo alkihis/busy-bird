@@ -1704,6 +1704,7 @@ define("helpers", ["require", "exports"], function (require, exports) {
     exports.getBase = getBase;
     function initModal(options = {}, content) {
         const modal = getModal();
+        modal.classList.remove('modal-fixed-footer');
         if (content)
             modal.innerHTML = content;
         M.Modal.init(modal, options);
@@ -2004,7 +2005,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         delete_btn.classList.add('secondary-content');
         const im = document.createElement('i');
         im.classList.add('material-icons', 'red-text');
-        im.innerHTML = "delete_forever";
+        im.innerText = "delete_forever";
         delete_btn.appendChild(im);
         container.appendChild(delete_btn);
         const file_name = json[0].name;
@@ -2683,7 +2684,14 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
                 form_values.fields[i.name] = selected;
             }
             else if (i.type === "checkbox") {
-                form_values.fields[i.name] = i.checked;
+                if (i.classList.contains("input-slider-element")) {
+                    // C'est un slider
+                    form_values.fields[i.name] = (i.checked ? i.dataset.ifchecked : i.dataset.ifunchecked);
+                }
+                else {
+                    // C'est une checkbox classique
+                    form_values.fields[i.name] = i.checked;
+                }
             }
             else if (i.type === "number") {
                 form_values.fields[i.name] = Number(i.value);

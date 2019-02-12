@@ -31,7 +31,7 @@ function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     delete_btn.classList.add('secondary-content');
     const im = document.createElement('i');
     im.classList.add('material-icons', 'red-text');
-    im.innerHTML = "delete_forever";
+    im.innerText = "delete_forever";
 
     delete_btn.appendChild(im);
     container.appendChild(delete_btn);
