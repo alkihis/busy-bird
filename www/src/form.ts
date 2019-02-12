@@ -64,9 +64,9 @@ function setInvalid(e: HTMLElement) : void {
 
 /**
  * Remplit les champs standards de l'input (id, name, required)...
- * @param htmle 
- * @param ele 
- * @param label 
+ * @param htmle Input / Select dans lequel écrire
+ * @param ele Champ de formulaire lié à l'input
+ * @param label Label lié à l'input (optionnel)
  */
 function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, ele: FormEntity, label?: HTMLLabelElement) : HTMLElement {
     htmle.id = "id_" + ele.name;
@@ -96,7 +96,7 @@ function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement | H
 function isModuloZero(num1: number, num2: number) : boolean {
     let reste = num1;
 
-    while (reste > 0) {
+    while (reste > 0.0001) {
         reste -= num2;
     }
 
@@ -105,9 +105,9 @@ function isModuloZero(num1: number, num2: number) : boolean {
 }
 
 /**
- * Construit le formulaire automatiquement passé via "c_f"
+ * Construit le formulaire automatiquement passé via "current_form"
  * @param placeh Élement HTML dans lequel écrire le formulaire
- * @param c_f Tableau d'éléments de formulaire
+ * @param current_form Formulaire courant
  * @param jarvis Instance d'Artyom à configurer
  */
 function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom) : void {

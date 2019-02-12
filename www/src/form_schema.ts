@@ -115,6 +115,41 @@ export const Forms = new class {
         }
     }
 
+    formExists(name: string) : boolean {
+        return name in this.available_forms;
+    }
+
+    /**
+     * Change le formulaire courant renvoyé par onReady
+     * @param name clé d'accès au formulaire
+     */
+    changeForm(name: string) : void {
+        if (this.formExists(name)) {
+            this.current = this.available_forms[name]; 
+            this.current_key = name;
+        }
+        else {
+            throw new Error("Form does not exists");
+        }
+    }
+
+    /**
+     * Retourne un tableau de tuples contenant en
+     * première position la clé d'accès au formulaire,
+     * et en seconde position son nom textuel à présenter à l'utilisateur
+     * @returns [string, string][]
+     */
+    getAvailableForms() : [string, string][] {
+        const keys = Object.keys(this.available_forms);
+        const tuples: [string, string][] = [];
+
+        for (const key of keys) {
+            tuples.push([key, this.available_forms[key].name]);
+        }
+
+        return tuples;
+    }
+
     getCurrentKey() : string {
         return this.current_key;
     }

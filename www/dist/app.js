@@ -1629,6 +1629,36 @@ define("form_schema", ["require", "exports"], function (require, exports) {
                 this.waiting_callee.push(callback);
             }
         }
+        formExists(name) {
+            return name in this.available_forms;
+        }
+        /**
+         * Change le formulaire courant renvoyé par onReady
+         * @param name clé d'accès au formulaire
+         */
+        changeForm(name) {
+            if (this.formExists(name)) {
+                this.current = this.available_forms[name];
+                this.current_key = name;
+            }
+            else {
+                throw new Error("Form does not exists");
+            }
+        }
+        /**
+         * Retourne un tableau de tuples contenant en
+         * première position la clé d'accès au formulaire,
+         * et en seconde position son nom textuel à présenter à l'utilisateur
+         * @returns [string, string][]
+         */
+        getAvailableForms() {
+            const keys = Object.keys(this.available_forms);
+            const tuples = [];
+            for (const key of keys) {
+                tuples.push([key, this.available_forms[key].name]);
+            }
+            return tuples;
+        }
         getCurrentKey() {
             return this.current_key;
         }
@@ -2190,9 +2220,9 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
     }
     /**
      * Remplit les champs standards de l'input (id, name, required)...
-     * @param htmle
-     * @param ele
-     * @param label
+     * @param htmle Input / Select dans lequel écrire
+     * @param ele Champ de formulaire lié à l'input
+     * @param label Label lié à l'input (optionnel)
      */
     function fillStandardInputValues(htmle, ele, label) {
         htmle.id = "id_" + ele.name;
@@ -2216,16 +2246,16 @@ define("form", ["require", "exports", "test_aytom", "form_schema", "helpers", "m
      */
     function isModuloZero(num1, num2) {
         let reste = num1;
-        while (reste > 0) {
+        while (reste > 0.0001) {
             reste -= num2;
         }
         // Arrondit le nombre pour éviter les problèmes de précision
         return Number(reste.toFixed(5)) === 0;
     }
     /**
-     * Construit le formulaire automatiquement passé via "c_f"
+     * Construit le formulaire automatiquement passé via "current_form"
      * @param placeh Élement HTML dans lequel écrire le formulaire
-     * @param c_f Tableau d'éléments de formulaire
+     * @param current_form Formulaire courant
      * @param jarvis Instance d'Artyom à configurer
      */
     function constructForm(placeh, current_form, jarvis) {
