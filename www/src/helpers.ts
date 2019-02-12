@@ -82,7 +82,7 @@ let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
 export function changeDir() {
     // @ts-ignore
     if (device.platform === "browser") {
-        FOLDER = "cdvfile://localhost/persistent/";
+        FOLDER = "cdvfile://localhost/temporary/";
     }
     // @ts-ignore
     else if (device.platform === "iOS") {

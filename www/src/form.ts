@@ -281,15 +281,17 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
                 let value: string = this.value;
 
                 if (typeof value === 'string') {
-                    if (typeof ele.range.min !== 'undefined' && value.length < ele.range.min) {
-                        valid = false;
-                    }
-                    else if (typeof ele.range.max !== 'undefined' && value.length > ele.range.max) {
-                        valid = false;
-                    }
-
-                    if (value.length === 0 && ele.suggested_not_blank) {
-                        valid = false;
+                    if (typeof ele.range !== 'undefined') {
+                        if (typeof ele.range.min !== 'undefined' && value.length < ele.range.min) {
+                            valid = false;
+                        }
+                        else if (typeof ele.range.max !== 'undefined' && value.length > ele.range.max) {
+                            valid = false;
+                        }
+    
+                        if (value.length === 0 && ele.suggested_not_blank) {
+                            valid = false;
+                        }
                     }
                 }
                 else {
@@ -414,6 +416,40 @@ function constructForm(placeh: HTMLElement, current_form: Form, jarvis?: Artyom)
 
             fwrapper.appendChild(f_input);
             wrapper.appendChild(fwrapper);
+
+            element_to_add = wrapper;
+        }
+
+        if (ele.type === FormEntityType.slider) {
+            const wrapper = document.createElement('div');
+            const label = document.createElement('label');
+            const input = document.createElement('input');
+            const span = document.createElement('span');
+
+            fillStandardInputValues(input, ele);
+
+            wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch');
+            input.classList.add('input-form-element', 'input-slider-element');
+            input.type = "checkbox";
+            input.checked = ele.default_value as boolean;
+            span.classList.add('lever');
+
+            wrapper.appendChild(label);
+            // Texte si not checked
+            label.insertAdjacentText('afterbegin', ele.slider_options[0].label);
+
+            label.appendChild(input);
+            label.appendChild(span);
+
+            // Texte si checked
+            label.insertAdjacentText('beforeend', ele.slider_options[1].label);
+
+            // Insertion des deux options dans l'input en data-
+            input.dataset.ifunchecked = ele.slider_options[0].name;
+            input.dataset.ifchecked = ele.slider_options[1].name;
+
+            // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
+            // Il faudra par contrer créer (plus tard les input vocaux)
 
             element_to_add = wrapper;
         }

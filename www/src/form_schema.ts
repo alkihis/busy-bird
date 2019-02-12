@@ -44,6 +44,7 @@ export interface FormEntity {
     type: FormEntityType;
     range?: {min?: number, max?: number}; /* for type.integer && type.float */
     select_options?: {options: SelectOption[], multiple: boolean}; /* for type.select */
+    slider_options: {name: string, label: string}[] /* for type.slider */
     file_type?: string; /* for type.file */
     float_precision?: number; /* for type.float */
     default_value?: string | boolean;
@@ -64,7 +65,7 @@ interface SelectOption {
  */
 export enum FormEntityType {
     integer = "integer", float = "float", select = "select", string = "string", bigstring = "textarea", 
-    checkbox = "checkbox", file = "file", datetime = "datetime", divider = "divider"
+    checkbox = "checkbox", file = "file", slider = "slider", datetime = "datetime", divider = "divider"
 }
 
 // Clé du JSON à charger automatiquement

@@ -11,60 +11,534 @@
             "type": "datetime",
             "required": true
         }, {
-            "name": "id",
-            "label": "Identifiant",
-            "required": true,
-            "type": "integer",
-            "range": {"min": 1},
-            "tip_on_invalid": "Doit être un entier"
+            "name": "ringnb",
+            "label": "Numéro de bague",
+            "type": "string",
+            "placeholder": "Composé de chiffres et de lettres"
         }, {
-            "name": "mass",
-            "label": "Poids",
-            "type": "float",
-            "range": {"min": 3, "max": 100},
-            "float_precision": 0.01,
-            "placeholder": "Mesure en grammes",
-            "tip_on_invalid": "Doit être compris entre 3 et 100. Précision: 0.01"
+            "name": "new",
+            "label": "Individu nouveau",
+            "type": "checkbox"
         }, {
-            "name": "title_other",
-            "label": "Autres",
-            "type": "divider"
+            "name": "amont_aval",
+            "label": null,
+            "type": "slider",
+            "slider_options": [ {
+                "name": "amont",
+                "label": "Amont"
+            }, {
+                "name": "aval",
+                "label": "Aval"
+            } ]
         }, {
-            "name": "lieu",
-            "label": "Lieu",
+            "name": "age",
+            "label": "Âge",
             "type": "select",
             "select_options": {
                 "multiple": false,
                 "options": [ {
-                    "label": "Sous le vieux chêne",
-                    "value": "chene"
+                    "label": "1A",
+                    "value": "1a"
                 }, {
-                    "label": "Vers le ruisseau",
-                    "value": "ruisseau"
+                    "label": "+1A",
+                    "value": "p1a"
                 }, {
-                    "label": "Proche de la route 134",
-                    "value": "rd134"
+                    "label": "1A?",
+                    "value": "1aq"
+                }, {
+                    "label": "2A",
+                    "value": "2a"
+                }, {
+                    "label": "+2A",
+                    "value": "p2a"
+                }, {
+                    "label": "2A?",
+                    "value": "2aq"
                 } ]
             }
         }, {
-            "name": "taille",
-            "label": "Taille",
-            "type": "float",
-            "float_precision": 0.005,
-            "range": {"min": 0},
-            "placeholder": "Mesure en centimètres",
-            "tip_on_invalid": "Doit dépasser 0. Précision: 0.005"
+            "name": "sex",
+            "label": "Sexe",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "?",
+                    "value": "q"
+                }, {
+                    "label": "M",
+                    "value": "m"
+                }, {
+                    "label": "M?",
+                    "value": "mq"
+                }, {
+                    "label": "F",
+                    "value": "f"
+                }, {
+                    "label": "F?",
+                    "value": "fq"
+                } ]
+            }
         }, {
-            "name": "photo_tete",
-            "label": "Photo de la tête",
+            "name": "bagues_couleur_gauche",
+            "label": "Bagues gauche",
+            "type": "divider"
+        }, {
+            "name": "bague_metal_gauche",
+            "label": "Métal",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Aucune",
+                    "value": "no"
+                }, {
+                    "label": "Dark blue",
+                    "value": "db"
+                }, {
+                    "label": "Light blue",
+                    "value": "lb"
+                }, {
+                    "label": "Green",
+                    "value": "g"
+                }, {
+                    "label": "Yellow",
+                    "value": "y"
+                }, {
+                    "label": "White",
+                    "value": "w"
+                }, {
+                    "label": "Red",
+                    "value": "r"
+                }, {
+                    "label": "Grey",
+                    "value": "gy"
+                }, {
+                    "label": "Pink",
+                    "value": "p"
+                }, {
+                    "label": "Black",
+                    "value": "b"
+                }, {
+                    "label": "Orange",
+                    "value": "o"
+                } ]
+            }
+        }, {
+            "name": "bague_plastique_gauche",
+            "label": "Plastique",
+            "type": "select",
+            "select_options": {
+                "multiple": true,
+                "options": [ {
+                    "label": "Dark blue",
+                    "value": "db"
+                }, {
+                    "label": "Light blue",
+                    "value": "lb"
+                }, {
+                    "label": "Green",
+                    "value": "g"
+                }, {
+                    "label": "Yellow",
+                    "value": "y"
+                }, {
+                    "label": "White",
+                    "value": "w"
+                }, {
+                    "label": "Red",
+                    "value": "r"
+                }, {
+                    "label": "Grey",
+                    "value": "gy"
+                }, {
+                    "label": "Pink",
+                    "value": "p"
+                }, {
+                    "label": "Black",
+                    "value": "b"
+                }, {
+                    "label": "Orange",
+                    "value": "o"
+                } ]
+            }
+        }, {
+            "name": "bagues_couleur_droite",
+            "label": "Bagues droite",
+            "type": "divider"
+        }, {
+            "name": "bague_metal_droite",
+            "label": "Métal",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Aucune",
+                    "value": "no"
+                }, {
+                    "label": "Dark blue",
+                    "value": "db"
+                }, {
+                    "label": "Light blue",
+                    "value": "lb"
+                }, {
+                    "label": "Green",
+                    "value": "g"
+                }, {
+                    "label": "Yellow",
+                    "value": "y"
+                }, {
+                    "label": "White",
+                    "value": "w"
+                }, {
+                    "label": "Red",
+                    "value": "r"
+                }, {
+                    "label": "Grey",
+                    "value": "gy"
+                }, {
+                    "label": "Pink",
+                    "value": "p"
+                }, {
+                    "label": "Black",
+                    "value": "b"
+                }, {
+                    "label": "Orange",
+                    "value": "o"
+                } ]
+            }
+        }, {
+            "name": "bague_plastique_droite",
+            "label": "Plastique",
+            "type": "select",
+            "select_options": {
+                "multiple": true,
+                "options": [ {
+                    "label": "Dark blue",
+                    "value": "db"
+                }, {
+                    "label": "Light blue",
+                    "value": "lb"
+                }, {
+                    "label": "Green",
+                    "value": "g"
+                }, {
+                    "label": "Yellow",
+                    "value": "y"
+                }, {
+                    "label": "White",
+                    "value": "w"
+                }, {
+                    "label": "Red",
+                    "value": "r"
+                }, {
+                    "label": "Grey",
+                    "value": "gy"
+                }, {
+                    "label": "Pink",
+                    "value": "p"
+                }, {
+                    "label": "Black",
+                    "value": "b"
+                }, {
+                    "label": "Orange",
+                    "value": "o"
+                } ]
+            }
+        }, {
+            "name": "transpond",
+            "label": "Transpondeur",
+            "type": "string",
+            "range": {"min": 10, "max": 10},
+            "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
+            "placeholder": "Composé de 10 chiffres et de lettres"
+        }, {
+            "name": "name",
+            "label": "Nom de la personne",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Blandide Deligez",
+                    "value": "bd"
+                }, {
+                    "label": "Sylvia Pardonnet",
+                    "value": "sp"
+                }, {
+                    "label": "Jeanne Duhayer",
+                    "value": "jd"
+                } ]
+            }
+        }, {
+            "name": "mass",
+            "label": "Poids",
+            "type": "float",
+            "range": {"min": 30, "max": 100},
+            "float_precision": 0.1,
+            "tip_on_invalid": "Unité gramme. 30g min, 100 max, précision 0.1."
+        }, {
+            "name": "tarsus",
+            "label": "Tarse",
+            "type": "float",
+            "range": {"min": 20, "max": 40},
+            "float_precision": 0.1,
+            "tip_on_invalid": "Unité mm. 20mm min, 40 max, précision 0.1"
+        }, {
+            "name": "wing",
+            "label": "Aile",
+            "type": "float",
+            "range": {"min": 60, "max": 120},
+            "float_precision": 0.5,
+            "tip_on_invalid": "Unité mm. 60mm min, 120 max, précision 0.5"
+        }, {
+            "name": "abraded",
+            "label": "État des plumes",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Pas du tout",
+                    "value": "0"
+                }, {
+                    "label": "Un peu",
+                    "value": "p"
+                }, {
+                    "label": "Beaucoup",
+                    "value": "pp"
+                } ]
+            }
+        }, {
+            "name": "tail",
+            "label": "Longueur queue",
+            "type": "float",
+            "range": {"min": 30, "max": 80},
+            "float_precision": 0.5,
+            "tip_on_invalid": "Unité mm. 30mm min, 80 max, précision 0.5"
+        }, {
+            "name": "third_prim",
+            "label": "Longueur 3ème primaire",
+            "type": "float",
+            "range": {"min": 40, "max": 90},
+            "float_precision": 0.5,
+            "tip_on_invalid": "Unité mm. 40mm min, 90 max, précision 0.5"
+        }, {
+            "name": "sk_bl_lght",
+            "label": "Longueur tête plus bec",
+            "type": "float",
+            "range": {"min": 30, "max": 70},
+            "float_precision": 0.1,
+            "tip_on_invalid": "Unité mm. 30mm min, 70 max, précision 0.1"
+        }, {
+            "name": "bl_lght",
+            "label": "Longueur bec seul",
+            "type": "float",
+            "range": {"min": 10, "max": 30},
+            "float_precision": 0.1,
+            "tip_on_invalid": "Unité mm. 10mm min, 30 max, précision 0.1"
+        }, {
+            "name": "blood_patch",
+            "label": "Présence plaque incubatrice",
+            "type": "checkbox"
+        }, {
+            "name": "molt",
+            "label": "Animal en mue",
+            "type": "checkbox"
+        }, {
+            "name": "breath",
+            "label": "Nb de mouvements respiratoires / 30s",
+            "type": "integer",
+            "range": {"min": 10, "max": 200},
+            "tip_on_invalid": "Doit être compris entre 10 et 200."
+        }, {
+            "name": "card_rythm",
+            "label": "Mesure du rythme cardiaque",
+            "type": "checkbox"
+        }, {
+            "name": "feathers",
+            "label": "Prises de plumes",
+            "type": "select",
+            "select_options": {
+                "multiple": true,
+                "options": [ {
+                    "label": "White",
+                    "value": "w"
+                }, {
+                    "label": "Brown",
+                    "value": "b"
+                }, {
+                    "label": "Cort",
+                    "value": "c"
+                }, {
+                    "label": "Polluants",
+                    "value": "p"
+                } ]
+            }
+        }, {
+            "name": "blood_tubes_alc",
+            "label": "Tubes de sang alcool",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Non",
+                    "value": "n"
+                }, {
+                    "label": "Low",
+                    "value": "l"
+                }, {
+                    "label": "Middle",
+                    "value": "m"
+                }, {
+                    "label": "High",
+                    "value": "h"
+                } ]
+            }
+        }, {
+            "name": "blood_tubes_microm",
+            "label": "Tubes de sang micro-",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Non",
+                    "value": "n"
+                }, {
+                    "label": "Low",
+                    "value": "l"
+                }, {
+                    "label": "Middle",
+                    "value": "m"
+                }, {
+                    "label": "High",
+                    "value": "h"
+                } ]
+            }
+        }, {
+            "name": "blood_tubes_microp",
+            "label": "Tubes de sang micro+",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Non",
+                    "value": "n"
+                }, {
+                    "label": "Low",
+                    "value": "l"
+                }, {
+                    "label": "Middle",
+                    "value": "m"
+                }, {
+                    "label": "High",
+                    "value": "h"
+                } ]
+            }
+        }, {
+            "name": "blood_tubes_smear",
+            "label": "Tubes de sang smear",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Non",
+                    "value": "n"
+                }, {
+                    "label": "Low",
+                    "value": "l"
+                }, {
+                    "label": "Middle",
+                    "value": "m"
+                }, {
+                    "label": "High",
+                    "value": "h"
+                } ]
+            }
+        }, {
+            "name": "blood_tubes_mito",
+            "label": "Tubes de sang mito",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Non",
+                    "value": "n"
+                }, {
+                    "label": "Low",
+                    "value": "l"
+                }, {
+                    "label": "Middle",
+                    "value": "m"
+                }, {
+                    "label": "High",
+                    "value": "h"
+                } ]
+            }
+        }, {
+            "name": "pic_belly_white",
+            "label": "Photo ventre blanc",
             "type": "file",
             "file_type": "image/*"
+        }, {
+            "name": "pic_belly_brown",
+            "label": "Photo ventre marron",
+            "type": "file",
+            "file_type": "image/*"
+        }, {
+            "name": "pic_eye",
+            "label": "Photo oeil",
+            "type": "file",
+            "file_type": "image/*"
+        }, {
+            "name": "pic_coverts",
+            "label": "Photo coverts",
+            "type": "file",
+            "file_type": "image/*"
+        }, {
+            "name": "struggle",
+            "label": "Comportement",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "0",
+                    "value": "0"
+                }, {
+                    "label": "1",
+                    "value": "1"
+                }, {
+                    "label": "2",
+                    "value": "2"
+                }, {
+                    "label": "3",
+                    "value": "3"
+                } ]
+            }
         }, {
             "name": "distress",
             "label": "Stress",
             "type": "checkbox"
         }, {
-            "name": "commentaires",
+            "name": "wounds",
+            "label": "Blessure",
+            "type": "select",
+            "select_options": {
+                "multiple": true,
+                "options": [ {
+                    "label": "Non",
+                    "value": "no"
+                }, {
+                    "label": "Old",
+                    "value": "old"
+                }, {
+                    "label": "Capt",
+                    "value": "capt"
+                }, {
+                    "label": "Nail",
+                    "value": "nail"
+                } ]
+            }
+        }, {
+            "name": "comments",
             "label": "Commentaires",
             "type": "textarea"
         } ],
