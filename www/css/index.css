@@ -126,3 +126,18 @@ main {
     width: 100%;
     object-fit: cover;
 }
+
+.divider-margin {
+    margin: 10px 0;
+}
+
+.img-form-element {
+    width: 100%;
+    border-radius: 5px;
+    max-height: 140px;
+    object-fit: cover;
+}
+
+.image-form-wrapper {
+    width: 100%;
+}

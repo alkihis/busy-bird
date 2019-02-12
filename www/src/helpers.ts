@@ -332,3 +332,15 @@ export function formatDate(date: Date, withTime: boolean = false) : string {
 
     return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
 }
+
+export function createImgSrc(path: string, element: HTMLImageElement) : void {
+    const parts = path.split('/');
+    const file_name = parts.pop();
+    const dir_name = parts.join('/');
+
+    getDir(function(dirEntry) {
+        dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
+            element.src = fileEntry.toURL();
+        });
+    }, dir_name);
+}

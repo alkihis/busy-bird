@@ -1992,6 +1992,17 @@ define("helpers", ["require", "exports"], function (require, exports) {
         return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
     }
     exports.formatDate = formatDate;
+    function createImgSrc(path, element) {
+        const parts = path.split('/');
+        const file_name = parts.pop();
+        const dir_name = parts.join('/');
+        getDir(function (dirEntry) {
+            dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
+                element.src = fileEntry.toURL();
+            });
+        }, dir_name);
+    }
+    exports.createImgSrc = createImgSrc;
 });
 define("settings_page", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -2692,6 +2703,19 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 element_to_add = wrapper;
             }
             if (ele.type === form_schema_2.FormEntityType.file) {
+                // Sépare les champ input file
+                placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
+                if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
+                    // L'input file est déjà présent dans le formulaire
+                    // on affiche une miniature
+                    const img_miniature = document.createElement('div');
+                    img_miniature.classList.add('image-form-wrapper');
+                    const img_balise = document.createElement('img');
+                    img_balise.classList.add('img-form-element');
+                    helpers_4.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    img_miniature.appendChild(img_balise);
+                    placeh.appendChild(img_miniature);
+                }
                 // Input de type file
                 const wrapper = document.createElement('div');
                 wrapper.classList.add('file-field', 'input-field', 'row', 'col', 's12');
@@ -2721,7 +2745,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 }
                 fwrapper.appendChild(f_input);
                 wrapper.appendChild(fwrapper);
-                element_to_add = wrapper;
+                placeh.appendChild(wrapper);
             }
             if (ele.type === form_schema_2.FormEntityType.slider) {
                 const wrapper = document.createElement('div');

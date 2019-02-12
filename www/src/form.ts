@@ -1,7 +1,7 @@
 import { test_jarvis, Jarvis } from "./test_aytom";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
 import { changePage } from "./interface";
 
@@ -417,6 +417,24 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         }
 
         if (ele.type === FormEntityType.file) {
+            // Sépare les champ input file
+            placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
+
+            if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
+                // L'input file est déjà présent dans le formulaire
+                // on affiche une miniature
+
+                const img_miniature = document.createElement('div');
+                img_miniature.classList.add('image-form-wrapper');
+                const img_balise = document.createElement('img');
+                img_balise.classList.add('img-form-element');
+
+                createImgSrc(filled_form.fields[ele.name] as string, img_balise);
+
+                img_miniature.appendChild(img_balise);
+                placeh.appendChild(img_miniature);
+            }
+
             // Input de type file
             const wrapper = document.createElement('div');
             wrapper.classList.add('file-field', 'input-field', 'row', 'col', 's12');
@@ -452,7 +470,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             fwrapper.appendChild(f_input);
             wrapper.appendChild(fwrapper);
 
-            element_to_add = wrapper;
+            placeh.appendChild(wrapper);
         }
 
         if (ele.type === FormEntityType.slider) {
