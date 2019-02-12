@@ -766,7 +766,7 @@ function callLocationSelector(current_form: Form) : void {
     };
     document.getElementById('dontloc-footer-geoloc').onclick = function() {
         is_loc_canceled = true;
-        locationSelector(modal, current_form.locations);
+        locationSelector(modal, current_form.locations, false);
     };
 
     // Cherche la localisation et remplit le modal
@@ -786,7 +786,7 @@ function textDistance(distance: number) : string {
     return `${str_distance} ${unit}`;
 }
 
-function locationSelector(modal: HTMLElement, locations: FormLocation[], current_location?: Position) {
+function locationSelector(modal: HTMLElement, locations: FormLocation[], current_location?: Position | false) {
     // Met le modal en modal avec footer fixé
     modal.classList.add('modal-fixed-footer');
 
@@ -798,6 +798,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
 
     // Création de l'input qui va contenir le lieu
     const input = document.createElement('input');
+    input.autocomplete = "off";
 
     // Sélection manuelle
     const title = document.createElement('h5');
@@ -903,6 +904,10 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
         }
 
         content.appendChild(collection);
+    }
+    else if (current_location === false) {
+        // On affiche aucun texte dans ce cas.
+        // (écran de sélection manuelle expréssément demandé)
     }
     else {
         // Affichage d'une erreur: géolocalisation impossible

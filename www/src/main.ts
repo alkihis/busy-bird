@@ -1,5 +1,5 @@
 import { changePage, AppPages, AppPageName } from "./interface";
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir } from "./helpers";
+import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise } from "./helpers";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -92,6 +92,7 @@ function initApp() {
 }
 
 function initDebug() {
+    
     window["DEBUG"] = {
         changePage,
         readFromFile,
@@ -100,7 +101,8 @@ function initDebug() {
         createDir,
         getLocation,
         testDistance,
-        rmrf
+        rmrf,
+        rmrfPromise
     };
 }
 

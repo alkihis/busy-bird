@@ -12,6 +12,23 @@
             "type": "datetime",
             "required": true
         }, {
+            "name": "name",
+            "label": "Observateur",
+            "type": "select",
+            "select_options": {
+                "multiple": false,
+                "options": [ {
+                    "label": "Blandine Deligez",
+                    "value": "bd"
+                }, {
+                    "label": "Sylvia Pardonnet",
+                    "value": "sp"
+                }, {
+                    "label": "Jeanne Duhayer",
+                    "value": "jd"
+                } ]
+            }
+        }, {
             "name": "ringnb",
             "label": "Numéro de bague",
             "type": "string",
@@ -247,6 +264,10 @@
                 } ]
             }
         }, {
+            "name": "additionnal_info",
+            "label": "Relevés",
+            "type": "divider"
+        }, {
             "name": "transpond",
             "label": "Transpondeur",
             "type": "string",
@@ -254,27 +275,11 @@
             "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
             "placeholder": "Composé de 10 chiffres et de lettres"
         }, {
-            "name": "name",
-            "label": "Nom de la personne",
-            "type": "select",
-            "select_options": {
-                "multiple": false,
-                "options": [ {
-                    "label": "Blandide Deligez",
-                    "value": "bd"
-                }, {
-                    "label": "Sylvia Pardonnet",
-                    "value": "sp"
-                }, {
-                    "label": "Jeanne Duhayer",
-                    "value": "jd"
-                } ]
-            }
-        }, {
             "name": "mass",
             "label": "Poids",
             "type": "float",
             "range": {"min": 30, "max": 100},
+            "placeholder": "Entre 30g et 100g ±0.1g",
             "float_precision": 0.1,
             "tip_on_invalid": "Unité gramme. 30g min, 100 max, précision 0.1."
         }, {
@@ -282,6 +287,7 @@
             "label": "Tarse",
             "type": "float",
             "range": {"min": 20, "max": 40},
+            "placeholder": "Entre 20mm et 40mm ±0.1mm",
             "float_precision": 0.1,
             "tip_on_invalid": "Unité mm. 20mm min, 40 max, précision 0.1"
         }, {
@@ -289,6 +295,7 @@
             "label": "Aile",
             "type": "float",
             "range": {"min": 60, "max": 120},
+            "placeholder": "Entre 60mm et 120mm ±0.5mm",
             "float_precision": 0.5,
             "tip_on_invalid": "Unité mm. 60mm min, 120 max, précision 0.5"
         }, {
@@ -313,6 +320,7 @@
             "label": "Longueur queue",
             "type": "float",
             "range": {"min": 30, "max": 80},
+            "placeholder": "Entre 30mm et 80mm ±0.5mm",
             "float_precision": 0.5,
             "tip_on_invalid": "Unité mm. 30mm min, 80 max, précision 0.5"
         }, {
@@ -320,6 +328,7 @@
             "label": "Longueur 3ème primaire",
             "type": "float",
             "range": {"min": 40, "max": 90},
+            "placeholder": "Entre 40mm et 90mm ±0.5mm",
             "float_precision": 0.5,
             "tip_on_invalid": "Unité mm. 40mm min, 90 max, précision 0.5"
         }, {
@@ -327,6 +336,7 @@
             "label": "Longueur tête plus bec",
             "type": "float",
             "range": {"min": 30, "max": 70},
+            "placeholder": "Entre 30mm et 70mm ±0.1mm",
             "float_precision": 0.1,
             "tip_on_invalid": "Unité mm. 30mm min, 70 max, précision 0.1"
         }, {
@@ -334,6 +344,7 @@
             "label": "Longueur bec seul",
             "type": "float",
             "range": {"min": 10, "max": 30},
+            "placeholder": "Entre 10mm et 30mm ±0.1mm",
             "float_precision": 0.1,
             "tip_on_invalid": "Unité mm. 10mm min, 30 max, précision 0.1"
         }, {
@@ -348,6 +359,7 @@
             "name": "breath",
             "label": "Nb de mouvements respiratoires / 30s",
             "type": "integer",
+            "placeholder": "Compris entre 10 et 200",
             "range": {"min": 10, "max": 200},
             "tip_on_invalid": "Doit être compris entre 10 et 200."
         }, {
@@ -475,6 +487,10 @@
                 } ]
             }
         }, {
+            "name": "pict_divider",
+            "label": "Photos",
+            "type": "divider"
+        }, {
             "name": "pic_belly_white",
             "label": "Photo ventre blanc",
             "type": "file",
@@ -494,6 +510,10 @@
             "label": "Photo coverts",
             "type": "file",
             "file_type": "image/*"
+        }, {
+            "name": "complement_info",
+            "label": "Complément d'information",
+            "type": "divider"
         }, {
             "name": "struggle",
             "label": "Comportement",
@@ -525,9 +545,6 @@
             "select_options": {
                 "multiple": true,
                 "options": [ {
-                    "label": "Non",
-                    "value": "no"
-                }, {
                     "label": "Old",
                     "value": "old"
                 }, {

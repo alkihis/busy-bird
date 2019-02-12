@@ -1680,6 +1680,7 @@ define("form_schema", ["require", "exports"], function (require, exports) {
 define("helpers", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    // PRELOADERS: spinners for waiting time
     exports.PRELOADER_BASE = `
 <div class="spinner-layer spinner-blue-only">
     <div class="circle-clipper left">
@@ -1698,41 +1699,71 @@ define("helpers", ["require", "exports"], function (require, exports) {
 <div class="preloader-wrapper small active">
     ${exports.PRELOADER_BASE}
 </div>`;
+    /**
+     * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
+     */
     function getBase() {
         return document.getElementById('main_block');
     }
     exports.getBase = getBase;
+    /**
+     * Initialise le modal simple avec les options données (voir doc.)
+     * et insère de l'HTML dedans avec content
+     * @returns M.Modal Instance du modal instancié avec Materialize
+     */
     function initModal(options = {}, content) {
         const modal = getModal();
         modal.classList.remove('modal-fixed-footer');
         if (content)
             modal.innerHTML = content;
-        M.Modal.init(modal, options);
+        return M.Modal.init(modal, options);
     }
     exports.initModal = initModal;
+    /**
+     * Initialise le modal collé en bas avec les options données (voir doc.)
+     * et insère de l'HTML dedans avec content
+     * @returns M.Modal Instance du modal instancié avec Materialize
+     */
     function initBottomModal(options = {}, content) {
         const modal = getBottomModal();
         if (content)
             modal.innerHTML = content;
-        M.Modal.init(modal, options);
+        return M.Modal.init(modal, options);
     }
     exports.initBottomModal = initBottomModal;
+    /**
+     * @returns HTMLElement Élément HTML racine du modal
+     */
     function getModal() {
         return document.getElementById('modal_placeholder');
     }
     exports.getModal = getModal;
+    /**
+     * @returns HTMLElement Élément HTML racine du modal fixé en bas
+     */
     function getBottomModal() {
         return document.getElementById('bottom_modal_placeholder');
     }
     exports.getBottomModal = getBottomModal;
+    /**
+     * @returns M.Modal Instance du modal (doit être initialisé)
+     */
     function getModalInstance() {
         return M.Modal.getInstance(getModal());
     }
     exports.getModalInstance = getModalInstance;
+    /**
+     * @returns M.Modal Instance du modal fixé en bas (doit être initialisé)
+     */
     function getBottomModalInstance() {
         return M.Modal.getInstance(getBottomModal());
     }
     exports.getBottomModalInstance = getBottomModalInstance;
+    /**
+     * Génère un spinner centré sur l'écran avec un message d'attente
+     * @param text Texte à insérer comme message de chargement
+     * @returns string HTML à insérer
+     */
     function getPreloader(text) {
         return `
     <center style="margin-top: 35vh;">
@@ -1742,6 +1773,11 @@ define("helpers", ["require", "exports"], function (require, exports) {
     `;
     }
     exports.getPreloader = getPreloader;
+    /**
+     * Génère un spinner adapté à un modal avec un message d'attente
+     * @param text Texte à insérer comme message de chargement
+     * @returns string HTML à insérer dans la racine d'un modal
+     */
     function getModalPreloader(text, footer) {
         return `<div class="modal-content">
     <center>
@@ -1757,13 +1793,17 @@ define("helpers", ["require", "exports"], function (require, exports) {
     function dec2hex(dec) {
         return ('0' + dec.toString(16)).substr(-2);
     }
-    // generateId :: Integer -> String
+    /**
+     * Génère un identifiant aléatoire
+     * @param len Longueur de l'ID
+     */
     function generateId(len) {
         const arr = new Uint8Array((len || 40) / 2);
         window.crypto.getRandomValues(arr);
         return Array.from(arr, dec2hex).join('');
     }
     exports.generateId = generateId;
+    // USELESS
     function saveDefaultForm() {
         // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
     }
@@ -1772,6 +1812,10 @@ define("helpers", ["require", "exports"], function (require, exports) {
     // Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
     // utilise le répertoire data (partition /data) de Android
     let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
+    /**
+     * Change le répertoire actif en fonction de la plateforme et l'insère dans FOLDER.
+     * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
+     */
     function changeDir() {
         // @ts-ignore
         if (device.platform === "browser") {
@@ -1814,10 +1858,15 @@ define("helpers", ["require", "exports"], function (require, exports) {
         });
     }
     exports.readFromFile = readFromFile;
+    /**
+     * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
+     * Sans dirName, renvoie la racine du système de fichiers.
+     * @param callback Function(dirEntry) => void
+     * @param dirName string
+     * @param onError Function(error) => void
+     */
     function getDir(callback, dirName = "", onError) {
-        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
-        // @ts-ignore
-        window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {
+        function callGetDirEntry(dirEntry) {
             DIR_ENTRY = dirEntry;
             if (dirName) {
                 dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
@@ -1834,14 +1883,31 @@ define("helpers", ["require", "exports"], function (require, exports) {
             else if (callback) {
                 callback(dirEntry);
             }
-        }, (err) => {
-            console.log("Persistent not available", err.message);
-            if (onError) {
-                onError(err);
-            }
-        });
+        }
+        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
+        if (DIR_ENTRY === null) {
+            // @ts-ignore
+            window.resolveLocalFileSystemURL(FOLDER, callGetDirEntry, (err) => {
+                console.log("Persistent not available", err.message);
+                if (onError) {
+                    onError(err);
+                }
+            });
+        }
+        else {
+            callGetDirEntry(DIR_ENTRY);
+        }
     }
     exports.getDir = getDir;
+    /**
+     * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
+     * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
+     * @param dirName string
+     * @param fileName string
+     * @param blob Blob
+     * @param callback Function() => void
+     * @param onFailure Function(error) => void | Généralement, error est une DOMException
+     */
     function writeFile(dirName, fileName, blob, callback, onFailure) {
         getDir(function (dirEntry) {
             dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
@@ -1885,12 +1951,27 @@ define("helpers", ["require", "exports"], function (require, exports) {
         }
     }
     exports.writeFile = writeFile;
+    /**
+     * Crée un dossier name dans la racine du système de fichiers.
+     * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
+     * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
+     * Si échec, appelle onError avec l'erreur
+     * @param name string
+     * @param onSuccess Function(dirEntry) => void
+     * @param onError Function(error: DOMException) => void
+     */
     function createDir(name, onSuccess, onError) {
         getDir(function (dirEntry) {
             dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
         });
     }
     exports.createDir = createDir;
+    /**
+     * Fonction de test.
+     * Affiche les entrées du répertoire path dans la console.
+     * Par défaut, affiche la racine du système de fichiers.
+     * @param path string
+     */
     function listDir(path = "") {
         // @ts-ignore
         getDir(function (fileSystem) {
@@ -1903,19 +1984,43 @@ define("helpers", ["require", "exports"], function (require, exports) {
         }, path);
     }
     exports.listDir = listDir;
+    /**
+     * Fonction de test.
+     * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
+     * @param ele HTMLElement
+     * @param obj any
+     */
     function printObj(ele, obj) {
         ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
     }
     exports.printObj = printObj;
+    /**
+     * Obtient la localisation de l'utilisation.
+     * Si réussi, onSuccess est appelée avec en paramètre un objet de type Position
+     * @param onSuccess Function(coords: Position) => void
+     * @param onFailed Function(error) => void
+     */
     function getLocation(onSuccess, onFailed) {
         navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
     }
     exports.getLocation = getLocation;
+    /**
+     * Calcule la distance en mètres entre deux coordonnées GPS.
+     * Les deux objets passés doivent implémenter l'interface CoordsLike
+     * @param coords1 CoordsLike
+     * @param coords2 CoordsLike
+     * @returns number Nombre de mètres entre les deux coordonnées
+     */
     function calculateDistance(coords1, coords2) {
         // @ts-ignore
         return geolib.getDistance({ latitude: coords1.latitude, longitude: coords1.longitude }, { latitude: coords2.latitude, longitude: coords2.longitude });
     }
     exports.calculateDistance = calculateDistance;
+    /**
+     * Fonction de test pour tester la géolocalisation.
+     * @param latitude
+     * @param longitude
+     */
     function testDistance(latitude = 45.353421, longitude = 5.836441) {
         getLocation(function (res) {
             console.log(calculateDistance(res.coords, { latitude, longitude }));
@@ -1924,6 +2029,13 @@ define("helpers", ["require", "exports"], function (require, exports) {
         });
     }
     exports.testDistance = testDistance;
+    /**
+     * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
+     * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
+     * @param dirName string
+     * @param fileName string
+     * @param callback Function() => void Fonction appelée quand le fichier est supprimé
+     */
     function removeFileByName(dirName, fileName, callback) {
         getDir(function (dirEntry) {
             dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
@@ -1932,6 +2044,11 @@ define("helpers", ["require", "exports"], function (require, exports) {
         }, dirName);
     }
     exports.removeFileByName = removeFileByName;
+    /**
+     * Supprime un fichier via son fileEntry
+     * @param entry fileEntry
+     * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
+     */
     function removeFile(entry, callback) {
         entry.remove(function () {
             // Fichier supprimé !
@@ -1940,17 +2057,37 @@ define("helpers", ["require", "exports"], function (require, exports) {
         }, function (err) {
             console.log("error", err);
             if (callback)
-                callback();
+                callback(err);
         }, function () {
             console.log("file not found");
             if (callback)
-                callback();
+                callback(false);
         });
     }
     exports.removeFile = removeFile;
     /**
-     * Delete all files in directory, recursively, without himself
-     * @param dirName?
+     * Supprime un fichier via son fileEntry
+     * @param entry fileEntry
+     * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
+     */
+    function removeFilePromise(entry) {
+        return new Promise(function (resolve, reject) {
+            entry.remove(function () {
+                // Fichier supprimé !
+                resolve();
+            }, function (err) {
+                reject(err);
+            }, function () {
+                reject("File not found");
+            });
+        });
+    }
+    exports.removeFilePromise = removeFilePromise;
+    /**
+     * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
+     * @param dirName string Chemin du répertoire
+     * @param callback NE PAS UTILISER. USAGE INTERNE.
+     * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
      */
     function rmrf(dirName, callback, dirEntry) {
         // Récupère le dossier dirName (ou la racine du système de fichiers)
@@ -1985,6 +2122,70 @@ define("helpers", ["require", "exports"], function (require, exports) {
         }
     }
     exports.rmrf = rmrf;
+    /**
+     * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
+     * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
+     * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
+     * @param dirName string Chemin du dossier à supprimer
+     * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
+     * @returns Promise Promesse tenue si suppression réussie, rompue sinon
+     */
+    function rmrfPromise(dirName, deleteSelf = false) {
+        function rmrfFromEntry(dirEntry) {
+            return new Promise(function (resolve, reject) {
+                const reader = dirEntry.createReader();
+                // Itère sur les entrées du répertoire via readEntries
+                reader.readEntries(function (entries) {
+                    // Pour chaque entrée du dossier
+                    const promises = [];
+                    for (const entry of entries) {
+                        promises.push(new Promise(function (resolve, reject) {
+                            if (entry.isDirectory) {
+                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                                rmrfFromEntry(entry).then(function () {
+                                    // Quand c'est fini, on supprime le répertoire lui-même
+                                    // Puis on résout
+                                    removeFilePromise(entry).then(resolve).catch(reject);
+                                });
+                            }
+                            else {
+                                // Si c'est un fichier, on le supprime
+                                removeFilePromise(entry).then(resolve).catch(reject);
+                            }
+                        }));
+                    }
+                    // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
+                    Promise.all(promises).then(function () {
+                        // Quand ils le sont, résout la promesse
+                        resolve();
+                    }).catch(reject);
+                });
+            });
+        }
+        return new Promise(function (resolve, reject) {
+            getDir(function (dirEntry) {
+                // Attends que tous les dossiers soient supprimés sous ce répertoire
+                rmrfFromEntry(dirEntry).then(function () {
+                    // Si on doit supprimer le dossier et que ce n'est pas la racine
+                    if (deleteSelf && dirName !== "") {
+                        // On supprime puis on résout
+                        removeFilePromise(dirEntry).then(resolve).catch(reject);
+                    }
+                    // On résout immédiatement
+                    else {
+                        resolve();
+                    }
+                }).catch(reject);
+            }, dirName, reject);
+        });
+    }
+    exports.rmrfPromise = rmrfPromise;
+    /**
+     * Formate un objet Date en chaîne de caractères potable.
+     * @param date Date
+     * @param withTime boolean Détermine si la chaîne de caractères contient l'heure et les minutes
+     * @returns string La châine formatée
+     */
     function formatDate(date, withTime = false) {
         const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
         const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
@@ -1992,6 +2193,11 @@ define("helpers", ["require", "exports"], function (require, exports) {
         return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
     }
     exports.formatDate = formatDate;
+    /**
+     * Assigne la balise src de l'image element au contenu de l'image située dans path.
+     * @param path string
+     * @param element HTMLImageElement
+     */
     function createImgSrc(path, element) {
         const parts = path.split('/');
         const file_name = parts.pop();
@@ -2356,7 +2562,8 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
             createDir: helpers_3.createDir,
             getLocation: helpers_3.getLocation,
             testDistance: helpers_3.testDistance,
-            rmrf: helpers_3.rmrf
+            rmrf: helpers_3.rmrf,
+            rmrfPromise: helpers_3.rmrfPromise
         };
     }
     document.addEventListener('deviceready', initApp, false);
@@ -2989,7 +3196,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         };
         document.getElementById('dontloc-footer-geoloc').onclick = function () {
             is_loc_canceled = true;
-            locationSelector(modal, current_form.locations);
+            locationSelector(modal, current_form.locations, false);
         };
         // Cherche la localisation et remplit le modal
         helpers_4.getLocation(function (coords) {
@@ -3015,6 +3222,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         footer.classList.add('modal-footer');
         // Création de l'input qui va contenir le lieu
         const input = document.createElement('input');
+        input.autocomplete = "off";
         // Sélection manuelle
         const title = document.createElement('h5');
         title.innerText = "Sélection manuelle";
@@ -3101,6 +3309,10 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 collection.appendChild(elem);
             }
             content.appendChild(collection);
+        }
+        else if (current_location === false) {
+            // On affiche aucun texte dans ce cas.
+            // (écran de sélection manuelle expréssément demandé)
         }
         else {
             // Affichage d'une erreur: géolocalisation impossible

@@ -1,3 +1,4 @@
+// PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
 <div class="spinner-layer spinner-blue-only">
     <div class="circle-clipper left">
@@ -17,46 +18,76 @@ export const SMALL_PRELOADER = `
     ${PRELOADER_BASE}
 </div>`;
 
+/**
+ * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
+ */
 export function getBase() : HTMLElement {
     return document.getElementById('main_block');
 }
 
-export function initModal(options: M.ModalOptions | {} = {}, content?: string) : void {
+/**
+ * Initialise le modal simple avec les options données (voir doc.)
+ * et insère de l'HTML dedans avec content
+ * @returns M.Modal Instance du modal instancié avec Materialize
+ */
+export function initModal(options: M.ModalOptions | {} = {}, content?: string) : M.Modal {
     const modal = getModal();
     modal.classList.remove('modal-fixed-footer');
     
     if (content)
         modal.innerHTML = content;
 
-    M.Modal.init(modal, options);
+    return M.Modal.init(modal, options);
 }
 
-export function initBottomModal(options: M.ModalOptions | {} = {}, content?: string) : void {
+/**
+ * Initialise le modal collé en bas avec les options données (voir doc.)
+ * et insère de l'HTML dedans avec content
+ * @returns M.Modal Instance du modal instancié avec Materialize
+ */
+export function initBottomModal(options: M.ModalOptions | {} = {}, content?: string) : M.Modal {
     const modal = getBottomModal();
     
     if (content)
         modal.innerHTML = content;
 
-    M.Modal.init(modal, options);
+    return M.Modal.init(modal, options);
 }
 
+/**
+ * @returns HTMLElement Élément HTML racine du modal
+ */
 export function getModal() : HTMLElement {
     return document.getElementById('modal_placeholder');
 }
 
+/**
+ * @returns HTMLElement Élément HTML racine du modal fixé en bas
+ */
 export function getBottomModal() : HTMLElement {
     return document.getElementById('bottom_modal_placeholder');
 }
 
+/**
+ * @returns M.Modal Instance du modal (doit être initialisé)
+ */
 export function getModalInstance() : M.Modal {
     return M.Modal.getInstance(getModal());
 }
 
+/**
+ * @returns M.Modal Instance du modal fixé en bas (doit être initialisé)
+ */
 export function getBottomModalInstance() : M.Modal {
     return M.Modal.getInstance(getBottomModal());
 }
 
-export function getPreloader(text: string) {
+/**
+ * Génère un spinner centré sur l'écran avec un message d'attente
+ * @param text Texte à insérer comme message de chargement
+ * @returns string HTML à insérer
+ */
+export function getPreloader(text: string) : string {
     return `
     <center style="margin-top: 35vh;">
         ${PRELOADER}
@@ -65,6 +96,11 @@ export function getPreloader(text: string) {
     `;
 }
 
+/**
+ * Génère un spinner adapté à un modal avec un message d'attente
+ * @param text Texte à insérer comme message de chargement
+ * @returns string HTML à insérer dans la racine d'un modal
+ */
 export function getModalPreloader(text: string, footer?: string) : string {
     return `<div class="modal-content">
     <center>
@@ -80,14 +116,17 @@ export function getModalPreloader(text: string, footer?: string) : string {
 function dec2hex(dec: number) : string {
     return ('0' + dec.toString(16)).substr(-2);
 }
-  
-  // generateId :: Integer -> String
+/**
+ * Génère un identifiant aléatoire
+ * @param len Longueur de l'ID
+ */
 export function generateId(len: number) : string {
     const arr = new Uint8Array((len || 40) / 2);
     window.crypto.getRandomValues(arr);
     return Array.from(arr, dec2hex).join('');
 }
 
+// USELESS
 export function saveDefaultForm() {
     // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
 }
@@ -97,6 +136,10 @@ export function saveDefaultForm() {
 // utilise le répertoire data (partition /data) de Android
 let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
 
+/**
+ * Change le répertoire actif en fonction de la plateforme et l'insère dans FOLDER.
+ * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
+ */
 export function changeDir() {
     // @ts-ignore
     if (device.platform === "browser") {
@@ -141,11 +184,15 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
     });
 }
 
-export function getDir(callback, dirName: string = "", onError?) {
-    // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
-
-    // @ts-ignore
-    window.resolveLocalFileSystemURL(FOLDER, function (dirEntry) {    
+/**
+ * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
+ * Sans dirName, renvoie la racine du système de fichiers.
+ * @param callback Function(dirEntry) => void
+ * @param dirName string
+ * @param onError Function(error) => void
+ */
+export function getDir(callback: (dirEntry) => void, dirName: string = "", onError?) {
+    function callGetDirEntry(dirEntry) {
         DIR_ENTRY = dirEntry;
 
         if (dirName) {
@@ -163,14 +210,33 @@ export function getDir(callback, dirName: string = "", onError?) {
         else if (callback) {
             callback(dirEntry);
         }
-    }, (err) => { 
-        console.log("Persistent not available", err.message); 
-        if (onError) {
-            onError(err);
-        }
-    });
+    }
+
+    // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
+
+    if (DIR_ENTRY === null) {
+        // @ts-ignore
+        window.resolveLocalFileSystemURL(FOLDER, callGetDirEntry, (err) => { 
+            console.log("Persistent not available", err.message); 
+            if (onError) {
+                onError(err);
+            }
+        });
+    }
+    else {
+        callGetDirEntry(DIR_ENTRY);
+    }
 }
 
+/**
+ * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
+ * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
+ * @param dirName string
+ * @param fileName string
+ * @param blob Blob
+ * @param callback Function() => void
+ * @param onFailure Function(error) => void | Généralement, error est une DOMException
+ */
 export function writeFile(dirName: string, fileName: string, blob: Blob, callback?, onFailure?) {
     getDir(function(dirEntry) {
         dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
@@ -218,13 +284,28 @@ export function writeFile(dirName: string, fileName: string, blob: Blob, callbac
     }
 }
 
+/**
+ * Crée un dossier name dans la racine du système de fichiers.
+ * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
+ * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
+ * Si échec, appelle onError avec l'erreur
+ * @param name string
+ * @param onSuccess Function(dirEntry) => void
+ * @param onError Function(error: DOMException) => void
+ */
 export function createDir(name: string, onSuccess?: Function, onError?: Function) {
     getDir(function(dirEntry) {
         dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
     });
 }
 
-export function listDir(path = ""){
+/**
+ * Fonction de test.
+ * Affiche les entrées du répertoire path dans la console.
+ * Par défaut, affiche la racine du système de fichiers.
+ * @param path string
+ */
+export function listDir(path: string = "") : void {
     // @ts-ignore
     getDir(function (fileSystem) {
         const reader = fileSystem.createReader();
@@ -239,10 +320,22 @@ export function listDir(path = ""){
     }, path);
 }
 
+/**
+ * Fonction de test.
+ * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
+ * @param ele HTMLElement
+ * @param obj any
+ */
 export function printObj(ele: HTMLElement, obj: any) : void {
     ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
 }
 
+/**
+ * Obtient la localisation de l'utilisation.
+ * Si réussi, onSuccess est appelée avec en paramètre un objet de type Position
+ * @param onSuccess Function(coords: Position) => void
+ * @param onFailed Function(error) => void
+ */
 export function getLocation(onSuccess: (coords: Position) => any, onFailed?) {
     navigator.geolocation.getCurrentPosition(onSuccess,
         onFailed,
@@ -250,7 +343,18 @@ export function getLocation(onSuccess: (coords: Position) => any, onFailed?) {
     );
 }
 
-export function calculateDistance(coords1: {latitude: number, longitude: number}, coords2: {latitude: number | string, longitude: number | string}) {
+export interface CoordsLike {
+    latitude: string | number;
+    longitude: string | number;
+}
+/**
+ * Calcule la distance en mètres entre deux coordonnées GPS.
+ * Les deux objets passés doivent implémenter l'interface CoordsLike
+ * @param coords1 CoordsLike
+ * @param coords2 CoordsLike
+ * @returns number Nombre de mètres entre les deux coordonnées
+ */
+export function calculateDistance(coords1: CoordsLike, coords2: CoordsLike) : number {
     // @ts-ignore
     return geolib.getDistance(
         {latitude: coords1.latitude, longitude: coords1.longitude},
@@ -258,6 +362,11 @@ export function calculateDistance(coords1: {latitude: number, longitude: number}
     );
 }
 
+/**
+ * Fonction de test pour tester la géolocalisation.
+ * @param latitude 
+ * @param longitude 
+ */
 export function testDistance(latitude = 45.353421, longitude = 5.836441) {
     getLocation(function(res: Position) {
         console.log(calculateDistance(res.coords, {latitude, longitude})); 
@@ -266,6 +375,13 @@ export function testDistance(latitude = 45.353421, longitude = 5.836441) {
     });
 }
 
+/**
+ * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
+ * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
+ * @param dirName string
+ * @param fileName string
+ * @param callback Function() => void Fonction appelée quand le fichier est supprimé
+ */
 export function removeFileByName(dirName: string, fileName: string, callback?: () => void) : void {
     getDir(function(dirEntry) {
         dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
@@ -274,22 +390,47 @@ export function removeFileByName(dirName: string, fileName: string, callback?: (
     }, dirName);
 }
 
-export function removeFile(entry, callback?: () => void) : void {
+/**
+ * Supprime un fichier via son fileEntry
+ * @param entry fileEntry
+ * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
+ */
+export function removeFile(entry, callback?: (any?) => void) : void {
     entry.remove(function() { 
         // Fichier supprimé !
         if (callback) callback();
     }, function(err) {
         console.log("error", err);
-        if (callback) callback();
+        if (callback) callback(err);
     }, function() {
         console.log("file not found");
-        if (callback) callback();
+        if (callback) callback(false);
     });
 }
 
 /**
- * Delete all files in directory, recursively, without himself
- * @param dirName? 
+ * Supprime un fichier via son fileEntry
+ * @param entry fileEntry
+ * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
+ */
+export function removeFilePromise(entry) : Promise<void> {
+    return new Promise(function(resolve, reject) {
+        entry.remove(function() { 
+            // Fichier supprimé !
+            resolve();
+        }, function(err) {
+            reject(err);
+        }, function() {
+            reject("File not found");
+        });
+    });
+}
+
+/**
+ * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
+ * @param dirName string Chemin du répertoire
+ * @param callback NE PAS UTILISER. USAGE INTERNE.
+ * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
  */
 export function rmrf(dirName?: string, callback?: () => void, dirEntry?) : void {
     // Récupère le dossier dirName (ou la racine du système de fichiers)
@@ -324,6 +465,79 @@ export function rmrf(dirName?: string, callback?: () => void, dirEntry?) : void 
     }   
 }
 
+/**
+ * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
+ * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
+ * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
+ * @param dirName string Chemin du dossier à supprimer
+ * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
+ * @returns Promise Promesse tenue si suppression réussie, rompue sinon
+ */
+export function rmrfPromise(dirName: string, deleteSelf: boolean = false) : Promise<void> {
+    function rmrfFromEntry(dirEntry) : Promise<void> {
+        return new Promise(function(resolve, reject) {
+            const reader = dirEntry.createReader();
+            // Itère sur les entrées du répertoire via readEntries
+            reader.readEntries(function (entries) {
+                // Pour chaque entrée du dossier
+                const promises: Promise<void>[] = [];
+
+                for (const entry of entries) {
+                    promises.push(
+                        new Promise(function(resolve, reject) {
+                            if (entry.isDirectory) { 
+                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                                rmrfFromEntry(entry).then(function() {
+                                    // Quand c'est fini, on supprime le répertoire lui-même
+                                    // Puis on résout
+                                    removeFilePromise(entry).then(resolve).catch(reject)
+                                });
+                            }
+                            else {
+                                // Si c'est un fichier, on le supprime
+                                removeFilePromise(entry).then(resolve).catch(reject);
+                            }
+                        })
+                    );
+                }
+
+                // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
+                Promise.all(promises).then(function() {
+                    // Quand ils le sont, résout la promesse
+                    resolve();
+                }).catch(reject);
+            });
+        });
+    }
+
+    return new Promise(function(resolve, reject) {
+        getDir(
+            function(dirEntry) {
+                // Attends que tous les dossiers soient supprimés sous ce répertoire
+                rmrfFromEntry(dirEntry).then(function() {
+                    // Si on doit supprimer le dossier et que ce n'est pas la racine
+                    if (deleteSelf && dirName !== "") {
+                        // On supprime puis on résout
+                        removeFilePromise(dirEntry).then(resolve).catch(reject);
+                    }
+                    // On résout immédiatement
+                    else {
+                        resolve();
+                    }
+                }).catch(reject);
+            }, 
+            dirName, 
+            reject
+        );
+    });
+}
+
+/**
+ * Formate un objet Date en chaîne de caractères potable.
+ * @param date Date
+ * @param withTime boolean Détermine si la chaîne de caractères contient l'heure et les minutes
+ * @returns string La châine formatée
+ */
 export function formatDate(date: Date, withTime: boolean = false) : string {
     const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
     const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
@@ -333,6 +547,11 @@ export function formatDate(date: Date, withTime: boolean = false) : string {
     return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
 }
 
+/**
+ * Assigne la balise src de l'image element au contenu de l'image située dans path.
+ * @param path string
+ * @param element HTMLImageElement
+ */
 export function createImgSrc(path: string, element: HTMLImageElement) : void {
     const parts = path.split('/');
     const file_name = parts.pop();
