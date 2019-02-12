@@ -535,10 +535,10 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
                         const r = new FileReader();
             
                         r.onload = function() {
-                            writeFile('images/' + name, filename, new Blob([this.result]), function() {
+                            writeFile('form_data/' + name, filename, new Blob([this.result]), function() {
                                 // Enregistre le nom de l'image sauvegardée dans le formulaire, 
                                 // dans la valeur du champ fiel
-                                form_values.fields[(img as HTMLInputElement).name] = 'images/' + name + '/' + filename;
+                                form_values.fields[(img as HTMLInputElement).name] = 'form_data/' + name + '/' + filename;
     
                                 // Résout la promise
                                 resolve();
@@ -557,6 +557,7 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
                         r.readAsArrayBuffer(file);
                     }
                     else {
+                        form_values.fields[(img as HTMLInputElement).name] = null;
                         resolve();
                     }
                 })
@@ -576,7 +577,7 @@ function writeImagesThenForm(name: string, form_values: FormSave) : void {
                 console.log(error);
                 M.toast({html: "Impossible d'écrire le formulaire."});
             });
-    }, 'images');
+    }, 'form_data');
 }
 
 /**
@@ -637,7 +638,7 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     btn.classList.add('btn-flat', 'right', 'red-text');
     btn.innerText = "Enregistrer";
 
-    const current_form_key = Forms.getCurrentKey();
+    const current_form_key = Forms.current_key;
     btn.addEventListener('click', function() {
         saveForm(current_form_key);
     });

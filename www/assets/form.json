@@ -1,6 +1,7 @@
 {
     "cincle_plongeur": {
         "name": "Cincle plongeur",
+        "id_field": "ringnb",
         "fields": [ {
             "name": "title_general",
             "label": "Général",

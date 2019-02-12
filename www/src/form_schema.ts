@@ -24,6 +24,7 @@ Il peut être n'importe où dans le formulaire.
  */
 export interface Form {
     name: string;
+    id_field?: string; /* Indique le nom du champ qui sert à l'ID; Ne pas préciser si il n'y en a pas */
     fields: FormEntity[];
     locations: FormLocation[];
 }
@@ -80,7 +81,7 @@ export const Forms = new class {
     protected waiting_callee: FormCallback[] = [];
     protected available_forms: {[formName: string] : Form};
     protected current: Form = null;
-    protected current_key: string = null;
+    protected _current_key: string = null;
 
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
     // La clé du formulaire par défaut est contenu dans "default_form_name"
@@ -93,7 +94,7 @@ export const Forms = new class {
             // On enregistre le formulaire par défaut (si la clé définie existe)
             if (default_form_name in this.available_forms) {
                 this.current = this.available_forms[default_form_name]; 
-                this.current_key = default_form_name;
+                this._current_key = default_form_name;
             }
             else {
                 this.current = {name: null, fields: [], locations: []};
@@ -127,7 +128,20 @@ export const Forms = new class {
     changeForm(name: string) : void {
         if (this.formExists(name)) {
             this.current = this.available_forms[name]; 
-            this.current_key = name;
+            this._current_key = name;
+        }
+        else {
+            throw new Error("Form does not exists");
+        }
+    }
+
+    /**
+     * Renvoie un formulaire, sans modifier le courant
+     * @param name clé d'accès au formulaire
+     */
+    getForm(name: string) : Form {
+        if (this.formExists(name)) {
+            return this.available_forms[name];
         }
         else {
             throw new Error("Form does not exists");
@@ -151,8 +165,8 @@ export const Forms = new class {
         return tuples;
     }
 
-    getCurrentKey() : string {
-        return this.current_key;
+    get current_key() : string {
+        return this._current_key;
     }
 };
 

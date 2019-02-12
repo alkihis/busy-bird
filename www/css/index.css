@@ -89,6 +89,10 @@ main {
     margin-bottom: 0 !important;
 }
 
+.no-margin-top {
+    margin-top: 0 !important;
+}
+
 [type="checkbox"].filled-in + span:not(.lever):before, [type="checkbox"].filled-in + span:not(.lever):after  {
     margin-top: 2px;
 }
@@ -116,4 +120,9 @@ main {
 .vertical-center {
     margin-top: calc(40vh - 1.64rem);
     text-align: center;
+}
+
+.sidenav .background img {
+    width: 100%;
+    object-fit: cover;
 }

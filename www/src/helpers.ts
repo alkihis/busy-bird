@@ -30,12 +30,29 @@ export function initModal(options: M.ModalOptions | {} = {}, content?: string) :
     M.Modal.init(modal, options);
 }
 
+export function initBottomModal(options: M.ModalOptions | {} = {}, content?: string) : void {
+    const modal = getBottomModal();
+    
+    if (content)
+        modal.innerHTML = content;
+
+    M.Modal.init(modal, options);
+}
+
 export function getModal() : HTMLElement {
     return document.getElementById('modal_placeholder');
 }
 
+export function getBottomModal() : HTMLElement {
+    return document.getElementById('bottom_modal_placeholder');
+}
+
 export function getModalInstance() : M.Modal {
     return M.Modal.getInstance(getModal());
+}
+
+export function getBottomModalInstance() : M.Modal {
+    return M.Modal.getInstance(getBottomModal());
 }
 
 export function getPreloader(text: string) {
@@ -123,7 +140,7 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
     });
 }
 
-export function getDir(callback, dirName?: string, onError?) {
+export function getDir(callback, dirName: string = "", onError?) {
     // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
 
     // @ts-ignore
@@ -228,26 +245,26 @@ export function testDistance(latitude = 45.353421, longitude = 5.836441) {
     });
 }
 
+export function removeFile(entry, callback?: () => void) : void {
+    entry.remove(function() { 
+        // Fichier supprimé !
+        if (callback) callback();
+    }, function(err) {
+        console.log("error", err);
+        if (callback) callback();
+    }, function() {
+        console.log("file not found");
+        if (callback) callback();
+    });
+}
+
 /**
  * Delete all files in directory, recursively, without himself
  * @param dirName? 
  */
-export function rmrf(dirName?: string, callback?: () => void) : void {
-    function removeEntry(entry, callback?: () => void) {
-        entry.remove(function() { 
-            // Fichier supprimé !
-            if (callback) callback();
-        }, function(err) {
-            console.log("error", err);
-            if (callback) callback();
-        }, function() {
-            console.log("file not found");
-            if (callback) callback();
-        });
-    }
-
+export function rmrf(dirName?: string, callback?: () => void, dirEntry?) : void {
     // Récupère le dossier dirName (ou la racine du système de fichiers)
-    getDir(function(dirEntry) {
+    function readDirEntry(dirEntry) {
         const reader = dirEntry.createReader();
         // Itère sur les entrées du répertoire via readEntries
         reader.readEntries(function (entries) {
@@ -257,14 +274,32 @@ export function rmrf(dirName?: string, callback?: () => void) : void {
                     // Si c'est un dossier, on appelle rmrf sur celui-ci,
                     rmrf(entry.fullPath, function() {
                         // Puis on le supprime lui-même
-                        removeEntry(entry, callback);
+                        removeFile(entry, callback);
                     });
                 }
                 else {
                     // Si c'est un fichier, on le supprime
-                    removeEntry(entry, callback);
+                    removeFile(entry, callback);
                 }
             }
         });
-    }, dirName);
+    }
+
+    if (dirEntry) {
+        readDirEntry(dirEntry);
+    }
+    else {
+        getDir(readDirEntry, dirName, function() {
+            if (callback) callback();
+        });
+    }   
+}
+
+export function formatDate(date: Date, withTime: boolean = false) : string {
+    const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
+    const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+
+    const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+
+    return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
 }
