@@ -3380,13 +3380,18 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         //Ajouter verification avant d'ajouter bouton valider
         for (const input of document.getElementsByClassName('input-form-element')) {
             const i = input;
+            const label = document.querySelector(`label[for="${i.id}"]`);
+            let name = i.name;
+            if (label) {
+                name = label.textContent;
+            }
             if (input.tagName === "SELECT" && input.multiple) {
                 const selected = [...input.options].filter(option => option.selected).map(option => option.value);
                 if (selected.length == 0) {
                     console.log(i.name + " Input non valide");
                     let erreur = document.createElement("li");
                     erreur.classList.add("collection-item");
-                    let noeud = document.createTextNode(i.name + " non valide");
+                    let noeud = document.createTextNode(name + " non valide");
                     erreur.appendChild(noeud);
                     element_erreur.appendChild(erreur);
                 }
@@ -3395,7 +3400,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 if (!i.value) {
                     let erreur = document.createElement("li");
                     erreur.classList.add("collection-item");
-                    let noeud = document.createTextNode(i.name + " non valide");
+                    let noeud = document.createTextNode(name + " non valide");
                     erreur.appendChild(noeud);
                     element_erreur.appendChild(erreur);
                 }

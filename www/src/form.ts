@@ -524,11 +524,10 @@ function initFormSave(type: string): any {
     console.log("Demarrage initFormSave")
     // Ouverture du modal de verification
     const modal = getModal();
-
     initModal({ dismissible: false });
 
     modal.classList.add('modal-fixed-footer');
-    
+
     console.log("initmodal")
     getModalInstance().open();
     modal.innerHTML = getModalPreloader(
@@ -545,24 +544,32 @@ function initFormSave(type: string): any {
     //Ajouter verification avant d'ajouter bouton valider
     for (const input of document.getElementsByClassName('input-form-element')) {
         const i = input as HTMLInputElement;
+
+        const label = document.querySelector(`label[for="${i.id}"]`);
+
+        let name = i.name;
+        if (label) {
+          name = label.textContent;
+        }
+
         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
             const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
             if (selected.length == 0) {
                 console.log(i.name + " Input non valide");
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                let noeud = document.createTextNode(i.name + " non valide");
+                let noeud = document.createTextNode(name + " non valide");
                 erreur.appendChild(noeud);
-                element_erreur.appendChild( erreur);
+                element_erreur.appendChild(erreur);
             }
         }
         else if (i.type === "number") {
             if (!i.value) {
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                let noeud = document.createTextNode(i.name + " non valide");
+                let noeud = document.createTextNode(name + " non valide");
                 erreur.appendChild(noeud);
-                element_erreur.appendChild( erreur);
+                element_erreur.appendChild(erreur);
 
             }
         }
@@ -579,10 +586,10 @@ function initFormSave(type: string): any {
       </div>`;
 
     modal.append(footer);
-    document.getElementById("cancel_verif").onclick = function () {
+    document.getElementById("cancel_verif").onclick = function() {
         getModalInstance().close();
     };
-    document.getElementById("valid_verif").onclick = function () {
+    document.getElementById("valid_verif").onclick = function() {
         getModalInstance().close();
         const current_form_key = Forms.current_key;
         saveForm(current_form_key);
