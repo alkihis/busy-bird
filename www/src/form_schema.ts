@@ -108,7 +108,7 @@ export const Forms = new class {
         }, 'json');
     }
 
-    onReady(callback: FormCallback) : void {
+    public onReady(callback: FormCallback) : void {
         if (this.form_ready) {
             callback(this.available_forms, this.current);
         }
@@ -117,7 +117,7 @@ export const Forms = new class {
         }
     }
 
-    formExists(name: string) : boolean {
+    public formExists(name: string) : boolean {
         return name in this.available_forms;
     }
 
@@ -125,7 +125,7 @@ export const Forms = new class {
      * Change le formulaire courant renvoyé par onReady
      * @param name clé d'accès au formulaire
      */
-    changeForm(name: string) : void {
+    public changeForm(name: string) : void {
         if (this.formExists(name)) {
             this.current = this.available_forms[name]; 
             this._current_key = name;
@@ -139,7 +139,7 @@ export const Forms = new class {
      * Renvoie un formulaire, sans modifier le courant
      * @param name clé d'accès au formulaire
      */
-    getForm(name: string) : Form {
+    public getForm(name: string) : Form {
         if (this.formExists(name)) {
             return this.available_forms[name];
         }
@@ -154,7 +154,7 @@ export const Forms = new class {
      * et en seconde position son nom textuel à présenter à l'utilisateur
      * @returns [string, string][]
      */
-    getAvailableForms() : [string, string][] {
+    public getAvailableForms() : [string, string][] {
         const keys = Object.keys(this.available_forms);
         const tuples: [string, string][] = [];
 
@@ -165,7 +165,7 @@ export const Forms = new class {
         return tuples;
     }
 
-    get current_key() : string {
+    public get current_key() : string {
         return this._current_key;
     }
 };
