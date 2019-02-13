@@ -4,6 +4,7 @@ import Artyom from "./arytom/artyom";
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
 import { PageManager, AppPageName } from "./interface";
+import { Logger } from "./logger";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -540,7 +541,7 @@ function initFormSave(type: string): any {
     list_erreur.classList.add("modal-content");
     let element_erreur = document.createElement("ul");
     element_erreur.classList.add("collection")
-    list_erreur.append(element_erreur);
+    list_erreur.appendChild(element_erreur);
     //Ajouter verification avant d'ajouter bouton valider
     for (const input of document.getElementsByClassName('input-form-element')) {
         const i = input as HTMLInputElement;
@@ -585,7 +586,7 @@ function initFormSave(type: string): any {
     footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
       </div>`;
 
-    modal.append(footer);
+    modal.appendChild(footer);
     document.getElementById("cancel_verif").onclick = function() {
         getModalInstance().close();
     };
@@ -793,7 +794,13 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
 
     const current_form_key = Forms.current_key;
     btn.addEventListener('click', function() {
-        initFormSave(current_form_key);
+        try {
+            initFormSave(current_form_key);
+        } catch (e) {
+            Logger.error(JSON.stringify(e));
+            M.toast({html: e.message});
+        }
+        
       });
 
     base_block.appendChild(btn);

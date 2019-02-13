@@ -2958,7 +2958,7 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "form_schema", "helpers", "main", "interface"], function (require, exports, form_schema_2, helpers_6, main_2, interface_3) {
+define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger"], function (require, exports, form_schema_2, helpers_6, main_2, interface_3, logger_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3396,7 +3396,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         list_erreur.classList.add("modal-content");
         let element_erreur = document.createElement("ul");
         element_erreur.classList.add("collection");
-        list_erreur.append(element_erreur);
+        list_erreur.appendChild(element_erreur);
         //Ajouter verification avant d'ajouter bouton valider
         for (const input of document.getElementsByClassName('input-form-element')) {
             const i = input;
@@ -3436,7 +3436,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         footer.classList.add("modal-footer");
         footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
       </div>`;
-        modal.append(footer);
+        modal.appendChild(footer);
         document.getElementById("cancel_verif").onclick = function () {
             helpers_6.getModalInstance().close();
         };
@@ -3610,7 +3610,13 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         btn.innerText = "Enregistrer";
         const current_form_key = form_schema_2.Forms.current_key;
         btn.addEventListener('click', function () {
-            initFormSave(current_form_key);
+            try {
+                initFormSave(current_form_key);
+            }
+            catch (e) {
+                logger_3.Logger.error(JSON.stringify(e));
+                M.toast({ html: e.message });
+            }
         });
         base_block.appendChild(btn);
     }
