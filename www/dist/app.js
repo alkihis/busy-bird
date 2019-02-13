@@ -2992,7 +2992,58 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
      *  @param type
      */
     function initFormSave(type) {
-        // Démarre le modal
+        console.log("Demarrage initFormSave");
+        // Ouverture du modal de verification
+        const modal = helpers_4.getModal();
+        helpers_4.initModal({ dismissible: false });
+        console.log("initmodal");
+        helpers_4.getModalInstance().open();
+        modal.innerHTML = helpers_4.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
+            <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+        </div>`);
+        let list_erreur = document.createElement("div");
+        list_erreur.classList.add("row");
+        //Ajouter verification avant d'ajouter bouton valider
+        for (const input of document.getElementsByClassName('input-form-element')) {
+            const i = input;
+            if (input.tagName === "SELECT" && input.multiple) {
+                const selected = [...input.options].filter(option => option.selected).map(option => option.value);
+                if (selected.length == 0) {
+                    console.log(i.name + " Input non valide");
+                    list_erreur.id = 'erreur';
+                    let texte = document.createTextNode(i.name + " non valide");
+                    list_erreur.appendChild(texte);
+                    // Ajouter a return_erreur_valeur !!
+                }
+            }
+            else if (i.type === "number") {
+                if (i.value == undefined) {
+                    list_erreur.id = 'erreur';
+                    let texte = document.createTextNode(i.name + " non valide");
+                    list_erreur.appendChild(texte);
+                    // Ajouter a return_erreur_valeur !!
+                }
+            }
+            else {
+                console.log(i.name + i.value);
+            }
+        }
+        console.log(list_erreur);
+        modal.innerHTML = "";
+        modal.appendChild(list_erreur);
+        let footer = document.createElement("div");
+        footer.classList.add("modal-footer");
+        footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+      </div>`;
+        modal.append(footer);
+        document.getElementById("cancel_verif").onclick = function () {
+            helpers_4.getModalInstance().close();
+        };
+        document.getElementById("valid_verif").onclick = function () {
+            helpers_4.getModalInstance().close();
+            const current_form_key = form_schema_2.Forms.current_key;
+            saveForm(current_form_key);
+        };
         // Vérifie les champs invalides
         // Si champ invalide requis, affiche un message d'erreur avec champs à modifier
         // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
@@ -3058,11 +3109,11 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         const r = new FileReader();
                         r.onload = function () {
                             helpers_4.writeFile('form_data/' + name, filename, new Blob([this.result]), function () {
-                                // Enregistre le nom de l'image sauvegardée dans le formulaire, 
+                                // Enregistre le nom de l'image sauvegardée dans le formulaire,
                                 // dans la valeur du champ fiel
                                 form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
                                 if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                                    // Si une image était déjà présente 
+                                    // Si une image était déjà présente
                                     if (older_save.fields[input_name] !== form_values.fields[input_name]) {
                                         // Si l'image enregistrée est différente de l'image actuelle
                                         // Suppression de l'ancienne image
@@ -3158,7 +3209,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         btn.innerText = "Enregistrer";
         const current_form_key = form_schema_2.Forms.current_key;
         btn.addEventListener('click', function () {
-            saveForm(current_form_key);
+            initFormSave(current_form_key);
         });
         base_block.appendChild(btn);
     }
