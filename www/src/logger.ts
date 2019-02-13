@@ -32,8 +32,8 @@ export const Logger = new class {
             // Creates a new file or returns the file if it already exists.
             dirEntry.getFile("log.txt", {create: true}, (fileEntry) => {
                 this.fileEntry = fileEntry;
-                this.onWrite = false;
                 this.init_done = true;
+                this.onWrite = false;
 
                 let func: Function;
                 while (func = this.init_waiting_callee.pop()) {

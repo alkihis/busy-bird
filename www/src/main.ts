@@ -1,5 +1,5 @@
 import { PageManager, AppPageName } from "./interface";
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase } from "./helpers";
+import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase, base64ToBlob } from "./helpers";
 import { Logger } from "./logger";
 import { startRecorderModal } from "./audio_listener";
 
@@ -105,6 +105,10 @@ function initApp() {
     //         document.body.insertAdjacentText('beforeend', "Error while fetching coords" + JSON.stringify(error));
     //     });
     // })();
+
+    // base64ToBlob("data:application/octet-stream;base64,aXpqZGlvZWlvZmhvaQ==").then(function(blob) {
+    //     Logger.warn(blob.size.toString());
+    // });
 }
 
 function initDebug() {
