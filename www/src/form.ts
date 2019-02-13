@@ -525,35 +525,52 @@ function initFormSave(type: string): any {
     // Ouverture du modal de verification
     const modal = getModal();
     initModal({ dismissible: false });
+
+    modal.classList.add('modal-fixed-footer');
+
     console.log("initmodal")
     getModalInstance().open();
     modal.innerHTML = getModalPreloader(
         "Validation du formulaire...\nCeci peut prendre quelques secondes",
         `<div class="modal-footer">
-            <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+            <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`
     );
     let list_erreur = document.createElement("div");
-    list_erreur.classList.add("row")
+    list_erreur.classList.add("modal-content");
+    let element_erreur = document.createElement("ul");
+    element_erreur.classList.add("collection")
+    list_erreur.append(element_erreur);
     //Ajouter verification avant d'ajouter bouton valider
     for (const input of document.getElementsByClassName('input-form-element')) {
         const i = input as HTMLInputElement;
+
+        const label = document.querySelector(`label[for="${i.id}"]`);
+
+        let name = i.name;
+        if (label) {
+          name = label.textContent;
+        }
+
         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
             const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
             if (selected.length == 0) {
                 console.log(i.name + " Input non valide");
-                list_erreur.id = 'erreur';
-                let texte = document.createTextNode(i.name + " non valide");
-                list_erreur.appendChild(texte);
-                // Ajouter a return_erreur_valeur !!
+                let erreur = document.createElement("li");
+                erreur.classList.add("collection-item");
+                let noeud = document.createTextNode(name + " non valide");
+                erreur.appendChild(noeud);
+                element_erreur.appendChild(erreur);
             }
         }
         else if (i.type === "number") {
-            if (i.value == undefined) {
-                list_erreur.id = 'erreur';
-                let texte = document.createTextNode(i.name + " non valide");
-                list_erreur.appendChild(texte);
-                // Ajouter a return_erreur_valeur !!
+            if (!i.value) {
+                let erreur = document.createElement("li");
+                erreur.classList.add("collection-item");
+                let noeud = document.createTextNode(name + " non valide");
+                erreur.appendChild(noeud);
+                element_erreur.appendChild(erreur);
+
             }
         }
         else {
@@ -569,10 +586,10 @@ function initFormSave(type: string): any {
       </div>`;
 
     modal.append(footer);
-    document.getElementById("cancel_verif").onclick = function () {
+    document.getElementById("cancel_verif").onclick = function() {
         getModalInstance().close();
     };
-    document.getElementById("valid_verif").onclick = function () {
+    document.getElementById("valid_verif").onclick = function() {
         getModalInstance().close();
         const current_form_key = Forms.current_key;
         saveForm(current_form_key);
