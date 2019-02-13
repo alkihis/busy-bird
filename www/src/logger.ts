@@ -30,7 +30,7 @@ export const Logger = new class {
     public init() : void {
         getDir((dirEntry) => {
             // Creates a new file or returns the file if it already exists.
-            dirEntry.getFile("log.log", {create: true}, (fileEntry) => {
+            dirEntry.getFile("log.txt", {create: true}, (fileEntry) => {
                 this.fileEntry = fileEntry;
                 this.onWrite = false;
                 this.init_done = true;

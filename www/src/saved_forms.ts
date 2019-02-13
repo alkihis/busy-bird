@@ -1,6 +1,6 @@
 import { getDir, printObj, formatDate, rmrf, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
-import { PageManager } from "./interface";
+import { PageManager, AppPageName } from "./interface";
 import { constructForm, saveForm } from "./form";
 
 function editAForm(form: FormSave, name: string) {
@@ -197,7 +197,7 @@ function deleteForm(id: string, callback?: Function) {
         dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
             removeFile(fileEntry, function() {
                 M.toast({html: "Entrée supprimée."});
-                PageManager.changePage('saved');
+                PageManager.changePage(AppPageName.saved);
                 if (callback) callback();
             })
         }, function() {

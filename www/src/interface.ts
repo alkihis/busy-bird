@@ -12,7 +12,9 @@ interface AppPageObj {
     name: string;
 }
 
-export type AppPageName = "form" | "settings" | "saved" | "home";
+export enum AppPageName {
+    form = "form", settings = "settings", saved = "saved", home = "home"
+}
 
 export const PageManager = new class {
     /**
@@ -97,7 +99,8 @@ export const PageManager = new class {
 
         // Sauvegarde de la base actuelle dans le document fragment
         // Cela supprime immédiatement le noeud du DOM
-        const save = new DocumentFragment();
+        // const save = new DocumentFragment(); // semble être trop récent
+        const save = document.createDocumentFragment();
         save.appendChild(actual_base);
         // Insère la sauvegarde dans la pile de page
         this.pages_holder.push({save, name: document.getElementById('nav_title').innerText});
@@ -106,7 +109,7 @@ export const PageManager = new class {
         const new_base = document.createElement('div');
         new_base.id = "main_block";
 
-        // Insère la base à la racine de main
+        // Insère la nouvelle base vide à la racine de main
         document.getElementsByTagName('main')[0].appendChild(new_base);
 
         // Appelle la fonction pour charger la page demandée dans le bloc
@@ -119,7 +122,7 @@ export const PageManager = new class {
      */
     public popPage() : void {
         if (this.pages_holder.length === 0) {
-            this.changePage("home");
+            this.changePage(AppPageName.home);
             return;
         }
 

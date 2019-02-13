@@ -1,6 +1,7 @@
 import { PageManager, AppPageName } from "./interface";
 import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase } from "./helpers";
 import { Logger } from "./logger";
+import { startRecorderModal } from "./audio_listener";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -60,19 +61,19 @@ function initApp() {
     // Bind des éléments du sidenav
     // Home
     document.getElementById('nav_home').onclick = function() {
-        PageManager.changePage("home");
+        PageManager.changePage(AppPageName.home);
     };
     // Form
     document.getElementById('nav_form_new').onclick = function() {
-        PageManager.changePage("form");
+        PageManager.changePage(AppPageName.form);
     };
     // Saved
     document.getElementById('nav_form_saved').onclick = function() {
-        PageManager.changePage("saved");
+        PageManager.changePage(AppPageName.saved);
     };
     // Settigns
     document.getElementById('nav_settings').onclick = function() {
-        PageManager.changePage("settings");
+        PageManager.changePage(AppPageName.settings);
     };
 
     app.initialize();
@@ -92,8 +93,10 @@ function initApp() {
         PageManager.changePage(href as AppPageName);
     }
     else {
-        PageManager.changePage("home");
+        PageManager.changePage(AppPageName.home);
     }
+
+    // startRecorderModal()
     
     // (function() {
     //     getLocation(function(position: Position) {
@@ -116,7 +119,8 @@ function initDebug() {
         testDistance,
         rmrf,
         rmrfPromise,
-        Logger
+        Logger,
+        startRecorderModal
     };
 }
 

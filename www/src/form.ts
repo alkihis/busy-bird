@@ -3,7 +3,7 @@ import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from 
 import Artyom from "./arytom/artyom";
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
-import { PageManager } from "./interface";
+import { PageManager, AppPageName } from "./interface";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -655,10 +655,10 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
 
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
-                        PageManager.changePage('saved');
+                        PageManager.changePage(AppPageName.saved);
                     }
                     else {
-                        PageManager.changePage('form');
+                        PageManager.changePage(AppPageName.form);
                     }
                     
                     console.log(form_values);
@@ -735,7 +735,7 @@ function cancelGeoLocModal() : void {
     }
     else {
         // Sinon, on ramène à la page d'accueil
-        PageManager.changePage('home');
+        PageManager.changePage(AppPageName.home);
     }
 
     getModalInstance().close();
