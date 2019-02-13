@@ -112,7 +112,6 @@ export const Logger = new class {
         }
 
         this.fileEntry.createWriter((fileWriter) => {
-    
             fileWriter.onwriteend = () => {
                 this.onWrite = false;
             };
