@@ -521,62 +521,62 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
  *  @param type
  */
 function initFormSave(type: string): any {
-  console.log("Demarrage initFormSave")
-  // Ouverture du modal de verification
-  const modal = getModal();
-  initModal({dismissible : false});
-  console.log("initmodal")
-  getModalInstance().open();
-  modal.innerHTML = getModalPreloader(
-    "Validation du formulaire...\nCeci peut prendre quelques secondes",
-    `<div class="modal-footer">
+    console.log("Demarrage initFormSave")
+    // Ouverture du modal de verification
+    const modal = getModal();
+    initModal({ dismissible: false });
+    console.log("initmodal")
+    getModalInstance().open();
+    modal.innerHTML = getModalPreloader(
+        "Validation du formulaire...\nCeci peut prendre quelques secondes",
+        `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
         </div>`
-  );
-  let list_erreur = document.createElement("div");
-  list_erreur.classList.add("row")
-  //Ajouter verification avant d'ajouter bouton valider
-  for (const input of document.getElementsByClassName('input-form-element')) {
-    const i = input as HTMLInputElement;
-    if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
-      const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
-      if (selected.length == 0) {
-        console.log(i.name + " Input non valide");
-        list_erreur.id = 'erreur';
-        let texte = document.createTextNode(i.name + " non valide");
-        list_erreur.appendChild(texte);
-        // Ajouter a return_erreur_valeur !!
-      }
+    );
+    let list_erreur = document.createElement("div");
+    list_erreur.classList.add("row")
+    //Ajouter verification avant d'ajouter bouton valider
+    for (const input of document.getElementsByClassName('input-form-element')) {
+        const i = input as HTMLInputElement;
+        if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
+            const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
+            if (selected.length == 0) {
+                console.log(i.name + " Input non valide");
+                list_erreur.id = 'erreur';
+                let texte = document.createTextNode(i.name + " non valide");
+                list_erreur.appendChild(texte);
+                // Ajouter a return_erreur_valeur !!
+            }
+        }
+        else if (i.type === "number") {
+            if (i.value == undefined) {
+                list_erreur.id = 'erreur';
+                let texte = document.createTextNode(i.name + " non valide");
+                list_erreur.appendChild(texte);
+                // Ajouter a return_erreur_valeur !!
+            }
+        }
+        else {
+            console.log(i.name + i.value);
+        }
     }
-    else if (i.type === "number") {
-      if (i.value == undefined) {
-        list_erreur.id = 'erreur';
-        let texte = document.createTextNode(i.name + " non valide");
-        list_erreur.appendChild(texte);
-        // Ajouter a return_erreur_valeur !!
-      }
-    }
-    else {
-      console.log(i.name + i.value);
-    }
-  }
-  console.log(list_erreur);
-  modal.innerHTML = "";
-  modal.appendChild(list_erreur);
-  let footer = document.createElement("div");
-  footer.classList.add("modal-footer");
-  footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+    console.log(list_erreur);
+    modal.innerHTML = "";
+    modal.appendChild(list_erreur);
+    let footer = document.createElement("div");
+    footer.classList.add("modal-footer");
+    footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
       </div>`;
 
-  modal.append(footer);
-  document.getElementById("cancel_verif").onclick = function() {
-    getModalInstance().close();
-  };
-  document.getElementById("valid_verif").onclick = function() {
-    getModalInstance().close();
-    const current_form_key = Forms.current_key;
-    saveForm(current_form_key);
-  };
+    modal.append(footer);
+    document.getElementById("cancel_verif").onclick = function () {
+        getModalInstance().close();
+    };
+    document.getElementById("valid_verif").onclick = function () {
+        getModalInstance().close();
+        const current_form_key = Forms.current_key;
+        saveForm(current_form_key);
+    };
 
     // Vérifie les champs invalides
 
