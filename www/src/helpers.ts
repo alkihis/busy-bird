@@ -421,7 +421,7 @@ export function removeFilePromise(entry) : Promise<void> {
         }, function(err) {
             reject(err);
         }, function() {
-            reject("File not found");
+            resolve();
         });
     });
 }

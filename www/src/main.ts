@@ -1,5 +1,6 @@
-import { changePage, AppPages, AppPageName } from "./interface";
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise } from "./helpers";
+import { PageManager, AppPageName } from "./interface";
+import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase } from "./helpers";
+import { Logger } from "./logger";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -40,6 +41,18 @@ function initApp() {
     // Sinon, si mobile, on passe sur dataDirectory
     changeDir();
 
+    Logger.init();
+
+    // Initialise le bouton retour
+    document.addEventListener("backbutton", function() {
+        if (PageManager.isPageWaiting()) {
+            PageManager.popPage();
+        }
+        else {
+            // Do nothing
+        }
+    }, false);
+
     // Initialise le sidenav
     const elem = document.querySelector('.sidenav');
     SIDENAV_OBJ = M.Sidenav.init(elem, {});
@@ -47,19 +60,19 @@ function initApp() {
     // Bind des éléments du sidenav
     // Home
     document.getElementById('nav_home').onclick = function() {
-        changePage("home");
+        PageManager.changePage("home");
     };
     // Form
     document.getElementById('nav_form_new').onclick = function() {
-        changePage("form");
+        PageManager.changePage("form");
     };
     // Saved
     document.getElementById('nav_form_saved').onclick = function() {
-        changePage("saved");
+        PageManager.changePage("saved");
     };
     // Settigns
     document.getElementById('nav_settings').onclick = function() {
-        changePage("settings");
+        PageManager.changePage("settings");
     };
 
     app.initialize();
@@ -75,11 +88,11 @@ function initApp() {
         href = href[href.length - 1];
     }
 
-    if (href && href in AppPages) {
-        changePage(href as AppPageName);
+    if (href && PageManager.pageExists(href)) {
+        PageManager.changePage(href as AppPageName);
     }
     else {
-        changePage("home");
+        PageManager.changePage("home");
     }
     
     // (function() {
@@ -94,7 +107,7 @@ function initApp() {
 function initDebug() {
     
     window["DEBUG"] = {
-        changePage,
+        PageManager,
         readFromFile,
         listDir,
         saveDefaultForm,
@@ -102,7 +115,8 @@ function initDebug() {
         getLocation,
         testDistance,
         rmrf,
-        rmrfPromise
+        rmrfPromise,
+        Logger
     };
 }
 

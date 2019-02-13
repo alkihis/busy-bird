@@ -2078,7 +2078,7 @@ define("helpers", ["require", "exports"], function (require, exports) {
             }, function (err) {
                 reject(err);
             }, function () {
-                reject("File not found");
+                resolve();
             });
         });
     }
@@ -2373,7 +2373,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
             dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
                 helpers_1.removeFile(fileEntry, function () {
                     M.toast({ html: "Entrée supprimée." });
-                    interface_1.changePage('saved');
+                    interface_1.PageManager.changePage('saved');
                     if (callback)
                         callback();
                 });
@@ -2410,50 +2410,116 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
-    /**
-     * Déclaration des pages possibles
-     * Chaque clé de AppPages doit être une possibilité de AppPageName
-     */
-    exports.AppPages = {
-        form: {
-            name: "Nouvelle entrée",
-            callback: form_2.initFormPage
-        },
-        settings: {
-            name: "Paramètres",
-            callback: settings_page_1.initSettingsPage
-        },
-        saved: {
-            name: "Entrées",
-            callback: saved_forms_1.initSavedForm
-        },
-        home: {
-            name: "Accueil",
-            callback: initHomePage
+    exports.PageManager = new class {
+        constructor() {
+            /**
+             * Déclaration des pages possibles
+             * Chaque clé de AppPages doit être une possibilité de AppPageName
+             */
+            this.AppPages = {
+                form: {
+                    name: "Nouvelle entrée",
+                    callback: form_2.initFormPage
+                },
+                settings: {
+                    name: "Paramètres",
+                    callback: settings_page_1.initSettingsPage
+                },
+                saved: {
+                    name: "Entrées",
+                    callback: saved_forms_1.initSavedForm
+                },
+                home: {
+                    name: "Accueil",
+                    callback: initHomePage
+                }
+            };
+            this.pages_holder = [];
         }
-    };
-    /**
-     * Change l'affichage et charge la page "page" dans le bloc principal
-     * @param AppPageName page
-     */
-    function changePage(page) {
-        const base = helpers_2.getBase();
-        base.innerHTML = helpers_2.getPreloader("Chargement");
-        if (window.history) {
-            window.history.pushState({}, "", "/?" + page);
-        }
-        if (page in exports.AppPages) {
-            if (!exports.AppPages[page].not_sidenav_close) {
+        /**
+         * Change l'affichage et charge la page "page" dans le bloc principal
+         * @param AppPageName page
+         * @param delete_paused supprime les pages sauvegardées
+         */
+        changePage(page, delete_paused = true, additionnals) {
+            if (!this.pageExists(page)) {
+                throw new ReferenceError("Page does not exists");
+            }
+            // Si on veut supprimer les pages en attente, on vide le tableau
+            if (delete_paused) {
+                this.pages_holder = [];
+            }
+            // On écrit le preloader dans la base et on change l'historique
+            const base = helpers_2.getBase();
+            base.innerHTML = helpers_2.getPreloader("Chargement");
+            if (window.history) {
+                window.history.pushState({}, "", "/?" + page);
+            }
+            // Si on a demandé à fermer le sidenav, on le ferme
+            if (!this.AppPages[page].not_sidenav_close) {
                 main_1.SIDENAV_OBJ.close();
             }
-            exports.AppPages[page].callback(base);
-            document.getElementById('nav_title').innerText = exports.AppPages[page].name;
+            // On appelle la fonction de création de la page
+            this.AppPages[page].callback(base, additionnals);
+            // On met le titre de la page dans la barre de navigation
+            document.getElementById('nav_title').innerText = this.AppPages[page].name;
         }
-        else {
-            throw new ReferenceError("Page does not exists");
+        cleanWaitingPages() {
+            while (this.pages_holder.length >= 10) {
+                this.pages_holder.shift();
+            }
         }
-    }
-    exports.changePage = changePage;
+        /**
+         * Pousse une nouvelle page dans la pile de page
+         * @param page
+         */
+        pushPage(page, additionnals) {
+            if (!this.pageExists(page)) {
+                throw new ReferenceError("Page does not exists");
+            }
+            // Si il y a plus de 10 pages dans la pile, clean
+            this.cleanWaitingPages();
+            // Récupère le contenu actuel du bloc mère
+            const actual_base = helpers_2.getBase();
+            // Sauvegarde de la base actuelle dans le document fragment
+            // Cela supprime immédiatement le noeud du DOM
+            const save = new DocumentFragment();
+            save.appendChild(actual_base);
+            // Insère la sauvegarde dans la pile de page
+            this.pages_holder.push({ save, name: document.getElementById('nav_title').innerText });
+            // Crée la nouvelle base mère avec le même ID
+            const new_base = document.createElement('div');
+            new_base.id = "main_block";
+            // Insère la base à la racine de main
+            document.getElementsByTagName('main')[0].appendChild(new_base);
+            // Appelle la fonction pour charger la page demandée dans le bloc
+            this.changePage(page, false, additionnals);
+        }
+        /**
+         * Revient à la page précédente.
+         * Charge la page d'accueil si aucune page disponible
+         */
+        popPage() {
+            if (this.pages_holder.length === 0) {
+                this.changePage("home");
+                return;
+            }
+            // Récupère la dernière page poussée dans le tableau
+            const last_page = this.pages_holder.pop();
+            // Supprime le main actuel
+            helpers_2.getBase().remove();
+            // Met le fragment dans le DOM
+            document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
+            // Remet le bon titre
+            document.getElementById('nav_title').innerText = last_page.name;
+        }
+        pageExists(name) {
+            return name in this.AppPages;
+        }
+        isPageWaiting() {
+            return this.pages_holder.length > 0;
+        }
+    };
     function initHomePage(base) {
         base.innerHTML = "<h2 class='center'>" + exports.APP_NAME + "</h2>" + `
     <div class="container">
@@ -2470,7 +2536,250 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     }
     exports.initHomePage = initHomePage;
 });
-define("main", ["require", "exports", "interface", "helpers"], function (require, exports, interface_2, helpers_3) {
+define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_3) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // Objet Logger
+    // Sert à écrire dans un fichier de log formaté
+    // à la racine du système de fichiers
+    var LogLevel;
+    (function (LogLevel) {
+        LogLevel["debug"] = "debug";
+        LogLevel["info"] = "info";
+        LogLevel["warn"] = "warn";
+        LogLevel["error"] = "error";
+    })(LogLevel = exports.LogLevel || (exports.LogLevel = {}));
+    /**
+     * Logger
+     * Permet de logger dans un fichier texte des messages.
+     */
+    exports.Logger = new class {
+        constructor() {
+            this._onWrite = false;
+            this.delayed = [];
+            this.waiting_callee = [];
+            this.init_done = false;
+            this.init_waiting_callee = [];
+        }
+        /**
+         * Initialise le logger. Doit être réalisé après app.init() et changeDir().
+         * Pour vérifier si le logger est initialisé, utilisez onReady().
+         */
+        init() {
+            helpers_3.getDir((dirEntry) => {
+                // Creates a new file or returns the file if it already exists.
+                dirEntry.getFile("log.log", { create: true }, (fileEntry) => {
+                    this.fileEntry = fileEntry;
+                    this.onWrite = false;
+                    this.init_done = true;
+                    let func;
+                    while (func = this.init_waiting_callee.pop()) {
+                        func();
+                    }
+                }, function (err) {
+                    console.log("Unable to create file log.", err);
+                });
+            }, null, function (err) {
+                console.log("Unable to enable log.", err);
+            });
+        }
+        /**
+         * Vrai si le logger est prêt à écrire / lire dans le fichier de log.
+         */
+        isInit() {
+            return this.init_done;
+        }
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger est prêt à recevoir des instructions.
+         * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
+         */
+        onReady(callback) {
+            const oninit = new Promise((resolve, reject) => {
+                if (this.isInit()) {
+                    resolve();
+                }
+                else {
+                    this.init_waiting_callee.push(resolve);
+                }
+            });
+            if (callback) {
+                oninit.then(callback);
+            }
+            else {
+                return oninit;
+            }
+        }
+        get onWrite() {
+            return this._onWrite;
+        }
+        set onWrite(value) {
+            this._onWrite = value;
+            if (!value && this.delayed.length) {
+                // On lance une tâche "delayed" avec le premier élément de la liste (le premier inséré)
+                this.write(...this.delayed.shift());
+            }
+            else if (!value && this.waiting_callee.length) {
+                // Si il n'y a aucune tâche en attente, on peut lancer les waiting function
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func();
+                }
+            }
+        }
+        /**
+         * Écrit dans le fichier de log le contenu de text avec le niveau level.
+         * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
+         * Si level vaut debug, rien ne sera affiché dans la console.
+         * @param text Message
+         * @param level Niveau de log
+         */
+        write(text, level = LogLevel.warn) {
+            // Create a FileWriter object for our FileEntry (log.txt).
+            if (!this.isInit()) {
+                this.delayWrite(text, level);
+                return;
+            }
+            this.fileEntry.createWriter((fileWriter) => {
+                fileWriter.onwriteend = () => {
+                    this.onWrite = false;
+                };
+                fileWriter.onerror = (e) => {
+                    console.log("Logger: Failed file write: " + e.toString());
+                    this.onWrite = false;
+                };
+                // Append to file
+                try {
+                    fileWriter.seek(fileWriter.length);
+                }
+                catch (e) {
+                    console.log("Logger: File doesn't exist!", e);
+                    return;
+                }
+                if (!this.onWrite) {
+                    text = this.createDateHeader(level) + " " + text;
+                    if (level === LogLevel.info) {
+                        console.log(text);
+                    }
+                    else if (level === LogLevel.warn) {
+                        console.warn(text);
+                    }
+                    else if (level === LogLevel.error) {
+                        console.error(text);
+                    }
+                    text += "\n";
+                    this.onWrite = true;
+                    fileWriter.write(new Blob([text]));
+                }
+                else {
+                    this.delayWrite(text, level);
+                }
+            });
+        }
+        /**
+         * Crée une date formatée
+         * @param level
+         */
+        createDateHeader(level) {
+            const date = new Date();
+            const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
+            const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+            const hour = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
+            const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+            const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
+            return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
+        }
+        delayWrite(text, level) {
+            this.delayed.push([text, level]);
+        }
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger a fini toutes ses opérations d'écriture.
+         * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
+         */
+        onWriteEnd(callbackSuccess) {
+            const onwriteend = new Promise((resolve, reject) => {
+                if (!this.onWrite && this.isInit()) {
+                    resolve();
+                }
+                else {
+                    this.waiting_callee.push(resolve);
+                }
+            });
+            if (callbackSuccess) {
+                onwriteend.then(callbackSuccess);
+            }
+            else {
+                return onwriteend;
+            }
+        }
+        /**
+         * Vide le fichier de log.
+         * @returns Promise La promesse est résolue quand le fichier est vidé, rompue si échec
+         */
+        clearLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
+                }
+                this.fileEntry.createWriter((fileWriter) => {
+                    fileWriter.onwriteend = () => {
+                        this.onWrite = false;
+                        resolve();
+                    };
+                    fileWriter.onerror = (e) => {
+                        console.log("Logger: Failed to truncate.");
+                        this.onWrite = false;
+                        reject();
+                    };
+                    if (!this.onWrite) {
+                        fileWriter.truncate(0);
+                    }
+                    else {
+                        console.log("Please call this function when log is not writing.");
+                        reject();
+                    }
+                });
+            });
+        }
+        /**
+         * Affiche tout le contenu du fichier de log dans la console via console.log()
+         * @returns Promise La promesse est résolue avec le contenu du fichier si lecture réussie, rompue si échec
+         */
+        consoleLogLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
+                }
+                this.fileEntry.file(function (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = function () {
+                        console.log(this.result);
+                        resolve(this.result);
+                    };
+                    reader.readAsText(file);
+                }, function () {
+                    console.log("Logger: Unable to open file.");
+                    reject();
+                });
+            });
+        }
+        /// Méthodes d'accès rapide
+        debug(text) {
+            this.write(text, LogLevel.debug);
+        }
+        info(text) {
+            this.write(text, LogLevel.info);
+        }
+        warn(text) {
+            this.write(text, LogLevel.warn);
+        }
+        error(text) {
+            this.write(text, LogLevel.error);
+        }
+    };
+});
+define("main", ["require", "exports", "interface", "helpers", "logger"], function (require, exports, interface_2, helpers_4, logger_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -2508,30 +2817,40 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
         // Change le répertoire de données
         // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
         // Sinon, si mobile, on passe sur dataDirectory
-        helpers_3.changeDir();
+        helpers_4.changeDir();
+        logger_1.Logger.init();
+        // Initialise le bouton retour
+        document.addEventListener("backbutton", function () {
+            if (interface_2.PageManager.isPageWaiting()) {
+                interface_2.PageManager.popPage();
+            }
+            else {
+                // Do nothing
+            }
+        }, false);
         // Initialise le sidenav
         const elem = document.querySelector('.sidenav');
         exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
         // Bind des éléments du sidenav
         // Home
         document.getElementById('nav_home').onclick = function () {
-            interface_2.changePage("home");
+            interface_2.PageManager.changePage("home");
         };
         // Form
         document.getElementById('nav_form_new').onclick = function () {
-            interface_2.changePage("form");
+            interface_2.PageManager.changePage("form");
         };
         // Saved
         document.getElementById('nav_form_saved').onclick = function () {
-            interface_2.changePage("saved");
+            interface_2.PageManager.changePage("saved");
         };
         // Settigns
         document.getElementById('nav_settings').onclick = function () {
-            interface_2.changePage("settings");
+            interface_2.PageManager.changePage("settings");
         };
         exports.app.initialize();
         initDebug();
-        helpers_3.initModal();
+        helpers_4.initModal();
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
@@ -2539,11 +2858,11 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
             // Récupère la partie de l'URL après la query string et avant le #
             href = href[href.length - 1];
         }
-        if (href && href in interface_2.AppPages) {
-            interface_2.changePage(href);
+        if (href && interface_2.PageManager.pageExists(href)) {
+            interface_2.PageManager.changePage(href);
         }
         else {
-            interface_2.changePage("home");
+            interface_2.PageManager.changePage("home");
         }
         // (function() {
         //     getLocation(function(position: Position) {
@@ -2555,20 +2874,21 @@ define("main", ["require", "exports", "interface", "helpers"], function (require
     }
     function initDebug() {
         window["DEBUG"] = {
-            changePage: interface_2.changePage,
-            readFromFile: helpers_3.readFromFile,
-            listDir: helpers_3.listDir,
-            saveDefaultForm: helpers_3.saveDefaultForm,
-            createDir: helpers_3.createDir,
-            getLocation: helpers_3.getLocation,
-            testDistance: helpers_3.testDistance,
-            rmrf: helpers_3.rmrf,
-            rmrfPromise: helpers_3.rmrfPromise
+            PageManager: interface_2.PageManager,
+            readFromFile: helpers_4.readFromFile,
+            listDir: helpers_4.listDir,
+            saveDefaultForm: helpers_4.saveDefaultForm,
+            createDir: helpers_4.createDir,
+            getLocation: helpers_4.getLocation,
+            testDistance: helpers_4.testDistance,
+            rmrf: helpers_4.rmrf,
+            rmrfPromise: helpers_4.rmrfPromise,
+            Logger: logger_1.Logger
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "form_schema", "helpers", "main", "interface"], function (require, exports, form_schema_2, helpers_4, main_2, interface_3) {
+define("form", ["require", "exports", "form_schema", "helpers", "main", "interface"], function (require, exports, form_schema_2, helpers_5, main_2, interface_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2919,7 +3239,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_4.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_5.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -3034,7 +3354,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 form_values.fields[i.name] = i.value;
             }
         }
-        writeImagesThenForm(force_name || helpers_4.generateId(20), form_values, form_save);
+        writeImagesThenForm(force_name || helpers_5.generateId(20), form_values, form_save);
     }
     exports.saveForm = saveForm;
     /**
@@ -3043,7 +3363,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
      * @param name Nom du formulaire (sans le .json)
      */
     function writeImagesThenForm(name, form_values, older_save) {
-        helpers_4.getDir(function () {
+        helpers_5.getDir(function () {
             // Crée le dossier images si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
@@ -3057,7 +3377,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         const filename = file.name;
                         const r = new FileReader();
                         r.onload = function () {
-                            helpers_4.writeFile('form_data/' + name, filename, new Blob([this.result]), function () {
+                            helpers_5.writeFile('form_data/' + name, filename, new Blob([this.result]), function () {
                                 // Enregistre le nom de l'image sauvegardée dans le formulaire, 
                                 // dans la valeur du champ fiel
                                 form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
@@ -3069,7 +3389,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                                         const parts = older_save.fields[input_name].split('/');
                                         const file_name = parts.pop();
                                         const dir_name = parts.join('/');
-                                        helpers_4.removeFileByName(dir_name, file_name);
+                                        helpers_5.removeFileByName(dir_name, file_name);
                                     }
                                 }
                                 // Résout la promise
@@ -3100,14 +3420,14 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             Promise.all(promises)
                 .then(function () {
                 // On écrit enfin le formulaire !
-                helpers_4.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
+                helpers_5.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
-                        interface_3.changePage('saved');
+                        interface_3.PageManager.changePage('saved');
                     }
                     else {
-                        interface_3.changePage('form');
+                        interface_3.PageManager.changePage('form');
                     }
                     console.log(form_values);
                 });
@@ -3171,20 +3491,20 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         }
         else {
             // Sinon, on ramène à la page d'accueil
-            interface_3.changePage('home');
+            interface_3.PageManager.changePage('home');
         }
-        helpers_4.getModalInstance().close();
-        helpers_4.getModal().classList.remove('modal-fixed-footer');
+        helpers_5.getModalInstance().close();
+        helpers_5.getModal().classList.remove('modal-fixed-footer');
     }
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_4.getModal();
-        helpers_4.initModal({
+        const modal = helpers_5.getModal();
+        helpers_5.initModal({
             dismissible: false
         });
         // Ouvre le modal et insère un chargeur
-        helpers_4.getModalInstance().open();
-        modal.innerHTML = helpers_4.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        helpers_5.getModalInstance().open();
+        modal.innerHTML = helpers_5.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -3199,7 +3519,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             locationSelector(modal, current_form.locations, false);
         };
         // Cherche la localisation et remplit le modal
-        helpers_4.getLocation(function (coords) {
+        helpers_5.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords);
         }, function () {
@@ -3284,7 +3604,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 lieux_dispo.push({
                     name: lieu.name,
                     label: lieu.label,
-                    distance: helpers_4.calculateDistance(current_location.coords, lieu)
+                    distance: helpers_5.calculateDistance(current_location.coords, lieu)
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -3338,7 +3658,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 loc_input.dataset.reallocation = labels_to_name[input.value];
-                helpers_4.getModalInstance().close();
+                helpers_5.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
