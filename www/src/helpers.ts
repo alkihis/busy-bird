@@ -579,6 +579,6 @@ export function blobToBase64(blob) : Promise<string> {
     });
 }
 
-export function base64ToBlob(str: string) : Promise<Blob> {
+export function urlToBlob(str: string) : Promise<Blob> {
     return fetch(str).then(res => res.blob());
 }

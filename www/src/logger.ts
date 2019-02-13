@@ -104,7 +104,7 @@ export const Logger = new class {
      * @param text Message
      * @param level Niveau de log
      */
-    public write(text: string, level: LogLevel = LogLevel.warn) : void {
+    public write(text: any, level: LogLevel = LogLevel.warn) : void {
         // Create a FileWriter object for our FileEntry (log.txt).
         if (!this.isInit()) {
             this.delayWrite(text, level);
@@ -131,7 +131,7 @@ export const Logger = new class {
             }
 
             if (!this.onWrite) {
-                text = this.createDateHeader(level) + " " + text;
+
 
                 if (level === LogLevel.info) {
                     console.log(text);
@@ -142,7 +142,7 @@ export const Logger = new class {
                 else if (level === LogLevel.error) {
                     console.error(text);
                 }
-
+                text = this.createDateHeader(level) + " " + JSON.stringify(text);
                 text += "\n";
 
                 this.onWrite = true;
@@ -171,7 +171,7 @@ export const Logger = new class {
         return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
     }
 
-    protected delayWrite(text: string, level: LogLevel) : void {
+    protected delayWrite(text: any, level: LogLevel) : void {
         this.delayed.push([text, level]);
     }
 
@@ -258,19 +258,19 @@ export const Logger = new class {
     }
 
     /// Méthodes d'accès rapide
-    public debug(text: string) : void {
+    public debug(text: any) : void {
         this.write(text, LogLevel.debug);
     }
 
-    public info(text: string) : void {
+    public info(text: any) : void {
         this.write(text, LogLevel.info);
     }
 
-    public warn(text: string) : void {
+    public warn(text: any) : void {
         this.write(text, LogLevel.warn);
     }
 
-    public error(text: string) : void {
+    public error(text: any) : void {
         this.write(text, LogLevel.error);
     }
 };

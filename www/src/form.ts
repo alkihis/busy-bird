@@ -5,6 +5,7 @@ import { getLocation, getModal, getModalInstance, calculateDistance, getModalPre
 import { MAX_LIEUX_AFFICHES } from "./main";
 import { PageManager, AppPageName } from "./interface";
 import { Logger } from "./logger";
+import { newModalRecord } from "./audio_listener";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -474,6 +475,32 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             placeh.appendChild(wrapper);
         }
 
+        if (ele.type === FormEntityType.audio) {
+            // Création d'un bouton pour enregistrer du son
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('input-field', 'row', 'col', 's12');
+
+            const button = document.createElement('button');
+            button.classList.add('btn', 'blue', 'col', 's12');
+
+            button.innerText = ele.label;
+            button.type = "button";
+
+            const real_input = document.createElement('input');
+            real_input.type = "hidden";
+
+            fillStandardInputValues(real_input, ele);
+
+            button.addEventListener('click', function() {
+                // Crée un modal qui sert à enregistrer de l'audio
+                newModalRecord(button, real_input, ele); 
+            });
+
+            wrapper.appendChild(button);
+            wrapper.appendChild(real_input);
+            element_to_add = wrapper;
+        }
+
         if (ele.type === FormEntityType.slider) {
             const wrapper = document.createElement('div');
             const label = document.createElement('label');
@@ -798,10 +825,8 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
             initFormSave(current_form_key);
         } catch (e) {
             Logger.error(JSON.stringify(e));
-            M.toast({html: e.message});
         }
-        
-      });
+    });
 
     base_block.appendChild(btn);
 }

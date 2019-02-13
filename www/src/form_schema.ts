@@ -66,7 +66,8 @@ interface SelectOption {
  */
 export enum FormEntityType {
     integer = "integer", float = "float", select = "select", string = "string", bigstring = "textarea", 
-    checkbox = "checkbox", file = "file", slider = "slider", datetime = "datetime", divider = "divider"
+    checkbox = "checkbox", file = "file", slider = "slider", datetime = "datetime", divider = "divider",
+    audio = "audio"
 }
 
 // Clé du JSON à charger automatiquement

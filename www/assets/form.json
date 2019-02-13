@@ -364,8 +364,8 @@
             "tip_on_invalid": "Doit être compris entre 10 et 200."
         }, {
             "name": "card_rythm",
-            "label": "Mesure du rythme cardiaque",
-            "type": "checkbox"
+            "label": "Rythme cardiaque",
+            "type": "audio"
         }, {
             "name": "feathers",
             "label": "Prises de plumes",

@@ -1,7 +1,6 @@
 import { PageManager, AppPageName } from "./interface";
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase, base64ToBlob } from "./helpers";
+import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase } from "./helpers";
 import { Logger } from "./logger";
-import { startRecorderModal } from "./audio_listener";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -95,20 +94,6 @@ function initApp() {
     else {
         PageManager.changePage(AppPageName.home);
     }
-
-    // startRecorderModal()
-    
-    // (function() {
-    //     getLocation(function(position: Position) {
-    //         document.body.insertAdjacentText('beforeend', `Lat: ${position.coords.latitude}; long: ${position.coords.longitude}`);
-    //     }, function(error) {
-    //         document.body.insertAdjacentText('beforeend', "Error while fetching coords" + JSON.stringify(error));
-    //     });
-    // })();
-
-    // base64ToBlob("data:application/octet-stream;base64,aXpqZGlvZWlvZmhvaQ==").then(function(blob) {
-    //     Logger.warn(blob.size.toString());
-    // });
 }
 
 function initDebug() {
@@ -123,8 +108,7 @@ function initDebug() {
         testDistance,
         rmrf,
         rmrfPromise,
-        Logger,
-        startRecorderModal
+        Logger
     };
 }
 

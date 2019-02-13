@@ -141,3 +141,11 @@ main {
 .image-form-wrapper {
     width: 100%;
 }
+
+.modal-record-audio-player figure {
+    margin: 1em 0px;
+}
+
+.modal-record-audio-player audio {
+    max-width: 100%;
+}
