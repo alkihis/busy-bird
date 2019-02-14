@@ -45,10 +45,13 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
     btn_confirm.onclick = function() {
         if (audioContent) {
             input.value = audioContent;
+            input.dataset.duration = ((blobSize / 256000) * 8).toString();
 
             // Met à jour le bouton
             const duration = (blobSize / 256000) * 8;
-            button.innerText = ele.label + " (" + duration.toFixed(0) + "s" + ")";
+            button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+            button.classList.remove('blue');
+            button.classList.add('green');
         }
         
         instance.close();

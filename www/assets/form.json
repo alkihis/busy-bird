@@ -32,7 +32,8 @@
             "name": "ringnb",
             "label": "Numéro de bague",
             "type": "string",
-            "placeholder": "Composé de chiffres et de lettres"
+            "placeholder": "Composé de chiffres et de lettres",
+            "required": true
         }, {
             "name": "new",
             "label": "Individu nouveau",

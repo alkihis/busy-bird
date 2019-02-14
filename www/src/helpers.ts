@@ -153,7 +153,7 @@ export function changeDir() {
 }
 
 let DIR_ENTRY = null;
-export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function) {
+export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) {
     // @ts-ignore
     const pathToFile = FOLDER + fileName;
     // @ts-ignore
@@ -165,7 +165,12 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
                 callback(this.result);
             };
 
-            reader.readAsText(file);
+            if (asBase64) {
+                reader.readAsDataURL(file);
+            }
+            else {
+                reader.readAsText(file);
+            }
         }, function() {
             if (callbackIfFailed) {
                 callbackIfFailed();

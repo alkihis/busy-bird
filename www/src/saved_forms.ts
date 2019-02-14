@@ -1,4 +1,4 @@
-import { getDir, printObj, formatDate, rmrf, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase } from "./helpers";
+import { getDir, printObj, formatDate, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./interface";
 import { constructForm, saveForm } from "./form";
@@ -177,7 +177,12 @@ function modalDeleteForm(id: string) {
 
     const instance = getBottomModalInstance();
     document.getElementById('delete_form_modal').onclick = function() {
-        deleteForm(id, function() {
+        deleteForm(id).then(function() {
+            M.toast({html: "Entrée supprimée."});
+            PageManager.changePage(AppPageName.saved);
+            instance.close();
+        }).catch(function(err) {
+            M.toast({html: "Impossible de supprimer: " + err});
             instance.close();
         });
     };
@@ -185,25 +190,31 @@ function modalDeleteForm(id: string) {
     instance.open();
 }
 
-function deleteForm(id: string, callback?: Function) {
+function deleteForm(id: string) : Promise<void> {
     if (id.match(/\.json$/)) {
         id = id.substring(0, id.length - 5);
     }
 
-    // Supprime toutes les données (images, sons...) liées au formulaire
-    rmrf('form_data/' + id);
-
-    getDir(function(dirEntry) {
-        dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-            removeFile(fileEntry, function() {
-                M.toast({html: "Entrée supprimée."});
-                PageManager.changePage(AppPageName.saved);
-                if (callback) callback();
-            })
-        }, function() {
-            console.log("Impossible de supprimer");
-        });
-    }, 'forms');
+    return new Promise(function(resolve, reject) {
+        if (id) {
+            // Supprime toutes les données (images, sons...) liées au formulaire
+            rmrfPromise('form_data/' + id, true).catch(err => err).then(function() {
+                getDir(function(dirEntry) {
+                    dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
+                        removeFilePromise(fileEntry).then(function() {
+                            resolve();
+                        }).catch(reject);
+                    }, function() {
+                        console.log("Impossible de supprimer");
+                        reject("Impossible de supprimer");
+                    });
+                }, 'forms', reject);
+            });
+        }
+        else {
+            reject("ID invalide");
+        }
+    });
 }
 
 export function initSavedForm(base: HTMLElement) {

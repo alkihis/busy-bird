@@ -147,5 +147,13 @@ main {
 }
 
 .modal-record-audio-player audio {
-    max-width: 100%;
+    width: 100%;
+}
+
+.btn-perso {
+    border-radius: 5px;
+    text-transform: inherit;
+    height: fit-content;
+    line-height: 1.5em;
+    padding: 8px 0 !important;
 }

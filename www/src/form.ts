@@ -1,7 +1,7 @@
 import { test_jarvis, Jarvis } from "./test_aytom";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
 import { PageManager, AppPageName } from "./interface";
 import { Logger } from "./logger";
@@ -478,18 +478,48 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         if (ele.type === FormEntityType.audio) {
             // Création d'un bouton pour enregistrer du son
             const wrapper = document.createElement('div');
-            wrapper.classList.add('input-field', 'row', 'col', 's12');
+            wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
+
+            const label = document.createElement('p');
+            label.classList.add('no-margin-top');
+            label.innerText = ele.label;
+            wrapper.appendChild(label);
 
             const button = document.createElement('button');
-            button.classList.add('btn', 'blue', 'col', 's12');
+            button.classList.add('btn', 'blue', 'col', 's12', 'btn-perso');
 
-            button.innerText = ele.label;
+            button.innerText = "Enregistrement audio"
             button.type = "button";
 
             const real_input = document.createElement('input');
             real_input.type = "hidden";
+            real_input.classList.add('input-audio-element');
 
-            fillStandardInputValues(real_input, ele);
+            // Création d'un label vide pour l'input
+            const hidden_label = document.createElement('label');
+
+            fillStandardInputValues(real_input, ele, hidden_label);
+            hidden_label.classList.add('hide');
+            wrapper.appendChild(hidden_label);
+
+            ////// Définition si un fichier son existe déjà
+            if (filled_form && ele.name in filled_form.fields) {
+                readFromFile(
+                    filled_form.fields[ele.name] as string, 
+                    function(base64) {
+                        button.classList.remove('blue');
+                        button.classList.add('green');
+                        real_input.value = base64;
+                        const duration = ((base64.length * 0.7) / 256000) * 8;
+                        button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                    },
+                    function(fail) {
+                        console.log("Impossible de charger le fichier", fail);
+                    },
+                    true
+                );
+            }
+            ////// Fin
 
             button.addEventListener('click', function() {
                 // Crée un modal qui sert à enregistrer de l'audio
@@ -679,8 +709,35 @@ export function saveForm(type: string, force_name?: string, form_save?: FormSave
  * @param name Nom du formulaire (sans le .json)
  */
 function writeImagesThenForm(name: string, form_values: FormSave, older_save?: FormSave) : void {
+    function saveBlobToFile(resolve, reject, filename: string, input_name: string, blob: Blob) : void {
+        writeFile('form_data/' + name, filename, blob, function() {
+            // Enregistre le nom du fichier sauvegardé dans le formulaire,
+            // dans la valeur du champ field
+            form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+
+            if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                // Si une image était déjà présente
+                if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                    // Si le fichier enregistré est différent du fichier actuel
+                    // Suppression de l'ancienne image
+                    const parts = (older_save.fields[input_name] as string).split('/');
+                    const file_name = parts.pop();
+                    const dir_name = parts.join('/');
+                    removeFileByName(dir_name, file_name);
+                }
+            }
+
+            // Résout la promise
+            resolve();
+        }, function(error) {
+            // Erreur d'écriture du fichier => on rejette
+            M.toast({html: "Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage."});
+            reject(error);
+        });
+    }
+
     getDir(function() {
-        // Crée le dossier images si besoin
+        // Crée le dossier form_data si besoin
 
         // Récupère les images du formulaire
         const images_from_form = document.getElementsByClassName('input-image-element');
@@ -700,30 +757,7 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                         const r = new FileReader();
 
                         r.onload = function() {
-                            writeFile('form_data/' + name, filename, new Blob([this.result]), function() {
-                                // Enregistre le nom de l'image sauvegardée dans le formulaire,
-                                // dans la valeur du champ fiel
-                                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
-
-                                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                                    // Si une image était déjà présente
-                                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                                        // Si l'image enregistrée est différente de l'image actuelle
-                                        // Suppression de l'ancienne image
-                                        const parts = (older_save.fields[input_name] as string).split('/');
-                                        const file_name = parts.pop();
-                                        const dir_name = parts.join('/');
-                                        removeFileByName(dir_name, file_name);
-                                    }
-                                }
-
-                                // Résout la promise
-                                resolve();
-                            }, function(error) {
-                                // Erreur d'écriture du fichier => on rejette
-                                M.toast({html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage."});
-                                reject(error);
-                            });
+                            saveBlobToFile(resolve, reject, filename, input_name, new Blob([this.result]));
                         }
 
                         r.onerror = function(error) {
@@ -732,6 +766,36 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                         }
 
                         r.readAsArrayBuffer(file);
+                    }
+                    else {
+                        if (older_save && input_name in older_save.fields) {
+                            form_values.fields[input_name] = older_save.fields[input_name];
+                        }
+                        else {
+                            form_values.fields[input_name] = null;
+                        }
+
+                        resolve();
+                    }
+                })
+            );
+        }
+        
+        // Récupère les données audio du formulaire
+        const audio_from_form = document.getElementsByClassName('input-audio-element');
+
+        for (const audio of audio_from_form) {
+            promises.push(
+                new Promise(function(resolve, reject) {
+                    const file = (audio as HTMLInputElement).value;
+                    const input_name = (audio as HTMLInputElement).name;
+
+                    if (file) {
+                        const filename = generateId(20) + '.mp3';
+
+                        urlToBlob(file).then(function(blob) {
+                            saveBlobToFile(resolve, reject, filename, input_name, blob);
+                        });
                     }
                     else {
                         if (older_save && input_name in older_save.fields) {

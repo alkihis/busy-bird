@@ -156,7 +156,7 @@ define("helpers", ["require", "exports"], function (require, exports) {
     }
     exports.changeDir = changeDir;
     let DIR_ENTRY = null;
-    function readFromFile(fileName, callback, callbackIfFailed) {
+    function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
         // @ts-ignore
         const pathToFile = FOLDER + fileName;
         // @ts-ignore
@@ -166,7 +166,12 @@ define("helpers", ["require", "exports"], function (require, exports) {
                 reader.onloadend = function (e) {
                     callback(this.result);
                 };
-                reader.readAsText(file);
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
             }, function () {
                 if (callbackIfFailed) {
                     callbackIfFailed();
@@ -722,9 +727,12 @@ define("audio_listener", ["require", "exports", "helpers"], function (require, e
         btn_confirm.onclick = function () {
             if (audioContent) {
                 input.value = audioContent;
+                input.dataset.duration = ((blobSize / 256000) * 8).toString();
                 // Met à jour le bouton
                 const duration = (blobSize / 256000) * 8;
-                button.innerText = ele.label + " (" + duration.toFixed(0) + "s" + ")";
+                button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                button.classList.remove('blue');
+                button.classList.add('green');
             }
             instance.close();
             // Clean le modal et donc les variables associées
@@ -2468,30 +2476,41 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         `);
         const instance = helpers_2.getBottomModalInstance();
         document.getElementById('delete_form_modal').onclick = function () {
-            deleteForm(id, function () {
+            deleteForm(id).then(function () {
+                M.toast({ html: "Entrée supprimée." });
+                interface_1.PageManager.changePage(interface_1.AppPageName.saved);
+                instance.close();
+            }).catch(function (err) {
+                M.toast({ html: "Impossible de supprimer: " + err });
                 instance.close();
             });
         };
         instance.open();
     }
-    function deleteForm(id, callback) {
+    function deleteForm(id) {
         if (id.match(/\.json$/)) {
             id = id.substring(0, id.length - 5);
         }
-        // Supprime toutes les données (images, sons...) liées au formulaire
-        helpers_2.rmrf('form_data/' + id);
-        helpers_2.getDir(function (dirEntry) {
-            dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                helpers_2.removeFile(fileEntry, function () {
-                    M.toast({ html: "Entrée supprimée." });
-                    interface_1.PageManager.changePage(interface_1.AppPageName.saved);
-                    if (callback)
-                        callback();
+        return new Promise(function (resolve, reject) {
+            if (id) {
+                // Supprime toutes les données (images, sons...) liées au formulaire
+                helpers_2.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_2.getDir(function (dirEntry) {
+                        dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
+                            helpers_2.removeFilePromise(fileEntry).then(function () {
+                                resolve();
+                            }).catch(reject);
+                        }, function () {
+                            console.log("Impossible de supprimer");
+                            reject("Impossible de supprimer");
+                        });
+                    }, 'forms', reject);
                 });
-            }, function () {
-                console.log("Impossible de supprimer");
-            });
-        }, 'forms');
+            }
+            else {
+                reject("ID invalide");
+            }
+        });
     }
     function initSavedForm(base) {
         const placeholder = document.createElement('ul');
@@ -3389,14 +3408,36 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             if (ele.type === form_schema_2.FormEntityType.audio) {
                 // Création d'un bouton pour enregistrer du son
                 const wrapper = document.createElement('div');
-                wrapper.classList.add('input-field', 'row', 'col', 's12');
+                wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
+                const label = document.createElement('p');
+                label.classList.add('no-margin-top');
+                label.innerText = ele.label;
+                wrapper.appendChild(label);
                 const button = document.createElement('button');
-                button.classList.add('btn', 'blue', 'col', 's12');
-                button.innerText = ele.label;
+                button.classList.add('btn', 'blue', 'col', 's12', 'btn-perso');
+                button.innerText = "Enregistrement audio";
                 button.type = "button";
                 const real_input = document.createElement('input');
                 real_input.type = "hidden";
-                fillStandardInputValues(real_input, ele);
+                real_input.classList.add('input-audio-element');
+                // Création d'un label vide pour l'input
+                const hidden_label = document.createElement('label');
+                fillStandardInputValues(real_input, ele, hidden_label);
+                hidden_label.classList.add('hide');
+                wrapper.appendChild(hidden_label);
+                ////// Définition si un fichier son existe déjà
+                if (filled_form && ele.name in filled_form.fields) {
+                    helpers_6.readFromFile(filled_form.fields[ele.name], function (base64) {
+                        button.classList.remove('blue');
+                        button.classList.add('green');
+                        real_input.value = base64;
+                        const duration = ((base64.length * 0.7) / 256000) * 8;
+                        button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                    }, function (fail) {
+                        console.log("Impossible de charger le fichier", fail);
+                    }, true);
+                }
+                ////// Fin
                 button.addEventListener('click', function () {
                     // Crée un modal qui sert à enregistrer de l'audio
                     audio_listener_1.newModalRecord(button, real_input, ele);
@@ -3556,8 +3597,32 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
      * @param name Nom du formulaire (sans le .json)
      */
     function writeImagesThenForm(name, form_values, older_save) {
+        function saveBlobToFile(resolve, reject, filename, input_name, blob) {
+            helpers_6.writeFile('form_data/' + name, filename, blob, function () {
+                // Enregistre le nom du fichier sauvegardé dans le formulaire,
+                // dans la valeur du champ field
+                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                    // Si une image était déjà présente
+                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                        // Si le fichier enregistré est différent du fichier actuel
+                        // Suppression de l'ancienne image
+                        const parts = older_save.fields[input_name].split('/');
+                        const file_name = parts.pop();
+                        const dir_name = parts.join('/');
+                        helpers_6.removeFileByName(dir_name, file_name);
+                    }
+                }
+                // Résout la promise
+                resolve();
+            }, function (error) {
+                // Erreur d'écriture du fichier => on rejette
+                M.toast({ html: "Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
+                reject(error);
+            });
+        }
         helpers_6.getDir(function () {
-            // Crée le dossier images si besoin
+            // Crée le dossier form_data si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
             // Sauvegarde les images !
@@ -3570,34 +3635,36 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         const filename = file.name;
                         const r = new FileReader();
                         r.onload = function () {
-                            helpers_6.writeFile('form_data/' + name, filename, new Blob([this.result]), function () {
-                                // Enregistre le nom de l'image sauvegardée dans le formulaire,
-                                // dans la valeur du champ fiel
-                                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
-                                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                                    // Si une image était déjà présente
-                                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                                        // Si l'image enregistrée est différente de l'image actuelle
-                                        // Suppression de l'ancienne image
-                                        const parts = older_save.fields[input_name].split('/');
-                                        const file_name = parts.pop();
-                                        const dir_name = parts.join('/');
-                                        helpers_6.removeFileByName(dir_name, file_name);
-                                    }
-                                }
-                                // Résout la promise
-                                resolve();
-                            }, function (error) {
-                                // Erreur d'écriture du fichier => on rejette
-                                M.toast({ html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
-                                reject(error);
-                            });
+                            saveBlobToFile(resolve, reject, filename, input_name, new Blob([this.result]));
                         };
                         r.onerror = function (error) {
                             // Erreur de lecture du fichier => on rejette
                             reject(error);
                         };
                         r.readAsArrayBuffer(file);
+                    }
+                    else {
+                        if (older_save && input_name in older_save.fields) {
+                            form_values.fields[input_name] = older_save.fields[input_name];
+                        }
+                        else {
+                            form_values.fields[input_name] = null;
+                        }
+                        resolve();
+                    }
+                }));
+            }
+            // Récupère les données audio du formulaire
+            const audio_from_form = document.getElementsByClassName('input-audio-element');
+            for (const audio of audio_from_form) {
+                promises.push(new Promise(function (resolve, reject) {
+                    const file = audio.value;
+                    const input_name = audio.name;
+                    if (file) {
+                        const filename = helpers_6.generateId(20) + '.mp3';
+                        helpers_6.urlToBlob(file).then(function (blob) {
+                            saveBlobToFile(resolve, reject, filename, input_name, blob);
+                        });
                     }
                     else {
                         if (older_save && input_name in older_save.fields) {
