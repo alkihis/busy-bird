@@ -3617,13 +3617,6 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         list_erreur.appendChild(element_erreur);
         //Ajouter verification avant d'ajouter bouton valider
         let erreur_critique = false;
-        //Code pour ajouter limite et precision
-        // const contraintes: any = {};
-        // if (element.dataset.constraints)
-        //     element.dataset.constraints.split(';').map((e: string) => {
-        //         const [name, value] = e.split('=');
-        //         contraintes[name] = value;
-        //     });
         //Parcours tous les elements remplits ou non
         for (const input of document.getElementsByClassName('input-form-element')) {
             //Attribution du label plutot que son nom interne
@@ -3633,6 +3626,17 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             if (label) {
                 name = label.textContent;
             }
+            ;
+            //Definition des limite et precision
+            console.log("definition des contraintes");
+            const contraintes = {};
+            if (i.dataset.constraints) {
+                i.dataset.constraints.split(';').map((e) => {
+                    const [name, value] = e.split('=');
+                    contraintes[name] = value;
+                });
+            }
+            console.log(contraintes);
             //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
             if (i.required && !i.value) {
                 let erreur = document.createElement("li");
