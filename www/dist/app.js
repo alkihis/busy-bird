@@ -4,1052 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 // Lance main.ts
 require(['main']);
-define("helpers", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    // PRELOADERS: spinners for waiting time
-    exports.PRELOADER_BASE = `
-<div class="spinner-layer spinner-blue-only">
-    <div class="circle-clipper left">
-        <div class="circle"></div>
-    </div><div class="gap-patch">
-        <div class="circle"></div>
-    </div><div class="circle-clipper right">
-        <div class="circle"></div>
-    </div>
-</div>`;
-    exports.PRELOADER = `
-<div class="preloader-wrapper active">
-    ${exports.PRELOADER_BASE}
-</div>`;
-    exports.SMALL_PRELOADER = `
-<div class="preloader-wrapper small active">
-    ${exports.PRELOADER_BASE}
-</div>`;
-    /**
-     * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
-     */
-    function getBase() {
-        return document.getElementById('main_block');
-    }
-    exports.getBase = getBase;
-    /**
-     * Initialise le modal simple avec les options données (voir doc.)
-     * et insère de l'HTML dedans avec content
-     * @returns M.Modal Instance du modal instancié avec Materialize
-     */
-    function initModal(options = {}, content) {
-        const modal = getModal();
-        modal.classList.remove('modal-fixed-footer');
-        if (content)
-            modal.innerHTML = content;
-        return M.Modal.init(modal, options);
-    }
-    exports.initModal = initModal;
-    /**
-     * Initialise le modal collé en bas avec les options données (voir doc.)
-     * et insère de l'HTML dedans avec content
-     * @returns M.Modal Instance du modal instancié avec Materialize
-     */
-    function initBottomModal(options = {}, content) {
-        const modal = getBottomModal();
-        if (content)
-            modal.innerHTML = content;
-        return M.Modal.init(modal, options);
-    }
-    exports.initBottomModal = initBottomModal;
-    /**
-     * @returns HTMLElement Élément HTML racine du modal
-     */
-    function getModal() {
-        return document.getElementById('modal_placeholder');
-    }
-    exports.getModal = getModal;
-    /**
-     * @returns HTMLElement Élément HTML racine du modal fixé en bas
-     */
-    function getBottomModal() {
-        return document.getElementById('bottom_modal_placeholder');
-    }
-    exports.getBottomModal = getBottomModal;
-    /**
-     * @returns M.Modal Instance du modal (doit être initialisé)
-     */
-    function getModalInstance() {
-        return M.Modal.getInstance(getModal());
-    }
-    exports.getModalInstance = getModalInstance;
-    /**
-     * @returns M.Modal Instance du modal fixé en bas (doit être initialisé)
-     */
-    function getBottomModalInstance() {
-        return M.Modal.getInstance(getBottomModal());
-    }
-    exports.getBottomModalInstance = getBottomModalInstance;
-    /**
-     * Génère un spinner centré sur l'écran avec un message d'attente
-     * @param text Texte à insérer comme message de chargement
-     * @returns string HTML à insérer
-     */
-    function getPreloader(text) {
-        return `
-    <center style="margin-top: 35vh;">
-        ${exports.PRELOADER}
-    </center>
-    <center class="flow-text" style="margin-top: 10px">${text}</center>
-    `;
-    }
-    exports.getPreloader = getPreloader;
-    /**
-     * Génère un spinner adapté à un modal avec un message d'attente
-     * @param text Texte à insérer comme message de chargement
-     * @returns string HTML à insérer dans la racine d'un modal
-     */
-    function getModalPreloader(text, footer) {
-        return `<div class="modal-content">
-    <center>
-        ${exports.SMALL_PRELOADER}
-    </center>
-    <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
-    </div>
-    ${footer}
-    `;
-    }
-    exports.getModalPreloader = getModalPreloader;
-    // dec2hex :: Integer -> String
-    function dec2hex(dec) {
-        return ('0' + dec.toString(16)).substr(-2);
-    }
-    /**
-     * Génère un identifiant aléatoire
-     * @param len Longueur de l'ID
-     */
-    function generateId(len) {
-        const arr = new Uint8Array((len || 40) / 2);
-        window.crypto.getRandomValues(arr);
-        return Array.from(arr, dec2hex).join('');
-    }
-    exports.generateId = generateId;
-    // USELESS
-    function saveDefaultForm() {
-        // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
-    }
-    exports.saveDefaultForm = saveDefaultForm;
-    // @ts-ignore 
-    // Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
-    // utilise le répertoire data (partition /data) de Android
-    let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
-    /**
-     * Change le répertoire actif en fonction de la plateforme et l'insère dans FOLDER.
-     * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
-     */
-    function changeDir() {
-        // @ts-ignore
-        if (device.platform === "browser") {
-            FOLDER = "cdvfile://localhost/temporary/";
-        }
-        // @ts-ignore
-        else if (device.platform === "iOS") {
-            // @ts-ignore
-            FOLDER = cordova.file.dataDirectory;
-        }
-    }
-    exports.changeDir = changeDir;
-    let DIR_ENTRY = null;
-    function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
-        // @ts-ignore
-        const pathToFile = FOLDER + fileName;
-        // @ts-ignore
-        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-            fileEntry.file(function (file) {
-                const reader = new FileReader();
-                reader.onloadend = function (e) {
-                    callback(this.result);
-                };
-                if (asBase64) {
-                    reader.readAsDataURL(file);
-                }
-                else {
-                    reader.readAsText(file);
-                }
-            }, function () {
-                if (callbackIfFailed) {
-                    callbackIfFailed();
-                }
-                else {
-                    console.log("not readable");
-                }
-            });
-        }, function () {
-            if (callbackIfFailed) {
-                callbackIfFailed();
-            }
-            else {
-                console.log("not found");
-            }
-        });
-    }
-    exports.readFromFile = readFromFile;
-    /**
-     * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
-     * Sans dirName, renvoie la racine du système de fichiers.
-     * @param callback Function(dirEntry) => void
-     * @param dirName string
-     * @param onError Function(error) => void
-     */
-    function getDir(callback, dirName = "", onError) {
-        function callGetDirEntry(dirEntry) {
-            DIR_ENTRY = dirEntry;
-            if (dirName) {
-                dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
-                    if (callback) {
-                        callback(newEntry);
-                    }
-                }, (err) => {
-                    console.log("Unable to create dir");
-                    if (onError) {
-                        onError(err);
-                    }
-                });
-            }
-            else if (callback) {
-                callback(dirEntry);
-            }
-        }
-        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
-        if (DIR_ENTRY === null) {
-            // @ts-ignore
-            window.resolveLocalFileSystemURL(FOLDER, callGetDirEntry, (err) => {
-                console.log("Persistent not available", err.message);
-                if (onError) {
-                    onError(err);
-                }
-            });
-        }
-        else {
-            callGetDirEntry(DIR_ENTRY);
-        }
-    }
-    exports.getDir = getDir;
-    /**
-     * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
-     * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
-     * @param dirName string
-     * @param fileName string
-     * @param blob Blob
-     * @param callback Function() => void
-     * @param onFailure Function(error) => void | Généralement, error est une DOMException
-     */
-    function writeFile(dirName, fileName, blob, callback, onFailure) {
-        getDir(function (dirEntry) {
-            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                write(fileEntry, blob).then(function () {
-                    if (callback) {
-                        callback();
-                    }
-                }).catch(error => { if (onFailure)
-                    onFailure(error); });
-            }, function (err) { console.log("Error in writing file", err.message); if (onFailure) {
-                onFailure(err);
-            } });
-        }, dirName);
-        function write(fileEntry, dataObj) {
-            // Prend l'entry du fichier et son blob à écrire en paramètre
-            return new Promise(function (resolve, reject) {
-                // Fonction pour écrire le fichier après vidage
-                function finally_write() {
-                    fileEntry.createWriter(function (fileWriter) {
-                        fileWriter.onerror = function (e) {
-                            reject(e);
-                        };
-                        fileWriter.onwriteend = null;
-                        fileWriter.write(dataObj);
-                        fileWriter.onwriteend = function () {
-                            resolve();
-                        };
-                    });
-                }
-                // Vide le fichier
-                fileEntry.createWriter(function (fileWriter) {
-                    fileWriter.onerror = function (e) {
-                        reject(e);
-                    };
-                    // Vide le fichier
-                    fileWriter.truncate(0);
-                    // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
-                    fileWriter.onwriteend = finally_write;
-                });
-            });
-        }
-    }
-    exports.writeFile = writeFile;
-    /**
-     * Crée un dossier name dans la racine du système de fichiers.
-     * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
-     * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
-     * Si échec, appelle onError avec l'erreur
-     * @param name string
-     * @param onSuccess Function(dirEntry) => void
-     * @param onError Function(error: DOMException) => void
-     */
-    function createDir(name, onSuccess, onError) {
-        getDir(function (dirEntry) {
-            dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
-        });
-    }
-    exports.createDir = createDir;
-    /**
-     * Fonction de test.
-     * Affiche les entrées du répertoire path dans la console.
-     * Par défaut, affiche la racine du système de fichiers.
-     * @param path string
-     */
-    function listDir(path = "") {
-        // @ts-ignore
-        getDir(function (fileSystem) {
-            const reader = fileSystem.createReader();
-            reader.readEntries(function (entries) {
-                console.log(entries);
-            }, function (err) {
-                console.log(err);
-            });
-        }, path);
-    }
-    exports.listDir = listDir;
-    /**
-     * Fonction de test.
-     * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
-     * @param ele HTMLElement
-     * @param obj any
-     */
-    function printObj(ele, obj) {
-        ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
-    }
-    exports.printObj = printObj;
-    /**
-     * Obtient la localisation de l'utilisation.
-     * Si réussi, onSuccess est appelée avec en paramètre un objet de type Position
-     * @param onSuccess Function(coords: Position) => void
-     * @param onFailed Function(error) => void
-     */
-    function getLocation(onSuccess, onFailed) {
-        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
-    }
-    exports.getLocation = getLocation;
-    /**
-     * Calcule la distance en mètres entre deux coordonnées GPS.
-     * Les deux objets passés doivent implémenter l'interface CoordsLike
-     * @param coords1 CoordsLike
-     * @param coords2 CoordsLike
-     * @returns number Nombre de mètres entre les deux coordonnées
-     */
-    function calculateDistance(coords1, coords2) {
-        // @ts-ignore
-        return geolib.getDistance({ latitude: coords1.latitude, longitude: coords1.longitude }, { latitude: coords2.latitude, longitude: coords2.longitude });
-    }
-    exports.calculateDistance = calculateDistance;
-    /**
-     * Fonction de test pour tester la géolocalisation.
-     * @param latitude
-     * @param longitude
-     */
-    function testDistance(latitude = 45.353421, longitude = 5.836441) {
-        getLocation(function (res) {
-            console.log(calculateDistance(res.coords, { latitude, longitude }));
-        }, function (error) {
-            console.log(error);
-        });
-    }
-    exports.testDistance = testDistance;
-    /**
-     * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
-     * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
-     * @param dirName string
-     * @param fileName string
-     * @param callback Function() => void Fonction appelée quand le fichier est supprimé
-     */
-    function removeFileByName(dirName, fileName, callback) {
-        getDir(function (dirEntry) {
-            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                removeFile(fileEntry, callback);
-            });
-        }, dirName);
-    }
-    exports.removeFileByName = removeFileByName;
-    /**
-     * Supprime un fichier via son fileEntry
-     * @param entry fileEntry
-     * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
-     */
-    function removeFile(entry, callback) {
-        entry.remove(function () {
-            // Fichier supprimé !
-            if (callback)
-                callback();
-        }, function (err) {
-            console.log("error", err);
-            if (callback)
-                callback(err);
-        }, function () {
-            console.log("file not found");
-            if (callback)
-                callback(false);
-        });
-    }
-    exports.removeFile = removeFile;
-    /**
-     * Supprime un fichier via son fileEntry
-     * @param entry fileEntry
-     * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
-     */
-    function removeFilePromise(entry) {
-        return new Promise(function (resolve, reject) {
-            entry.remove(function () {
-                // Fichier supprimé !
-                resolve();
-            }, function (err) {
-                reject(err);
-            }, function () {
-                resolve();
-            });
-        });
-    }
-    exports.removeFilePromise = removeFilePromise;
-    /**
-     * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
-     * @param dirName string Chemin du répertoire
-     * @param callback NE PAS UTILISER. USAGE INTERNE.
-     * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
-     */
-    function rmrf(dirName, callback, dirEntry) {
-        // Récupère le dossier dirName (ou la racine du système de fichiers)
-        function readDirEntry(dirEntry) {
-            const reader = dirEntry.createReader();
-            // Itère sur les entrées du répertoire via readEntries
-            reader.readEntries(function (entries) {
-                // Pour chaque entrée du dossier
-                for (const entry of entries) {
-                    if (entry.isDirectory) {
-                        // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                        rmrf(entry.fullPath, function () {
-                            // Puis on le supprime lui-même
-                            removeFile(entry, callback);
-                        });
-                    }
-                    else {
-                        // Si c'est un fichier, on le supprime
-                        removeFile(entry, callback);
-                    }
-                }
-            });
-        }
-        if (dirEntry) {
-            readDirEntry(dirEntry);
-        }
-        else {
-            getDir(readDirEntry, dirName, function () {
-                if (callback)
-                    callback();
-            });
-        }
-    }
-    exports.rmrf = rmrf;
-    /**
-     * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
-     * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
-     * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
-     * @param dirName string Chemin du dossier à supprimer
-     * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
-     * @returns Promise Promesse tenue si suppression réussie, rompue sinon
-     */
-    function rmrfPromise(dirName, deleteSelf = false) {
-        function rmrfFromEntry(dirEntry) {
-            return new Promise(function (resolve, reject) {
-                const reader = dirEntry.createReader();
-                // Itère sur les entrées du répertoire via readEntries
-                reader.readEntries(function (entries) {
-                    // Pour chaque entrée du dossier
-                    const promises = [];
-                    for (const entry of entries) {
-                        promises.push(new Promise(function (resolve, reject) {
-                            if (entry.isDirectory) {
-                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                                rmrfFromEntry(entry).then(function () {
-                                    // Quand c'est fini, on supprime le répertoire lui-même
-                                    // Puis on résout
-                                    removeFilePromise(entry).then(resolve).catch(reject);
-                                });
-                            }
-                            else {
-                                // Si c'est un fichier, on le supprime
-                                removeFilePromise(entry).then(resolve).catch(reject);
-                            }
-                        }));
-                    }
-                    // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
-                    Promise.all(promises).then(function () {
-                        // Quand ils le sont, résout la promesse
-                        resolve();
-                    }).catch(reject);
-                });
-            });
-        }
-        return new Promise(function (resolve, reject) {
-            getDir(function (dirEntry) {
-                // Attends que tous les dossiers soient supprimés sous ce répertoire
-                rmrfFromEntry(dirEntry).then(function () {
-                    // Si on doit supprimer le dossier et que ce n'est pas la racine
-                    if (deleteSelf && dirName !== "") {
-                        // On supprime puis on résout
-                        removeFilePromise(dirEntry).then(resolve).catch(reject);
-                    }
-                    // On résout immédiatement
-                    else {
-                        resolve();
-                    }
-                }).catch(reject);
-            }, dirName, reject);
-        });
-    }
-    exports.rmrfPromise = rmrfPromise;
-    /**
-     * Formate un objet Date en chaîne de caractères potable.
-     * @param date Date
-     * @param withTime boolean Détermine si la chaîne de caractères contient l'heure et les minutes
-     * @returns string La châine formatée
-     */
-    function formatDate(date, withTime = false) {
-        const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
-        const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
-        const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
-        return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
-    }
-    exports.formatDate = formatDate;
-    /**
-     * Assigne la balise src de l'image element au contenu de l'image située dans path.
-     * @param path string
-     * @param element HTMLImageElement
-     */
-    function createImgSrc(path, element) {
-        const parts = path.split('/');
-        const file_name = parts.pop();
-        const dir_name = parts.join('/');
-        getDir(function (dirEntry) {
-            dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
-                element.src = fileEntry.toURL();
-            });
-        }, dir_name);
-    }
-    exports.createImgSrc = createImgSrc;
-    function blobToBase64(blob) {
-        const reader = new FileReader();
-        return new Promise(function (resolve, reject) {
-            reader.onload = function () {
-                resolve(reader.result);
-            };
-            reader.onerror = function (e) {
-                reject(e);
-            };
-            reader.readAsDataURL(blob);
-        });
-    }
-    exports.blobToBase64 = blobToBase64;
-    function urlToBlob(str) {
-        return fetch(str).then(res => res.blob());
-    }
-    exports.urlToBlob = urlToBlob;
-});
-////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
-/*
-{
-    "nom_formel/clé_du_formulaire": {
-        "name": "Nom réel (possiblement à afficher à l'écran)"
-        "fields": [
-            {}: FormEntity
-        ],
-        "locations": [
-            {}: FormLocation
-        ]
-    },
-    "nom_d_un_autre_formulaire": Form
-}
-
-Le formulaire DOIT comporter un champ de type "datetime",
-nommé "__date__" pour être affiché correctement dans
-la liste des formulaires enregistrés.
-Il peut être n'importe où dans le formulaire.
-*/
-define("form_schema", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Type à préciser dans le JSON, clé "type"
-     * Le type à préciser est la chaîne de caractères
-     */
-    var FormEntityType;
-    (function (FormEntityType) {
-        FormEntityType["integer"] = "integer";
-        FormEntityType["float"] = "float";
-        FormEntityType["select"] = "select";
-        FormEntityType["string"] = "string";
-        FormEntityType["bigstring"] = "textarea";
-        FormEntityType["checkbox"] = "checkbox";
-        FormEntityType["file"] = "file";
-        FormEntityType["slider"] = "slider";
-        FormEntityType["datetime"] = "datetime";
-        FormEntityType["divider"] = "divider";
-        FormEntityType["audio"] = "audio";
-    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    // Clé du JSON à charger automatiquement
-    exports.default_form_name = "cincle_plongeur";
-    // Classe contenant le formulaire JSON chargé et parsé
-    exports.Forms = new class {
-        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
-        // La clé du formulaire par défaut est contenu dans "default_form_name"
-        constructor() {
-            this.form_ready = false;
-            this.waiting_callee = [];
-            this.current = null;
-            this._current_key = null;
-            $.get('assets/form.json', {}, (json) => {
-                // Le JSON est reçu, on l'enregistre dans available_forms
-                this.available_forms = json;
-                // On met le form à ready
-                this.form_ready = true;
-                // On enregistre le formulaire par défaut (si la clé définie existe)
-                if (exports.default_form_name in this.available_forms) {
-                    this.current = this.available_forms[exports.default_form_name];
-                    this._current_key = exports.default_form_name;
-                }
-                else {
-                    this.current = { name: null, fields: [], locations: [] };
-                }
-                // On exécute les fonctions en attente
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func(this.available_forms, this.current);
-                }
-            }, 'json');
-        }
-        onReady(callback) {
-            if (this.form_ready) {
-                callback(this.available_forms, this.current);
-            }
-            else {
-                this.waiting_callee.push(callback);
-            }
-        }
-        formExists(name) {
-            return name in this.available_forms;
-        }
-        /**
-         * Change le formulaire courant renvoyé par onReady
-         * @param name clé d'accès au formulaire
-         */
-        changeForm(name) {
-            if (this.formExists(name)) {
-                this.current = this.available_forms[name];
-                this._current_key = name;
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Renvoie un formulaire, sans modifier le courant
-         * @param name clé d'accès au formulaire
-         */
-        getForm(name) {
-            if (this.formExists(name)) {
-                return this.available_forms[name];
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Retourne un tableau de tuples contenant en
-         * première position la clé d'accès au formulaire,
-         * et en seconde position son nom textuel à présenter à l'utilisateur
-         * @returns [string, string][]
-         */
-        getAvailableForms() {
-            const keys = Object.keys(this.available_forms);
-            const tuples = [];
-            for (const key of keys) {
-                tuples.push([key, this.available_forms[key].name]);
-            }
-            return tuples;
-        }
-        get current_key() {
-            return this._current_key;
-        }
-    };
-});
-define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    // Objet Logger
-    // Sert à écrire dans un fichier de log formaté
-    // à la racine du système de fichiers
-    var LogLevel;
-    (function (LogLevel) {
-        LogLevel["debug"] = "debug";
-        LogLevel["info"] = "info";
-        LogLevel["warn"] = "warn";
-        LogLevel["error"] = "error";
-    })(LogLevel = exports.LogLevel || (exports.LogLevel = {}));
-    /**
-     * Logger
-     * Permet de logger dans un fichier texte des messages.
-     */
-    exports.Logger = new class {
-        constructor() {
-            this._onWrite = false;
-            this.delayed = [];
-            this.waiting_callee = [];
-            this.init_done = false;
-            this.init_waiting_callee = [];
-            this.tries = 5;
-        }
-        /**
-         * Initialise le logger. Doit être réalisé après app.init() et changeDir().
-         * Pour vérifier si le logger est initialisé, utilisez onReady().
-         */
-        init() {
-            this.init_done = false;
-            if (this.tries === 0) {
-                console.error("Too many init tries. Logger stays uninitialized.");
-                return;
-            }
-            this.tries--;
-            helpers_1.getDir((dirEntry) => {
-                // Creates a new file or returns the file if it already exists.
-                dirEntry.getFile("log.txt", { create: true }, (fileEntry) => {
-                    this.fileEntry = fileEntry;
-                    this.init_done = true;
-                    this.onWrite = false;
-                    this.tries = 5;
-                    let func;
-                    while (func = this.init_waiting_callee.pop()) {
-                        func();
-                    }
-                }, function (err) {
-                    console.log("Unable to create file log.", err);
-                });
-            }, null, function (err) {
-                console.log("Unable to enable log.", err);
-            });
-        }
-        /**
-         * Vrai si le logger est prêt à écrire / lire dans le fichier de log.
-         */
-        isInit() {
-            return this.init_done;
-        }
-        /**
-         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
-         * le logger est prêt à recevoir des instructions.
-         * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
-         */
-        onReady(callback) {
-            const oninit = new Promise((resolve, reject) => {
-                if (this.isInit()) {
-                    resolve();
-                }
-                else {
-                    this.init_waiting_callee.push(resolve);
-                }
-            });
-            if (callback) {
-                oninit.then(callback);
-            }
-            else {
-                return oninit;
-            }
-        }
-        get onWrite() {
-            return this._onWrite;
-        }
-        set onWrite(value) {
-            this._onWrite = value;
-            if (!value && this.delayed.length) {
-                // On lance une tâche "delayed" avec le premier élément de la liste (le premier inséré)
-                this.write(...this.delayed.shift());
-            }
-            else if (!value && this.waiting_callee.length) {
-                // Si il n'y a aucune tâche en attente, on peut lancer les waiting function
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func();
-                }
-            }
-        }
-        /**
-         * Écrit dans le fichier de log le contenu de text avec le niveau level.
-         * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
-         * Si level vaut debug, rien ne sera affiché dans la console.
-         * @param text Message
-         * @param level Niveau de log
-         */
-        write(data, level = LogLevel.warn) {
-            if (!Array.isArray(data)) {
-                data = [data];
-            }
-            if (!this.isInit()) {
-                this.delayWrite(data, level);
-                return;
-            }
-            // En debug, on écrit dans dans le fichier
-            if (level === LogLevel.debug) {
-                console.log(...data);
-                return;
-            }
-            // Create a FileWriter object for our FileEntry (log.txt).
-            this.fileEntry.createWriter((fileWriter) => {
-                fileWriter.onwriteend = () => {
-                    this.onWrite = false;
-                };
-                fileWriter.onerror = (e) => {
-                    console.log("Logger: Failed file write: " + e.toString());
-                    this.onWrite = false;
-                };
-                // Append to file
-                try {
-                    fileWriter.seek(fileWriter.length);
-                }
-                catch (e) {
-                    console.log("Logger: File doesn't exist!", e);
-                    return;
-                }
-                if (!this.onWrite) {
-                    if (level === LogLevel.info) {
-                        console.log(...data);
-                    }
-                    else if (level === LogLevel.warn) {
-                        console.warn(...data);
-                    }
-                    else if (level === LogLevel.error) {
-                        console.error(...data);
-                    }
-                    let final = this.createDateHeader(level) + " ";
-                    for (const e of data) {
-                        final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
-                    }
-                    this.onWrite = true;
-                    fileWriter.write(new Blob([final]));
-                }
-                else {
-                    this.delayWrite(data, level);
-                }
-            }, (error) => {
-                console.error("Impossible d'écrire: ", error.message);
-                this.delayWrite(data, level);
-                this.init();
-            });
-        }
-        /**
-         * Crée une date formatée
-         * @param level
-         */
-        createDateHeader(level) {
-            const date = new Date();
-            const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
-            const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
-            const hour = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
-            const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
-            const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
-            return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
-        }
-        delayWrite(data, level) {
-            this.delayed.push([data, level]);
-        }
-        /**
-         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
-         * le logger a fini toutes ses opérations d'écriture.
-         * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
-         */
-        onWriteEnd(callbackSuccess) {
-            const onwriteend = new Promise((resolve, reject) => {
-                if (!this.onWrite && this.isInit()) {
-                    resolve();
-                }
-                else {
-                    this.waiting_callee.push(resolve);
-                }
-            });
-            if (callbackSuccess) {
-                onwriteend.then(callbackSuccess);
-            }
-            else {
-                return onwriteend;
-            }
-        }
-        /**
-         * Vide le fichier de log.
-         * @returns Promise La promesse est résolue quand le fichier est vidé, rompue si échec
-         */
-        clearLog() {
-            return new Promise((resolve, reject) => {
-                if (!this.isInit()) {
-                    reject("Logger must be initialized");
-                }
-                this.fileEntry.createWriter((fileWriter) => {
-                    fileWriter.onwriteend = () => {
-                        this.onWrite = false;
-                        resolve();
-                    };
-                    fileWriter.onerror = (e) => {
-                        console.log("Logger: Failed to truncate.");
-                        this.onWrite = false;
-                        reject();
-                    };
-                    if (!this.onWrite) {
-                        fileWriter.truncate(0);
-                    }
-                    else {
-                        console.log("Please call this function when log is not writing.");
-                        reject();
-                    }
-                });
-            });
-        }
-        /**
-         * Affiche tout le contenu du fichier de log dans la console via console.log()
-         * @returns Promise La promesse est résolue avec le contenu du fichier si lecture réussie, rompue si échec
-         */
-        consoleLogLog() {
-            return new Promise((resolve, reject) => {
-                if (!this.isInit()) {
-                    reject("Logger must be initialized");
-                }
-                this.fileEntry.file(function (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = function () {
-                        console.log(this.result);
-                        resolve(this.result);
-                    };
-                    reader.readAsText(file);
-                }, () => {
-                    console.log("Logger: Unable to open file.");
-                    this.init();
-                    reject();
-                });
-            });
-        }
-        /// Méthodes d'accès rapide
-        debug(...data) {
-            this.write(data, LogLevel.debug);
-        }
-        info(...data) {
-            this.write(data, LogLevel.info);
-        }
-        warn(...data) {
-            this.write(data, LogLevel.warn);
-        }
-        error(...data) {
-            this.write(data, LogLevel.error);
-        }
-    };
-});
-define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_2, logger_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    function newModalRecord(button, input, ele) {
-        let recorder = null;
-        const modal = helpers_2.getModal();
-        const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement", ''));
-        instance.open();
-        let audioContent = null;
-        let blobSize = 0;
-        modal.innerHTML = `
-    <div class="modal-content">
-        <h5 style="margin-top: 0;">${ele.label}</h5>
-        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
-        <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
-        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
-        <div class=clearb></div>
-        <div id="__media_record_player" class="modal-record-audio-player">${input.value ? `
-            <figure>
-                <figcaption>Enregistrement</figcaption>
-                <audio controls src="${input.value}"></audio>
-            </figure>
-        ` : ''}</div>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" class="btn-flat green-text right ${input.value ? "" : "hide"}" id="__media_record_save">Sauvegarder</a>
-        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Annuler</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-        const btn_start = document.getElementById('__media_record_record');
-        const btn_stop = document.getElementById('__media_record_stop');
-        const btn_confirm = document.getElementById('__media_record_save');
-        const btn_cancel = document.getElementById('__media_record_cancel');
-        const player = document.getElementById('__media_record_player');
-        //add events to those 2 buttons
-        btn_start.addEventListener("click", startRecording);
-        btn_stop.addEventListener("click", stopRecording);
-        btn_confirm.onclick = function () {
-            if (audioContent) {
-                input.value = audioContent;
-                input.dataset.duration = ((blobSize / 256000) * 8).toString();
-                // Met à jour le bouton
-                const duration = (blobSize / 256000) * 8;
-                button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
-                button.classList.remove('blue');
-                button.classList.add('green');
-            }
-            instance.close();
-            // Clean le modal et donc les variables associées
-            modal.innerHTML = "";
-        };
-        btn_cancel.onclick = function () {
-            instance.close();
-            // Clean le modal et donc les variables associées
-            modal.innerHTML = "";
-        };
-        function startRecording() {
-            btn_start.classList.add('hide');
-            btn_stop.classList.remove('hide');
-            player.innerHTML = `<p class='flow-text center'>
-            <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
-            Enregistrement en cours
-        </p>`;
-            // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
-            recorder = new MicRecorder({
-                bitRate: 256
-            });
-            recorder.start().catch((e) => {
-                logger_1.Logger.error("Impossible de lancer l'écoute.", e);
-                player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
-            });
-        }
-        function stopRecording() {
-            // Once you are done singing your best song, stop and get the mp3.
-            btn_stop.classList.add('hide');
-            player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
-            recorder
-                .stop()
-                .getMp3().then(([buffer, blob]) => {
-                blobSize = blob.size;
-                helpers_2.blobToBase64(blob).then(function (base64) {
-                    audioContent = base64;
-                    btn_confirm.classList.remove('hide');
-                    player.innerHTML = `<figure>
-                        <figcaption>Enregistrement</figcaption>
-                        <audio controls src="${base64}"></audio>
-                    </figure>`;
-                    btn_start.classList.remove('hide');
-                });
-            }).catch((e) => {
-                M.toast({ html: 'Impossible de lire votre enregistrement' });
-                logger_1.Logger.error("Enregistrement échoué:", e.message);
-            });
-        }
-    }
-    exports.newModalRecord = newModalRecord;
-});
 /**
  * Artyom.js is a voice control, speech recognition and speech synthesis JavaScript library.
  *
@@ -2597,413 +1551,400 @@ define("test_aytom", ["require", "exports", "arytom/artyom"], function (require,
     }
     exports.test_jarvis = test_jarvis;
 });
-define("settings_page", ["require", "exports"], function (require, exports) {
+////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
+/*
+{
+    "nom_formel/clé_du_formulaire": {
+        "name": "Nom réel (possiblement à afficher à l'écran)"
+        "fields": [
+            {}: FormEntity
+        ],
+        "locations": [
+            {}: FormLocation
+        ]
+    },
+    "nom_d_un_autre_formulaire": Form
+}
+
+Le formulaire DOIT comporter un champ de type "datetime",
+nommé "__date__" pour être affiché correctement dans
+la liste des formulaires enregistrés.
+Il peut être n'importe où dans le formulaire.
+*/
+define("form_schema", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function initSettingsPage(base) {
-        base.innerHTML = "";
-    }
-    exports.initSettingsPage = initSettingsPage;
-});
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_3, form_schema_1, interface_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    function editAForm(form, name) {
-        // Vérifie que le formulaire est d'un type disponible
-        if (!form_schema_1.Forms.formExists(form.type)) {
-            M.toast({ html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible." });
-            return;
-        }
-        const current_form = form_schema_1.Forms.getForm(form.type);
-        const base = helpers_3.getBase();
-        interface_1.PageManager.pushPage(interface_1.AppPageName.form, "Modifier", { form: current_form, name, save: form });
-    }
-    function appendFileEntry(json, ph) {
-        const save = json[1];
-        const selector = document.createElement('li');
-        selector.classList.add('collection-item');
-        const container = document.createElement('div');
-        let id = json[0].name;
-        if (form_schema_1.Forms.formExists(save.type)) {
-            const id_f = form_schema_1.Forms.getForm(save.type).id_field;
-            if (id_f) {
-                // Si un champ existe pour ce formulaire
-                id = save.fields[id_f] || json[0].name;
-            }
-        }
-        // Ajoute le texte de l'élément
-        container.innerHTML = `
-        <div class="left">
-            ${id} <br> 
-            Modifié le ${helpers_3.formatDate(new Date(json[0].lastModified), true)}
-        </div>`;
-        // Ajoute le bouton de suppression
-        const delete_btn = document.createElement('a');
-        delete_btn.href = "#!";
-        delete_btn.classList.add('secondary-content');
-        const im = document.createElement('i');
-        im.classList.add('material-icons', 'red-text');
-        im.innerText = "delete_forever";
-        delete_btn.appendChild(im);
-        container.appendChild(delete_btn);
-        const file_name = json[0].name;
-        delete_btn.addEventListener('click', function (evt) {
-            evt.preventDefault();
-            evt.stopPropagation();
-            modalDeleteForm(file_name);
-        });
-        // Clear le float
-        container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
-        // Définit l'événement d'édition
-        selector.addEventListener('click', function () {
-            editAForm(json[1], json[0].name.split(/\.json$/)[0]);
-        });
-        // Ajoute les éléments dans le conteneur final
-        selector.appendChild(container);
-        ph.appendChild(selector);
-    }
-    function readAllFilesOfDirectory(dirName) {
-        const dirreader = new Promise(function (resolve, reject) {
-            helpers_3.getDir(function (dirEntry) {
-                // Lecture de tous les fichiers du répertoire
-                const reader = dirEntry.createReader();
-                reader.readEntries(function (entries) {
-                    const promises = [];
-                    for (const entry of entries) {
-                        promises.push(new Promise(function (resolve, reject) {
-                            entry.file(function (file) {
-                                const reader = new FileReader();
-                                console.log(file);
-                                reader.onloadend = function () {
-                                    try {
-                                        resolve([file, JSON.parse(this.result)]);
-                                    }
-                                    catch (e) {
-                                        console.log("JSON mal formé:", this.result);
-                                        resolve([file, { fields: {}, type: "", location: "" }]);
-                                    }
-                                };
-                                reader.onerror = function (err) {
-                                    reject(err);
-                                };
-                                reader.readAsText(file);
-                            }, function (err) {
-                                reject(err);
-                            });
-                        }));
-                    }
-                    // Renvoie le tableau de promesses lancées
-                    resolve(promises);
-                }, function (err) {
-                    reject(err);
-                    console.log(err);
-                });
-            }, dirName, function (err) {
-                reject(err);
-            });
-        });
-        // @ts-ignore
-        return dirreader;
-    }
-    function modalDeleteForm(id) {
-        const modal = helpers_3.getBottomModal();
-        helpers_3.initBottomModal({}, `<div class="modal-content">
-            <h4>Supprimer ce formulaire ?</h4>
-            <p>
-                Vous ne pourrez pas le restaurer ultérieurement.
-            </p>
-        </div>
-        <div class="modal-footer">
-            <a href="#!" class="modal-close green-text btn-flat left">Annuler</a>
-            <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
-        </div>
-        `);
-        const instance = helpers_3.getBottomModalInstance();
-        document.getElementById('delete_form_modal').onclick = function () {
-            deleteForm(id).then(function () {
-                M.toast({ html: "Entrée supprimée." });
-                interface_1.PageManager.changePage(interface_1.AppPageName.saved, false);
-                instance.close();
-            }).catch(function (err) {
-                M.toast({ html: "Impossible de supprimer: " + err });
-                instance.close();
-            });
-        };
-        instance.open();
-    }
-    function deleteForm(id) {
-        if (id.match(/\.json$/)) {
-            id = id.substring(0, id.length - 5);
-        }
-        return new Promise(function (resolve, reject) {
-            if (id) {
-                // Supprime toutes les données (images, sons...) liées au formulaire
-                helpers_3.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
-                    helpers_3.getDir(function (dirEntry) {
-                        dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                            helpers_3.removeFilePromise(fileEntry).then(function () {
-                                resolve();
-                            }).catch(reject);
-                        }, function () {
-                            console.log("Impossible de supprimer");
-                            reject("Impossible de supprimer");
-                        });
-                    }, 'forms', reject);
-                });
-            }
-            else {
-                reject("ID invalide");
-            }
-        });
-    }
-    function initSavedForm(base) {
-        const placeholder = document.createElement('ul');
-        placeholder.classList.add('collection', 'no-margin-top');
-        readAllFilesOfDirectory('forms').then(function (all_promises) {
-            Promise.all(all_promises).then(function (files) {
-                files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
-                for (const f of files) {
-                    appendFileEntry(f, placeholder);
-                }
-                base.innerHTML = "";
-                base.appendChild(placeholder);
-                if (files.length === 0) {
-                    base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
-                }
-            }).catch(function (err) {
-                throw err;
-            });
-        }).catch(function (err) {
-            console.log(err);
-            base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
-        });
-    }
-    exports.initSavedForm = initSavedForm;
-});
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_4, form_1, settings_page_1, saved_forms_1, main_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.APP_NAME = "Busy Bird";
-    var AppPageName;
-    (function (AppPageName) {
-        AppPageName["form"] = "form";
-        AppPageName["settings"] = "settings";
-        AppPageName["saved"] = "saved";
-        AppPageName["home"] = "home";
-    })(AppPageName = exports.AppPageName || (exports.AppPageName = {}));
-    exports.PageManager = new class {
+    /**
+     * Type à préciser dans le JSON, clé "type"
+     * Le type à préciser est la chaîne de caractères
+     */
+    var FormEntityType;
+    (function (FormEntityType) {
+        FormEntityType["integer"] = "integer";
+        FormEntityType["float"] = "float";
+        FormEntityType["select"] = "select";
+        FormEntityType["string"] = "string";
+        FormEntityType["bigstring"] = "textarea";
+        FormEntityType["checkbox"] = "checkbox";
+        FormEntityType["file"] = "file";
+        FormEntityType["slider"] = "slider";
+        FormEntityType["datetime"] = "datetime";
+        FormEntityType["divider"] = "divider";
+        FormEntityType["audio"] = "audio";
+    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
+    // Clé du JSON à charger automatiquement
+    exports.default_form_name = "cincle_plongeur";
+    // Classe contenant le formulaire JSON chargé et parsé
+    exports.Forms = new class {
+        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
+        // La clé du formulaire par défaut est contenu dans "default_form_name"
         constructor() {
-            /**
-             * Déclaration des pages possibles
-             * Chaque clé de AppPages doit être une possibilité de AppPageName
-             */
-            this.AppPages = {
-                form: {
-                    name: "Nouvelle entrée",
-                    callback: form_1.initFormPage,
-                    ask_change: true,
-                    reload_on_restore: false
-                },
-                settings: {
-                    name: "Paramètres",
-                    callback: settings_page_1.initSettingsPage,
-                    reload_on_restore: false
-                },
-                saved: {
-                    name: "Entrées",
-                    callback: saved_forms_1.initSavedForm,
-                    reload_on_restore: true
-                },
-                home: {
-                    name: "Accueil",
-                    callback: initHomePage,
-                    reload_on_restore: false
-                }
-            };
-            this.pages_holder = [];
-        }
-        /**
-         * Change l'affichage et charge la page "page" dans le bloc principal
-         * @param AppPageName page
-         * @param delete_paused supprime les pages sauvegardées
-         */
-        changePage(page, delete_paused = true, force_name, additionnals) {
-            let pagename = "";
-            if (typeof page === 'string') {
-                // AppPageName
-                if (!this.pageExists(page)) {
-                    throw new ReferenceError("Page does not exists");
-                }
-                pagename = page;
-                page = this.AppPages[page];
-            }
-            else {
-                // Recherche de la clé correspondante
-                for (const k in this.AppPages) {
-                    if (this.AppPages[k] === page) {
-                        pagename = k;
-                        break;
-                    }
-                }
-            }
-            // Si on veut supprimer les pages en attente, on vide le tableau
-            if (delete_paused) {
-                this.pages_holder = [];
-            }
-            // On écrit le preloader dans la base et on change l'historique
-            const base = helpers_4.getBase();
-            base.innerHTML = helpers_4.getPreloader("Chargement");
-            if (window.history) {
-                window.history.pushState({}, "", "/?" + pagename);
-            }
-            // Si on a demandé à fermer le sidenav, on le ferme
-            if (!page.not_sidenav_close) {
-                main_1.SIDENAV_OBJ.close();
-            }
-            // On appelle la fonction de création de la page
-            page.callback(base, additionnals);
-            this.actual_page = page;
-            this._should_wait = page.ask_change;
-            // On met le titre de la page dans la barre de navigation
-            document.getElementById('nav_title').innerText = force_name || page.name;
-        }
-        cleanWaitingPages() {
-            while (this.pages_holder.length >= 10) {
-                this.pages_holder.shift();
-            }
-        }
-        /**
-         * Pousse une nouvelle page dans la pile de page
-         * @param page
-         */
-        pushPage(page, force_name, additionnals) {
-            if (!this.pageExists(page)) {
-                throw new ReferenceError("Page does not exists");
-            }
-            // Si il y a plus de 10 pages dans la pile, clean
-            this.cleanWaitingPages();
-            // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_4.getBase();
-            // Sauvegarde de la base actuelle dans le document fragment
-            // Cela supprime immédiatement le noeud du DOM
-            // const save = new DocumentFragment(); // semble être trop récent
-            const save = document.createDocumentFragment();
-            save.appendChild(actual_base);
-            // Insère la sauvegarde dans la pile de page
-            this.pages_holder.push({
-                save,
-                ask: this._should_wait,
-                name: document.getElementById('nav_title').innerText,
-                page: this.actual_page
-            });
-            // Crée la nouvelle base mère avec le même ID
-            const new_base = document.createElement('div');
-            new_base.id = "main_block";
-            // Insère la nouvelle base vide à la racine de main
-            document.getElementsByTagName('main')[0].appendChild(new_base);
-            // Appelle la fonction pour charger la page demandée dans le bloc
-            this.changePage(page, false, force_name, additionnals);
-        }
-        /**
-         * Revient à la page précédente.
-         * Charge la page d'accueil si aucune page disponible
-         */
-        popPage() {
-            if (this.pages_holder.length === 0) {
-                this.changePage(AppPageName.home);
-                return;
-            }
-            // Récupère la dernière page poussée dans le tableau
-            const last_page = this.pages_holder.pop();
-            // Supprime le main actuel
-            helpers_4.getBase().remove();
-            // Met le fragment dans le DOM
-            document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
-            // Remet le bon titre
-            document.getElementById('nav_title').innerText = last_page.name;
-            this.actual_page = last_page.page;
-            this._should_wait = last_page.ask;
-            if (this.actual_page.reload_on_restore) {
-                if (typeof this.actual_page.reload_on_restore === 'boolean') {
-                    this.changePage(this.actual_page, false);
+            this.form_ready = false;
+            this.waiting_callee = [];
+            this.current = null;
+            this._current_key = null;
+            $.get('assets/form.json', {}, (json) => {
+                // Le JSON est reçu, on l'enregistre dans available_forms
+                this.available_forms = json;
+                // On met le form à ready
+                this.form_ready = true;
+                // On enregistre le formulaire par défaut (si la clé définie existe)
+                if (exports.default_form_name in this.available_forms) {
+                    this.current = this.available_forms[exports.default_form_name];
+                    this._current_key = exports.default_form_name;
                 }
                 else {
-                    this.actual_page.reload_on_restore();
+                    this.current = { name: null, fields: [], locations: [] };
                 }
+                // On exécute les fonctions en attente
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func(this.available_forms, this.current);
+                }
+            }, 'json');
+        }
+        onReady(callback) {
+            if (this.form_ready) {
+                callback(this.available_forms, this.current);
+            }
+            else {
+                this.waiting_callee.push(callback);
+            }
+        }
+        formExists(name) {
+            return name in this.available_forms;
+        }
+        /**
+         * Change le formulaire courant renvoyé par onReady
+         * @param name clé d'accès au formulaire
+         */
+        changeForm(name) {
+            if (this.formExists(name)) {
+                this.current = this.available_forms[name];
+                this._current_key = name;
+            }
+            else {
+                throw new Error("Form does not exists");
             }
         }
         /**
-         * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
+         * Renvoie un formulaire, sans modifier le courant
+         * @param name clé d'accès au formulaire
          */
-        goBack() {
-            const stepBack = () => {
-                // Ferme le modal possiblement ouvert
-                try {
-                    helpers_4.getModalInstance().close();
-                }
-                catch (e) { }
-                if (this.isPageWaiting()) {
-                    this.popPage();
-                }
-                else {
-                    this.changePage(AppPageName.home);
-                }
-            };
-            if (this.should_wait) {
-                modalBackHome(stepBack);
+        getForm(name) {
+            if (this.formExists(name)) {
+                return this.available_forms[name];
             }
             else {
-                stepBack();
+                throw new Error("Form does not exists");
             }
         }
-        get should_wait() {
-            return this._should_wait;
+        /**
+         * Retourne un tableau de tuples contenant en
+         * première position la clé d'accès au formulaire,
+         * et en seconde position son nom textuel à présenter à l'utilisateur
+         * @returns [string, string][]
+         */
+        getAvailableForms() {
+            const keys = Object.keys(this.available_forms);
+            const tuples = [];
+            for (const key of keys) {
+                tuples.push([key, this.available_forms[key].name]);
+            }
+            return tuples;
         }
-        set should_wait(v) {
-            this._should_wait = v;
-        }
-        pageExists(name) {
-            return name in this.AppPages;
-        }
-        isPageWaiting() {
-            return this.pages_holder.length > 0;
+        get current_key() {
+            return this._current_key;
         }
     };
-    function initHomePage(base) {
-        base.innerHTML = "<h2 class='center'>" + exports.APP_NAME + "</h2>" + `
-    <div class="container">
-        <p class="flow-text">
-            Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
-            pour les biologistes.
-            Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
-        </p>
-    </div>
-    `;
-        // Initialise les champs materialize et le select
-        M.updateTextFields();
-        $('select').formSelect();
-    }
-    exports.initHomePage = initHomePage;
-    function modalBackHome(callbackIfTrue) {
-        const modal = helpers_4.getBottomModal();
-        const instance = helpers_4.initBottomModal();
-        modal.innerHTML = `
-    <div class="modal-content">
-        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
-        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
-        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-        document.getElementById('__modal_back_home').onclick = callbackIfTrue;
-        instance.open();
-    }
-    exports.modalBackHome = modalBackHome;
 });
-define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema"], function (require, exports, interface_2, helpers_5, logger_2, audio_listener_1, form_schema_2) {
+define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // Objet Logger
+    // Sert à écrire dans un fichier de log formaté
+    // à la racine du système de fichiers
+    var LogLevel;
+    (function (LogLevel) {
+        LogLevel["debug"] = "debug";
+        LogLevel["info"] = "info";
+        LogLevel["warn"] = "warn";
+        LogLevel["error"] = "error";
+    })(LogLevel = exports.LogLevel || (exports.LogLevel = {}));
+    /**
+     * Logger
+     * Permet de logger dans un fichier texte des messages.
+     */
+    exports.Logger = new class {
+        constructor() {
+            this._onWrite = false;
+            this.delayed = [];
+            this.waiting_callee = [];
+            this.init_done = false;
+            this.init_waiting_callee = [];
+            this.tries = 5;
+        }
+        /**
+         * Initialise le logger. Doit être réalisé après app.init() et changeDir().
+         * Pour vérifier si le logger est initialisé, utilisez onReady().
+         */
+        init() {
+            this.init_done = false;
+            if (this.tries === 0) {
+                console.error("Too many init tries. Logger stays uninitialized.");
+                return;
+            }
+            this.tries--;
+            helpers_1.getDir((dirEntry) => {
+                // Creates a new file or returns the file if it already exists.
+                dirEntry.getFile("log.txt", { create: true }, (fileEntry) => {
+                    this.fileEntry = fileEntry;
+                    this.init_done = true;
+                    this.onWrite = false;
+                    this.tries = 5;
+                    let func;
+                    while (func = this.init_waiting_callee.pop()) {
+                        func();
+                    }
+                }, function (err) {
+                    console.log("Unable to create file log.", err);
+                });
+            }, null, function (err) {
+                console.log("Unable to enable log.", err);
+            });
+        }
+        /**
+         * Vrai si le logger est prêt à écrire / lire dans le fichier de log.
+         */
+        isInit() {
+            return this.init_done;
+        }
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger est prêt à recevoir des instructions.
+         * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
+         */
+        onReady(callback) {
+            const oninit = new Promise((resolve, reject) => {
+                if (this.isInit()) {
+                    resolve();
+                }
+                else {
+                    this.init_waiting_callee.push(resolve);
+                }
+            });
+            if (callback) {
+                oninit.then(callback);
+            }
+            else {
+                return oninit;
+            }
+        }
+        get onWrite() {
+            return this._onWrite;
+        }
+        set onWrite(value) {
+            this._onWrite = value;
+            if (!value && this.delayed.length) {
+                // On lance une tâche "delayed" avec le premier élément de la liste (le premier inséré)
+                this.write(...this.delayed.shift());
+            }
+            else if (!value && this.waiting_callee.length) {
+                // Si il n'y a aucune tâche en attente, on peut lancer les waiting function
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func();
+                }
+            }
+        }
+        /**
+         * Écrit dans le fichier de log le contenu de text avec le niveau level.
+         * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
+         * Si level vaut debug, rien ne sera affiché dans la console.
+         * @param text Message
+         * @param level Niveau de log
+         */
+        write(data, level = LogLevel.warn) {
+            if (!Array.isArray(data)) {
+                data = [data];
+            }
+            if (!this.isInit()) {
+                this.delayWrite(data, level);
+                return;
+            }
+            // En debug, on écrit dans dans le fichier
+            if (level === LogLevel.debug) {
+                console.log(...data);
+                return;
+            }
+            // Create a FileWriter object for our FileEntry (log.txt).
+            this.fileEntry.createWriter((fileWriter) => {
+                fileWriter.onwriteend = () => {
+                    this.onWrite = false;
+                };
+                fileWriter.onerror = (e) => {
+                    console.log("Logger: Failed file write: " + e.toString());
+                    this.onWrite = false;
+                };
+                // Append to file
+                try {
+                    fileWriter.seek(fileWriter.length);
+                }
+                catch (e) {
+                    console.log("Logger: File doesn't exist!", e);
+                    return;
+                }
+                if (!this.onWrite) {
+                    if (level === LogLevel.info) {
+                        console.log(...data);
+                    }
+                    else if (level === LogLevel.warn) {
+                        console.warn(...data);
+                    }
+                    else if (level === LogLevel.error) {
+                        console.error(...data);
+                    }
+                    let final = this.createDateHeader(level) + " ";
+                    for (const e of data) {
+                        final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
+                    }
+                    this.onWrite = true;
+                    fileWriter.write(new Blob([final]));
+                }
+                else {
+                    this.delayWrite(data, level);
+                }
+            }, (error) => {
+                console.error("Impossible d'écrire: ", error.message);
+                this.delayWrite(data, level);
+                this.init();
+            });
+        }
+        /**
+         * Crée une date formatée
+         * @param level
+         */
+        createDateHeader(level) {
+            const date = new Date();
+            const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
+            const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+            const hour = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
+            const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+            const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
+            return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
+        }
+        delayWrite(data, level) {
+            this.delayed.push([data, level]);
+        }
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger a fini toutes ses opérations d'écriture.
+         * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
+         */
+        onWriteEnd(callbackSuccess) {
+            const onwriteend = new Promise((resolve, reject) => {
+                if (!this.onWrite && this.isInit()) {
+                    resolve();
+                }
+                else {
+                    this.waiting_callee.push(resolve);
+                }
+            });
+            if (callbackSuccess) {
+                onwriteend.then(callbackSuccess);
+            }
+            else {
+                return onwriteend;
+            }
+        }
+        /**
+         * Vide le fichier de log.
+         * @returns Promise La promesse est résolue quand le fichier est vidé, rompue si échec
+         */
+        clearLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
+                }
+                this.fileEntry.createWriter((fileWriter) => {
+                    fileWriter.onwriteend = () => {
+                        this.onWrite = false;
+                        resolve();
+                    };
+                    fileWriter.onerror = (e) => {
+                        console.log("Logger: Failed to truncate.");
+                        this.onWrite = false;
+                        reject();
+                    };
+                    if (!this.onWrite) {
+                        fileWriter.truncate(0);
+                    }
+                    else {
+                        console.log("Please call this function when log is not writing.");
+                        reject();
+                    }
+                });
+            });
+        }
+        /**
+         * Affiche tout le contenu du fichier de log dans la console via console.log()
+         * @returns Promise La promesse est résolue avec le contenu du fichier si lecture réussie, rompue si échec
+         */
+        consoleLogLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
+                }
+                this.fileEntry.file(function (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = function () {
+                        console.log(this.result);
+                        resolve(this.result);
+                    };
+                    reader.readAsText(file);
+                }, () => {
+                    console.log("Logger: Unable to open file.");
+                    this.init();
+                    reject();
+                });
+            });
+        }
+        /// Méthodes d'accès rapide
+        debug(...data) {
+            this.write(data, LogLevel.debug);
+        }
+        info(...data) {
+            this.write(data, LogLevel.info);
+        }
+        warn(...data) {
+            this.write(data, LogLevel.warn);
+        }
+        error(...data) {
+            this.write(data, LogLevel.error);
+        }
+    };
+});
+define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema"], function (require, exports, interface_1, helpers_2, logger_1, audio_listener_1, form_schema_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -3041,8 +1982,8 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         // Change le répertoire de données
         // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
         // Sinon, si mobile, on passe sur dataDirectory
-        helpers_5.changeDir();
-        logger_2.Logger.init();
+        helpers_2.changeDir();
+        logger_1.Logger.init();
         // @ts-ignore Force à demander la permission pour enregistrer du son
         const permissions = cordova.plugins.permissions;
         permissions.requestPermission(permissions.RECORD_AUDIO, status => {
@@ -3050,7 +1991,7 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         }, e => { console.log(e); });
         // Initialise le bouton retour
         document.addEventListener("backbutton", function () {
-            interface_2.PageManager.goBack();
+            interface_1.PageManager.goBack();
         }, false);
         // Initialise le sidenav
         const elem = document.querySelector('.sidenav');
@@ -3058,23 +1999,23 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         // Bind des éléments du sidenav
         // Home
         document.getElementById('nav_home').onclick = function () {
-            interface_2.PageManager.pushPage(interface_2.AppPageName.home);
+            interface_1.PageManager.pushPage(interface_1.AppPageName.home);
         };
         // Form
         document.getElementById('nav_form_new').onclick = function () {
-            interface_2.PageManager.pushPage(interface_2.AppPageName.form);
+            interface_1.PageManager.pushPage(interface_1.AppPageName.form);
         };
         // Saved
         document.getElementById('nav_form_saved').onclick = function () {
-            interface_2.PageManager.pushPage(interface_2.AppPageName.saved);
+            interface_1.PageManager.pushPage(interface_1.AppPageName.saved);
         };
         // Settigns
         document.getElementById('nav_settings').onclick = function () {
-            interface_2.PageManager.pushPage(interface_2.AppPageName.settings);
+            interface_1.PageManager.pushPage(interface_1.AppPageName.settings);
         };
         exports.app.initialize();
         initDebug();
-        helpers_5.initModal();
+        helpers_2.initModal();
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
@@ -3082,38 +2023,38 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
             // Récupère la partie de l'URL après la query string et avant le #
             href = href[href.length - 1];
         }
-        if (href && interface_2.PageManager.pageExists(href)) {
-            interface_2.PageManager.changePage(href);
+        if (href && interface_1.PageManager.pageExists(href)) {
+            interface_1.PageManager.changePage(href);
         }
         else {
-            interface_2.PageManager.changePage(interface_2.AppPageName.home);
+            interface_1.PageManager.changePage(interface_1.AppPageName.home);
         }
     }
     function initDebug() {
         window["DEBUG"] = {
-            PageManager: interface_2.PageManager,
-            readFromFile: helpers_5.readFromFile,
-            listDir: helpers_5.listDir,
-            saveDefaultForm: helpers_5.saveDefaultForm,
-            createDir: helpers_5.createDir,
-            getLocation: helpers_5.getLocation,
-            testDistance: helpers_5.testDistance,
-            rmrf: helpers_5.rmrf,
-            rmrfPromise: helpers_5.rmrfPromise,
-            Logger: logger_2.Logger,
-            modalBackHome: interface_2.modalBackHome,
+            PageManager: interface_1.PageManager,
+            readFromFile: helpers_2.readFromFile,
+            listDir: helpers_2.listDir,
+            saveDefaultForm: helpers_2.saveDefaultForm,
+            createDir: helpers_2.createDir,
+            getLocation: helpers_2.getLocation,
+            testDistance: helpers_2.testDistance,
+            rmrf: helpers_2.rmrf,
+            rmrfPromise: helpers_2.rmrfPromise,
+            Logger: logger_1.Logger,
+            modalBackHome: interface_1.modalBackHome,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
                     name: "__test__",
                     label: "Test",
-                    type: form_schema_2.FormEntityType.audio
+                    type: form_schema_1.FormEntityType.audio
                 });
             }
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_3, helpers_6, main_2, interface_3, logger_3, audio_listener_2) {
+define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_2, helpers_3, main_1, interface_2, logger_2, audio_listener_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3228,7 +2169,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         // Fin champ de lieu, itération sur champs
         for (const ele of current_form.fields) {
             let element_to_add = null;
-            if (ele.type === form_schema_3.FormEntityType.divider) {
+            if (ele.type === form_schema_2.FormEntityType.divider) {
                 // C'est un titre
                 // On divide
                 const clearer = document.createElement('div');
@@ -3240,7 +2181,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 placeh.appendChild(htmle);
                 continue;
             }
-            else if (ele.type === form_schema_3.FormEntityType.integer || ele.type === form_schema_3.FormEntityType.float) {
+            else if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('input');
                 htmle.autocomplete = "off";
@@ -3265,7 +2206,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Calcul de nombre de décimales requises
                 // si le nombre demandé est un float
                 let NB_DECIMALES = 0;
-                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
+                if (ele.type === form_schema_2.FormEntityType.float && ele.float_precision) {
                     // Récupération de la partie décimale sous forme de string
                     const dec_part = ele.float_precision.toString().split('.');
                     // Calcul du nombre de décimales
@@ -3286,10 +2227,10 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         contraintes.push(["max", ele.range.max]);
                     }
                 }
-                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
+                if (ele.type === form_schema_2.FormEntityType.float && ele.float_precision) {
                     contraintes.push(["precision", ele.float_precision]);
                 }
-                contraintes.push(['type', ele.type === form_schema_3.FormEntityType.float ? 'float' : 'int']);
+                contraintes.push(['type', ele.type === form_schema_2.FormEntityType.float ? 'float' : 'int']);
                 htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
                 htmle.addEventListener('change', function () {
@@ -3310,7 +2251,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         }
                         // if différent, il est juste en else if pour éviter de faire les
                         // calculs si le valid est déjà à false
-                        else if (ele.type === form_schema_3.FormEntityType.float) {
+                        else if (ele.type === form_schema_2.FormEntityType.float) {
                             if (ele.float_precision) {
                                 // Si on a demandé à avoir un nombre de flottant précis
                                 const floating_point = this.value.split('.');
@@ -3348,10 +2289,10 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.string || ele.type === form_schema_3.FormEntityType.bigstring) {
+            else if (ele.type === form_schema_2.FormEntityType.string || ele.type === form_schema_2.FormEntityType.bigstring) {
                 const wrapper = createInputWrapper();
                 let htmle;
-                if (ele.type === form_schema_3.FormEntityType.string) {
+                if (ele.type === form_schema_2.FormEntityType.string) {
                     htmle = document.createElement('input');
                     htmle.type = "text";
                     htmle.autocomplete = "off";
@@ -3409,7 +2350,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.select) {
+            else if (ele.type === form_schema_2.FormEntityType.select) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
@@ -3438,7 +2379,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.checkbox) {
+            else if (ele.type === form_schema_2.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3458,7 +2399,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.datetime) {
+            else if (ele.type === form_schema_2.FormEntityType.datetime) {
                 const wrapper = createInputWrapper();
                 const input = document.createElement('input');
                 const label = document.createElement('label');
@@ -3482,7 +2423,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.file) {
+            else if (ele.type === form_schema_2.FormEntityType.file) {
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                     // L'input file est déjà présent dans le formulaire
                     // on affiche une miniature
@@ -3490,7 +2431,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_6.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_3.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -3527,7 +2468,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
             }
-            else if (ele.type === form_schema_3.FormEntityType.audio) {
+            else if (ele.type === form_schema_2.FormEntityType.audio) {
                 // Création d'un bouton pour enregistrer du son
                 const wrapper = document.createElement('div');
                 wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
@@ -3549,7 +2490,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    helpers_6.readFromFile(filled_form.fields[ele.name], function (base64) {
+                    helpers_3.readFromFile(filled_form.fields[ele.name], function (base64) {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
@@ -3568,7 +2509,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(real_input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.slider) {
+            else if (ele.type === form_schema_2.FormEntityType.slider) {
                 const wrapper = document.createElement('div');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3608,12 +2549,12 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
     function initFormSave(type) {
         console.log("Demarrage initFormSave");
         // Ouverture du modal de verification
-        const modal = helpers_6.getModal();
-        helpers_6.initModal({ dismissible: true });
+        const modal = helpers_3.getModal();
+        helpers_3.initModal({ dismissible: true });
         modal.classList.add('modal-fixed-footer');
-        helpers_6.getModalInstance().open();
+        helpers_3.getModalInstance().open();
         //Ouverture du premiere modal de chargement
-        modal.innerHTML = helpers_6.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
+        modal.innerHTML = helpers_3.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`);
         // creation de la liste d'erreurs
@@ -3681,12 +2622,12 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         }
         modal.appendChild(footer);
         document.getElementById("cancel_verif").onclick = function () {
-            helpers_6.getModalInstance().close();
+            helpers_3.getModalInstance().close();
         };
         if (!erreur_critique) {
             document.getElementById("valid_verif").onclick = function () {
-                helpers_6.getModalInstance().close();
-                const current_form_key = form_schema_3.Forms.current_key;
+                helpers_3.getModalInstance().close();
+                const current_form_key = form_schema_2.Forms.current_key;
                 saveForm(current_form_key);
             };
         }
@@ -3727,7 +2668,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 form_values.fields[i.name] = i.value;
             }
         }
-        writeImagesThenForm(force_name || helpers_6.generateId(20), form_values, form_save);
+        writeImagesThenForm(force_name || helpers_3.generateId(20), form_values, form_save);
     }
     exports.saveForm = saveForm;
     /**
@@ -3737,7 +2678,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
      */
     function writeImagesThenForm(name, form_values, older_save) {
         function saveBlobToFile(resolve, reject, filename, input_name, blob) {
-            helpers_6.writeFile('form_data/' + name, filename, blob, function () {
+            helpers_3.writeFile('form_data/' + name, filename, blob, function () {
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
                 form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
@@ -3749,7 +2690,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         const parts = older_save.fields[input_name].split('/');
                         const file_name = parts.pop();
                         const dir_name = parts.join('/');
-                        helpers_6.removeFileByName(dir_name, file_name);
+                        helpers_3.removeFileByName(dir_name, file_name);
                     }
                 }
                 // Résout la promise
@@ -3760,7 +2701,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 reject(error);
             });
         }
-        helpers_6.getDir(function () {
+        helpers_3.getDir(function () {
             // Crée le dossier form_data si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
@@ -3800,8 +2741,8 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     const file = audio.value;
                     const input_name = audio.name;
                     if (file) {
-                        const filename = helpers_6.generateId(20) + '.mp3';
-                        helpers_6.urlToBlob(file).then(function (blob) {
+                        const filename = helpers_3.generateId(20) + '.mp3';
+                        helpers_3.urlToBlob(file).then(function (blob) {
                             saveBlobToFile(resolve, reject, filename, input_name, blob);
                         });
                     }
@@ -3819,15 +2760,15 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             Promise.all(promises)
                 .then(function () {
                 // On écrit enfin le formulaire !
-                helpers_6.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
+                helpers_3.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
-                        interface_3.PageManager.popPage();
-                        interface_3.PageManager.changePage(interface_3.AppPageName.saved, false);
+                        interface_2.PageManager.popPage();
+                        interface_2.PageManager.changePage(interface_2.AppPageName.saved, false);
                     }
                     else {
-                        interface_3.PageManager.changePage(interface_3.AppPageName.form, false);
+                        interface_2.PageManager.changePage(interface_2.AppPageName.form, false);
                     }
                     console.log(form_values);
                 });
@@ -3848,7 +2789,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             loadFormPage(base, edition_mode.form, edition_mode);
         }
         else {
-            form_schema_3.Forms.onReady(function (available, current) {
+            form_schema_2.Forms.onReady(function (available, current) {
                 loadFormPage(base, current, edition_mode);
             });
         }
@@ -3888,7 +2829,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         const btn = document.createElement('div');
         btn.classList.add('btn-flat', 'right', 'red-text');
         btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_3.Forms.current_key;
+        const current_form_key = form_schema_2.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
                 saveForm(current_form_key, edition_mode.name, edition_mode.save);
@@ -3898,7 +2839,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     initFormSave(current_form_key);
                 }
                 catch (e) {
-                    logger_3.Logger.error(JSON.stringify(e));
+                    logger_2.Logger.error(JSON.stringify(e));
                 }
             }
         });
@@ -3913,20 +2854,20 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         }
         else {
             // Sinon, on ramène à la page précédente
-            interface_3.PageManager.popPage();
+            interface_2.PageManager.popPage();
         }
-        helpers_6.getModalInstance().close();
-        helpers_6.getModal().classList.remove('modal-fixed-footer');
+        helpers_3.getModalInstance().close();
+        helpers_3.getModal().classList.remove('modal-fixed-footer');
     }
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_6.getModal();
-        helpers_6.initModal({
+        const modal = helpers_3.getModal();
+        helpers_3.initModal({
             dismissible: false
         });
         // Ouvre le modal et insère un chargeur
-        helpers_6.getModalInstance().open();
-        modal.innerHTML = helpers_6.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        helpers_3.getModalInstance().open();
+        modal.innerHTML = helpers_3.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -3941,7 +2882,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             locationSelector(modal, current_form.locations, false);
         };
         // Cherche la localisation et remplit le modal
-        helpers_6.getLocation(function (coords) {
+        helpers_3.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords);
         }, function () {
@@ -4026,7 +2967,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 lieux_dispo.push({
                     name: lieu.name,
                     label: lieu.label,
-                    distance: helpers_6.calculateDistance(current_location.coords, lieu)
+                    distance: helpers_3.calculateDistance(current_location.coords, lieu)
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -4037,7 +2978,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_2.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_1.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -4080,7 +3021,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 loc_input.dataset.reallocation = labels_to_name[input.value];
-                helpers_6.getModalInstance().close();
+                helpers_3.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
@@ -4097,4 +3038,1069 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         footer.appendChild(cancel);
         modal.appendChild(footer);
     }
+});
+define("settings_page", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function initSettingsPage(base) {
+        base.innerHTML = "";
+    }
+    exports.initSettingsPage = initSettingsPage;
+});
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_4, form_schema_3, interface_3) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function editAForm(form, name) {
+        // Vérifie que le formulaire est d'un type disponible
+        if (!form_schema_3.Forms.formExists(form.type)) {
+            M.toast({ html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible." });
+            return;
+        }
+        const current_form = form_schema_3.Forms.getForm(form.type);
+        const base = helpers_4.getBase();
+        interface_3.PageManager.pushPage(interface_3.AppPageName.form, "Modifier", { form: current_form, name, save: form });
+    }
+    function appendFileEntry(json, ph) {
+        const save = json[1];
+        const selector = document.createElement('li');
+        selector.classList.add('collection-item');
+        const container = document.createElement('div');
+        let id = json[0].name;
+        if (form_schema_3.Forms.formExists(save.type)) {
+            const id_f = form_schema_3.Forms.getForm(save.type).id_field;
+            if (id_f) {
+                // Si un champ existe pour ce formulaire
+                id = save.fields[id_f] || json[0].name;
+            }
+        }
+        // Ajoute le texte de l'élément
+        container.innerHTML = `
+        <div class="left">
+            ${id} <br> 
+            Modifié le ${helpers_4.formatDate(new Date(json[0].lastModified), true)}
+        </div>`;
+        // Ajoute le bouton de suppression
+        const delete_btn = document.createElement('a');
+        delete_btn.href = "#!";
+        delete_btn.classList.add('secondary-content');
+        const im = document.createElement('i');
+        im.classList.add('material-icons', 'red-text');
+        im.innerText = "delete_forever";
+        delete_btn.appendChild(im);
+        container.appendChild(delete_btn);
+        const file_name = json[0].name;
+        delete_btn.addEventListener('click', function (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            modalDeleteForm(file_name);
+        });
+        // Clear le float
+        container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
+        // Définit l'événement d'édition
+        selector.addEventListener('click', function () {
+            editAForm(json[1], json[0].name.split(/\.json$/)[0]);
+        });
+        // Ajoute les éléments dans le conteneur final
+        selector.appendChild(container);
+        ph.appendChild(selector);
+    }
+    function readAllFilesOfDirectory(dirName) {
+        const dirreader = new Promise(function (resolve, reject) {
+            helpers_4.getDir(function (dirEntry) {
+                // Lecture de tous les fichiers du répertoire
+                const reader = dirEntry.createReader();
+                reader.readEntries(function (entries) {
+                    const promises = [];
+                    for (const entry of entries) {
+                        promises.push(new Promise(function (resolve, reject) {
+                            entry.file(function (file) {
+                                const reader = new FileReader();
+                                console.log(file);
+                                reader.onloadend = function () {
+                                    try {
+                                        resolve([file, JSON.parse(this.result)]);
+                                    }
+                                    catch (e) {
+                                        console.log("JSON mal formé:", this.result);
+                                        resolve([file, { fields: {}, type: "", location: "" }]);
+                                    }
+                                };
+                                reader.onerror = function (err) {
+                                    reject(err);
+                                };
+                                reader.readAsText(file);
+                            }, function (err) {
+                                reject(err);
+                            });
+                        }));
+                    }
+                    // Renvoie le tableau de promesses lancées
+                    resolve(promises);
+                }, function (err) {
+                    reject(err);
+                    console.log(err);
+                });
+            }, dirName, function (err) {
+                reject(err);
+            });
+        });
+        // @ts-ignore
+        return dirreader;
+    }
+    function modalDeleteForm(id) {
+        const modal = helpers_4.getBottomModal();
+        helpers_4.initBottomModal({}, `<div class="modal-content">
+            <h4>Supprimer ce formulaire ?</h4>
+            <p>
+                Vous ne pourrez pas le restaurer ultérieurement.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class="modal-close green-text btn-flat left">Annuler</a>
+            <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
+        </div>
+        `);
+        const instance = helpers_4.getBottomModalInstance();
+        document.getElementById('delete_form_modal').onclick = function () {
+            deleteForm(id).then(function () {
+                M.toast({ html: "Entrée supprimée." });
+                interface_3.PageManager.changePage(interface_3.AppPageName.saved, false);
+                instance.close();
+            }).catch(function (err) {
+                M.toast({ html: "Impossible de supprimer: " + err });
+                instance.close();
+            });
+        };
+        instance.open();
+    }
+    function deleteForm(id) {
+        if (id.match(/\.json$/)) {
+            id = id.substring(0, id.length - 5);
+        }
+        return new Promise(function (resolve, reject) {
+            if (id) {
+                // Supprime toutes les données (images, sons...) liées au formulaire
+                helpers_4.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_4.getDir(function (dirEntry) {
+                        dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
+                            helpers_4.removeFilePromise(fileEntry).then(function () {
+                                resolve();
+                            }).catch(reject);
+                        }, function () {
+                            console.log("Impossible de supprimer");
+                            reject("Impossible de supprimer");
+                        });
+                    }, 'forms', reject);
+                });
+            }
+            else {
+                reject("ID invalide");
+            }
+        });
+    }
+    function initSavedForm(base) {
+        const placeholder = document.createElement('ul');
+        placeholder.classList.add('collection', 'no-margin-top');
+        readAllFilesOfDirectory('forms').then(function (all_promises) {
+            Promise.all(all_promises).then(function (files) {
+                files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
+                for (const f of files) {
+                    appendFileEntry(f, placeholder);
+                }
+                base.innerHTML = "";
+                base.appendChild(placeholder);
+                if (files.length === 0) {
+                    base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
+                }
+            }).catch(function (err) {
+                throw err;
+            });
+        }).catch(function (err) {
+            console.log(err);
+            base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
+        });
+    }
+    exports.initSavedForm = initSavedForm;
+});
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_5, form_1, settings_page_1, saved_forms_1, main_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.APP_NAME = "Busy Bird";
+    var AppPageName;
+    (function (AppPageName) {
+        AppPageName["form"] = "form";
+        AppPageName["settings"] = "settings";
+        AppPageName["saved"] = "saved";
+        AppPageName["home"] = "home";
+    })(AppPageName = exports.AppPageName || (exports.AppPageName = {}));
+    exports.PageManager = new class {
+        constructor() {
+            /**
+             * Déclaration des pages possibles
+             * Chaque clé de AppPages doit être une possibilité de AppPageName
+             */
+            this.AppPages = {
+                form: {
+                    name: "Nouvelle entrée",
+                    callback: form_1.initFormPage,
+                    ask_change: true,
+                    reload_on_restore: false
+                },
+                settings: {
+                    name: "Paramètres",
+                    callback: settings_page_1.initSettingsPage,
+                    reload_on_restore: false
+                },
+                saved: {
+                    name: "Entrées",
+                    callback: saved_forms_1.initSavedForm,
+                    reload_on_restore: true
+                },
+                home: {
+                    name: "Accueil",
+                    callback: initHomePage,
+                    reload_on_restore: false
+                }
+            };
+            this.pages_holder = [];
+        }
+        /**
+         * Change l'affichage et charge la page "page" dans le bloc principal
+         * @param AppPageName page
+         * @param delete_paused supprime les pages sauvegardées
+         */
+        changePage(page, delete_paused = true, force_name, additionnals) {
+            let pagename = "";
+            if (typeof page === 'string') {
+                // AppPageName
+                if (!this.pageExists(page)) {
+                    throw new ReferenceError("Page does not exists");
+                }
+                pagename = page;
+                page = this.AppPages[page];
+            }
+            else {
+                // Recherche de la clé correspondante
+                for (const k in this.AppPages) {
+                    if (this.AppPages[k] === page) {
+                        pagename = k;
+                        break;
+                    }
+                }
+            }
+            // Si on veut supprimer les pages en attente, on vide le tableau
+            if (delete_paused) {
+                this.pages_holder = [];
+            }
+            // On écrit le preloader dans la base et on change l'historique
+            const base = helpers_5.getBase();
+            base.innerHTML = helpers_5.getPreloader("Chargement");
+            if (window.history) {
+                window.history.pushState({}, "", "/?" + pagename);
+            }
+            // Si on a demandé à fermer le sidenav, on le ferme
+            if (!page.not_sidenav_close) {
+                main_2.SIDENAV_OBJ.close();
+            }
+            // On appelle la fonction de création de la page
+            page.callback(base, additionnals);
+            this.actual_page = page;
+            this._should_wait = page.ask_change;
+            // On met le titre de la page dans la barre de navigation
+            document.getElementById('nav_title').innerText = force_name || page.name;
+        }
+        cleanWaitingPages() {
+            while (this.pages_holder.length >= 10) {
+                this.pages_holder.shift();
+            }
+        }
+        /**
+         * Pousse une nouvelle page dans la pile de page
+         * @param page
+         */
+        pushPage(page, force_name, additionnals) {
+            if (!this.pageExists(page)) {
+                throw new ReferenceError("Page does not exists");
+            }
+            // Si il y a plus de 10 pages dans la pile, clean
+            this.cleanWaitingPages();
+            // Récupère le contenu actuel du bloc mère
+            const actual_base = helpers_5.getBase();
+            // Sauvegarde de la base actuelle dans le document fragment
+            // Cela supprime immédiatement le noeud du DOM
+            // const save = new DocumentFragment(); // semble être trop récent
+            const save = document.createDocumentFragment();
+            save.appendChild(actual_base);
+            // Insère la sauvegarde dans la pile de page
+            this.pages_holder.push({
+                save,
+                ask: this._should_wait,
+                name: document.getElementById('nav_title').innerText,
+                page: this.actual_page
+            });
+            // Crée la nouvelle base mère avec le même ID
+            const new_base = document.createElement('div');
+            new_base.id = "main_block";
+            // Insère la nouvelle base vide à la racine de main
+            document.getElementsByTagName('main')[0].appendChild(new_base);
+            // Appelle la fonction pour charger la page demandée dans le bloc
+            this.changePage(page, false, force_name, additionnals);
+        }
+        /**
+         * Revient à la page précédente.
+         * Charge la page d'accueil si aucune page disponible
+         */
+        popPage() {
+            if (this.pages_holder.length === 0) {
+                this.changePage(AppPageName.home);
+                return;
+            }
+            // Récupère la dernière page poussée dans le tableau
+            const last_page = this.pages_holder.pop();
+            // Supprime le main actuel
+            helpers_5.getBase().remove();
+            // Met le fragment dans le DOM
+            document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
+            // Remet le bon titre
+            document.getElementById('nav_title').innerText = last_page.name;
+            this.actual_page = last_page.page;
+            this._should_wait = last_page.ask;
+            if (this.actual_page.reload_on_restore) {
+                if (typeof this.actual_page.reload_on_restore === 'boolean') {
+                    this.changePage(this.actual_page, false);
+                }
+                else {
+                    this.actual_page.reload_on_restore();
+                }
+            }
+        }
+        /**
+         * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
+         */
+        goBack() {
+            const stepBack = () => {
+                // Ferme le modal possiblement ouvert
+                try {
+                    helpers_5.getModalInstance().close();
+                }
+                catch (e) { }
+                if (this.isPageWaiting()) {
+                    this.popPage();
+                }
+                else {
+                    this.changePage(AppPageName.home);
+                }
+            };
+            if (this.should_wait) {
+                modalBackHome(stepBack);
+            }
+            else {
+                stepBack();
+            }
+        }
+        get should_wait() {
+            return this._should_wait;
+        }
+        set should_wait(v) {
+            this._should_wait = v;
+        }
+        pageExists(name) {
+            return name in this.AppPages;
+        }
+        isPageWaiting() {
+            return this.pages_holder.length > 0;
+        }
+    };
+    function initHomePage(base) {
+        base.innerHTML = "<h2 class='center'>" + exports.APP_NAME + "</h2>" + `
+    <div class="container">
+        <p class="flow-text">
+            Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
+            pour les biologistes.
+            Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
+        </p>
+    </div>
+    `;
+        // Initialise les champs materialize et le select
+        M.updateTextFields();
+        $('select').formSelect();
+    }
+    exports.initHomePage = initHomePage;
+    function modalBackHome(callbackIfTrue) {
+        const modal = helpers_5.getBottomModal();
+        const instance = helpers_5.initBottomModal();
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
+        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
+        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        document.getElementById('__modal_back_home').onclick = callbackIfTrue;
+        instance.open();
+    }
+    exports.modalBackHome = modalBackHome;
+});
+define("helpers", ["require", "exports", "interface"], function (require, exports, interface_4) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // PRELOADERS: spinners for waiting time
+    exports.PRELOADER_BASE = `
+<div class="spinner-layer spinner-blue-only">
+    <div class="circle-clipper left">
+        <div class="circle"></div>
+    </div><div class="gap-patch">
+        <div class="circle"></div>
+    </div><div class="circle-clipper right">
+        <div class="circle"></div>
+    </div>
+</div>`;
+    exports.PRELOADER = `
+<div class="preloader-wrapper active">
+    ${exports.PRELOADER_BASE}
+</div>`;
+    exports.SMALL_PRELOADER = `
+<div class="preloader-wrapper small active">
+    ${exports.PRELOADER_BASE}
+</div>`;
+    /**
+     * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
+     */
+    function getBase() {
+        return document.getElementById('main_block');
+    }
+    exports.getBase = getBase;
+    /**
+     * Initialise le modal simple avec les options données (voir doc.)
+     * et insère de l'HTML dedans avec content
+     * @returns M.Modal Instance du modal instancié avec Materialize
+     */
+    function initModal(options = {}, content) {
+        const modal = getModal();
+        modal.classList.remove('modal-fixed-footer');
+        if (content)
+            modal.innerHTML = content;
+        return M.Modal.init(modal, options);
+    }
+    exports.initModal = initModal;
+    /**
+     * Initialise le modal collé en bas avec les options données (voir doc.)
+     * et insère de l'HTML dedans avec content
+     * @returns M.Modal Instance du modal instancié avec Materialize
+     */
+    function initBottomModal(options = {}, content) {
+        const modal = getBottomModal();
+        if (content)
+            modal.innerHTML = content;
+        return M.Modal.init(modal, options);
+    }
+    exports.initBottomModal = initBottomModal;
+    /**
+     * @returns HTMLElement Élément HTML racine du modal
+     */
+    function getModal() {
+        return document.getElementById('modal_placeholder');
+    }
+    exports.getModal = getModal;
+    /**
+     * @returns HTMLElement Élément HTML racine du modal fixé en bas
+     */
+    function getBottomModal() {
+        return document.getElementById('bottom_modal_placeholder');
+    }
+    exports.getBottomModal = getBottomModal;
+    /**
+     * @returns M.Modal Instance du modal (doit être initialisé)
+     */
+    function getModalInstance() {
+        return M.Modal.getInstance(getModal());
+    }
+    exports.getModalInstance = getModalInstance;
+    /**
+     * @returns M.Modal Instance du modal fixé en bas (doit être initialisé)
+     */
+    function getBottomModalInstance() {
+        return M.Modal.getInstance(getBottomModal());
+    }
+    exports.getBottomModalInstance = getBottomModalInstance;
+    /**
+     * Génère un spinner centré sur l'écran avec un message d'attente
+     * @param text Texte à insérer comme message de chargement
+     * @returns string HTML à insérer
+     */
+    function getPreloader(text) {
+        return `
+    <center style="margin-top: 35vh;">
+        ${exports.PRELOADER}
+    </center>
+    <center class="flow-text" style="margin-top: 10px">${text}</center>
+    `;
+    }
+    exports.getPreloader = getPreloader;
+    /**
+     * Génère un spinner adapté à un modal avec un message d'attente
+     * @param text Texte à insérer comme message de chargement
+     * @returns string HTML à insérer dans la racine d'un modal
+     */
+    function getModalPreloader(text, footer) {
+        return `<div class="modal-content">
+    <center>
+        ${exports.SMALL_PRELOADER}
+    </center>
+    <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
+    </div>
+    ${footer}
+    `;
+    }
+    exports.getModalPreloader = getModalPreloader;
+    // dec2hex :: Integer -> String
+    function dec2hex(dec) {
+        return ('0' + dec.toString(16)).substr(-2);
+    }
+    /**
+     * Génère un identifiant aléatoire
+     * @param len Longueur de l'ID
+     */
+    function generateId(len) {
+        const arr = new Uint8Array((len || 40) / 2);
+        window.crypto.getRandomValues(arr);
+        return Array.from(arr, dec2hex).join('');
+    }
+    exports.generateId = generateId;
+    // USELESS
+    function saveDefaultForm() {
+        // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
+    }
+    exports.saveDefaultForm = saveDefaultForm;
+    // @ts-ignore 
+    // Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
+    // utilise le répertoire data (partition /data) de Android
+    let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
+    /**
+     * Change le répertoire actif en fonction de la plateforme et l'insère dans FOLDER.
+     * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
+     */
+    function changeDir() {
+        // @ts-ignore
+        if (device.platform === "browser") {
+            FOLDER = "cdvfile://localhost/temporary/";
+            // Permet le bouton retour sur navigateur
+            const back_btn = document.getElementById('__nav_back_button');
+            back_btn.onclick = function () {
+                interface_4.PageManager.goBack();
+            };
+            back_btn.classList.remove('hide');
+        }
+        // @ts-ignore
+        else if (device.platform === "iOS") {
+            // @ts-ignore
+            FOLDER = cordova.file.dataDirectory;
+        }
+    }
+    exports.changeDir = changeDir;
+    let DIR_ENTRY = null;
+    function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
+        // @ts-ignore
+        const pathToFile = FOLDER + fileName;
+        // @ts-ignore
+        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
+            fileEntry.file(function (file) {
+                const reader = new FileReader();
+                reader.onloadend = function (e) {
+                    callback(this.result);
+                };
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
+            }, function () {
+                if (callbackIfFailed) {
+                    callbackIfFailed();
+                }
+                else {
+                    console.log("not readable");
+                }
+            });
+        }, function () {
+            if (callbackIfFailed) {
+                callbackIfFailed();
+            }
+            else {
+                console.log("not found");
+            }
+        });
+    }
+    exports.readFromFile = readFromFile;
+    /**
+     * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
+     * Sans dirName, renvoie la racine du système de fichiers.
+     * @param callback Function(dirEntry) => void
+     * @param dirName string
+     * @param onError Function(error) => void
+     */
+    function getDir(callback, dirName = "", onError) {
+        function callGetDirEntry(dirEntry) {
+            DIR_ENTRY = dirEntry;
+            if (dirName) {
+                dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
+                    if (callback) {
+                        callback(newEntry);
+                    }
+                }, (err) => {
+                    console.log("Unable to create dir");
+                    if (onError) {
+                        onError(err);
+                    }
+                });
+            }
+            else if (callback) {
+                callback(dirEntry);
+            }
+        }
+        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
+        if (DIR_ENTRY === null) {
+            // @ts-ignore
+            window.resolveLocalFileSystemURL(FOLDER, callGetDirEntry, (err) => {
+                console.log("Persistent not available", err.message);
+                if (onError) {
+                    onError(err);
+                }
+            });
+        }
+        else {
+            callGetDirEntry(DIR_ENTRY);
+        }
+    }
+    exports.getDir = getDir;
+    /**
+     * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
+     * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
+     * @param dirName string
+     * @param fileName string
+     * @param blob Blob
+     * @param callback Function() => void
+     * @param onFailure Function(error) => void | Généralement, error est une DOMException
+     */
+    function writeFile(dirName, fileName, blob, callback, onFailure) {
+        getDir(function (dirEntry) {
+            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
+                write(fileEntry, blob).then(function () {
+                    if (callback) {
+                        callback();
+                    }
+                }).catch(error => { if (onFailure)
+                    onFailure(error); });
+            }, function (err) { console.log("Error in writing file", err.message); if (onFailure) {
+                onFailure(err);
+            } });
+        }, dirName);
+        function write(fileEntry, dataObj) {
+            // Prend l'entry du fichier et son blob à écrire en paramètre
+            return new Promise(function (resolve, reject) {
+                // Fonction pour écrire le fichier après vidage
+                function finally_write() {
+                    fileEntry.createWriter(function (fileWriter) {
+                        fileWriter.onerror = function (e) {
+                            reject(e);
+                        };
+                        fileWriter.onwriteend = null;
+                        fileWriter.write(dataObj);
+                        fileWriter.onwriteend = function () {
+                            resolve();
+                        };
+                    });
+                }
+                // Vide le fichier
+                fileEntry.createWriter(function (fileWriter) {
+                    fileWriter.onerror = function (e) {
+                        reject(e);
+                    };
+                    // Vide le fichier
+                    fileWriter.truncate(0);
+                    // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
+                    fileWriter.onwriteend = finally_write;
+                });
+            });
+        }
+    }
+    exports.writeFile = writeFile;
+    /**
+     * Crée un dossier name dans la racine du système de fichiers.
+     * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
+     * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
+     * Si échec, appelle onError avec l'erreur
+     * @param name string
+     * @param onSuccess Function(dirEntry) => void
+     * @param onError Function(error: DOMException) => void
+     */
+    function createDir(name, onSuccess, onError) {
+        getDir(function (dirEntry) {
+            dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
+        });
+    }
+    exports.createDir = createDir;
+    /**
+     * Fonction de test.
+     * Affiche les entrées du répertoire path dans la console.
+     * Par défaut, affiche la racine du système de fichiers.
+     * @param path string
+     */
+    function listDir(path = "") {
+        // @ts-ignore
+        getDir(function (fileSystem) {
+            const reader = fileSystem.createReader();
+            reader.readEntries(function (entries) {
+                console.log(entries);
+            }, function (err) {
+                console.log(err);
+            });
+        }, path);
+    }
+    exports.listDir = listDir;
+    /**
+     * Fonction de test.
+     * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
+     * @param ele HTMLElement
+     * @param obj any
+     */
+    function printObj(ele, obj) {
+        ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
+    }
+    exports.printObj = printObj;
+    /**
+     * Obtient la localisation de l'utilisation.
+     * Si réussi, onSuccess est appelée avec en paramètre un objet de type Position
+     * @param onSuccess Function(coords: Position) => void
+     * @param onFailed Function(error) => void
+     */
+    function getLocation(onSuccess, onFailed) {
+        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
+    }
+    exports.getLocation = getLocation;
+    /**
+     * Calcule la distance en mètres entre deux coordonnées GPS.
+     * Les deux objets passés doivent implémenter l'interface CoordsLike
+     * @param coords1 CoordsLike
+     * @param coords2 CoordsLike
+     * @returns number Nombre de mètres entre les deux coordonnées
+     */
+    function calculateDistance(coords1, coords2) {
+        // @ts-ignore
+        return geolib.getDistance({ latitude: coords1.latitude, longitude: coords1.longitude }, { latitude: coords2.latitude, longitude: coords2.longitude });
+    }
+    exports.calculateDistance = calculateDistance;
+    /**
+     * Fonction de test pour tester la géolocalisation.
+     * @param latitude
+     * @param longitude
+     */
+    function testDistance(latitude = 45.353421, longitude = 5.836441) {
+        getLocation(function (res) {
+            console.log(calculateDistance(res.coords, { latitude, longitude }));
+        }, function (error) {
+            console.log(error);
+        });
+    }
+    exports.testDistance = testDistance;
+    /**
+     * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
+     * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
+     * @param dirName string
+     * @param fileName string
+     * @param callback Function() => void Fonction appelée quand le fichier est supprimé
+     */
+    function removeFileByName(dirName, fileName, callback) {
+        getDir(function (dirEntry) {
+            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
+                removeFile(fileEntry, callback);
+            });
+        }, dirName);
+    }
+    exports.removeFileByName = removeFileByName;
+    /**
+     * Supprime un fichier via son fileEntry
+     * @param entry fileEntry
+     * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
+     */
+    function removeFile(entry, callback) {
+        entry.remove(function () {
+            // Fichier supprimé !
+            if (callback)
+                callback();
+        }, function (err) {
+            console.log("error", err);
+            if (callback)
+                callback(err);
+        }, function () {
+            console.log("file not found");
+            if (callback)
+                callback(false);
+        });
+    }
+    exports.removeFile = removeFile;
+    /**
+     * Supprime un fichier via son fileEntry
+     * @param entry fileEntry
+     * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
+     */
+    function removeFilePromise(entry) {
+        return new Promise(function (resolve, reject) {
+            entry.remove(function () {
+                // Fichier supprimé !
+                resolve();
+            }, function (err) {
+                reject(err);
+            }, function () {
+                resolve();
+            });
+        });
+    }
+    exports.removeFilePromise = removeFilePromise;
+    /**
+     * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
+     * @param dirName string Chemin du répertoire
+     * @param callback NE PAS UTILISER. USAGE INTERNE.
+     * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
+     */
+    function rmrf(dirName, callback, dirEntry) {
+        // Récupère le dossier dirName (ou la racine du système de fichiers)
+        function readDirEntry(dirEntry) {
+            const reader = dirEntry.createReader();
+            // Itère sur les entrées du répertoire via readEntries
+            reader.readEntries(function (entries) {
+                // Pour chaque entrée du dossier
+                for (const entry of entries) {
+                    if (entry.isDirectory) {
+                        // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                        rmrf(entry.fullPath, function () {
+                            // Puis on le supprime lui-même
+                            removeFile(entry, callback);
+                        });
+                    }
+                    else {
+                        // Si c'est un fichier, on le supprime
+                        removeFile(entry, callback);
+                    }
+                }
+            });
+        }
+        if (dirEntry) {
+            readDirEntry(dirEntry);
+        }
+        else {
+            getDir(readDirEntry, dirName, function () {
+                if (callback)
+                    callback();
+            });
+        }
+    }
+    exports.rmrf = rmrf;
+    /**
+     * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
+     * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
+     * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
+     * @param dirName string Chemin du dossier à supprimer
+     * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
+     * @returns Promise Promesse tenue si suppression réussie, rompue sinon
+     */
+    function rmrfPromise(dirName, deleteSelf = false) {
+        function rmrfFromEntry(dirEntry) {
+            return new Promise(function (resolve, reject) {
+                const reader = dirEntry.createReader();
+                // Itère sur les entrées du répertoire via readEntries
+                reader.readEntries(function (entries) {
+                    // Pour chaque entrée du dossier
+                    const promises = [];
+                    for (const entry of entries) {
+                        promises.push(new Promise(function (resolve, reject) {
+                            if (entry.isDirectory) {
+                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                                rmrfFromEntry(entry).then(function () {
+                                    // Quand c'est fini, on supprime le répertoire lui-même
+                                    // Puis on résout
+                                    removeFilePromise(entry).then(resolve).catch(reject);
+                                });
+                            }
+                            else {
+                                // Si c'est un fichier, on le supprime
+                                removeFilePromise(entry).then(resolve).catch(reject);
+                            }
+                        }));
+                    }
+                    // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
+                    Promise.all(promises).then(function () {
+                        // Quand ils le sont, résout la promesse
+                        resolve();
+                    }).catch(reject);
+                });
+            });
+        }
+        return new Promise(function (resolve, reject) {
+            getDir(function (dirEntry) {
+                // Attends que tous les dossiers soient supprimés sous ce répertoire
+                rmrfFromEntry(dirEntry).then(function () {
+                    // Si on doit supprimer le dossier et que ce n'est pas la racine
+                    if (deleteSelf && dirName !== "") {
+                        // On supprime puis on résout
+                        removeFilePromise(dirEntry).then(resolve).catch(reject);
+                    }
+                    // On résout immédiatement
+                    else {
+                        resolve();
+                    }
+                }).catch(reject);
+            }, dirName, reject);
+        });
+    }
+    exports.rmrfPromise = rmrfPromise;
+    /**
+     * Formate un objet Date en chaîne de caractères potable.
+     * @param date Date
+     * @param withTime boolean Détermine si la chaîne de caractères contient l'heure et les minutes
+     * @returns string La châine formatée
+     */
+    function formatDate(date, withTime = false) {
+        const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
+        const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+        const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+        return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
+    }
+    exports.formatDate = formatDate;
+    /**
+     * Assigne la balise src de l'image element au contenu de l'image située dans path.
+     * @param path string
+     * @param element HTMLImageElement
+     */
+    function createImgSrc(path, element) {
+        const parts = path.split('/');
+        const file_name = parts.pop();
+        const dir_name = parts.join('/');
+        getDir(function (dirEntry) {
+            dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
+                element.src = fileEntry.toURL();
+            });
+        }, dir_name);
+    }
+    exports.createImgSrc = createImgSrc;
+    function blobToBase64(blob) {
+        const reader = new FileReader();
+        return new Promise(function (resolve, reject) {
+            reader.onload = function () {
+                resolve(reader.result);
+            };
+            reader.onerror = function (e) {
+                reject(e);
+            };
+            reader.readAsDataURL(blob);
+        });
+    }
+    exports.blobToBase64 = blobToBase64;
+    function urlToBlob(str) {
+        return fetch(str).then(res => res.blob());
+    }
+    exports.urlToBlob = urlToBlob;
+});
+define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_6, logger_3) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function newModalRecord(button, input, ele) {
+        let recorder = null;
+        const modal = helpers_6.getModal();
+        const instance = helpers_6.initModal({}, helpers_6.getModalPreloader("Chargement", ''));
+        instance.open();
+        let audioContent = null;
+        let blobSize = 0;
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 style="margin-top: 0;">${ele.label}</h5>
+        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
+        <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
+        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
+        <div class=clearb></div>
+        <div id="__media_record_player" class="modal-record-audio-player">${input.value ? `
+            <figure>
+                <figcaption>Enregistrement</figcaption>
+                <audio controls src="${input.value}"></audio>
+            </figure>
+        ` : ''}</div>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat green-text right ${input.value ? "" : "hide"}" id="__media_record_save">Sauvegarder</a>
+        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        const btn_start = document.getElementById('__media_record_record');
+        const btn_stop = document.getElementById('__media_record_stop');
+        const btn_confirm = document.getElementById('__media_record_save');
+        const btn_cancel = document.getElementById('__media_record_cancel');
+        const player = document.getElementById('__media_record_player');
+        //add events to those 2 buttons
+        btn_start.addEventListener("click", startRecording);
+        btn_stop.addEventListener("click", stopRecording);
+        btn_confirm.onclick = function () {
+            if (audioContent) {
+                input.value = audioContent;
+                input.dataset.duration = ((blobSize / 256000) * 8).toString();
+                // Met à jour le bouton
+                const duration = (blobSize / 256000) * 8;
+                button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                button.classList.remove('blue');
+                button.classList.add('green');
+            }
+            instance.close();
+            // Clean le modal et donc les variables associées
+            modal.innerHTML = "";
+        };
+        btn_cancel.onclick = function () {
+            instance.close();
+            // Clean le modal et donc les variables associées
+            modal.innerHTML = "";
+        };
+        function startRecording() {
+            btn_start.classList.add('hide');
+            btn_stop.classList.remove('hide');
+            player.innerHTML = `<p class='flow-text center'>
+            <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
+            Enregistrement en cours
+        </p>`;
+            // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
+            recorder = new MicRecorder({
+                bitRate: 256
+            });
+            recorder.start().catch((e) => {
+                logger_3.Logger.error("Impossible de lancer l'écoute.", e);
+                player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
+            });
+        }
+        function stopRecording() {
+            // Once you are done singing your best song, stop and get the mp3.
+            btn_stop.classList.add('hide');
+            player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
+            recorder
+                .stop()
+                .getMp3().then(([buffer, blob]) => {
+                blobSize = blob.size;
+                helpers_6.blobToBase64(blob).then(function (base64) {
+                    audioContent = base64;
+                    btn_confirm.classList.remove('hide');
+                    player.innerHTML = `<figure>
+                        <figcaption>Enregistrement</figcaption>
+                        <audio controls src="${base64}"></audio>
+                    </figure>`;
+                    btn_start.classList.remove('hide');
+                });
+            }).catch((e) => {
+                M.toast({ html: 'Impossible de lire votre enregistrement' });
+                logger_3.Logger.error("Enregistrement échoué:", e.message);
+            });
+        }
+    }
+    exports.newModalRecord = newModalRecord;
 });

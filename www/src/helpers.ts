@@ -1,3 +1,5 @@
+import { PageManager } from "./interface";
+
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
 <div class="spinner-layer spinner-blue-only">
@@ -144,6 +146,13 @@ export function changeDir() {
     // @ts-ignore
     if (device.platform === "browser") {
         FOLDER = "cdvfile://localhost/temporary/";
+
+        // Permet le bouton retour sur navigateur
+        const back_btn = document.getElementById('__nav_back_button')
+        back_btn.onclick = function() {
+            PageManager.goBack();
+        };
+        back_btn.classList.remove('hide');
     }
     // @ts-ignore
     else if (device.platform === "iOS") {
