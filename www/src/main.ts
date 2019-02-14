@@ -52,7 +52,9 @@ function initApp() {
     }, e => {console.log(e)});
 
     // Initialise le bouton retour
-    document.addEventListener("backbutton", PageManager.goBack, false);
+    document.addEventListener("backbutton", function() {
+        PageManager.goBack();
+    }, false);
 
     // Initialise le sidenav
     const elem = document.querySelector('.sidenav');

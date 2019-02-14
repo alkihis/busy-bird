@@ -1,4 +1,4 @@
-import { getBase, getPreloader, generateId, getBottomModal, initBottomModal, getModalPreloader } from "./helpers";
+import { getBase, getPreloader, generateId, getBottomModal, initBottomModal, getModalPreloader, getModalInstance } from "./helpers";
 import { initFormPage } from "./form";
 import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
@@ -189,6 +189,9 @@ export const PageManager = new class {
      */
     public goBack() : void {
         const stepBack = () => {
+            // Ferme le modal possiblement ouvert
+            try { getModalInstance().close(); } catch (e) { }
+            
             if (this.isPageWaiting()) {
                 this.popPage();
             }

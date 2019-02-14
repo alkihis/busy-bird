@@ -2937,6 +2937,11 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
          */
         goBack() {
             const stepBack = () => {
+                // Ferme le modal possiblement ouvert
+                try {
+                    helpers_4.getModalInstance().close();
+                }
+                catch (e) { }
                 if (this.isPageWaiting()) {
                     this.popPage();
                 }
@@ -3044,7 +3049,9 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
             console.log(status);
         }, e => { console.log(e); });
         // Initialise le bouton retour
-        document.addEventListener("backbutton", interface_2.PageManager.goBack, false);
+        document.addEventListener("backbutton", function () {
+            interface_2.PageManager.goBack();
+        }, false);
         // Initialise le sidenav
         const elem = document.querySelector('.sidenav');
         exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
