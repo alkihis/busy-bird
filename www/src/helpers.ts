@@ -153,7 +153,7 @@ export function changeDir() {
 }
 
 let DIR_ENTRY = null;
-export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function) {
+export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) {
     // @ts-ignore
     const pathToFile = FOLDER + fileName;
     // @ts-ignore
@@ -165,7 +165,12 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
                 callback(this.result);
             };
 
-            reader.readAsText(file);
+            if (asBase64) {
+                reader.readAsDataURL(file);
+            }
+            else {
+                reader.readAsText(file);
+            }
         }, function() {
             if (callbackIfFailed) {
                 callbackIfFailed();
@@ -562,4 +567,23 @@ export function createImgSrc(path: string, element: HTMLImageElement) : void {
             element.src = fileEntry.toURL();
         });
     }, dir_name);
+}
+
+export function blobToBase64(blob) : Promise<string> {
+    const reader = new FileReader();
+
+    return new Promise(function(resolve, reject) {
+        reader.onload = function() {
+            resolve(reader.result as string);
+        };
+        reader.onerror = function(e) {
+            reject(e);
+        }
+
+        reader.readAsDataURL(blob);
+    });
+}
+
+export function urlToBlob(str: string) : Promise<Blob> {
+    return fetch(str).then(res => res.blob());
 }

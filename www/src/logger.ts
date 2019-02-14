@@ -15,11 +15,13 @@ export enum LogLevel {
 export const Logger = new class {
     protected fileEntry: any;
     protected _onWrite: boolean = false;
-    protected delayed: [string, LogLevel][] = [];
+    protected delayed: [any[], LogLevel][] = [];
     protected waiting_callee: Function[] = [];
 
     protected init_done = false;
     protected init_waiting_callee: Function[] = [];
+
+    protected tries = 5;
 
     constructor() { /* YOU MUST CALL init() WHEN APP IS READY */ }
 
@@ -28,12 +30,22 @@ export const Logger = new class {
      * Pour vérifier si le logger est initialisé, utilisez onReady(). 
      */
     public init() : void {
+        this.init_done = false;
+
+        if (this.tries === 0) {
+            console.error("Too many init tries. Logger stays uninitialized.");
+            return;
+        }
+
+        this.tries--;
+
         getDir((dirEntry) => {
             // Creates a new file or returns the file if it already exists.
             dirEntry.getFile("log.txt", {create: true}, (fileEntry) => {
                 this.fileEntry = fileEntry;
-                this.onWrite = false;
                 this.init_done = true;
+                this.onWrite = false;
+                this.tries = 5;
 
                 let func: Function;
                 while (func = this.init_waiting_callee.pop()) {
@@ -104,15 +116,24 @@ export const Logger = new class {
      * @param text Message
      * @param level Niveau de log
      */
-    public write(text: string, level: LogLevel = LogLevel.warn) : void {
-        // Create a FileWriter object for our FileEntry (log.txt).
+    public write(data: any, level: LogLevel = LogLevel.warn) : void {
+        if (!Array.isArray(data)) {
+            data = [data];
+        }
+
         if (!this.isInit()) {
-            this.delayWrite(text, level);
+            this.delayWrite(data, level);
             return;
         }
 
+        // En debug, on écrit dans dans le fichier
+        if (level === LogLevel.debug) {
+            console.log(...data);
+            return;
+        }
+
+        // Create a FileWriter object for our FileEntry (log.txt).
         this.fileEntry.createWriter((fileWriter) => {
-    
             fileWriter.onwriteend = () => {
                 this.onWrite = false;
             };
@@ -132,26 +153,31 @@ export const Logger = new class {
             }
 
             if (!this.onWrite) {
-                text = this.createDateHeader(level) + " " + text;
-
                 if (level === LogLevel.info) {
-                    console.log(text);
+                    console.log(...data);
                 }
                 else if (level === LogLevel.warn) {
-                    console.warn(text);
+                    console.warn(...data);
                 }
                 else if (level === LogLevel.error) {
-                    console.error(text);
+                    console.error(...data);
+                }
+                let final: string = this.createDateHeader(level) + " ";
+
+                for (const e of data) {
+                    final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
                 }
 
-                text += "\n";
-
                 this.onWrite = true;
-                fileWriter.write(new Blob([text]));
+                fileWriter.write(new Blob([final]));
             }
             else {
-                this.delayWrite(text, level);
+                this.delayWrite(data, level);
             }
+        }, (error) => {
+            console.error("Impossible d'écrire: ", error.message);
+            this.delayWrite(data, level);
+            this.init();
         });
     }
 
@@ -172,8 +198,8 @@ export const Logger = new class {
         return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
     }
 
-    protected delayWrite(text: string, level: LogLevel) : void {
-        this.delayed.push([text, level]);
+    protected delayWrite(data: any[], level: LogLevel) : void {
+        this.delayed.push([data, level]);
     }
 
     /**
@@ -251,27 +277,28 @@ export const Logger = new class {
                 };
         
                 reader.readAsText(file);
-            }, function() {
+            }, () => {
                 console.log("Logger: Unable to open file.");
+                this.init();
                 reject();
             });
         });
     }
 
     /// Méthodes d'accès rapide
-    public debug(text: string) : void {
-        this.write(text, LogLevel.debug);
+    public debug(...data: any[]) : void {
+        this.write(data, LogLevel.debug);
     }
 
-    public info(text: string) : void {
-        this.write(text, LogLevel.info);
+    public info(...data: any[]) : void {
+        this.write(data, LogLevel.info);
     }
 
-    public warn(text: string) : void {
-        this.write(text, LogLevel.warn);
+    public warn(...data: any[]) : void {
+        this.write(data, LogLevel.warn);
     }
 
-    public error(text: string) : void {
-        this.write(text, LogLevel.error);
+    public error(...data: any[]) : void {
+        this.write(data, LogLevel.error);
     }
 };

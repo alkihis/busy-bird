@@ -35,7 +35,20 @@
     },
     "cordova-plugin-device": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-media-recorder": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-android-permissions": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
-  "dependent_plugins": {}
+  "dependent_plugins": {
+    "es6-promise-plugin": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-media-stream": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    }
+  }
 }

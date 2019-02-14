@@ -1,4 +1,4 @@
-import { getDir, printObj, formatDate, rmrf, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase } from "./helpers";
+import { getDir, printObj, formatDate, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./interface";
 import { constructForm, saveForm } from "./form";
@@ -13,41 +13,8 @@ function editAForm(form: FormSave, name: string) {
     const current_form = Forms.getForm(form.type);
 
     const base = getBase();
-    base.innerHTML = "";
-
-    const base_block = document.createElement('div');
-    base_block.classList.add('row', 'container');
-
-    const placeh = document.createElement('form');
-    placeh.classList.add('col', 's12');
-
-    base_block.appendChild(placeh);
-
-    // Appelle la fonction pour construire
-    constructForm(placeh, current_form, form);
-
-    base.appendChild(base_block);
     
-    M.updateTextFields();
-    $('select').formSelect();
-
-    // Autoredimensionnement des textaera si valeur par défaut
-    const $textarea = $('textarea');
-    if ($textarea.length > 0) {
-        M.textareaAutoResize($textarea);
-    }
-
-    // Création du bouton de sauvegarde
-    const btn = document.createElement('div');
-    btn.classList.add('btn-flat', 'right', 'red-text');
-    btn.innerText = "Enregistrer";
-
-    const current_form_key = Forms.current_key;
-    btn.addEventListener('click', function() {
-        saveForm(current_form_key, name, form);
-    });
-
-    base_block.appendChild(btn);
+    PageManager.pushPage(AppPageName.form, "Modifier", {form: current_form, name, save: form});
 }
 
 function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
@@ -177,7 +144,12 @@ function modalDeleteForm(id: string) {
 
     const instance = getBottomModalInstance();
     document.getElementById('delete_form_modal').onclick = function() {
-        deleteForm(id, function() {
+        deleteForm(id).then(function() {
+            M.toast({html: "Entrée supprimée."});
+            PageManager.changePage(AppPageName.saved, false);
+            instance.close();
+        }).catch(function(err) {
+            M.toast({html: "Impossible de supprimer: " + err});
             instance.close();
         });
     };
@@ -185,25 +157,31 @@ function modalDeleteForm(id: string) {
     instance.open();
 }
 
-function deleteForm(id: string, callback?: Function) {
+function deleteForm(id: string) : Promise<void> {
     if (id.match(/\.json$/)) {
         id = id.substring(0, id.length - 5);
     }
 
-    // Supprime toutes les données (images, sons...) liées au formulaire
-    rmrf('form_data/' + id);
-
-    getDir(function(dirEntry) {
-        dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-            removeFile(fileEntry, function() {
-                M.toast({html: "Entrée supprimée."});
-                PageManager.changePage(AppPageName.saved);
-                if (callback) callback();
-            })
-        }, function() {
-            console.log("Impossible de supprimer");
-        });
-    }, 'forms');
+    return new Promise(function(resolve, reject) {
+        if (id) {
+            // Supprime toutes les données (images, sons...) liées au formulaire
+            rmrfPromise('form_data/' + id, true).catch(err => err).then(function() {
+                getDir(function(dirEntry) {
+                    dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
+                        removeFilePromise(fileEntry).then(function() {
+                            resolve();
+                        }).catch(reject);
+                    }, function() {
+                        console.log("Impossible de supprimer");
+                        reject("Impossible de supprimer");
+                    });
+                }, 'forms', reject);
+            });
+        }
+        else {
+            reject("ID invalide");
+        }
+    });
 }
 
 export function initSavedForm(base: HTMLElement) {

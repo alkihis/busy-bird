@@ -156,7 +156,7 @@ define("helpers", ["require", "exports"], function (require, exports) {
     }
     exports.changeDir = changeDir;
     let DIR_ENTRY = null;
-    function readFromFile(fileName, callback, callbackIfFailed) {
+    function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
         // @ts-ignore
         const pathToFile = FOLDER + fileName;
         // @ts-ignore
@@ -166,7 +166,12 @@ define("helpers", ["require", "exports"], function (require, exports) {
                 reader.onloadend = function (e) {
                     callback(this.result);
                 };
-                reader.readAsText(file);
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
             }, function () {
                 if (callbackIfFailed) {
                     callbackIfFailed();
@@ -536,6 +541,150 @@ define("helpers", ["require", "exports"], function (require, exports) {
         }, dir_name);
     }
     exports.createImgSrc = createImgSrc;
+    function blobToBase64(blob) {
+        const reader = new FileReader();
+        return new Promise(function (resolve, reject) {
+            reader.onload = function () {
+                resolve(reader.result);
+            };
+            reader.onerror = function (e) {
+                reject(e);
+            };
+            reader.readAsDataURL(blob);
+        });
+    }
+    exports.blobToBase64 = blobToBase64;
+    function urlToBlob(str) {
+        return fetch(str).then(res => res.blob());
+    }
+    exports.urlToBlob = urlToBlob;
+});
+////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
+/*
+{
+    "nom_formel/clé_du_formulaire": {
+        "name": "Nom réel (possiblement à afficher à l'écran)"
+        "fields": [
+            {}: FormEntity
+        ],
+        "locations": [
+            {}: FormLocation
+        ]
+    },
+    "nom_d_un_autre_formulaire": Form
+}
+
+Le formulaire DOIT comporter un champ de type "datetime",
+nommé "__date__" pour être affiché correctement dans
+la liste des formulaires enregistrés.
+Il peut être n'importe où dans le formulaire.
+*/
+define("form_schema", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Type à préciser dans le JSON, clé "type"
+     * Le type à préciser est la chaîne de caractères
+     */
+    var FormEntityType;
+    (function (FormEntityType) {
+        FormEntityType["integer"] = "integer";
+        FormEntityType["float"] = "float";
+        FormEntityType["select"] = "select";
+        FormEntityType["string"] = "string";
+        FormEntityType["bigstring"] = "textarea";
+        FormEntityType["checkbox"] = "checkbox";
+        FormEntityType["file"] = "file";
+        FormEntityType["slider"] = "slider";
+        FormEntityType["datetime"] = "datetime";
+        FormEntityType["divider"] = "divider";
+        FormEntityType["audio"] = "audio";
+    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
+    // Clé du JSON à charger automatiquement
+    exports.default_form_name = "cincle_plongeur";
+    // Classe contenant le formulaire JSON chargé et parsé
+    exports.Forms = new class {
+        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
+        // La clé du formulaire par défaut est contenu dans "default_form_name"
+        constructor() {
+            this.form_ready = false;
+            this.waiting_callee = [];
+            this.current = null;
+            this._current_key = null;
+            $.get('assets/form.json', {}, (json) => {
+                // Le JSON est reçu, on l'enregistre dans available_forms
+                this.available_forms = json;
+                // On met le form à ready
+                this.form_ready = true;
+                // On enregistre le formulaire par défaut (si la clé définie existe)
+                if (exports.default_form_name in this.available_forms) {
+                    this.current = this.available_forms[exports.default_form_name];
+                    this._current_key = exports.default_form_name;
+                }
+                else {
+                    this.current = { name: null, fields: [], locations: [] };
+                }
+                // On exécute les fonctions en attente
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func(this.available_forms, this.current);
+                }
+            }, 'json');
+        }
+        onReady(callback) {
+            if (this.form_ready) {
+                callback(this.available_forms, this.current);
+            }
+            else {
+                this.waiting_callee.push(callback);
+            }
+        }
+        formExists(name) {
+            return name in this.available_forms;
+        }
+        /**
+         * Change le formulaire courant renvoyé par onReady
+         * @param name clé d'accès au formulaire
+         */
+        changeForm(name) {
+            if (this.formExists(name)) {
+                this.current = this.available_forms[name];
+                this._current_key = name;
+            }
+            else {
+                throw new Error("Form does not exists");
+            }
+        }
+        /**
+         * Renvoie un formulaire, sans modifier le courant
+         * @param name clé d'accès au formulaire
+         */
+        getForm(name) {
+            if (this.formExists(name)) {
+                return this.available_forms[name];
+            }
+            else {
+                throw new Error("Form does not exists");
+            }
+        }
+        /**
+         * Retourne un tableau de tuples contenant en
+         * première position la clé d'accès au formulaire,
+         * et en seconde position son nom textuel à présenter à l'utilisateur
+         * @returns [string, string][]
+         */
+        getAvailableForms() {
+            const keys = Object.keys(this.available_forms);
+            const tuples = [];
+            for (const key of keys) {
+                tuples.push([key, this.available_forms[key].name]);
+            }
+            return tuples;
+        }
+        get current_key() {
+            return this._current_key;
+        }
+    };
 });
 define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
     "use strict";
@@ -561,18 +710,26 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
             this.waiting_callee = [];
             this.init_done = false;
             this.init_waiting_callee = [];
+            this.tries = 5;
         }
         /**
          * Initialise le logger. Doit être réalisé après app.init() et changeDir().
          * Pour vérifier si le logger est initialisé, utilisez onReady().
          */
         init() {
+            this.init_done = false;
+            if (this.tries === 0) {
+                console.error("Too many init tries. Logger stays uninitialized.");
+                return;
+            }
+            this.tries--;
             helpers_1.getDir((dirEntry) => {
                 // Creates a new file or returns the file if it already exists.
                 dirEntry.getFile("log.txt", { create: true }, (fileEntry) => {
                     this.fileEntry = fileEntry;
-                    this.onWrite = false;
                     this.init_done = true;
+                    this.onWrite = false;
+                    this.tries = 5;
                     let func;
                     while (func = this.init_waiting_callee.pop()) {
                         func();
@@ -635,12 +792,20 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
          * @param text Message
          * @param level Niveau de log
          */
-        write(text, level = LogLevel.warn) {
-            // Create a FileWriter object for our FileEntry (log.txt).
+        write(data, level = LogLevel.warn) {
+            if (!Array.isArray(data)) {
+                data = [data];
+            }
             if (!this.isInit()) {
-                this.delayWrite(text, level);
+                this.delayWrite(data, level);
                 return;
             }
+            // En debug, on écrit dans dans le fichier
+            if (level === LogLevel.debug) {
+                console.log(...data);
+                return;
+            }
+            // Create a FileWriter object for our FileEntry (log.txt).
             this.fileEntry.createWriter((fileWriter) => {
                 fileWriter.onwriteend = () => {
                     this.onWrite = false;
@@ -658,23 +823,29 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
                     return;
                 }
                 if (!this.onWrite) {
-                    text = this.createDateHeader(level) + " " + text;
                     if (level === LogLevel.info) {
-                        console.log(text);
+                        console.log(...data);
                     }
                     else if (level === LogLevel.warn) {
-                        console.warn(text);
+                        console.warn(...data);
                     }
                     else if (level === LogLevel.error) {
-                        console.error(text);
+                        console.error(...data);
                     }
-                    text += "\n";
+                    let final = this.createDateHeader(level) + " ";
+                    for (const e of data) {
+                        final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
+                    }
                     this.onWrite = true;
-                    fileWriter.write(new Blob([text]));
+                    fileWriter.write(new Blob([final]));
                 }
                 else {
-                    this.delayWrite(text, level);
+                    this.delayWrite(data, level);
                 }
+            }, (error) => {
+                console.error("Impossible d'écrire: ", error.message);
+                this.delayWrite(data, level);
+                this.init();
             });
         }
         /**
@@ -690,8 +861,8 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
             const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
             return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
         }
-        delayWrite(text, level) {
-            this.delayed.push([text, level]);
+        delayWrite(data, level) {
+            this.delayed.push([data, level]);
         }
         /**
          * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
@@ -759,66 +930,125 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
                         resolve(this.result);
                     };
                     reader.readAsText(file);
-                }, function () {
+                }, () => {
                     console.log("Logger: Unable to open file.");
+                    this.init();
                     reject();
                 });
             });
         }
         /// Méthodes d'accès rapide
-        debug(text) {
-            this.write(text, LogLevel.debug);
+        debug(...data) {
+            this.write(data, LogLevel.debug);
         }
-        info(text) {
-            this.write(text, LogLevel.info);
+        info(...data) {
+            this.write(data, LogLevel.info);
         }
-        warn(text) {
-            this.write(text, LogLevel.warn);
+        warn(...data) {
+            this.write(data, LogLevel.warn);
         }
-        error(text) {
-            this.write(text, LogLevel.error);
+        error(...data) {
+            this.write(data, LogLevel.error);
         }
     };
 });
 define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_2, logger_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function startRecorderModal() {
+    function newModalRecord(button, input, ele) {
+        let recorder = null;
         const modal = helpers_2.getModal();
-        const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement"));
+        const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement", ''));
         instance.open();
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-            // @ts-ignore
-            const mediaRecorder = new MediaRecorder(stream);
-            let audioChunks = [];
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
+        let audioContent = null;
+        let blobSize = 0;
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 style="margin-top: 0;">${ele.label}</h5>
+        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
+        <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
+        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
+        <div class=clearb></div>
+        <div id="__media_record_player" class="modal-record-audio-player">${input.value ? `
+            <figure>
+                <figcaption>Enregistrement</figcaption>
+                <audio controls src="${input.value}"></audio>
+            </figure>
+        ` : ''}</div>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat green-text right ${input.value ? "" : "hide"}" id="__media_record_save">Sauvegarder</a>
+        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        const btn_start = document.getElementById('__media_record_record');
+        const btn_stop = document.getElementById('__media_record_stop');
+        const btn_confirm = document.getElementById('__media_record_save');
+        const btn_cancel = document.getElementById('__media_record_cancel');
+        const player = document.getElementById('__media_record_player');
+        //add events to those 2 buttons
+        btn_start.addEventListener("click", startRecording);
+        btn_stop.addEventListener("click", stopRecording);
+        btn_confirm.onclick = function () {
+            if (audioContent) {
+                input.value = audioContent;
+                input.dataset.duration = ((blobSize / 256000) * 8).toString();
+                // Met à jour le bouton
+                const duration = (blobSize / 256000) * 8;
+                button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                button.classList.remove('blue');
+                button.classList.add('green');
+            }
+            instance.close();
+            // Clean le modal et donc les variables associées
+            modal.innerHTML = "";
+        };
+        btn_cancel.onclick = function () {
+            instance.close();
+            // Clean le modal et donc les variables associées
+            modal.innerHTML = "";
+        };
+        function startRecording() {
+            btn_start.classList.add('hide');
+            btn_stop.classList.remove('hide');
+            player.innerHTML = `<p class='flow-text center'>
+            <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
+            Enregistrement en cours
+        </p>`;
+            // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
+            recorder = new MicRecorder({
+                bitRate: 256
             });
-            modal.innerHTML = `
-            <div class="modal-content">
-                <a href="#!" class="btn" id="record">Enregistrer</a>
-                <a href="#!" class="btn" id="stop">Arrêter</a>
-            </div>
-            `;
-            document.getElementById('record').onclick = function () {
-                audioChunks = [];
-                mediaRecorder.start();
-            };
-            mediaRecorder.addEventListener("stop", () => {
-                const audioBlob = new Blob(audioChunks);
-                const audioUrl = URL.createObjectURL(audioBlob);
-                logger_1.Logger.info(audioBlob.size.toString());
-                // const audio = new Audio(audioUrl);
-                // audio.play();
+            recorder.start().catch((e) => {
+                logger_1.Logger.error("Impossible de lancer l'écoute.", e);
+                player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
             });
-            document.getElementById('stop').onclick = function () {
-                console.log('stopeed');
-                mediaRecorder.stop();
-            };
-        });
+        }
+        function stopRecording() {
+            // Once you are done singing your best song, stop and get the mp3.
+            btn_stop.classList.add('hide');
+            player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
+            recorder
+                .stop()
+                .getMp3().then(([buffer, blob]) => {
+                blobSize = blob.size;
+                helpers_2.blobToBase64(blob).then(function (base64) {
+                    audioContent = base64;
+                    btn_confirm.classList.remove('hide');
+                    player.innerHTML = `<figure>
+                        <figcaption>Enregistrement</figcaption>
+                        <audio controls src="${base64}"></audio>
+                    </figure>`;
+                    btn_start.classList.remove('hide');
+                });
+            }).catch((e) => {
+                M.toast({ html: 'Impossible de lire votre enregistrement' });
+                logger_1.Logger.error("Enregistrement échoué:", e.message);
+            });
+        }
     }
-    exports.startRecorderModal = startRecorderModal;
+    exports.newModalRecord = newModalRecord;
 });
 /**
  * Artyom.js is a voice control, speech recognition and speech synthesis JavaScript library.
@@ -2367,132 +2597,6 @@ define("test_aytom", ["require", "exports", "arytom/artyom"], function (require,
     }
     exports.test_jarvis = test_jarvis;
 });
-////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
-/*
-{
-    "nom_formel/clé_du_formulaire": {
-        "name": "Nom réel (possiblement à afficher à l'écran)"
-        "fields": [
-            {}: FormEntity
-        ],
-        "locations": [
-            {}: FormLocation
-        ]
-    },
-    "nom_d_un_autre_formulaire": Form
-}
-
-Le formulaire DOIT comporter un champ de type "datetime",
-nommé "__date__" pour être affiché correctement dans
-la liste des formulaires enregistrés.
-Il peut être n'importe où dans le formulaire.
-*/
-define("form_schema", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Type à préciser dans le JSON, clé "type"
-     * Le type à préciser est la chaîne de caractères
-     */
-    var FormEntityType;
-    (function (FormEntityType) {
-        FormEntityType["integer"] = "integer";
-        FormEntityType["float"] = "float";
-        FormEntityType["select"] = "select";
-        FormEntityType["string"] = "string";
-        FormEntityType["bigstring"] = "textarea";
-        FormEntityType["checkbox"] = "checkbox";
-        FormEntityType["file"] = "file";
-        FormEntityType["slider"] = "slider";
-        FormEntityType["datetime"] = "datetime";
-        FormEntityType["divider"] = "divider";
-    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    // Clé du JSON à charger automatiquement
-    exports.default_form_name = "cincle_plongeur";
-    // Classe contenant le formulaire JSON chargé et parsé
-    exports.Forms = new class {
-        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
-        // La clé du formulaire par défaut est contenu dans "default_form_name"
-        constructor() {
-            this.form_ready = false;
-            this.waiting_callee = [];
-            this.current = null;
-            this._current_key = null;
-            $.get('assets/form.json', {}, (json) => {
-                // Le JSON est reçu, on l'enregistre dans available_forms
-                this.available_forms = json;
-                // On met le form à ready
-                this.form_ready = true;
-                // On enregistre le formulaire par défaut (si la clé définie existe)
-                if (exports.default_form_name in this.available_forms) {
-                    this.current = this.available_forms[exports.default_form_name];
-                    this._current_key = exports.default_form_name;
-                }
-                else {
-                    this.current = { name: null, fields: [], locations: [] };
-                }
-                // On exécute les fonctions en attente
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func(this.available_forms, this.current);
-                }
-            }, 'json');
-        }
-        onReady(callback) {
-            if (this.form_ready) {
-                callback(this.available_forms, this.current);
-            }
-            else {
-                this.waiting_callee.push(callback);
-            }
-        }
-        formExists(name) {
-            return name in this.available_forms;
-        }
-        /**
-         * Change le formulaire courant renvoyé par onReady
-         * @param name clé d'accès au formulaire
-         */
-        changeForm(name) {
-            if (this.formExists(name)) {
-                this.current = this.available_forms[name];
-                this._current_key = name;
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Renvoie un formulaire, sans modifier le courant
-         * @param name clé d'accès au formulaire
-         */
-        getForm(name) {
-            if (this.formExists(name)) {
-                return this.available_forms[name];
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Retourne un tableau de tuples contenant en
-         * première position la clé d'accès au formulaire,
-         * et en seconde position son nom textuel à présenter à l'utilisateur
-         * @returns [string, string][]
-         */
-        getAvailableForms() {
-            const keys = Object.keys(this.available_forms);
-            const tuples = [];
-            for (const key of keys) {
-                tuples.push([key, this.available_forms[key].name]);
-            }
-            return tuples;
-        }
-        get current_key() {
-            return this._current_key;
-        }
-    };
-});
 define("settings_page", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -2501,7 +2605,7 @@ define("settings_page", ["require", "exports"], function (require, exports) {
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "form"], function (require, exports, helpers_3, form_schema_1, interface_1, form_1) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_3, form_schema_1, interface_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
@@ -2512,31 +2616,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         }
         const current_form = form_schema_1.Forms.getForm(form.type);
         const base = helpers_3.getBase();
-        base.innerHTML = "";
-        const base_block = document.createElement('div');
-        base_block.classList.add('row', 'container');
-        const placeh = document.createElement('form');
-        placeh.classList.add('col', 's12');
-        base_block.appendChild(placeh);
-        // Appelle la fonction pour construire
-        form_1.constructForm(placeh, current_form, form);
-        base.appendChild(base_block);
-        M.updateTextFields();
-        $('select').formSelect();
-        // Autoredimensionnement des textaera si valeur par défaut
-        const $textarea = $('textarea');
-        if ($textarea.length > 0) {
-            M.textareaAutoResize($textarea);
-        }
-        // Création du bouton de sauvegarde
-        const btn = document.createElement('div');
-        btn.classList.add('btn-flat', 'right', 'red-text');
-        btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_1.Forms.current_key;
-        btn.addEventListener('click', function () {
-            form_1.saveForm(current_form_key, name, form);
-        });
-        base_block.appendChild(btn);
+        interface_1.PageManager.pushPage(interface_1.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     function appendFileEntry(json, ph) {
         const save = json[1];
@@ -2640,30 +2720,41 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         `);
         const instance = helpers_3.getBottomModalInstance();
         document.getElementById('delete_form_modal').onclick = function () {
-            deleteForm(id, function () {
+            deleteForm(id).then(function () {
+                M.toast({ html: "Entrée supprimée." });
+                interface_1.PageManager.changePage(interface_1.AppPageName.saved, false);
+                instance.close();
+            }).catch(function (err) {
+                M.toast({ html: "Impossible de supprimer: " + err });
                 instance.close();
             });
         };
         instance.open();
     }
-    function deleteForm(id, callback) {
+    function deleteForm(id) {
         if (id.match(/\.json$/)) {
             id = id.substring(0, id.length - 5);
         }
-        // Supprime toutes les données (images, sons...) liées au formulaire
-        helpers_3.rmrf('form_data/' + id);
-        helpers_3.getDir(function (dirEntry) {
-            dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                helpers_3.removeFile(fileEntry, function () {
-                    M.toast({ html: "Entrée supprimée." });
-                    interface_1.PageManager.changePage(interface_1.AppPageName.saved);
-                    if (callback)
-                        callback();
+        return new Promise(function (resolve, reject) {
+            if (id) {
+                // Supprime toutes les données (images, sons...) liées au formulaire
+                helpers_3.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_3.getDir(function (dirEntry) {
+                        dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
+                            helpers_3.removeFilePromise(fileEntry).then(function () {
+                                resolve();
+                            }).catch(reject);
+                        }, function () {
+                            console.log("Impossible de supprimer");
+                            reject("Impossible de supprimer");
+                        });
+                    }, 'forms', reject);
                 });
-            }, function () {
-                console.log("Impossible de supprimer");
-            });
-        }, 'forms');
+            }
+            else {
+                reject("ID invalide");
+            }
+        });
     }
     function initSavedForm(base) {
         const placeholder = document.createElement('ul');
@@ -2689,7 +2780,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_4, form_2, settings_page_1, saved_forms_1, main_1) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_4, form_1, settings_page_1, saved_forms_1, main_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -2709,19 +2800,24 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             this.AppPages = {
                 form: {
                     name: "Nouvelle entrée",
-                    callback: form_2.initFormPage
+                    callback: form_1.initFormPage,
+                    ask_change: true,
+                    reload_on_restore: false
                 },
                 settings: {
                     name: "Paramètres",
-                    callback: settings_page_1.initSettingsPage
+                    callback: settings_page_1.initSettingsPage,
+                    reload_on_restore: false
                 },
                 saved: {
                     name: "Entrées",
-                    callback: saved_forms_1.initSavedForm
+                    callback: saved_forms_1.initSavedForm,
+                    reload_on_restore: true
                 },
                 home: {
                     name: "Accueil",
-                    callback: initHomePage
+                    callback: initHomePage,
+                    reload_on_restore: false
                 }
             };
             this.pages_holder = [];
@@ -2731,9 +2827,24 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
          * @param AppPageName page
          * @param delete_paused supprime les pages sauvegardées
          */
-        changePage(page, delete_paused = true, additionnals) {
-            if (!this.pageExists(page)) {
-                throw new ReferenceError("Page does not exists");
+        changePage(page, delete_paused = true, force_name, additionnals) {
+            let pagename = "";
+            if (typeof page === 'string') {
+                // AppPageName
+                if (!this.pageExists(page)) {
+                    throw new ReferenceError("Page does not exists");
+                }
+                pagename = page;
+                page = this.AppPages[page];
+            }
+            else {
+                // Recherche de la clé correspondante
+                for (const k in this.AppPages) {
+                    if (this.AppPages[k] === page) {
+                        pagename = k;
+                        break;
+                    }
+                }
             }
             // Si on veut supprimer les pages en attente, on vide le tableau
             if (delete_paused) {
@@ -2743,16 +2854,18 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             const base = helpers_4.getBase();
             base.innerHTML = helpers_4.getPreloader("Chargement");
             if (window.history) {
-                window.history.pushState({}, "", "/?" + page);
+                window.history.pushState({}, "", "/?" + pagename);
             }
             // Si on a demandé à fermer le sidenav, on le ferme
-            if (!this.AppPages[page].not_sidenav_close) {
+            if (!page.not_sidenav_close) {
                 main_1.SIDENAV_OBJ.close();
             }
             // On appelle la fonction de création de la page
-            this.AppPages[page].callback(base, additionnals);
+            page.callback(base, additionnals);
+            this.actual_page = page;
+            this._should_wait = page.ask_change;
             // On met le titre de la page dans la barre de navigation
-            document.getElementById('nav_title').innerText = this.AppPages[page].name;
+            document.getElementById('nav_title').innerText = force_name || page.name;
         }
         cleanWaitingPages() {
             while (this.pages_holder.length >= 10) {
@@ -2763,7 +2876,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
          * Pousse une nouvelle page dans la pile de page
          * @param page
          */
-        pushPage(page, additionnals) {
+        pushPage(page, force_name, additionnals) {
             if (!this.pageExists(page)) {
                 throw new ReferenceError("Page does not exists");
             }
@@ -2777,14 +2890,19 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             const save = document.createDocumentFragment();
             save.appendChild(actual_base);
             // Insère la sauvegarde dans la pile de page
-            this.pages_holder.push({ save, name: document.getElementById('nav_title').innerText });
+            this.pages_holder.push({
+                save,
+                ask: this._should_wait,
+                name: document.getElementById('nav_title').innerText,
+                page: this.actual_page
+            });
             // Crée la nouvelle base mère avec le même ID
             const new_base = document.createElement('div');
             new_base.id = "main_block";
             // Insère la nouvelle base vide à la racine de main
             document.getElementsByTagName('main')[0].appendChild(new_base);
             // Appelle la fonction pour charger la page demandée dans le bloc
-            this.changePage(page, false, additionnals);
+            this.changePage(page, false, force_name, additionnals);
         }
         /**
          * Revient à la page précédente.
@@ -2803,6 +2921,41 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
             // Remet le bon titre
             document.getElementById('nav_title').innerText = last_page.name;
+            this.actual_page = last_page.page;
+            this._should_wait = last_page.ask;
+            if (this.actual_page.reload_on_restore) {
+                if (typeof this.actual_page.reload_on_restore === 'boolean') {
+                    this.changePage(this.actual_page, false);
+                }
+                else {
+                    this.actual_page.reload_on_restore();
+                }
+            }
+        }
+        /**
+         * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
+         */
+        goBack() {
+            const stepBack = () => {
+                if (this.isPageWaiting()) {
+                    this.popPage();
+                }
+                else {
+                    this.changePage(AppPageName.home);
+                }
+            };
+            if (this.should_wait) {
+                modalBackHome(stepBack);
+            }
+            else {
+                stepBack();
+            }
+        }
+        get should_wait() {
+            return this._should_wait;
+        }
+        set should_wait(v) {
+            this._should_wait = v;
         }
         pageExists(name) {
             return name in this.AppPages;
@@ -2826,8 +2979,26 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
         $('select').formSelect();
     }
     exports.initHomePage = initHomePage;
+    function modalBackHome(callbackIfTrue) {
+        const modal = helpers_4.getBottomModal();
+        const instance = helpers_4.initBottomModal();
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
+        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
+        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        document.getElementById('__modal_back_home').onclick = callbackIfTrue;
+        instance.open();
+    }
+    exports.modalBackHome = modalBackHome;
 });
-define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener"], function (require, exports, interface_2, helpers_5, logger_2, audio_listener_1) {
+define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema"], function (require, exports, interface_2, helpers_5, logger_2, audio_listener_1, form_schema_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -2867,34 +3038,32 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         // Sinon, si mobile, on passe sur dataDirectory
         helpers_5.changeDir();
         logger_2.Logger.init();
+        // @ts-ignore Force à demander la permission pour enregistrer du son
+        const permissions = cordova.plugins.permissions;
+        permissions.requestPermission(permissions.RECORD_AUDIO, status => {
+            console.log(status);
+        }, e => { console.log(e); });
         // Initialise le bouton retour
-        document.addEventListener("backbutton", function () {
-            if (interface_2.PageManager.isPageWaiting()) {
-                interface_2.PageManager.popPage();
-            }
-            else {
-                // Do nothing
-            }
-        }, false);
+        document.addEventListener("backbutton", interface_2.PageManager.goBack, false);
         // Initialise le sidenav
         const elem = document.querySelector('.sidenav');
         exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
         // Bind des éléments du sidenav
         // Home
         document.getElementById('nav_home').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.home);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.home);
         };
         // Form
         document.getElementById('nav_form_new').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.form);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.form);
         };
         // Saved
         document.getElementById('nav_form_saved').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.saved);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.saved);
         };
         // Settigns
         document.getElementById('nav_settings').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.settings);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.settings);
         };
         exports.app.initialize();
         initDebug();
@@ -2912,14 +3081,6 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         else {
             interface_2.PageManager.changePage(interface_2.AppPageName.home);
         }
-        // startRecorderModal()
-        // (function() {
-        //     getLocation(function(position: Position) {
-        //         document.body.insertAdjacentText('beforeend', `Lat: ${position.coords.latitude}; long: ${position.coords.longitude}`);
-        //     }, function(error) {
-        //         document.body.insertAdjacentText('beforeend', "Error while fetching coords" + JSON.stringify(error));
-        //     });
-        // })();
     }
     function initDebug() {
         window["DEBUG"] = {
@@ -2933,12 +3094,19 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
             rmrf: helpers_5.rmrf,
             rmrfPromise: helpers_5.rmrfPromise,
             Logger: logger_2.Logger,
-            startRecorderModal: audio_listener_1.startRecorderModal
+            modalBackHome: interface_2.modalBackHome,
+            recorder: function () {
+                audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
+                    name: "__test__",
+                    label: "Test",
+                    type: form_schema_2.FormEntityType.audio
+                });
+            }
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "form_schema", "helpers", "main", "interface"], function (require, exports, form_schema_2, helpers_6, main_2, interface_3) {
+define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_3, helpers_6, main_2, interface_3, logger_3, audio_listener_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3053,7 +3221,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         // Fin champ de lieu, itération sur champs
         for (const ele of current_form.fields) {
             let element_to_add = null;
-            if (ele.type === form_schema_2.FormEntityType.divider) {
+            if (ele.type === form_schema_3.FormEntityType.divider) {
                 // C'est un titre
                 // On divide
                 const clearer = document.createElement('div');
@@ -3065,9 +3233,10 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 placeh.appendChild(htmle);
                 continue;
             }
-            if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
+            else if (ele.type === form_schema_3.FormEntityType.integer || ele.type === form_schema_3.FormEntityType.float) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('input');
+                htmle.autocomplete = "off";
                 const label = document.createElement('label');
                 fillStandardInputValues(htmle, ele, label);
                 htmle.type = "number";
@@ -3089,7 +3258,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Calcul de nombre de décimales requises
                 // si le nombre demandé est un float
                 let NB_DECIMALES = 0;
-                if (ele.type === form_schema_2.FormEntityType.float && ele.float_precision) {
+                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
                     // Récupération de la partie décimale sous forme de string
                     const dec_part = ele.float_precision.toString().split('.');
                     // Calcul du nombre de décimales
@@ -3100,6 +3269,21 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         throw new Error(`La précision pour la partie décimale spécifiée pour le champ "${ele.name}" est invalide: Elle ne comporte pas de décimales.`);
                     }
                 }
+                // Définition des contraintes
+                const contraintes = [];
+                if (typeof ele.range !== 'undefined') {
+                    if (typeof ele.range.min !== 'undefined') {
+                        contraintes.push(["min", ele.range.min]);
+                    }
+                    if (typeof ele.range.max !== 'undefined') {
+                        contraintes.push(["max", ele.range.max]);
+                    }
+                }
+                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
+                    contraintes.push(["precision", ele.float_precision]);
+                }
+                contraintes.push(['type', ele.type === form_schema_3.FormEntityType.float ? 'float' : 'int']);
+                htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
                 htmle.addEventListener('change', function () {
                     let valid = true;
@@ -3119,7 +3303,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         }
                         // if différent, il est juste en else if pour éviter de faire les
                         // calculs si le valid est déjà à false
-                        else if (ele.type === form_schema_2.FormEntityType.float) {
+                        else if (ele.type === form_schema_3.FormEntityType.float) {
                             if (ele.float_precision) {
                                 // Si on a demandé à avoir un nombre de flottant précis
                                 const floating_point = this.value.split('.');
@@ -3157,12 +3341,13 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.string || ele.type === form_schema_2.FormEntityType.bigstring) {
+            else if (ele.type === form_schema_3.FormEntityType.string || ele.type === form_schema_3.FormEntityType.bigstring) {
                 const wrapper = createInputWrapper();
                 let htmle;
-                if (ele.type === form_schema_2.FormEntityType.string) {
+                if (ele.type === form_schema_3.FormEntityType.string) {
                     htmle = document.createElement('input');
                     htmle.type = "text";
+                    htmle.autocomplete = "off";
                 }
                 else {
                     htmle = document.createElement('textarea');
@@ -3177,6 +3362,17 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(label);
                 wrapper.appendChild(htmle);
                 createTip(wrapper, ele);
+                // Définition des contraintes
+                const contraintes = [];
+                if (typeof ele.range !== 'undefined') {
+                    if (typeof ele.range.min !== 'undefined') {
+                        contraintes.push(["min", ele.range.min]);
+                    }
+                    if (typeof ele.range.max !== 'undefined') {
+                        contraintes.push(["max", ele.range.max]);
+                    }
+                }
+                htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
                 htmle.addEventListener('change', function () {
                     let valid = true;
@@ -3206,7 +3402,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.select) {
+            else if (ele.type === form_schema_3.FormEntityType.select) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
@@ -3235,7 +3431,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.checkbox) {
+            else if (ele.type === form_schema_3.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3255,7 +3451,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.datetime) {
+            else if (ele.type === form_schema_3.FormEntityType.datetime) {
                 const wrapper = createInputWrapper();
                 const input = document.createElement('input');
                 const label = document.createElement('label');
@@ -3279,7 +3475,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.file) {
+            else if (ele.type === form_schema_3.FormEntityType.file) {
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
@@ -3324,7 +3520,48 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(fwrapper);
                 placeh.appendChild(wrapper);
             }
-            if (ele.type === form_schema_2.FormEntityType.slider) {
+            else if (ele.type === form_schema_3.FormEntityType.audio) {
+                // Création d'un bouton pour enregistrer du son
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
+                const label = document.createElement('p');
+                label.classList.add('no-margin-top');
+                label.innerText = ele.label;
+                wrapper.appendChild(label);
+                const button = document.createElement('button');
+                button.classList.add('btn', 'blue', 'col', 's12', 'btn-perso');
+                button.innerText = "Enregistrement audio";
+                button.type = "button";
+                const real_input = document.createElement('input');
+                real_input.type = "hidden";
+                real_input.classList.add('input-audio-element');
+                // Création d'un label vide pour l'input
+                const hidden_label = document.createElement('label');
+                fillStandardInputValues(real_input, ele, hidden_label);
+                hidden_label.classList.add('hide');
+                wrapper.appendChild(hidden_label);
+                ////// Définition si un fichier son existe déjà
+                if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
+                    helpers_6.readFromFile(filled_form.fields[ele.name], function (base64) {
+                        button.classList.remove('blue');
+                        button.classList.add('green');
+                        real_input.value = base64;
+                        const duration = ((base64.length * 0.7) / 256000) * 8;
+                        button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                    }, function (fail) {
+                        console.log("Impossible de charger le fichier", fail);
+                    }, true);
+                }
+                ////// Fin
+                button.addEventListener('click', function () {
+                    // Crée un modal qui sert à enregistrer de l'audio
+                    audio_listener_2.newModalRecord(button, real_input, ele);
+                });
+                wrapper.appendChild(button);
+                wrapper.appendChild(real_input);
+                element_to_add = wrapper;
+            }
+            else if (ele.type === form_schema_3.FormEntityType.slider) {
                 const wrapper = document.createElement('div');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3442,7 +3679,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         if (!erreur_critique) {
             document.getElementById("valid_verif").onclick = function () {
                 helpers_6.getModalInstance().close();
-                const current_form_key = form_schema_2.Forms.current_key;
+                const current_form_key = form_schema_3.Forms.current_key;
                 saveForm(current_form_key);
             };
         }
@@ -3477,7 +3714,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 }
             }
             else if (i.type === "number") {
-                form_values.fields[i.name] = Number(i.value);
+                form_values.fields[i.name] = i.value === "" ? null : Number(i.value);
             }
             else {
                 form_values.fields[i.name] = i.value;
@@ -3492,8 +3729,32 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
      * @param name Nom du formulaire (sans le .json)
      */
     function writeImagesThenForm(name, form_values, older_save) {
+        function saveBlobToFile(resolve, reject, filename, input_name, blob) {
+            helpers_6.writeFile('form_data/' + name, filename, blob, function () {
+                // Enregistre le nom du fichier sauvegardé dans le formulaire,
+                // dans la valeur du champ field
+                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                    // Si une image était déjà présente
+                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                        // Si le fichier enregistré est différent du fichier actuel
+                        // Suppression de l'ancienne image
+                        const parts = older_save.fields[input_name].split('/');
+                        const file_name = parts.pop();
+                        const dir_name = parts.join('/');
+                        helpers_6.removeFileByName(dir_name, file_name);
+                    }
+                }
+                // Résout la promise
+                resolve();
+            }, function (error) {
+                // Erreur d'écriture du fichier => on rejette
+                M.toast({ html: "Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
+                reject(error);
+            });
+        }
         helpers_6.getDir(function () {
-            // Crée le dossier images si besoin
+            // Crée le dossier form_data si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
             // Sauvegarde les images !
@@ -3506,34 +3767,36 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         const filename = file.name;
                         const r = new FileReader();
                         r.onload = function () {
-                            helpers_6.writeFile('form_data/' + name, filename, new Blob([this.result]), function () {
-                                // Enregistre le nom de l'image sauvegardée dans le formulaire,
-                                // dans la valeur du champ fiel
-                                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
-                                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                                    // Si une image était déjà présente
-                                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                                        // Si l'image enregistrée est différente de l'image actuelle
-                                        // Suppression de l'ancienne image
-                                        const parts = older_save.fields[input_name].split('/');
-                                        const file_name = parts.pop();
-                                        const dir_name = parts.join('/');
-                                        helpers_6.removeFileByName(dir_name, file_name);
-                                    }
-                                }
-                                // Résout la promise
-                                resolve();
-                            }, function (error) {
-                                // Erreur d'écriture du fichier => on rejette
-                                M.toast({ html: "Une image n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
-                                reject(error);
-                            });
+                            saveBlobToFile(resolve, reject, filename, input_name, new Blob([this.result]));
                         };
                         r.onerror = function (error) {
                             // Erreur de lecture du fichier => on rejette
                             reject(error);
                         };
                         r.readAsArrayBuffer(file);
+                    }
+                    else {
+                        if (older_save && input_name in older_save.fields) {
+                            form_values.fields[input_name] = older_save.fields[input_name];
+                        }
+                        else {
+                            form_values.fields[input_name] = null;
+                        }
+                        resolve();
+                    }
+                }));
+            }
+            // Récupère les données audio du formulaire
+            const audio_from_form = document.getElementsByClassName('input-audio-element');
+            for (const audio of audio_from_form) {
+                promises.push(new Promise(function (resolve, reject) {
+                    const file = audio.value;
+                    const input_name = audio.name;
+                    if (file) {
+                        const filename = helpers_6.generateId(20) + '.mp3';
+                        helpers_6.urlToBlob(file).then(function (blob) {
+                            saveBlobToFile(resolve, reject, filename, input_name, blob);
+                        });
                     }
                     else {
                         if (older_save && input_name in older_save.fields) {
@@ -3553,10 +3816,11 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
-                        interface_3.PageManager.changePage(interface_3.AppPageName.saved);
+                        interface_3.PageManager.popPage();
+                        interface_3.PageManager.changePage(interface_3.AppPageName.saved, false);
                     }
                     else {
-                        interface_3.PageManager.changePage(interface_3.AppPageName.form);
+                        interface_3.PageManager.changePage(interface_3.AppPageName.form, false);
                     }
                     console.log(form_values);
                 });
@@ -3572,17 +3836,22 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
      * puis charger la page
      * @param base
      */
-    function initFormPage(base) {
-        form_schema_2.Forms.onReady(function (available, current) {
-            loadFormPage(base, current);
-        });
+    function initFormPage(base, edition_mode) {
+        if (edition_mode) {
+            loadFormPage(base, edition_mode.form, edition_mode);
+        }
+        else {
+            form_schema_3.Forms.onReady(function (available, current) {
+                loadFormPage(base, current, edition_mode);
+            });
+        }
     }
     exports.initFormPage = initFormPage;
     /**
      * Charge la page de formulaire (point d'entrée)
      * @param base Element dans lequel écrire la page
      */
-    function loadFormPage(base, current_form) {
+    function loadFormPage(base, current_form, edition_mode) {
         base.innerHTML = "";
         const base_block = document.createElement('div');
         base_block.classList.add('row', 'container');
@@ -3590,12 +3859,19 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         placeh.classList.add('col', 's12');
         base_block.appendChild(placeh);
         // Appelle la fonction pour construire
-        constructForm(placeh, current_form);
+        if (edition_mode) {
+            constructForm(placeh, current_form, edition_mode.save);
+        }
+        else {
+            constructForm(placeh, current_form);
+        }
         base.appendChild(base_block);
         M.updateTextFields();
         $('select').formSelect();
-        // Lance le sélecteur de localisation
-        callLocationSelector(current_form);
+        // Lance le sélecteur de localisation uniquement si on est pas en mode édition
+        if (!edition_mode) {
+            callLocationSelector(current_form);
+        }
         // Autoredimensionnement des textaera si valeur par défaut
         const $textarea = $('textarea');
         if ($textarea.length > 0) {
@@ -3605,9 +3881,19 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         const btn = document.createElement('div');
         btn.classList.add('btn-flat', 'right', 'red-text');
         btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_2.Forms.current_key;
+        const current_form_key = form_schema_3.Forms.current_key;
         btn.addEventListener('click', function () {
-            initFormSave(current_form_key);
+            if (edition_mode) {
+                saveForm(current_form_key, edition_mode.name, edition_mode.save);
+            }
+            else {
+                try {
+                    initFormSave(current_form_key);
+                }
+                catch (e) {
+                    logger_3.Logger.error(JSON.stringify(e));
+                }
+            }
         });
         base_block.appendChild(btn);
     }
@@ -3619,8 +3905,8 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             // On ferme juste le modal
         }
         else {
-            // Sinon, on ramène à la page d'accueil
-            interface_3.PageManager.changePage(interface_3.AppPageName.home);
+            // Sinon, on ramène à la page précédente
+            interface_3.PageManager.popPage();
         }
         helpers_6.getModalInstance().close();
         helpers_6.getModal().classList.remove('modal-fixed-footer');
