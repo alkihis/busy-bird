@@ -3367,7 +3367,6 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         const modal = helpers_6.getModal();
         helpers_6.initModal({ dismissible: true });
         modal.classList.add('modal-fixed-footer');
-        console.log("initmodal");
         helpers_6.getModalInstance().open();
         //Ouverture du premiere modal de chargement
         modal.innerHTML = helpers_6.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
@@ -3388,7 +3387,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         //         const [name, value] = e.split('=');
         //         contraintes[name] = value;
         //     });
-        //Parcours tous les elements remplit ou pas
+        //Parcours tous les elements remplits ou non
         for (const input of document.getElementsByClassName('input-form-element')) {
             //Attribution du label plutot que son nom interne
             const i = input;
@@ -3397,7 +3396,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             if (label) {
                 name = label.textContent;
             }
-            //Si l'attribut est obligatoirement requi et qu'il est vide -> erreur critique impossible de sauvegarder
+            //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
             if (i.required && !i.value) {
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
@@ -3415,7 +3414,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     element_erreur.appendChild(erreur);
                 }
             }
-            else if (i.type === "number") {
+            else if (i.type !== "checkbox") {
                 if (!i.value) {
                     let erreur = document.createElement("li");
                     erreur.classList.add("collection-item");

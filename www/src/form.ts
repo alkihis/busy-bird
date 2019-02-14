@@ -525,10 +525,7 @@ function initFormSave(type: string): any {
     // Ouverture du modal de verification
     const modal = getModal();
     initModal({ dismissible: true });
-
     modal.classList.add('modal-fixed-footer');
-
-    console.log("initmodal")
     getModalInstance().open();
     //Ouverture du premiere modal de chargement
     modal.innerHTML = getModalPreloader(
@@ -545,7 +542,7 @@ function initFormSave(type: string): any {
     element_erreur.classList.add("collection")
     list_erreur.appendChild(element_erreur);
     //Ajouter verification avant d'ajouter bouton valider
-    let erreur_critique : boolean = false;
+    let erreur_critique: boolean = false;
 
     //Code pour ajouter limite et precision
     // const contraintes: any = {};
@@ -555,41 +552,40 @@ function initFormSave(type: string): any {
     //         contraintes[name] = value;
     //     });
 
-    //Parcours tous les elements remplit ou pas
+    //Parcours tous les elements remplits ou non
     for (const input of document.getElementsByClassName('input-form-element')) {
         //Attribution du label plutot que son nom interne
         const i = input as HTMLInputElement;
         const label = document.querySelector(`label[for="${i.id}"]`);
         let name = i.name;
         if (label) {
-          name = label.textContent;
+            name = label.textContent;
         }
 
-        //Si l'attribut est obligatoirement requi et qu'il est vide -> erreur critique impossible de sauvegarder
-        if (i.required && !i.value){
-          let erreur = document.createElement("li");
-          erreur.classList.add("collection-item");
-          erreur.innerHTML ="<b style='color: red;' >"+ name +"</b> : Champ requis";
-          element_erreur.insertBefore( erreur , element_erreur.firstChild );
-          erreur_critique = true;
-          continue;
+        //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
+        if (i.required && !i.value) {
+            let erreur = document.createElement("li");
+            erreur.classList.add("collection-item");
+            erreur.innerHTML = "<b style='color: red;' >" + name + "</b> : Champ requis";
+            element_erreur.insertBefore(erreur, element_erreur.firstChild);
+            erreur_critique = true;
+            continue;
         }
-
 
         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
             const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
             if (selected.length == 0) {
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                erreur.innerHTML ="<b>"+ name +"</b> : Non renseigné";
+                erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
                 element_erreur.appendChild(erreur);
             }
         }
-        else if (i.type === "number") {
+        else if (i.type !== "checkbox") {
             if (!i.value) {
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                erreur.innerHTML ="<b>"+ name +"</b> : Non renseigné";
+                erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
                 element_erreur.appendChild(erreur);
 
             }
@@ -600,11 +596,11 @@ function initFormSave(type: string): any {
     let footer = document.createElement("div");
     footer.classList.add("modal-footer");
     if (erreur_critique) {
-      footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
+        footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
         </div>`;
     }
-    else{
-      footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+    else {
+        footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
         </div>`;
     }
 
@@ -613,10 +609,10 @@ function initFormSave(type: string): any {
         getModalInstance().close();
     };
     if (!erreur_critique) {
-      document.getElementById("valid_verif").onclick = function() {
-          getModalInstance().close();
-          const current_form_key = Forms.current_key;
-          saveForm(current_form_key);
+        document.getElementById("valid_verif").onclick = function() {
+            getModalInstance().close();
+            const current_form_key = Forms.current_key;
+            saveForm(current_form_key);
         }
 
 
