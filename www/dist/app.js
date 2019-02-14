@@ -2575,7 +2575,6 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 name = label.textContent;
             }
             ;
-            console.log("definition des contraintes");
             const contraintes = {};
             if (i.dataset.constraints) {
                 i.dataset.constraints.split(';').map((e) => {
@@ -2583,7 +2582,9 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     contraintes[name] = value;
                 });
             }
-            console.log(contraintes);
+            // console.log(name );
+            // console.log(i.type);
+            // console.log(contraintes);
             //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
             if (i.required && !i.value) {
                 let erreur = document.createElement("li");
@@ -2608,6 +2609,28 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     erreur.classList.add("collection-item");
                     erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
                     element_erreur.appendChild(erreur);
+                }
+                else if (i.type === "number") {
+                    if (contraintes) {
+                        if ((Number(i.value) <= Number(contraintes['min'])) || (Number(i.value) >= Number(contraintes['max']))) {
+                            let erreur = document.createElement("li");
+                            erreur.classList.add("collection-item");
+                            erreur.innerHTML = "<b>" + name + "</b> : Intervale non respecté";
+                            element_erreur.appendChild(erreur);
+                        }
+                        // ajouter precision else if ()
+                    }
+                }
+                else if (i.type === "text") {
+                    if (contraintes) {
+                        if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))) {
+                            let erreur = document.createElement("li");
+                            erreur.classList.add("collection-item");
+                            erreur.innerHTML = "<b>" + name + "</b> : Taille non respecté";
+                            element_erreur.appendChild(erreur);
+                        }
+                        ;
+                    }
                 }
             }
         }

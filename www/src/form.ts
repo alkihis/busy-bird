@@ -641,7 +641,7 @@ function initFormSave(type: string): any {
         if (label) {
             name = label.textContent;
         };
-        console.log("definition des contraintes");
+
         const contraintes: any = {};
         if (i.dataset.constraints) {
             i.dataset.constraints.split(';').map((e: string) => {
@@ -649,7 +649,11 @@ function initFormSave(type: string): any {
                 contraintes[name] = value;
             });
         }
-        console.log(contraintes);
+
+        // console.log(name );
+        // console.log(i.type);
+        // console.log(contraintes);
+
         //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
         if (i.required && !i.value) {
             let erreur = document.createElement("li");
@@ -670,15 +674,37 @@ function initFormSave(type: string): any {
             }
         }
         else if (i.type !== "checkbox") {
-            if (!i.value) {
+          if (!i.value) {
+              let erreur = document.createElement("li");
+              erreur.classList.add("collection-item");
+              erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
+              element_erreur.appendChild(erreur);
+          }
+          else if (i.type === "number") {
+              if (contraintes) {
+                if ( (Number(i.value) <= Number(contraintes['min']) ) || ( Number(i.value)  >= Number(contraintes['max']) )){
+                  let erreur = document.createElement("li");
+                  erreur.classList.add("collection-item");
+                  erreur.innerHTML = "<b>" + name + "</b> : Intervale non respecté";
+                  element_erreur.appendChild(erreur);
+                }
+                // ajouter precision else if ()
+              }
+          }
+          else if (i.type === "text") {
+            if (contraintes) {
+              if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))){
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
+                erreur.innerHTML = "<b>" + name + "</b> : Taille non respecté";
                 element_erreur.appendChild(erreur);
-
+              } ;
             }
-        }
+          }
+          }
     }
+
+
     modal.innerHTML = "";
     modal.appendChild(list_erreur);
     let footer = document.createElement("div");
