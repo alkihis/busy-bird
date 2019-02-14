@@ -274,7 +274,8 @@
             "type": "string",
             "range": {"min": 10, "max": 10},
             "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
-            "placeholder": "Composé de 10 chiffres et de lettres"
+            "placeholder": "Composé de 10 chiffres et de lettres",
+            "required": true
         }, {
             "name": "mass",
             "label": "Poids",
