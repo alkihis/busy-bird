@@ -9,6 +9,7 @@
     "artyom.js": "^1.0.6",
     "cordova-android": "^7.1.4",
     "cordova-browser": "^5.0.4",
+    "cordova-plugin-android-permissions": "1.0.0",
     "cordova-plugin-battery-status": "~1.2.4",
     "cordova-plugin-camera": "~2.4.1",
     "cordova-plugin-compat": "1.2.0",
@@ -29,8 +30,7 @@
     "phonegap-plugin-media-recorder": "1.1.0",
     "phonegap-plugin-media-stream": "1.2.1",
     "phonegap-plugin-speech-synthesis": "git+https://github.com/macdonst/SpeechSynthesisPlugin.git",
-    "requirejs": "^2.3.6",
-    "cordova-plugin-android-permissions": "1.0.0"
+    "requirejs": "^2.3.6"
   },
   "devDependencies": {},
   "scripts": {
