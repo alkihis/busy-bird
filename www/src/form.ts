@@ -641,8 +641,6 @@ function initFormSave(type: string): any {
         if (label) {
             name = label.textContent;
         };
-
-        //Definition des limite et precision
         console.log("definition des contraintes");
         const contraintes: any = {};
         if (i.dataset.constraints) {

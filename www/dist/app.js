@@ -3627,7 +3627,6 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 name = label.textContent;
             }
             ;
-            //Definition des limite et precision
             console.log("definition des contraintes");
             const contraintes = {};
             if (i.dataset.constraints) {
