@@ -29,7 +29,8 @@
     "phonegap-plugin-media-recorder": "1.1.0",
     "phonegap-plugin-media-stream": "1.2.1",
     "phonegap-plugin-speech-synthesis": "git+https://github.com/macdonst/SpeechSynthesisPlugin.git",
-    "requirejs": "^2.3.6"
+    "requirejs": "^2.3.6",
+    "cordova-plugin-android-permissions": "1.0.0"
   },
   "devDependencies": {},
   "scripts": {
@@ -60,7 +61,8 @@
       },
       "cordova-plugin-file": {},
       "cordova-plugin-media": {},
-      "phonegap-plugin-media-recorder": {}
+      "phonegap-plugin-media-recorder": {},
+      "cordova-plugin-android-permissions": {}
     }
   }
 }

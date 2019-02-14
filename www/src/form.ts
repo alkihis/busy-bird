@@ -155,7 +155,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             continue;
         }
 
-        if (ele.type === FormEntityType.integer || ele.type === FormEntityType.float) {
+        else if (ele.type === FormEntityType.integer || ele.type === FormEntityType.float) {
             const wrapper = createInputWrapper();
             const htmle = document.createElement('input');
             htmle.autocomplete = "off";
@@ -262,7 +262,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             element_to_add = wrapper;
         }
 
-        if (ele.type === FormEntityType.string || ele.type === FormEntityType.bigstring) {
+        else if (ele.type === FormEntityType.string || ele.type === FormEntityType.bigstring) {
             const wrapper = createInputWrapper();
 
             let htmle: HTMLInputElement | HTMLTextAreaElement;
@@ -325,7 +325,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             element_to_add = wrapper;
         }
 
-        if (ele.type === FormEntityType.select) {
+        else if (ele.type === FormEntityType.select) {
             const wrapper = createInputWrapper();
             const htmle = document.createElement('select');
             const label = document.createElement('label');
@@ -363,7 +363,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             element_to_add = wrapper;
         }
 
-        if (ele.type === FormEntityType.checkbox) {
+        else if (ele.type === FormEntityType.checkbox) {
             const wrapper = document.createElement('p');
             const label = document.createElement('label');
             const input = document.createElement('input');
@@ -390,7 +390,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             element_to_add = wrapper;
         }
 
-        if (ele.type === FormEntityType.datetime) {
+        else if (ele.type === FormEntityType.datetime) {
             const wrapper = createInputWrapper();
             const input = document.createElement('input');
             const label = document.createElement('label');
@@ -420,7 +420,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             element_to_add = wrapper;
         }
 
-        if (ele.type === FormEntityType.file) {
+        else if (ele.type === FormEntityType.file) {
             // Sépare les champ input file
             placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
 
@@ -477,7 +477,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             placeh.appendChild(wrapper);
         }
 
-        if (ele.type === FormEntityType.audio) {
+        else if (ele.type === FormEntityType.audio) {
             // Création d'un bouton pour enregistrer du son
             const wrapper = document.createElement('div');
             wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
@@ -505,7 +505,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             wrapper.appendChild(hidden_label);
 
             ////// Définition si un fichier son existe déjà
-            if (filled_form && ele.name in filled_form.fields) {
+            if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                 readFromFile(
                     filled_form.fields[ele.name] as string, 
                     function(base64) {
@@ -533,7 +533,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             element_to_add = wrapper;
         }
 
-        if (ele.type === FormEntityType.slider) {
+        else if (ele.type === FormEntityType.slider) {
             const wrapper = document.createElement('div');
             const label = document.createElement('label');
             const input = document.createElement('input');
@@ -839,10 +839,11 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
 
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
-                        PageManager.changePage(AppPageName.saved);
+                        PageManager.popPage();
+                        PageManager.changePage(AppPageName.saved, false);
                     }
                     else {
-                        PageManager.changePage(AppPageName.form);
+                        PageManager.changePage(AppPageName.form, false);
                     }
 
                     console.log(form_values);
@@ -860,17 +861,23 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
  * puis charger la page
  * @param base
  */
-export function initFormPage(base: HTMLElement) {
-    Forms.onReady(function(available, current) {
-        loadFormPage(base, current);
-    });
+export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, name: string, form: Form}) {
+    if (edition_mode) {
+        loadFormPage(base, edition_mode.form, edition_mode);
+    }
+    else {
+        Forms.onReady(function(available, current) {
+            loadFormPage(base, current, edition_mode);
+        });
+    }
+   
 }
 
 /**
  * Charge la page de formulaire (point d'entrée)
  * @param base Element dans lequel écrire la page
  */
-export function loadFormPage(base: HTMLElement, current_form: Form) {
+export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode?: {save: FormSave, name: string}) {
     base.innerHTML = "";
 
     const base_block = document.createElement('div');
@@ -882,15 +889,22 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
     base_block.appendChild(placeh);
 
     // Appelle la fonction pour construire
-    constructForm(placeh, current_form);
+    if (edition_mode) {
+        constructForm(placeh, current_form, edition_mode.save);
+    }
+    else {
+        constructForm(placeh, current_form);
+    }
 
     base.appendChild(base_block);
 
     M.updateTextFields();
     $('select').formSelect();
 
-    // Lance le sélecteur de localisation
-    callLocationSelector(current_form);
+    // Lance le sélecteur de localisation uniquement si on est pas en mode édition
+    if (!edition_mode) {
+        callLocationSelector(current_form);
+    }
 
     // Autoredimensionnement des textaera si valeur par défaut
     const $textarea = $('textarea');
@@ -905,10 +919,15 @@ export function loadFormPage(base: HTMLElement, current_form: Form) {
 
     const current_form_key = Forms.current_key;
     btn.addEventListener('click', function() {
-        try {
-            initFormSave(current_form_key);
-        } catch (e) {
-            Logger.error(JSON.stringify(e));
+        if (edition_mode) {
+            saveForm(current_form_key, edition_mode.name, edition_mode.save);
+        }
+        else {
+            try {
+                initFormSave(current_form_key);
+            } catch (e) {
+                Logger.error(JSON.stringify(e));
+            }
         }
     });
 
@@ -922,8 +941,8 @@ function cancelGeoLocModal() : void {
         // On ferme juste le modal
     }
     else {
-        // Sinon, on ramène à la page d'accueil
-        PageManager.changePage(AppPageName.home);
+        // Sinon, on ramène à la page précédente
+        PageManager.popPage();
     }
 
     getModalInstance().close();

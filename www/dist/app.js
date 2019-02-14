@@ -2588,7 +2588,7 @@ define("settings_page", ["require", "exports"], function (require, exports) {
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "form"], function (require, exports, helpers_3, form_schema_1, interface_1, form_1) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_3, form_schema_1, interface_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
@@ -2599,31 +2599,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         }
         const current_form = form_schema_1.Forms.getForm(form.type);
         const base = helpers_3.getBase();
-        base.innerHTML = "";
-        const base_block = document.createElement('div');
-        base_block.classList.add('row', 'container');
-        const placeh = document.createElement('form');
-        placeh.classList.add('col', 's12');
-        base_block.appendChild(placeh);
-        // Appelle la fonction pour construire
-        form_1.constructForm(placeh, current_form, form);
-        base.appendChild(base_block);
-        M.updateTextFields();
-        $('select').formSelect();
-        // Autoredimensionnement des textaera si valeur par défaut
-        const $textarea = $('textarea');
-        if ($textarea.length > 0) {
-            M.textareaAutoResize($textarea);
-        }
-        // Création du bouton de sauvegarde
-        const btn = document.createElement('div');
-        btn.classList.add('btn-flat', 'right', 'red-text');
-        btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_1.Forms.current_key;
-        btn.addEventListener('click', function () {
-            form_1.saveForm(current_form_key, name, form);
-        });
-        base_block.appendChild(btn);
+        interface_1.PageManager.pushPage(interface_1.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     function appendFileEntry(json, ph) {
         const save = json[1];
@@ -2729,7 +2705,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         document.getElementById('delete_form_modal').onclick = function () {
             deleteForm(id).then(function () {
                 M.toast({ html: "Entrée supprimée." });
-                interface_1.PageManager.changePage(interface_1.AppPageName.saved);
+                interface_1.PageManager.changePage(interface_1.AppPageName.saved, false);
                 instance.close();
             }).catch(function (err) {
                 M.toast({ html: "Impossible de supprimer: " + err });
@@ -2787,7 +2763,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_4, form_2, settings_page_1, saved_forms_1, main_1) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_4, form_1, settings_page_1, saved_forms_1, main_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -2807,19 +2783,24 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             this.AppPages = {
                 form: {
                     name: "Nouvelle entrée",
-                    callback: form_2.initFormPage
+                    callback: form_1.initFormPage,
+                    ask_change: true,
+                    reload_on_restore: false
                 },
                 settings: {
                     name: "Paramètres",
-                    callback: settings_page_1.initSettingsPage
+                    callback: settings_page_1.initSettingsPage,
+                    reload_on_restore: false
                 },
                 saved: {
                     name: "Entrées",
-                    callback: saved_forms_1.initSavedForm
+                    callback: saved_forms_1.initSavedForm,
+                    reload_on_restore: true
                 },
                 home: {
                     name: "Accueil",
-                    callback: initHomePage
+                    callback: initHomePage,
+                    reload_on_restore: false
                 }
             };
             this.pages_holder = [];
@@ -2829,9 +2810,24 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
          * @param AppPageName page
          * @param delete_paused supprime les pages sauvegardées
          */
-        changePage(page, delete_paused = true, additionnals) {
-            if (!this.pageExists(page)) {
-                throw new ReferenceError("Page does not exists");
+        changePage(page, delete_paused = true, force_name, additionnals) {
+            let pagename = "";
+            if (typeof page === 'string') {
+                // AppPageName
+                if (!this.pageExists(page)) {
+                    throw new ReferenceError("Page does not exists");
+                }
+                pagename = page;
+                page = this.AppPages[page];
+            }
+            else {
+                // Recherche de la clé correspondante
+                for (const k in this.AppPages) {
+                    if (this.AppPages[k] === page) {
+                        pagename = k;
+                        break;
+                    }
+                }
             }
             // Si on veut supprimer les pages en attente, on vide le tableau
             if (delete_paused) {
@@ -2841,16 +2837,18 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             const base = helpers_4.getBase();
             base.innerHTML = helpers_4.getPreloader("Chargement");
             if (window.history) {
-                window.history.pushState({}, "", "/?" + page);
+                window.history.pushState({}, "", "/?" + pagename);
             }
             // Si on a demandé à fermer le sidenav, on le ferme
-            if (!this.AppPages[page].not_sidenav_close) {
+            if (!page.not_sidenav_close) {
                 main_1.SIDENAV_OBJ.close();
             }
             // On appelle la fonction de création de la page
-            this.AppPages[page].callback(base, additionnals);
+            page.callback(base, additionnals);
+            this.actual_page = page;
+            this._should_wait = page.ask_change;
             // On met le titre de la page dans la barre de navigation
-            document.getElementById('nav_title').innerText = this.AppPages[page].name;
+            document.getElementById('nav_title').innerText = force_name || page.name;
         }
         cleanWaitingPages() {
             while (this.pages_holder.length >= 10) {
@@ -2861,7 +2859,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
          * Pousse une nouvelle page dans la pile de page
          * @param page
          */
-        pushPage(page, additionnals) {
+        pushPage(page, force_name, additionnals) {
             if (!this.pageExists(page)) {
                 throw new ReferenceError("Page does not exists");
             }
@@ -2875,14 +2873,19 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             const save = document.createDocumentFragment();
             save.appendChild(actual_base);
             // Insère la sauvegarde dans la pile de page
-            this.pages_holder.push({ save, name: document.getElementById('nav_title').innerText });
+            this.pages_holder.push({
+                save,
+                ask: this._should_wait,
+                name: document.getElementById('nav_title').innerText,
+                page: this.actual_page
+            });
             // Crée la nouvelle base mère avec le même ID
             const new_base = document.createElement('div');
             new_base.id = "main_block";
             // Insère la nouvelle base vide à la racine de main
             document.getElementsByTagName('main')[0].appendChild(new_base);
             // Appelle la fonction pour charger la page demandée dans le bloc
-            this.changePage(page, false, additionnals);
+            this.changePage(page, false, force_name, additionnals);
         }
         /**
          * Revient à la page précédente.
@@ -2901,6 +2904,41 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
             // Remet le bon titre
             document.getElementById('nav_title').innerText = last_page.name;
+            this.actual_page = last_page.page;
+            this._should_wait = last_page.ask;
+            if (this.actual_page.reload_on_restore) {
+                if (typeof this.actual_page.reload_on_restore === 'boolean') {
+                    this.changePage(this.actual_page, false);
+                }
+                else {
+                    this.actual_page.reload_on_restore();
+                }
+            }
+        }
+        /**
+         * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
+         */
+        goBack() {
+            const stepBack = () => {
+                if (this.isPageWaiting()) {
+                    this.popPage();
+                }
+                else {
+                    this.changePage(AppPageName.home);
+                }
+            };
+            if (this.should_wait) {
+                modalBackHome(stepBack);
+            }
+            else {
+                stepBack();
+            }
+        }
+        get should_wait() {
+            return this._should_wait;
+        }
+        set should_wait(v) {
+            this._should_wait = v;
         }
         pageExists(name) {
             return name in this.AppPages;
@@ -2924,6 +2962,24 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
         $('select').formSelect();
     }
     exports.initHomePage = initHomePage;
+    function modalBackHome(callbackIfTrue) {
+        const modal = helpers_4.getBottomModal();
+        const instance = helpers_4.initBottomModal();
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
+        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
+        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        document.getElementById('__modal_back_home').onclick = callbackIfTrue;
+        instance.open();
+    }
+    exports.modalBackHome = modalBackHome;
 });
 define("main", ["require", "exports", "interface", "helpers", "logger"], function (require, exports, interface_2, helpers_5, logger_2) {
     "use strict";
@@ -2965,34 +3021,32 @@ define("main", ["require", "exports", "interface", "helpers", "logger"], functio
         // Sinon, si mobile, on passe sur dataDirectory
         helpers_5.changeDir();
         logger_2.Logger.init();
+        // @ts-ignore Force à demander la permission pour enregistrer du son
+        const permissions = cordova.plugins.permissions;
+        permissions.requestPermission(permissions.RECORD_AUDIO, status => {
+            console.log(status);
+        }, e => { console.log(e); });
         // Initialise le bouton retour
-        document.addEventListener("backbutton", function () {
-            if (interface_2.PageManager.isPageWaiting()) {
-                interface_2.PageManager.popPage();
-            }
-            else {
-                // Do nothing
-            }
-        }, false);
+        document.addEventListener("backbutton", interface_2.PageManager.goBack, false);
         // Initialise le sidenav
         const elem = document.querySelector('.sidenav');
         exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
         // Bind des éléments du sidenav
         // Home
         document.getElementById('nav_home').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.home);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.home);
         };
         // Form
         document.getElementById('nav_form_new').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.form);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.form);
         };
         // Saved
         document.getElementById('nav_form_saved').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.saved);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.saved);
         };
         // Settigns
         document.getElementById('nav_settings').onclick = function () {
-            interface_2.PageManager.changePage(interface_2.AppPageName.settings);
+            interface_2.PageManager.pushPage(interface_2.AppPageName.settings);
         };
         exports.app.initialize();
         initDebug();
@@ -3022,7 +3076,8 @@ define("main", ["require", "exports", "interface", "helpers", "logger"], functio
             testDistance: helpers_5.testDistance,
             rmrf: helpers_5.rmrf,
             rmrfPromise: helpers_5.rmrfPromise,
-            Logger: logger_2.Logger
+            Logger: logger_2.Logger,
+            modalBackHome: interface_2.modalBackHome
         };
     }
     document.addEventListener('deviceready', initApp, false);
@@ -3154,7 +3209,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 placeh.appendChild(htmle);
                 continue;
             }
-            if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
+            else if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('input');
                 htmle.autocomplete = "off";
@@ -3247,7 +3302,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.string || ele.type === form_schema_2.FormEntityType.bigstring) {
+            else if (ele.type === form_schema_2.FormEntityType.string || ele.type === form_schema_2.FormEntityType.bigstring) {
                 const wrapper = createInputWrapper();
                 let htmle;
                 if (ele.type === form_schema_2.FormEntityType.string) {
@@ -3297,7 +3352,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.select) {
+            else if (ele.type === form_schema_2.FormEntityType.select) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
@@ -3326,7 +3381,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.checkbox) {
+            else if (ele.type === form_schema_2.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3346,7 +3401,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.datetime) {
+            else if (ele.type === form_schema_2.FormEntityType.datetime) {
                 const wrapper = createInputWrapper();
                 const input = document.createElement('input');
                 const label = document.createElement('label');
@@ -3370,7 +3425,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.file) {
+            else if (ele.type === form_schema_2.FormEntityType.file) {
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
@@ -3415,7 +3470,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(fwrapper);
                 placeh.appendChild(wrapper);
             }
-            if (ele.type === form_schema_2.FormEntityType.audio) {
+            else if (ele.type === form_schema_2.FormEntityType.audio) {
                 // Création d'un bouton pour enregistrer du son
                 const wrapper = document.createElement('div');
                 wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
@@ -3436,7 +3491,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 hidden_label.classList.add('hide');
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
-                if (filled_form && ele.name in filled_form.fields) {
+                if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                     helpers_6.readFromFile(filled_form.fields[ele.name], function (base64) {
                         button.classList.remove('blue');
                         button.classList.add('green');
@@ -3456,7 +3511,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(real_input);
                 element_to_add = wrapper;
             }
-            if (ele.type === form_schema_2.FormEntityType.slider) {
+            else if (ele.type === form_schema_2.FormEntityType.slider) {
                 const wrapper = document.createElement('div');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3712,10 +3767,11 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
-                        interface_3.PageManager.changePage(interface_3.AppPageName.saved);
+                        interface_3.PageManager.popPage();
+                        interface_3.PageManager.changePage(interface_3.AppPageName.saved, false);
                     }
                     else {
-                        interface_3.PageManager.changePage(interface_3.AppPageName.form);
+                        interface_3.PageManager.changePage(interface_3.AppPageName.form, false);
                     }
                     console.log(form_values);
                 });
@@ -3731,17 +3787,22 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
      * puis charger la page
      * @param base
      */
-    function initFormPage(base) {
-        form_schema_2.Forms.onReady(function (available, current) {
-            loadFormPage(base, current);
-        });
+    function initFormPage(base, edition_mode) {
+        if (edition_mode) {
+            loadFormPage(base, edition_mode.form, edition_mode);
+        }
+        else {
+            form_schema_2.Forms.onReady(function (available, current) {
+                loadFormPage(base, current, edition_mode);
+            });
+        }
     }
     exports.initFormPage = initFormPage;
     /**
      * Charge la page de formulaire (point d'entrée)
      * @param base Element dans lequel écrire la page
      */
-    function loadFormPage(base, current_form) {
+    function loadFormPage(base, current_form, edition_mode) {
         base.innerHTML = "";
         const base_block = document.createElement('div');
         base_block.classList.add('row', 'container');
@@ -3749,12 +3810,19 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         placeh.classList.add('col', 's12');
         base_block.appendChild(placeh);
         // Appelle la fonction pour construire
-        constructForm(placeh, current_form);
+        if (edition_mode) {
+            constructForm(placeh, current_form, edition_mode.save);
+        }
+        else {
+            constructForm(placeh, current_form);
+        }
         base.appendChild(base_block);
         M.updateTextFields();
         $('select').formSelect();
-        // Lance le sélecteur de localisation
-        callLocationSelector(current_form);
+        // Lance le sélecteur de localisation uniquement si on est pas en mode édition
+        if (!edition_mode) {
+            callLocationSelector(current_form);
+        }
         // Autoredimensionnement des textaera si valeur par défaut
         const $textarea = $('textarea');
         if ($textarea.length > 0) {
@@ -3766,11 +3834,16 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         btn.innerText = "Enregistrer";
         const current_form_key = form_schema_2.Forms.current_key;
         btn.addEventListener('click', function () {
-            try {
-                initFormSave(current_form_key);
+            if (edition_mode) {
+                saveForm(current_form_key, edition_mode.name, edition_mode.save);
             }
-            catch (e) {
-                logger_3.Logger.error(JSON.stringify(e));
+            else {
+                try {
+                    initFormSave(current_form_key);
+                }
+                catch (e) {
+                    logger_3.Logger.error(JSON.stringify(e));
+                }
             }
         });
         base_block.appendChild(btn);
@@ -3783,8 +3856,8 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             // On ferme juste le modal
         }
         else {
-            // Sinon, on ramène à la page d'accueil
-            interface_3.PageManager.changePage(interface_3.AppPageName.home);
+            // Sinon, on ramène à la page précédente
+            interface_3.PageManager.popPage();
         }
         helpers_6.getModalInstance().close();
         helpers_6.getModal().classList.remove('modal-fixed-footer');

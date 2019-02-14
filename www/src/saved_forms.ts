@@ -13,41 +13,8 @@ function editAForm(form: FormSave, name: string) {
     const current_form = Forms.getForm(form.type);
 
     const base = getBase();
-    base.innerHTML = "";
-
-    const base_block = document.createElement('div');
-    base_block.classList.add('row', 'container');
-
-    const placeh = document.createElement('form');
-    placeh.classList.add('col', 's12');
-
-    base_block.appendChild(placeh);
-
-    // Appelle la fonction pour construire
-    constructForm(placeh, current_form, form);
-
-    base.appendChild(base_block);
     
-    M.updateTextFields();
-    $('select').formSelect();
-
-    // Autoredimensionnement des textaera si valeur par défaut
-    const $textarea = $('textarea');
-    if ($textarea.length > 0) {
-        M.textareaAutoResize($textarea);
-    }
-
-    // Création du bouton de sauvegarde
-    const btn = document.createElement('div');
-    btn.classList.add('btn-flat', 'right', 'red-text');
-    btn.innerText = "Enregistrer";
-
-    const current_form_key = Forms.current_key;
-    btn.addEventListener('click', function() {
-        saveForm(current_form_key, name, form);
-    });
-
-    base_block.appendChild(btn);
+    PageManager.pushPage(AppPageName.form, "Modifier", {form: current_form, name, save: form});
 }
 
 function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
@@ -179,7 +146,7 @@ function modalDeleteForm(id: string) {
     document.getElementById('delete_form_modal').onclick = function() {
         deleteForm(id).then(function() {
             M.toast({html: "Entrée supprimée."});
-            PageManager.changePage(AppPageName.saved);
+            PageManager.changePage(AppPageName.saved, false);
             instance.close();
         }).catch(function(err) {
             M.toast({html: "Impossible de supprimer: " + err});

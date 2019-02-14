@@ -1,4 +1,4 @@
-import { getBase, getPreloader, generateId } from "./helpers";
+import { getBase, getPreloader, generateId, getBottomModal, initBottomModal, getModalPreloader } from "./helpers";
 import { initFormPage } from "./form";
 import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
@@ -10,6 +10,8 @@ interface AppPageObj {
     not_sidenav_close?: boolean;
     callback: (base: HTMLElement, additionnals?: any) => void;
     name: string;
+    ask_change?: boolean;
+    reload_on_restore: boolean | Function;
 }
 
 export enum AppPageName {
@@ -17,6 +19,9 @@ export enum AppPageName {
 }
 
 export const PageManager = new class {
+    protected actual_page: AppPageObj;
+    protected _should_wait: boolean;
+
     /**
      * Déclaration des pages possibles
      * Chaque clé de AppPages doit être une possibilité de AppPageName
@@ -24,33 +29,55 @@ export const PageManager = new class {
     protected AppPages: {[pageName: string]: AppPageObj} = {
         form: {
             name: "Nouvelle entrée",
-            callback: initFormPage
+            callback: initFormPage,
+            ask_change: true,
+            reload_on_restore: false
         },
         settings: {
             name: "Paramètres",
-            callback: initSettingsPage
+            callback: initSettingsPage,
+            reload_on_restore: false
         },
         saved: {
             name: "Entrées",
-            callback: initSavedForm
+            callback: initSavedForm,
+            reload_on_restore: true
         },
         home: {
             name: "Accueil",
-            callback: initHomePage
+            callback: initHomePage,
+            reload_on_restore: false
         }
     };
 
-    protected pages_holder: {save: DocumentFragment, name: string}[] = [];
+    protected pages_holder: {save: DocumentFragment, name: string, page: AppPageObj, ask: boolean}[] = [];
 
     /**
      * Change l'affichage et charge la page "page" dans le bloc principal
      * @param AppPageName page 
      * @param delete_paused supprime les pages sauvegardées
      */
-    public changePage(page: AppPageName, delete_paused: boolean = true, additionnals?: any) : void {
-        if (!this.pageExists(page)) {
-            throw new ReferenceError("Page does not exists");
+    public changePage(page: AppPageName | AppPageObj, delete_paused: boolean = true, force_name?: string | null, additionnals?: any) : void {
+        let pagename: string = "";
+        if (typeof page === 'string') {
+            // AppPageName
+            if (!this.pageExists(page)) {
+                throw new ReferenceError("Page does not exists");
+            }
+            
+            pagename = page;
+            page = this.AppPages[page];
         }
+        else {
+            // Recherche de la clé correspondante
+            for (const k in this.AppPages) {
+                if (this.AppPages[k] === page) {
+                    pagename = k;
+                    break;
+                }
+            }
+        }
+        
 
         // Si on veut supprimer les pages en attente, on vide le tableau
         if (delete_paused) {
@@ -61,19 +88,22 @@ export const PageManager = new class {
         const base = getBase();
         base.innerHTML = getPreloader("Chargement");
         if (window.history) {
-            window.history.pushState({}, "", "/?" + page);
+            window.history.pushState({}, "", "/?" + pagename);
         }
 
         // Si on a demandé à fermer le sidenav, on le ferme
-        if (!this.AppPages[page].not_sidenav_close) {
+        if (!page.not_sidenav_close) {
             SIDENAV_OBJ.close();
         }
 
         // On appelle la fonction de création de la page
-        this.AppPages[page].callback(base, additionnals);
+        page.callback(base, additionnals);
+
+        this.actual_page = page;
+        this._should_wait = page.ask_change;
 
         // On met le titre de la page dans la barre de navigation
-        document.getElementById('nav_title').innerText = this.AppPages[page].name;
+        document.getElementById('nav_title').innerText = force_name || page.name;
     }
 
     protected cleanWaitingPages() : void {
@@ -86,7 +116,7 @@ export const PageManager = new class {
      * Pousse une nouvelle page dans la pile de page
      * @param page 
      */
-    public pushPage(page: AppPageName, additionnals?: any) : void {
+    public pushPage(page: AppPageName, force_name?: string | null, additionnals?: any) : void {
         if (!this.pageExists(page)) {
             throw new ReferenceError("Page does not exists");
         }
@@ -103,7 +133,12 @@ export const PageManager = new class {
         const save = document.createDocumentFragment();
         save.appendChild(actual_base);
         // Insère la sauvegarde dans la pile de page
-        this.pages_holder.push({save, name: document.getElementById('nav_title').innerText});
+        this.pages_holder.push({
+            save, 
+            ask: this._should_wait,
+            name: document.getElementById('nav_title').innerText,
+            page: this.actual_page
+        });
 
         // Crée la nouvelle base mère avec le même ID
         const new_base = document.createElement('div');
@@ -113,7 +148,7 @@ export const PageManager = new class {
         document.getElementsByTagName('main')[0].appendChild(new_base);
 
         // Appelle la fonction pour charger la page demandée dans le bloc
-        this.changePage(page, false, additionnals);
+        this.changePage(page, false, force_name, additionnals);
     }
 
     /**
@@ -136,6 +171,46 @@ export const PageManager = new class {
         document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
         // Remet le bon titre
         document.getElementById('nav_title').innerText = last_page.name;
+        this.actual_page = last_page.page;
+        this._should_wait = last_page.ask;
+
+        if (this.actual_page.reload_on_restore) {
+            if (typeof this.actual_page.reload_on_restore === 'boolean') {
+                this.changePage(this.actual_page, false);
+            }
+            else {
+                this.actual_page.reload_on_restore();
+            }
+        }
+    }
+
+    /**
+     * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
+     */
+    public goBack() : void {
+        const stepBack = () => {
+            if (this.isPageWaiting()) {
+                this.popPage();
+            }
+            else {
+                this.changePage(AppPageName.home);
+            }
+        };
+    
+        if (this.should_wait) {
+            modalBackHome(stepBack);
+        }
+        else {
+            stepBack();
+        }
+    }
+
+    public get should_wait() {
+        return this._should_wait;
+    }
+
+    public set should_wait(v: boolean) {
+        this._should_wait = v;
     }
 
     public pageExists(name: string) : boolean {
@@ -161,4 +236,25 @@ export function initHomePage(base: HTMLElement) : void {
     // Initialise les champs materialize et le select
     M.updateTextFields();
     $('select').formSelect();
+}
+
+export function modalBackHome(callbackIfTrue: (evt?: MouseEvent) => void) : void {
+    const modal = getBottomModal();
+    const instance = initBottomModal();
+
+    modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
+        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
+        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+
+    document.getElementById('__modal_back_home').onclick = callbackIfTrue;
+
+    instance.open();
 }

@@ -1,4 +1,4 @@
-import { PageManager, AppPageName } from "./interface";
+import { PageManager, AppPageName, modalBackHome } from "./interface";
 import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase } from "./helpers";
 import { Logger } from "./logger";
 
@@ -43,15 +43,14 @@ function initApp() {
 
     Logger.init();
 
+    // @ts-ignore Force à demander la permission pour enregistrer du son
+    const permissions = cordova.plugins.permissions;
+    permissions.requestPermission(permissions.RECORD_AUDIO, status => {
+        console.log(status);
+    }, e => {console.log(e)});
+
     // Initialise le bouton retour
-    document.addEventListener("backbutton", function() {
-        if (PageManager.isPageWaiting()) {
-            PageManager.popPage();
-        }
-        else {
-            // Do nothing
-        }
-    }, false);
+    document.addEventListener("backbutton", PageManager.goBack, false);
 
     // Initialise le sidenav
     const elem = document.querySelector('.sidenav');
@@ -60,19 +59,19 @@ function initApp() {
     // Bind des éléments du sidenav
     // Home
     document.getElementById('nav_home').onclick = function() {
-        PageManager.changePage(AppPageName.home);
+        PageManager.pushPage(AppPageName.home);
     };
     // Form
     document.getElementById('nav_form_new').onclick = function() {
-        PageManager.changePage(AppPageName.form);
+        PageManager.pushPage(AppPageName.form);
     };
     // Saved
     document.getElementById('nav_form_saved').onclick = function() {
-        PageManager.changePage(AppPageName.saved);
+        PageManager.pushPage(AppPageName.saved);
     };
     // Settigns
     document.getElementById('nav_settings').onclick = function() {
-        PageManager.changePage(AppPageName.settings);
+        PageManager.pushPage(AppPageName.settings);
     };
 
     app.initialize();
@@ -108,7 +107,8 @@ function initDebug() {
         testDistance,
         rmrf,
         rmrfPromise,
-        Logger
+        Logger,
+        modalBackHome
     };
 }
 
