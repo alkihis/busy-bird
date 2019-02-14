@@ -3,7 +3,6 @@ import { FormEntity } from "./form_schema";
 import { Logger } from "./logger";
 
 export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElement, ele: FormEntity) {
-    // @ts-ignore
     let recorder = null;
 
     const modal = getModal();
@@ -77,10 +76,9 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
             bitRate: 256
         });
 
-        Logger.info("Bonjour !", "Autre bonjour !");
-
         recorder.start().catch((e) => {
             Logger.error("Impossible de lancer l'écoute.", e);
+            player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
         });
     }
     
@@ -92,7 +90,6 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
         recorder
             .stop()
             .getMp3().then(([buffer, blob]) => {
-                
                 blobSize = blob.size;
 
                 blobToBase64(blob).then(function(base64) {
@@ -107,8 +104,8 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
                     btn_start.classList.remove('hide');
                 });
             }).catch((e) => {
-                alert('We could not retrieve your message');
-                console.log(e);
+                M.toast({html:'Impossible de lire votre enregistrement'});
+                Logger.error("Enregistrement échoué:", e.message);
             });
     }
 }

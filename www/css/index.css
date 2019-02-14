@@ -150,6 +150,10 @@ main {
     width: 100%;
 }
 
+.bold-text {
+    font-weight: bold;
+}
+
 .btn-perso {
     border-radius: 5px;
     text-transform: inherit;

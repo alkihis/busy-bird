@@ -158,6 +158,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         if (ele.type === FormEntityType.integer || ele.type === FormEntityType.float) {
             const wrapper = createInputWrapper();
             const htmle = document.createElement('input');
+            htmle.autocomplete = "off";
             const label = document.createElement('label');
 
             fillStandardInputValues(htmle, ele, label);
@@ -268,6 +269,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             if (ele.type === FormEntityType.string) {
                 htmle = document.createElement('input');
                 htmle.type = "text";
+                htmle.autocomplete = "off";
             }
             else {
                 htmle = document.createElement('textarea');
@@ -693,7 +695,7 @@ export function saveForm(type: string, force_name?: string, form_save?: FormSave
             }
         }
         else if (i.type === "number") {
-            form_values.fields[i.name] = Number(i.value);
+            form_values.fields[i.name] = i.value === "" ? null : Number(i.value);
         }
         else {
             form_values.fields[i.name] = i.value;

@@ -943,7 +943,6 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function newModalRecord(button, input, ele) {
-        // @ts-ignore
         let recorder = null;
         const modal = helpers_2.getModal();
         const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement", ''));
@@ -1004,9 +1003,9 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
             recorder = new MicRecorder({
                 bitRate: 256
             });
-            logger_1.Logger.info("Bonjour !", "Autre bonjour !");
             recorder.start().catch((e) => {
                 logger_1.Logger.error("Impossible de lancer l'écoute.", e);
+                player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
             });
         }
         function stopRecording() {
@@ -1027,8 +1026,8 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
                     btn_start.classList.remove('hide');
                 });
             }).catch((e) => {
-                alert('We could not retrieve your message');
-                console.log(e);
+                M.toast({ html: 'Impossible de lire votre enregistrement' });
+                logger_1.Logger.error("Enregistrement échoué:", e.message);
             });
         }
     }
@@ -3158,6 +3157,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('input');
+                htmle.autocomplete = "off";
                 const label = document.createElement('label');
                 fillStandardInputValues(htmle, ele, label);
                 htmle.type = "number";
@@ -3253,6 +3253,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 if (ele.type === form_schema_2.FormEntityType.string) {
                     htmle = document.createElement('input');
                     htmle.type = "text";
+                    htmle.autocomplete = "off";
                 }
                 else {
                     htmle = document.createElement('textarea');
@@ -3591,7 +3592,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 }
             }
             else if (i.type === "number") {
-                form_values.fields[i.name] = Number(i.value);
+                form_values.fields[i.name] = i.value === "" ? null : Number(i.value);
             }
             else {
                 form_values.fields[i.name] = i.value;
