@@ -1,0 +1,36 @@
+main {
+    margin-bottom: 50px;
+}
+
+.bottombar {
+    background-color: rgb(240, 240, 240);
+    overflow: hidden;
+    position: fixed;
+    bottom: 0;
+    z-index: 1;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(25%, 1fr));
+}
+
+/* Style the links inside the navigation bar */
+.bottombar a {
+    border-radius: 3px;
+    display: block;
+    color: #1b1b1b;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+/* Change the color of links on hover */
+.bottombar a:hover {
+    background-color: rgb(196, 196, 196);
+    color: rgb(0, 58, 112);
+}
+
+/* Add a color to the active/current link */
+.bottombar a.active {
+    background-color: #4CAF50;
+    color: white;
+}

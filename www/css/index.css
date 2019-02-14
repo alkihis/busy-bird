@@ -55,6 +55,14 @@ h1 {
     animation: fade 900ms infinite;
 }
 
+nav .return-trigger {
+    float: right;
+    position: relative;
+    z-index: 1;
+    height: 56px;
+    margin: 0 18px;
+}
+
 .invalid-tip {
     color: red;
 }

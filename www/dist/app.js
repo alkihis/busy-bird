@@ -3483,8 +3483,6 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 element_to_add = wrapper;
             }
             else if (ele.type === form_schema_3.FormEntityType.file) {
-                // Sépare les champ input file
-                placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                     // L'input file est déjà présent dans le formulaire
                     // on affiche une miniature
@@ -3526,6 +3524,8 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 fwrapper.appendChild(f_input);
                 wrapper.appendChild(fwrapper);
                 placeh.appendChild(wrapper);
+                // Sépare les champ input file
+                placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
             }
             else if (ele.type === form_schema_3.FormEntityType.audio) {
                 // Création d'un bouton pour enregistrer du son

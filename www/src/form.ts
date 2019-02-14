@@ -449,9 +449,6 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         }
 
         else if (ele.type === FormEntityType.file) {
-            // Sépare les champ input file
-            placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
-
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                 // L'input file est déjà présent dans le formulaire
                 // on affiche une miniature
@@ -503,6 +500,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             wrapper.appendChild(fwrapper);
 
             placeh.appendChild(wrapper);
+
+            // Sépare les champ input file
+            placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
         }
 
         else if (ele.type === FormEntityType.audio) {
