@@ -710,18 +710,26 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
             this.waiting_callee = [];
             this.init_done = false;
             this.init_waiting_callee = [];
+            this.tries = 5;
         }
         /**
          * Initialise le logger. Doit être réalisé après app.init() et changeDir().
          * Pour vérifier si le logger est initialisé, utilisez onReady().
          */
         init() {
+            this.init_done = false;
+            if (this.tries === 0) {
+                console.error("Too many init tries. Logger stays uninitialized.");
+                return;
+            }
+            this.tries--;
             helpers_1.getDir((dirEntry) => {
                 // Creates a new file or returns the file if it already exists.
                 dirEntry.getFile("log.txt", { create: true }, (fileEntry) => {
                     this.fileEntry = fileEntry;
                     this.init_done = true;
                     this.onWrite = false;
+                    this.tries = 5;
                     let func;
                     while (func = this.init_waiting_callee.pop()) {
                         func();
@@ -834,6 +842,10 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
                 else {
                     this.delayWrite(data, level);
                 }
+            }, (error) => {
+                console.error("Impossible d'écrire: ", error.message);
+                this.delayWrite(data, level);
+                this.init();
             });
         }
         /**
@@ -918,8 +930,9 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
                         resolve(this.result);
                     };
                     reader.readAsText(file);
-                }, function () {
+                }, () => {
                     console.log("Logger: Unable to open file.");
+                    this.init();
                     reject();
                 });
             });
@@ -951,7 +964,8 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
         let blobSize = 0;
         modal.innerHTML = `
     <div class="modal-content">
-        <h5 style="margin-bottom: 25px;margin-top: 0;">${ele.label}</h5>
+        <h5 style="margin-top: 0;">${ele.label}</h5>
+        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
         <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
         <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
         <div class=clearb></div>
@@ -998,7 +1012,10 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
         function startRecording() {
             btn_start.classList.add('hide');
             btn_stop.classList.remove('hide');
-            player.innerHTML = "<p class='flow-text center'>Enregistrement en cours</p>";
+            player.innerHTML = `<p class='flow-text center'>
+            <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
+            Enregistrement en cours
+        </p>`;
             // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
             recorder = new MicRecorder({
                 bitRate: 256
@@ -2981,7 +2998,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     }
     exports.modalBackHome = modalBackHome;
 });
-define("main", ["require", "exports", "interface", "helpers", "logger"], function (require, exports, interface_2, helpers_5, logger_2) {
+define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema"], function (require, exports, interface_2, helpers_5, logger_2, audio_listener_1, form_schema_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -3077,12 +3094,19 @@ define("main", ["require", "exports", "interface", "helpers", "logger"], functio
             rmrf: helpers_5.rmrf,
             rmrfPromise: helpers_5.rmrfPromise,
             Logger: logger_2.Logger,
-            modalBackHome: interface_2.modalBackHome
+            modalBackHome: interface_2.modalBackHome,
+            recorder: function () {
+                audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
+                    name: "__test__",
+                    label: "Test",
+                    type: form_schema_2.FormEntityType.audio
+                });
+            }
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_2, helpers_6, main_2, interface_3, logger_3, audio_listener_1) {
+define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_3, helpers_6, main_2, interface_3, logger_3, audio_listener_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3197,7 +3221,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         // Fin champ de lieu, itération sur champs
         for (const ele of current_form.fields) {
             let element_to_add = null;
-            if (ele.type === form_schema_2.FormEntityType.divider) {
+            if (ele.type === form_schema_3.FormEntityType.divider) {
                 // C'est un titre
                 // On divide
                 const clearer = document.createElement('div');
@@ -3209,7 +3233,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 placeh.appendChild(htmle);
                 continue;
             }
-            else if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
+            else if (ele.type === form_schema_3.FormEntityType.integer || ele.type === form_schema_3.FormEntityType.float) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('input');
                 htmle.autocomplete = "off";
@@ -3234,7 +3258,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Calcul de nombre de décimales requises
                 // si le nombre demandé est un float
                 let NB_DECIMALES = 0;
-                if (ele.type === form_schema_2.FormEntityType.float && ele.float_precision) {
+                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
                     // Récupération de la partie décimale sous forme de string
                     const dec_part = ele.float_precision.toString().split('.');
                     // Calcul du nombre de décimales
@@ -3245,6 +3269,21 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         throw new Error(`La précision pour la partie décimale spécifiée pour le champ "${ele.name}" est invalide: Elle ne comporte pas de décimales.`);
                     }
                 }
+                // Définition des contraintes
+                const contraintes = [];
+                if (typeof ele.range !== 'undefined') {
+                    if (typeof ele.range.min !== 'undefined') {
+                        contraintes.push(["min", ele.range.min]);
+                    }
+                    if (typeof ele.range.max !== 'undefined') {
+                        contraintes.push(["max", ele.range.max]);
+                    }
+                }
+                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
+                    contraintes.push(["precision", ele.float_precision]);
+                }
+                contraintes.push(['type', ele.type === form_schema_3.FormEntityType.float ? 'float' : 'int']);
+                htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
                 htmle.addEventListener('change', function () {
                     let valid = true;
@@ -3264,7 +3303,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                         }
                         // if différent, il est juste en else if pour éviter de faire les
                         // calculs si le valid est déjà à false
-                        else if (ele.type === form_schema_2.FormEntityType.float) {
+                        else if (ele.type === form_schema_3.FormEntityType.float) {
                             if (ele.float_precision) {
                                 // Si on a demandé à avoir un nombre de flottant précis
                                 const floating_point = this.value.split('.');
@@ -3302,10 +3341,10 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.string || ele.type === form_schema_2.FormEntityType.bigstring) {
+            else if (ele.type === form_schema_3.FormEntityType.string || ele.type === form_schema_3.FormEntityType.bigstring) {
                 const wrapper = createInputWrapper();
                 let htmle;
-                if (ele.type === form_schema_2.FormEntityType.string) {
+                if (ele.type === form_schema_3.FormEntityType.string) {
                     htmle = document.createElement('input');
                     htmle.type = "text";
                     htmle.autocomplete = "off";
@@ -3323,6 +3362,17 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(label);
                 wrapper.appendChild(htmle);
                 createTip(wrapper, ele);
+                // Définition des contraintes
+                const contraintes = [];
+                if (typeof ele.range !== 'undefined') {
+                    if (typeof ele.range.min !== 'undefined') {
+                        contraintes.push(["min", ele.range.min]);
+                    }
+                    if (typeof ele.range.max !== 'undefined') {
+                        contraintes.push(["max", ele.range.max]);
+                    }
+                }
+                htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
                 htmle.addEventListener('change', function () {
                     let valid = true;
@@ -3352,7 +3402,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 });
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.select) {
+            else if (ele.type === form_schema_3.FormEntityType.select) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
@@ -3381,7 +3431,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.checkbox) {
+            else if (ele.type === form_schema_3.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3401,7 +3451,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.datetime) {
+            else if (ele.type === form_schema_3.FormEntityType.datetime) {
                 const wrapper = createInputWrapper();
                 const input = document.createElement('input');
                 const label = document.createElement('label');
@@ -3425,7 +3475,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.file) {
+            else if (ele.type === form_schema_3.FormEntityType.file) {
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
@@ -3470,7 +3520,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 wrapper.appendChild(fwrapper);
                 placeh.appendChild(wrapper);
             }
-            else if (ele.type === form_schema_2.FormEntityType.audio) {
+            else if (ele.type === form_schema_3.FormEntityType.audio) {
                 // Création d'un bouton pour enregistrer du son
                 const wrapper = document.createElement('div');
                 wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
@@ -3505,13 +3555,13 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 ////// Fin
                 button.addEventListener('click', function () {
                     // Crée un modal qui sert à enregistrer de l'audio
-                    audio_listener_1.newModalRecord(button, real_input, ele);
+                    audio_listener_2.newModalRecord(button, real_input, ele);
                 });
                 wrapper.appendChild(button);
                 wrapper.appendChild(real_input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.slider) {
+            else if (ele.type === form_schema_3.FormEntityType.slider) {
                 const wrapper = document.createElement('div');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3630,7 +3680,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         if (!erreur_critique) {
             document.getElementById("valid_verif").onclick = function () {
                 helpers_6.getModalInstance().close();
-                const current_form_key = form_schema_2.Forms.current_key;
+                const current_form_key = form_schema_3.Forms.current_key;
                 saveForm(current_form_key);
             };
         }
@@ -3792,7 +3842,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
             loadFormPage(base, edition_mode.form, edition_mode);
         }
         else {
-            form_schema_2.Forms.onReady(function (available, current) {
+            form_schema_3.Forms.onReady(function (available, current) {
                 loadFormPage(base, current, edition_mode);
             });
         }
@@ -3832,7 +3882,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
         const btn = document.createElement('div');
         btn.classList.add('btn-flat', 'right', 'red-text');
         btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_2.Forms.current_key;
+        const current_form_key = form_schema_3.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
                 saveForm(current_form_key, edition_mode.name, edition_mode.save);

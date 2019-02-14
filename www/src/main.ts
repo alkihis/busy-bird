@@ -1,6 +1,8 @@
 import { PageManager, AppPageName, modalBackHome } from "./interface";
 import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase } from "./helpers";
 import { Logger } from "./logger";
+import { newModalRecord } from "./audio_listener";
+import { FormEntityType } from "./form_schema";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -96,7 +98,6 @@ function initApp() {
 }
 
 function initDebug() {
-    
     window["DEBUG"] = {
         PageManager,
         readFromFile,
@@ -108,7 +109,15 @@ function initDebug() {
         rmrf,
         rmrfPromise,
         Logger,
-        modalBackHome
+        modalBackHome,
+        recorder: function() {
+            newModalRecord(document.createElement('button'), document.createElement('input'),
+            {
+                name: "__test__",
+                label: "Test",
+                type: FormEntityType.audio
+            });
+        }
     };
 }
 

@@ -14,7 +14,8 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
 
     modal.innerHTML = `
     <div class="modal-content">
-        <h5 style="margin-bottom: 25px;margin-top: 0;">${ele.label}</h5>
+        <h5 style="margin-top: 0;">${ele.label}</h5>
+        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
         <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
         <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
         <div class=clearb></div>
@@ -69,7 +70,10 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
         btn_start.classList.add('hide');
         btn_stop.classList.remove('hide');
 
-        player.innerHTML = "<p class='flow-text center'>Enregistrement en cours</p>";
+        player.innerHTML = `<p class='flow-text center'>
+            <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
+            Enregistrement en cours
+        </p>`;
 
         // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
         recorder = new MicRecorder({

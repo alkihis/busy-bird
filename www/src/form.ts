@@ -198,6 +198,22 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 }
             }
 
+            // Définition des contraintes
+            const contraintes = [];
+            if (typeof ele.range !== 'undefined') {
+                if (typeof ele.range.min !== 'undefined') {
+                    contraintes.push(["min", ele.range.min]);
+                }
+                if (typeof ele.range.max !== 'undefined') {
+                    contraintes.push(["max", ele.range.max]);
+                }
+            }
+            if (ele.type === FormEntityType.float && ele.float_precision) {
+                contraintes.push(["precision", ele.float_precision]);
+            }
+            contraintes.push(['type', ele.type === FormEntityType.float ? 'float' : 'int']);
+            htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
+
             // Attachage de l'évènement de vérification
             htmle.addEventListener('change', function() {
                 let valid = true;
@@ -289,6 +305,18 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             wrapper.appendChild(label);
             wrapper.appendChild(htmle);
             createTip(wrapper, ele);
+
+            // Définition des contraintes
+            const contraintes = [];
+            if (typeof ele.range !== 'undefined') {
+                if (typeof ele.range.min !== 'undefined') {
+                    contraintes.push(["min", ele.range.min]);
+                }
+                if (typeof ele.range.max !== 'undefined') {
+                    contraintes.push(["max", ele.range.max]);
+                }
+            }
+            htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
             // Attachage de l'évènement de vérification
             htmle.addEventListener('change', function() {
