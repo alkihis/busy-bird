@@ -524,42 +524,64 @@ function initFormSave(type: string): any {
     console.log("Demarrage initFormSave")
     // Ouverture du modal de verification
     const modal = getModal();
-    initModal({ dismissible: false });
+    initModal({ dismissible: true });
 
     modal.classList.add('modal-fixed-footer');
 
     console.log("initmodal")
     getModalInstance().open();
+    //Ouverture du premiere modal de chargement
     modal.innerHTML = getModalPreloader(
         "Validation du formulaire...\nCeci peut prendre quelques secondes",
         `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`
     );
+
+    // creation de la liste d'erreurs
     let list_erreur = document.createElement("div");
     list_erreur.classList.add("modal-content");
     let element_erreur = document.createElement("ul");
     element_erreur.classList.add("collection")
     list_erreur.appendChild(element_erreur);
     //Ajouter verification avant d'ajouter bouton valider
+    let erreur_critique : boolean = false;
+
+    //Code pour ajouter limite et precision
+    // const contraintes: any = {};
+    // if (element.dataset.constraints)
+    //     element.dataset.constraints.split(';').map((e: string) => {
+    //         const [name, value] = e.split('=');
+    //         contraintes[name] = value;
+    //     });
+
+    //Parcours tous les elements remplit ou pas
     for (const input of document.getElementsByClassName('input-form-element')) {
+        //Attribution du label plutot que son nom interne
         const i = input as HTMLInputElement;
-
         const label = document.querySelector(`label[for="${i.id}"]`);
-
         let name = i.name;
         if (label) {
           name = label.textContent;
         }
 
+        //Si l'attribut est obligatoirement requi et qu'il est vide -> erreur critique impossible de sauvegarder
+        if (i.required && !i.value){
+          let erreur = document.createElement("li");
+          erreur.classList.add("collection-item");
+          erreur.innerHTML ="<b style='color: red;' >"+ name +"</b> : Champ requis";
+          element_erreur.insertBefore( erreur , element_erreur.firstChild );
+          erreur_critique = true;
+          continue;
+        }
+
+
         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
             const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
             if (selected.length == 0) {
-                console.log(i.name + " Input non valide");
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                let noeud = document.createTextNode(name + " non valide");
-                erreur.appendChild(noeud);
+                erreur.innerHTML ="<b>"+ name +"</b> : Non renseigné";
                 element_erreur.appendChild(erreur);
             }
         }
@@ -567,44 +589,40 @@ function initFormSave(type: string): any {
             if (!i.value) {
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                let noeud = document.createTextNode(name + " non valide");
-                erreur.appendChild(noeud);
+                erreur.innerHTML ="<b>"+ name +"</b> : Non renseigné";
                 element_erreur.appendChild(erreur);
 
             }
         }
-        else {
-            console.log(i.name + i.value);
-        }
     }
-    console.log(list_erreur);
     modal.innerHTML = "";
     modal.appendChild(list_erreur);
     let footer = document.createElement("div");
     footer.classList.add("modal-footer");
-    footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
-      </div>`;
+    if (erreur_critique) {
+      footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
+        </div>`;
+    }
+    else{
+      footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+        </div>`;
+    }
 
     modal.appendChild(footer);
     document.getElementById("cancel_verif").onclick = function() {
         getModalInstance().close();
     };
-    document.getElementById("valid_verif").onclick = function() {
-        getModalInstance().close();
-        const current_form_key = Forms.current_key;
-        saveForm(current_form_key);
+    if (!erreur_critique) {
+      document.getElementById("valid_verif").onclick = function() {
+          getModalInstance().close();
+          const current_form_key = Forms.current_key;
+          saveForm(current_form_key);
+        }
+
+
     };
-
-    // Vérifie les champs invalides
-
-    // Si champ invalide requis, affiche un message d'erreur avec champs à modifier
-
     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
-    // sauvegarde possible
 
-    // Bouton de sauvegarde
-
-    // Inscription dans le JSON (lecture des champs un à un et sauvegarde)
 }
 /**
  * Sauvegarde le formulaire actuel dans un fichier .json
