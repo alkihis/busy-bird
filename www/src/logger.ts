@@ -15,7 +15,7 @@ export enum LogLevel {
 export const Logger = new class {
     protected fileEntry: any;
     protected _onWrite: boolean = false;
-    protected delayed: [string, LogLevel][] = [];
+    protected delayed: [any[], LogLevel][] = [];
     protected waiting_callee: Function[] = [];
 
     protected init_done = false;
@@ -104,13 +104,23 @@ export const Logger = new class {
      * @param text Message
      * @param level Niveau de log
      */
-    public write(text: any, level: LogLevel = LogLevel.warn) : void {
-        // Create a FileWriter object for our FileEntry (log.txt).
+    public write(data: any, level: LogLevel = LogLevel.warn) : void {
+        if (!Array.isArray(data)) {
+            data = [data];
+        }
+
         if (!this.isInit()) {
-            this.delayWrite(text, level);
+            this.delayWrite(data, level);
             return;
         }
 
+        // En debug, on écrit dans dans le fichier
+        if (level === LogLevel.debug) {
+            console.log(...data);
+            return;
+        }
+
+        // Create a FileWriter object for our FileEntry (log.txt).
         this.fileEntry.createWriter((fileWriter) => {
             fileWriter.onwriteend = () => {
                 this.onWrite = false;
@@ -131,25 +141,26 @@ export const Logger = new class {
             }
 
             if (!this.onWrite) {
-
-
                 if (level === LogLevel.info) {
-                    console.log(text);
+                    console.log(...data);
                 }
                 else if (level === LogLevel.warn) {
-                    console.warn(text);
+                    console.warn(...data);
                 }
                 else if (level === LogLevel.error) {
-                    console.error(text);
+                    console.error(...data);
                 }
-                text = this.createDateHeader(level) + " " + JSON.stringify(text);
-                text += "\n";
+                let final: string = this.createDateHeader(level) + " ";
+
+                for (const e of data) {
+                    final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
+                }
 
                 this.onWrite = true;
-                fileWriter.write(new Blob([text]));
+                fileWriter.write(new Blob([final]));
             }
             else {
-                this.delayWrite(text, level);
+                this.delayWrite(data, level);
             }
         });
     }
@@ -171,8 +182,8 @@ export const Logger = new class {
         return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
     }
 
-    protected delayWrite(text: any, level: LogLevel) : void {
-        this.delayed.push([text, level]);
+    protected delayWrite(data: any[], level: LogLevel) : void {
+        this.delayed.push([data, level]);
     }
 
     /**
@@ -258,19 +269,19 @@ export const Logger = new class {
     }
 
     /// Méthodes d'accès rapide
-    public debug(text: any) : void {
-        this.write(text, LogLevel.debug);
+    public debug(...data: any[]) : void {
+        this.write(data, LogLevel.debug);
     }
 
-    public info(text: any) : void {
-        this.write(text, LogLevel.info);
+    public info(...data: any[]) : void {
+        this.write(data, LogLevel.info);
     }
 
-    public warn(text: any) : void {
-        this.write(text, LogLevel.warn);
+    public warn(...data: any[]) : void {
+        this.write(data, LogLevel.warn);
     }
 
-    public error(text: any) : void {
-        this.write(text, LogLevel.error);
+    public error(...data: any[]) : void {
+        this.write(data, LogLevel.error);
     }
 };

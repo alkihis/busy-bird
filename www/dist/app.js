@@ -686,14 +686,267 @@ define("form_schema", ["require", "exports"], function (require, exports) {
         }
     };
 });
-define("audio_listener", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
+define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // Objet Logger
+    // Sert à écrire dans un fichier de log formaté
+    // à la racine du système de fichiers
+    var LogLevel;
+    (function (LogLevel) {
+        LogLevel["debug"] = "debug";
+        LogLevel["info"] = "info";
+        LogLevel["warn"] = "warn";
+        LogLevel["error"] = "error";
+    })(LogLevel = exports.LogLevel || (exports.LogLevel = {}));
+    /**
+     * Logger
+     * Permet de logger dans un fichier texte des messages.
+     */
+    exports.Logger = new class {
+        constructor() {
+            this._onWrite = false;
+            this.delayed = [];
+            this.waiting_callee = [];
+            this.init_done = false;
+            this.init_waiting_callee = [];
+        }
+        /**
+         * Initialise le logger. Doit être réalisé après app.init() et changeDir().
+         * Pour vérifier si le logger est initialisé, utilisez onReady().
+         */
+        init() {
+            helpers_1.getDir((dirEntry) => {
+                // Creates a new file or returns the file if it already exists.
+                dirEntry.getFile("log.txt", { create: true }, (fileEntry) => {
+                    this.fileEntry = fileEntry;
+                    this.init_done = true;
+                    this.onWrite = false;
+                    let func;
+                    while (func = this.init_waiting_callee.pop()) {
+                        func();
+                    }
+                }, function (err) {
+                    console.log("Unable to create file log.", err);
+                });
+            }, null, function (err) {
+                console.log("Unable to enable log.", err);
+            });
+        }
+        /**
+         * Vrai si le logger est prêt à écrire / lire dans le fichier de log.
+         */
+        isInit() {
+            return this.init_done;
+        }
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger est prêt à recevoir des instructions.
+         * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
+         */
+        onReady(callback) {
+            const oninit = new Promise((resolve, reject) => {
+                if (this.isInit()) {
+                    resolve();
+                }
+                else {
+                    this.init_waiting_callee.push(resolve);
+                }
+            });
+            if (callback) {
+                oninit.then(callback);
+            }
+            else {
+                return oninit;
+            }
+        }
+        get onWrite() {
+            return this._onWrite;
+        }
+        set onWrite(value) {
+            this._onWrite = value;
+            if (!value && this.delayed.length) {
+                // On lance une tâche "delayed" avec le premier élément de la liste (le premier inséré)
+                this.write(...this.delayed.shift());
+            }
+            else if (!value && this.waiting_callee.length) {
+                // Si il n'y a aucune tâche en attente, on peut lancer les waiting function
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func();
+                }
+            }
+        }
+        /**
+         * Écrit dans le fichier de log le contenu de text avec le niveau level.
+         * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
+         * Si level vaut debug, rien ne sera affiché dans la console.
+         * @param text Message
+         * @param level Niveau de log
+         */
+        write(data, level = LogLevel.warn) {
+            if (!Array.isArray(data)) {
+                data = [data];
+            }
+            if (!this.isInit()) {
+                this.delayWrite(data, level);
+                return;
+            }
+            // En debug, on écrit dans dans le fichier
+            if (level === LogLevel.debug) {
+                console.log(...data);
+                return;
+            }
+            // Create a FileWriter object for our FileEntry (log.txt).
+            this.fileEntry.createWriter((fileWriter) => {
+                fileWriter.onwriteend = () => {
+                    this.onWrite = false;
+                };
+                fileWriter.onerror = (e) => {
+                    console.log("Logger: Failed file write: " + e.toString());
+                    this.onWrite = false;
+                };
+                // Append to file
+                try {
+                    fileWriter.seek(fileWriter.length);
+                }
+                catch (e) {
+                    console.log("Logger: File doesn't exist!", e);
+                    return;
+                }
+                if (!this.onWrite) {
+                    if (level === LogLevel.info) {
+                        console.log(...data);
+                    }
+                    else if (level === LogLevel.warn) {
+                        console.warn(...data);
+                    }
+                    else if (level === LogLevel.error) {
+                        console.error(...data);
+                    }
+                    let final = this.createDateHeader(level) + " ";
+                    for (const e of data) {
+                        final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
+                    }
+                    this.onWrite = true;
+                    fileWriter.write(new Blob([final]));
+                }
+                else {
+                    this.delayWrite(data, level);
+                }
+            });
+        }
+        /**
+         * Crée une date formatée
+         * @param level
+         */
+        createDateHeader(level) {
+            const date = new Date();
+            const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
+            const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+            const hour = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
+            const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+            const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
+            return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
+        }
+        delayWrite(data, level) {
+            this.delayed.push([data, level]);
+        }
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger a fini toutes ses opérations d'écriture.
+         * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
+         */
+        onWriteEnd(callbackSuccess) {
+            const onwriteend = new Promise((resolve, reject) => {
+                if (!this.onWrite && this.isInit()) {
+                    resolve();
+                }
+                else {
+                    this.waiting_callee.push(resolve);
+                }
+            });
+            if (callbackSuccess) {
+                onwriteend.then(callbackSuccess);
+            }
+            else {
+                return onwriteend;
+            }
+        }
+        /**
+         * Vide le fichier de log.
+         * @returns Promise La promesse est résolue quand le fichier est vidé, rompue si échec
+         */
+        clearLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
+                }
+                this.fileEntry.createWriter((fileWriter) => {
+                    fileWriter.onwriteend = () => {
+                        this.onWrite = false;
+                        resolve();
+                    };
+                    fileWriter.onerror = (e) => {
+                        console.log("Logger: Failed to truncate.");
+                        this.onWrite = false;
+                        reject();
+                    };
+                    if (!this.onWrite) {
+                        fileWriter.truncate(0);
+                    }
+                    else {
+                        console.log("Please call this function when log is not writing.");
+                        reject();
+                    }
+                });
+            });
+        }
+        /**
+         * Affiche tout le contenu du fichier de log dans la console via console.log()
+         * @returns Promise La promesse est résolue avec le contenu du fichier si lecture réussie, rompue si échec
+         */
+        consoleLogLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
+                }
+                this.fileEntry.file(function (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = function () {
+                        console.log(this.result);
+                        resolve(this.result);
+                    };
+                    reader.readAsText(file);
+                }, function () {
+                    console.log("Logger: Unable to open file.");
+                    reject();
+                });
+            });
+        }
+        /// Méthodes d'accès rapide
+        debug(...data) {
+            this.write(data, LogLevel.debug);
+        }
+        info(...data) {
+            this.write(data, LogLevel.info);
+        }
+        warn(...data) {
+            this.write(data, LogLevel.warn);
+        }
+        error(...data) {
+            this.write(data, LogLevel.error);
+        }
+    };
+});
+define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_2, logger_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function newModalRecord(button, input, ele) {
         // @ts-ignore
         let recorder = null;
-        const modal = helpers_1.getModal();
-        const instance = helpers_1.initModal({}, helpers_1.getModalPreloader("Chargement", ''));
+        const modal = helpers_2.getModal();
+        const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement", ''));
         instance.open();
         let audioContent = null;
         let blobSize = 0;
@@ -747,14 +1000,13 @@ define("audio_listener", ["require", "exports", "helpers"], function (require, e
             btn_start.classList.add('hide');
             btn_stop.classList.remove('hide');
             player.innerHTML = "<p class='flow-text center'>Enregistrement en cours</p>";
-            // @ts-ignore
+            // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
             recorder = new MicRecorder({
                 bitRate: 256
             });
-            recorder.start().then(() => {
-                // something else
-            }).catch((e) => {
-                console.error(e);
+            logger_1.Logger.info("Bonjour !", "Autre bonjour !");
+            recorder.start().catch((e) => {
+                logger_1.Logger.error("Impossible de lancer l'écoute.", e);
             });
         }
         function stopRecording() {
@@ -765,7 +1017,7 @@ define("audio_listener", ["require", "exports", "helpers"], function (require, e
                 .stop()
                 .getMp3().then(([buffer, blob]) => {
                 blobSize = blob.size;
-                helpers_1.blobToBase64(blob).then(function (base64) {
+                helpers_2.blobToBase64(blob).then(function (base64) {
                     audioContent = base64;
                     btn_confirm.classList.remove('hide');
                     player.innerHTML = `<figure>
@@ -2337,7 +2589,7 @@ define("settings_page", ["require", "exports"], function (require, exports) {
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "form"], function (require, exports, helpers_2, form_schema_1, interface_1, form_1) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "form"], function (require, exports, helpers_3, form_schema_1, interface_1, form_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
@@ -2347,7 +2599,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
             return;
         }
         const current_form = form_schema_1.Forms.getForm(form.type);
-        const base = helpers_2.getBase();
+        const base = helpers_3.getBase();
         base.innerHTML = "";
         const base_block = document.createElement('div');
         base_block.classList.add('row', 'container');
@@ -2391,7 +2643,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         container.innerHTML = `
         <div class="left">
             ${id} <br> 
-            Modifié le ${helpers_2.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_3.formatDate(new Date(json[0].lastModified), true)}
         </div>`;
         // Ajoute le bouton de suppression
         const delete_btn = document.createElement('a');
@@ -2420,7 +2672,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     function readAllFilesOfDirectory(dirName) {
         const dirreader = new Promise(function (resolve, reject) {
-            helpers_2.getDir(function (dirEntry) {
+            helpers_3.getDir(function (dirEntry) {
                 // Lecture de tous les fichiers du répertoire
                 const reader = dirEntry.createReader();
                 reader.readEntries(function (entries) {
@@ -2462,8 +2714,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         return dirreader;
     }
     function modalDeleteForm(id) {
-        const modal = helpers_2.getBottomModal();
-        helpers_2.initBottomModal({}, `<div class="modal-content">
+        const modal = helpers_3.getBottomModal();
+        helpers_3.initBottomModal({}, `<div class="modal-content">
             <h4>Supprimer ce formulaire ?</h4>
             <p>
                 Vous ne pourrez pas le restaurer ultérieurement.
@@ -2474,7 +2726,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
             <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
         </div>
         `);
-        const instance = helpers_2.getBottomModalInstance();
+        const instance = helpers_3.getBottomModalInstance();
         document.getElementById('delete_form_modal').onclick = function () {
             deleteForm(id).then(function () {
                 M.toast({ html: "Entrée supprimée." });
@@ -2494,10 +2746,10 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
-                helpers_2.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
-                    helpers_2.getDir(function (dirEntry) {
+                helpers_3.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_3.getDir(function (dirEntry) {
                         dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                            helpers_2.removeFilePromise(fileEntry).then(function () {
+                            helpers_3.removeFilePromise(fileEntry).then(function () {
                                 resolve();
                             }).catch(reject);
                         }, function () {
@@ -2536,7 +2788,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_3, form_2, settings_page_1, saved_forms_1, main_1) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_4, form_2, settings_page_1, saved_forms_1, main_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -2587,8 +2839,8 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
                 this.pages_holder = [];
             }
             // On écrit le preloader dans la base et on change l'historique
-            const base = helpers_3.getBase();
-            base.innerHTML = helpers_3.getPreloader("Chargement");
+            const base = helpers_4.getBase();
+            base.innerHTML = helpers_4.getPreloader("Chargement");
             if (window.history) {
                 window.history.pushState({}, "", "/?" + page);
             }
@@ -2617,7 +2869,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_3.getBase();
+            const actual_base = helpers_4.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -2645,7 +2897,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            helpers_3.getBase().remove();
+            helpers_4.getBase().remove();
             // Met le fragment dans le DOM
             document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
             // Remet le bon titre
@@ -2674,250 +2926,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     }
     exports.initHomePage = initHomePage;
 });
-define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_4) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    // Objet Logger
-    // Sert à écrire dans un fichier de log formaté
-    // à la racine du système de fichiers
-    var LogLevel;
-    (function (LogLevel) {
-        LogLevel["debug"] = "debug";
-        LogLevel["info"] = "info";
-        LogLevel["warn"] = "warn";
-        LogLevel["error"] = "error";
-    })(LogLevel = exports.LogLevel || (exports.LogLevel = {}));
-    /**
-     * Logger
-     * Permet de logger dans un fichier texte des messages.
-     */
-    exports.Logger = new class {
-        constructor() {
-            this._onWrite = false;
-            this.delayed = [];
-            this.waiting_callee = [];
-            this.init_done = false;
-            this.init_waiting_callee = [];
-        }
-        /**
-         * Initialise le logger. Doit être réalisé après app.init() et changeDir().
-         * Pour vérifier si le logger est initialisé, utilisez onReady().
-         */
-        init() {
-            helpers_4.getDir((dirEntry) => {
-                // Creates a new file or returns the file if it already exists.
-                dirEntry.getFile("log.txt", { create: true }, (fileEntry) => {
-                    this.fileEntry = fileEntry;
-                    this.init_done = true;
-                    this.onWrite = false;
-                    let func;
-                    while (func = this.init_waiting_callee.pop()) {
-                        func();
-                    }
-                }, function (err) {
-                    console.log("Unable to create file log.", err);
-                });
-            }, null, function (err) {
-                console.log("Unable to enable log.", err);
-            });
-        }
-        /**
-         * Vrai si le logger est prêt à écrire / lire dans le fichier de log.
-         */
-        isInit() {
-            return this.init_done;
-        }
-        /**
-         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
-         * le logger est prêt à recevoir des instructions.
-         * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
-         */
-        onReady(callback) {
-            const oninit = new Promise((resolve, reject) => {
-                if (this.isInit()) {
-                    resolve();
-                }
-                else {
-                    this.init_waiting_callee.push(resolve);
-                }
-            });
-            if (callback) {
-                oninit.then(callback);
-            }
-            else {
-                return oninit;
-            }
-        }
-        get onWrite() {
-            return this._onWrite;
-        }
-        set onWrite(value) {
-            this._onWrite = value;
-            if (!value && this.delayed.length) {
-                // On lance une tâche "delayed" avec le premier élément de la liste (le premier inséré)
-                this.write(...this.delayed.shift());
-            }
-            else if (!value && this.waiting_callee.length) {
-                // Si il n'y a aucune tâche en attente, on peut lancer les waiting function
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func();
-                }
-            }
-        }
-        /**
-         * Écrit dans le fichier de log le contenu de text avec le niveau level.
-         * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
-         * Si level vaut debug, rien ne sera affiché dans la console.
-         * @param text Message
-         * @param level Niveau de log
-         */
-        write(text, level = LogLevel.warn) {
-            // Create a FileWriter object for our FileEntry (log.txt).
-            if (!this.isInit()) {
-                this.delayWrite(text, level);
-                return;
-            }
-            this.fileEntry.createWriter((fileWriter) => {
-                fileWriter.onwriteend = () => {
-                    this.onWrite = false;
-                };
-                fileWriter.onerror = (e) => {
-                    console.log("Logger: Failed file write: " + e.toString());
-                    this.onWrite = false;
-                };
-                // Append to file
-                try {
-                    fileWriter.seek(fileWriter.length);
-                }
-                catch (e) {
-                    console.log("Logger: File doesn't exist!", e);
-                    return;
-                }
-                if (!this.onWrite) {
-                    if (level === LogLevel.info) {
-                        console.log(text);
-                    }
-                    else if (level === LogLevel.warn) {
-                        console.warn(text);
-                    }
-                    else if (level === LogLevel.error) {
-                        console.error(text);
-                    }
-                    text = this.createDateHeader(level) + " " + JSON.stringify(text);
-                    text += "\n";
-                    this.onWrite = true;
-                    fileWriter.write(new Blob([text]));
-                }
-                else {
-                    this.delayWrite(text, level);
-                }
-            });
-        }
-        /**
-         * Crée une date formatée
-         * @param level
-         */
-        createDateHeader(level) {
-            const date = new Date();
-            const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
-            const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
-            const hour = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
-            const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
-            const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
-            return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
-        }
-        delayWrite(text, level) {
-            this.delayed.push([text, level]);
-        }
-        /**
-         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
-         * le logger a fini toutes ses opérations d'écriture.
-         * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
-         */
-        onWriteEnd(callbackSuccess) {
-            const onwriteend = new Promise((resolve, reject) => {
-                if (!this.onWrite && this.isInit()) {
-                    resolve();
-                }
-                else {
-                    this.waiting_callee.push(resolve);
-                }
-            });
-            if (callbackSuccess) {
-                onwriteend.then(callbackSuccess);
-            }
-            else {
-                return onwriteend;
-            }
-        }
-        /**
-         * Vide le fichier de log.
-         * @returns Promise La promesse est résolue quand le fichier est vidé, rompue si échec
-         */
-        clearLog() {
-            return new Promise((resolve, reject) => {
-                if (!this.isInit()) {
-                    reject("Logger must be initialized");
-                }
-                this.fileEntry.createWriter((fileWriter) => {
-                    fileWriter.onwriteend = () => {
-                        this.onWrite = false;
-                        resolve();
-                    };
-                    fileWriter.onerror = (e) => {
-                        console.log("Logger: Failed to truncate.");
-                        this.onWrite = false;
-                        reject();
-                    };
-                    if (!this.onWrite) {
-                        fileWriter.truncate(0);
-                    }
-                    else {
-                        console.log("Please call this function when log is not writing.");
-                        reject();
-                    }
-                });
-            });
-        }
-        /**
-         * Affiche tout le contenu du fichier de log dans la console via console.log()
-         * @returns Promise La promesse est résolue avec le contenu du fichier si lecture réussie, rompue si échec
-         */
-        consoleLogLog() {
-            return new Promise((resolve, reject) => {
-                if (!this.isInit()) {
-                    reject("Logger must be initialized");
-                }
-                this.fileEntry.file(function (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = function () {
-                        console.log(this.result);
-                        resolve(this.result);
-                    };
-                    reader.readAsText(file);
-                }, function () {
-                    console.log("Logger: Unable to open file.");
-                    reject();
-                });
-            });
-        }
-        /// Méthodes d'accès rapide
-        debug(text) {
-            this.write(text, LogLevel.debug);
-        }
-        info(text) {
-            this.write(text, LogLevel.info);
-        }
-        warn(text) {
-            this.write(text, LogLevel.warn);
-        }
-        error(text) {
-            this.write(text, LogLevel.error);
-        }
-    };
-});
-define("main", ["require", "exports", "interface", "helpers", "logger"], function (require, exports, interface_2, helpers_5, logger_1) {
+define("main", ["require", "exports", "interface", "helpers", "logger"], function (require, exports, interface_2, helpers_5, logger_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -2956,7 +2965,7 @@ define("main", ["require", "exports", "interface", "helpers", "logger"], functio
         // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
         // Sinon, si mobile, on passe sur dataDirectory
         helpers_5.changeDir();
-        logger_1.Logger.init();
+        logger_2.Logger.init();
         // Initialise le bouton retour
         document.addEventListener("backbutton", function () {
             if (interface_2.PageManager.isPageWaiting()) {
@@ -3014,12 +3023,12 @@ define("main", ["require", "exports", "interface", "helpers", "logger"], functio
             testDistance: helpers_5.testDistance,
             rmrf: helpers_5.rmrf,
             rmrfPromise: helpers_5.rmrfPromise,
-            Logger: logger_1.Logger
+            Logger: logger_2.Logger
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_2, helpers_6, main_2, interface_3, logger_2, audio_listener_1) {
+define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_2, helpers_6, main_2, interface_3, logger_3, audio_listener_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3742,7 +3751,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 initFormSave(current_form_key);
             }
             catch (e) {
-                logger_2.Logger.error(JSON.stringify(e));
+                logger_3.Logger.error(JSON.stringify(e));
             }
         });
         base_block.appendChild(btn);

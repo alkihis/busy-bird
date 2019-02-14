@@ -1,5 +1,6 @@
 import { getModal, initModal, getModalPreloader, blobToBase64 } from "./helpers";
 import { FormEntity } from "./form_schema";
+import { Logger } from "./logger";
 
 export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElement, ele: FormEntity) {
     // @ts-ignore
@@ -71,15 +72,15 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
 
         player.innerHTML = "<p class='flow-text center'>Enregistrement en cours</p>";
 
-        // @ts-ignore
+        // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
         recorder = new MicRecorder({
             bitRate: 256
         });
 
-        recorder.start().then(() => {
-            // something else
-        }).catch((e) => {
-            console.error(e);
+        Logger.info("Bonjour !", "Autre bonjour !");
+
+        recorder.start().catch((e) => {
+            Logger.error("Impossible de lancer l'écoute.", e);
         });
     }
     
