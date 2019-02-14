@@ -535,7 +535,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             ////// Définition si un fichier son existe déjà
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                 readFromFile(
-                    filled_form.fields[ele.name] as string, 
+                    filled_form.fields[ele.name] as string,
                     function(base64) {
                         button.classList.remove('blue');
                         button.classList.add('green');
@@ -553,7 +553,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             button.addEventListener('click', function() {
                 // Crée un modal qui sert à enregistrer de l'audio
-                newModalRecord(button, real_input, ele); 
+                newModalRecord(button, real_input, ele);
             });
 
             wrapper.appendChild(button);
@@ -632,14 +632,6 @@ function initFormSave(type: string): any {
     //Ajouter verification avant d'ajouter bouton valider
     let erreur_critique: boolean = false;
 
-    //Code pour ajouter limite et precision
-    // const contraintes: any = {};
-    // if (element.dataset.constraints)
-    //     element.dataset.constraints.split(';').map((e: string) => {
-    //         const [name, value] = e.split('=');
-    //         contraintes[name] = value;
-    //     });
-
     //Parcours tous les elements remplits ou non
     for (const input of document.getElementsByClassName('input-form-element')) {
         //Attribution du label plutot que son nom interne
@@ -648,8 +640,16 @@ function initFormSave(type: string): any {
         let name = i.name;
         if (label) {
             name = label.textContent;
+        };
+        console.log("definition des contraintes");
+        const contraintes: any = {};
+        if (i.dataset.constraints) {
+            i.dataset.constraints.split(';').map((e: string) => {
+                const [name, value] = e.split('=');
+                contraintes[name] = value;
+            });
         }
-
+        console.log(contraintes);
         //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
         if (i.required && !i.value) {
             let erreur = document.createElement("li");
@@ -824,7 +824,7 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                 })
             );
         }
-        
+
         // Récupère les données audio du formulaire
         const audio_from_form = document.getElementsByClassName('input-audio-element');
 
@@ -894,7 +894,7 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
             loadFormPage(base, current, edition_mode);
         });
     }
-   
+
 }
 
 /**
