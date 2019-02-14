@@ -3267,6 +3267,18 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             };
             this.pages_holder = [];
         }
+        updateReturnBtn() {
+            // @ts-ignore
+            if (device.platform === "browser") {
+                const back_btn = document.getElementById('__nav_back_button');
+                if (this.isPageWaiting()) {
+                    back_btn.classList.remove('hide');
+                }
+                else {
+                    back_btn.classList.add('hide');
+                }
+            }
+        }
         /**
          * Change l'affichage et charge la page "page" dans le bloc principal
          * @param AppPageName page
@@ -3311,6 +3323,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             this._should_wait = page.ask_change;
             // On met le titre de la page dans la barre de navigation
             document.getElementById('nav_title').innerText = force_name || page.name;
+            this.updateReturnBtn();
         }
         cleanWaitingPages() {
             while (this.pages_holder.length >= 10) {
@@ -3376,6 +3389,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
                     this.actual_page.reload_on_restore();
                 }
             }
+            this.updateReturnBtn();
         }
         /**
          * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
