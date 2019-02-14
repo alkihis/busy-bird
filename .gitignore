@@ -1,5 +1,4 @@
 node_modules
 platforms/android
 platforms/browser
-
 www/dist/app.js
