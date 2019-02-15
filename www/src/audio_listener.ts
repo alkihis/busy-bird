@@ -68,19 +68,22 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
     
     function startRecording() {
         btn_start.classList.add('hide');
-        btn_stop.classList.remove('hide');
-
         player.innerHTML = `<p class='flow-text center'>
-            <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
-            Enregistrement en cours
-        </p>`;
+                Initialisation...
+            </p>`;
 
         // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
         recorder = new MicRecorder({
             bitRate: 256
         });
 
-        recorder.start().catch((e) => {
+        recorder.start().then(function() {
+            player.innerHTML = `<p class='flow-text center'>
+                <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
+                Enregistrement en cours
+            </p>`;
+            btn_stop.classList.remove('hide');
+        }).catch((e) => {
             Logger.error("Impossible de lancer l'écoute.", e);
             player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
         });

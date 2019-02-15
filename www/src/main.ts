@@ -1,5 +1,5 @@
 import { PageManager, AppPageName, modalBackHome } from "./interface";
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, getBase } from "./helpers";
+import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType } from "./form_schema";
@@ -100,6 +100,7 @@ function initApp() {
 }
 
 function initDebug() {
+    
     window["DEBUG"] = {
         PageManager,
         readFromFile,
@@ -119,7 +120,8 @@ function initDebug() {
                 label: "Test",
                 type: FormEntityType.audio
             });
-        }
+        },
+        dateFormatter
     };
 }
 

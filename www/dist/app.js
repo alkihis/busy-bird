@@ -2049,7 +2049,8 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
                     label: "Test",
                     type: form_schema_1.FormEntityType.audio
                 });
-            }
+            },
+            dateFormatter: helpers_2.dateFormatter
         };
     }
     document.addEventListener('deviceready', initApp, false);
@@ -3990,6 +3991,55 @@ define("helpers", ["require", "exports", "interface"], function (require, export
     }
     exports.formatDate = formatDate;
     /**
+     * Formate un objet Date en chaîne de caractères potable.
+     * Pour comprendre les significations des lettres du schéma, se référer à : http://php.net/manual/fr/function.date.php
+     * @param schema string Schéma de la chaîne. Supporte Y, m, d, h, H, i, s, n, N, v, z, w
+     * @param date Date Date depuis laquelle effectuer le formatage
+     * @returns string La châine formatée
+     */
+    function dateFormatter(schema, date = new Date()) {
+        function getDayOfTheYear(now) {
+            const start = new Date(now.getFullYear(), 0, 0);
+            const diff = now.getTime() - start.getTime();
+            const oneDay = 1000 * 60 * 60 * 24;
+            const day = Math.floor(diff / oneDay);
+            return day - 1; // Retourne de 0 à 364/365
+        }
+        const Y = date.getFullYear();
+        const N = date.getDay() === 0 ? 7 : date.getDay();
+        const n = date.getMonth() + 1;
+        const m = (n < 10 ? "0" : "") + String(n);
+        const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+        const L = Y % 4 == 0 ? 1 : 0;
+        const i = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+        const H = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
+        const h = date.getHours();
+        const s = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
+        const replacements = {
+            Y, m, d, i, H, h, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
+        };
+        let str = "";
+        // Construit la chaîne de caractères
+        for (const char of schema) {
+            if (char in replacements) {
+                if (typeof replacements[char] === 'string') {
+                    str += replacements[char];
+                }
+                else if (typeof replacements[char] === 'number') {
+                    str += String(replacements[char]);
+                }
+                else {
+                    str += String(replacements[char](date));
+                }
+            }
+            else {
+                str += char;
+            }
+        }
+        return str;
+    }
+    exports.dateFormatter = dateFormatter;
+    /**
      * Assigne la balise src de l'image element au contenu de l'image située dans path.
      * @param path string
      * @param element HTMLImageElement
@@ -4005,6 +4055,10 @@ define("helpers", ["require", "exports", "interface"], function (require, export
         }, dir_name);
     }
     exports.createImgSrc = createImgSrc;
+    /**
+     * Convertit un Blob en chaîne base64.
+     * @param blob Blob Données binaires à convertir en base64
+     */
     function blobToBase64(blob) {
         const reader = new FileReader();
         return new Promise(function (resolve, reject) {
@@ -4018,6 +4072,10 @@ define("helpers", ["require", "exports", "interface"], function (require, export
         });
     }
     exports.blobToBase64 = blobToBase64;
+    /**
+     * Convertit une URL (distante, locale, data:base64...) en objet binaire Blob
+     * @param str string URL
+     */
     function urlToBlob(str) {
         return fetch(str).then(res => res.blob());
     }
@@ -4082,16 +4140,20 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
         };
         function startRecording() {
             btn_start.classList.add('hide');
-            btn_stop.classList.remove('hide');
             player.innerHTML = `<p class='flow-text center'>
-            <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
-            Enregistrement en cours
-        </p>`;
+                Initialisation...
+            </p>`;
             // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
             recorder = new MicRecorder({
                 bitRate: 256
             });
-            recorder.start().catch((e) => {
+            recorder.start().then(function () {
+                player.innerHTML = `<p class='flow-text center'>
+                <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
+                Enregistrement en cours
+            </p>`;
+                btn_stop.classList.remove('hide');
+            }).catch((e) => {
                 logger_3.Logger.error("Impossible de lancer l'écoute.", e);
                 player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
             });
