@@ -188,27 +188,31 @@ export function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
 
-    readAllFilesOfDirectory('forms').then(function(all_promises) {
-        Promise.all(all_promises).then(function(files: [File, FormSave][]) {
-            files = files.sort(
-                (a, b) => b[0].lastModified - a[0].lastModified
-            );
+    Forms.onReady(function() {
+        readAllFilesOfDirectory('forms').then(function(all_promises) {
+            Promise.all(all_promises).then(function(files: [File, FormSave][]) {
 
-            for (const f of files) {
-                appendFileEntry(f, placeholder);
-            }
+                files = files.sort(
+                    (a, b) => b[0].lastModified - a[0].lastModified
+                );
+    
+                for (const f of files) {
+                    appendFileEntry(f, placeholder);
+                }
 
-            base.innerHTML = "";
-            base.appendChild(placeholder);
-
-            if (files.length === 0) {
-                base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
-            }
+                base.innerHTML = "";
+                base.appendChild(placeholder);
+    
+                if (files.length === 0) {
+                    base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
+                }
+                
+            }).catch(function(err) {
+                throw err;
+            });
         }).catch(function(err) {
-            throw err;
+            console.log(err);
+            base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
         });
-    }).catch(function(err) {
-        console.log(err);
-        base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
     });
 }

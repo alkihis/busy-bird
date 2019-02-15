@@ -158,5 +158,13 @@
     },
     "is_top_level": true,
     "variables": {}
+  },
+  "cordova-plugin-whitelist": {
+    "source": {
+      "type": "registry",
+      "id": "https://github.com/apache/cordova-plugin-whitelist.git"
+    },
+    "is_top_level": true,
+    "variables": {}
   }
 }

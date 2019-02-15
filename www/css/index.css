@@ -193,6 +193,15 @@ main {
     margin-bottom: 15px;
 }
 
+.underline {
+    text-decoration: underline;
+}
+
+.btn-margins {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
 /* TAILLE DES ELEMENTS */
 .select-wrapper + label {
     font-size: 1rem !important;

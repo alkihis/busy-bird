@@ -2,11 +2,14 @@ import { PageManager, AppPageName, modalBackHome } from "./interface";
 import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
-import { FormEntityType } from "./form_schema";
+import { FormEntityType, Forms } from "./form_schema";
 import { prompt } from "./vocal_recognition";
+import { createNewUser, UserManager } from "./user_manager";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
+export const API_URL = "https://projet.alkihis.fr/";
+export const ENABLE_FORM_DOWNLOAD = true;
 
 export const app = {
     // Application Constructor
@@ -45,11 +48,12 @@ function initApp() {
     changeDir();
 
     Logger.init();
+    Forms.init(); 
 
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
     permissions.requestPermission(permissions.RECORD_AUDIO, status => {
-        console.log(status);
+        // console.log(status);
     }, e => {console.log(e)});
 
     // Initialise le bouton retour
@@ -98,12 +102,12 @@ function initApp() {
     else {
         PageManager.changePage(AppPageName.home);
 
-        setTimeout(function() {
-            prompt().then(function(value) {
-                Logger.debug("Valeur affichée:", value);
-                M.toast({html: value});
-            });
-        }, 2000);
+        // setTimeout(function() {
+        //     prompt().then(function(value) {
+        //         Logger.debug("Valeur affichée:", value);
+        //         M.toast({html: value});
+        //     });
+        // }, 2000);
     }
 }
 
@@ -130,7 +134,9 @@ function initDebug() {
             });
         },
         dateFormatter,
-        prompt
+        prompt,
+        createNewUser,
+        UserManager
     };
 }
 

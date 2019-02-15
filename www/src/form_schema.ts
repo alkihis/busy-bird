@@ -1,3 +1,8 @@
+import { readFile, writeFile } from "./helpers";
+import { Logger } from "./logger";
+import { UserManager } from "./user_manager";
+import { API_URL, ENABLE_FORM_DOWNLOAD } from "./main";
+
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /* 
 {
@@ -86,10 +91,14 @@ export const Forms = new class {
     protected current: Form = null;
     protected _current_key: string = null;
 
+    protected readonly FORM_LOCATION: string = 'loaded_forms.json';
+
+    constructor() { /** call init() instead */ }
+
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
     // La clé du formulaire par défaut est contenu dans "default_form_name"
-    constructor() {
-        $.get('assets/form.json', {}, (json: any) => {    
+    public init() : void {
+        const loadJSONInObject = (json: any, save = false) => {
             // Le JSON est reçu, on l'enregistre dans available_forms
             this.available_forms = json;
             // On met le form à ready
@@ -102,13 +111,68 @@ export const Forms = new class {
             else {
                 this.current = {name: null, fields: [], locations: []};
             }
+
+            // On sauvegarde les formulaires dans loaded_forms.json
+            // uniquement si demandé
+            if (save) {
+                writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+            }
     
             // On exécute les fonctions en attente
             let func: FormCallback;
             while (func = this.waiting_callee.pop()) {
                 func(this.available_forms, this.current);
             }
-        }, 'json');
+        };
+
+        const readStandardForm = () => {
+            // On vérifie si le fichier loaded_forms.json existe
+            readFile(this.FORM_LOCATION)
+                .then((string) => {
+                    loadJSONInObject(JSON.parse(string));
+                })
+                .catch(() => {
+                    // Il n'existe pas, on doit le charger depuis les sources de l'application
+                    $.get('/assets/form.json', {}, (json: any) => {
+                        loadJSONInObject(json, true);
+                    }, 'json')
+                    .fail(function(error) {
+                        // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
+                        // @ts-ignore
+                        readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                            .then(string => {
+                                loadJSONInObject(JSON.parse(string));
+                            })
+                            .catch((err) => {
+                                M.toast({html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json'});
+                            })
+                    });
+                });
+        };
+
+        // @ts-ignore
+        if (ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && UserManager.logged) {
+            const init_text = document.getElementById('__init_text_center');
+            if (init_text) {
+                init_text.innerText = "Mise à jour des formulaires";
+            }
+
+            // On tente d'actualiser les formulaires disponibles
+            fetch(API_URL + "forms/available.json?access_token=" + UserManager.token)
+                .then(response => response.json())
+                .then(json => {
+                    if (json.error_code) throw json.error_code;
+
+                    loadJSONInObject(json, true);
+                })
+                .catch(error => {
+                    // Impossible de charger le JSON depuis le serveur
+                    readStandardForm();
+                });
+        }
+        else {
+            readStandardForm();
+        }
     }
 
     public onReady(callback: FormCallback) : void {

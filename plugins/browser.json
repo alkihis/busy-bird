@@ -57,6 +57,9 @@
     },
     "phonegap-plugin-media-stream": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-whitelist": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {

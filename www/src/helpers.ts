@@ -1,4 +1,5 @@
 import { PageManager } from "./interface";
+import { Logger } from "./logger";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -103,7 +104,7 @@ export function getPreloader(text: string) : string {
  * @param text Texte à insérer comme message de chargement
  * @returns string HTML à insérer dans la racine d'un modal
  */
-export function getModalPreloader(text: string, footer?: string) : string {
+export function getModalPreloader(text: string, footer: string = "") : string {
     return `<div class="modal-content">
     <center>
         ${SMALL_PRELOADER}
@@ -195,6 +196,33 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
         else {
             console.log("not found");
         }
+    });
+}
+
+export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLDER) : Promise<string> {
+    const pathToFile = forceBaseDir + fileName;
+    Logger.info(pathToFile);
+
+    return new Promise(function(resolve, reject) {
+        // @ts-ignore
+        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
+            fileEntry.file(function (file) {
+                const reader = new FileReader();
+    
+                reader.onloadend = function (e) {
+                    resolve(this.result as string);
+                };
+    
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
+            }, reject);
+        }, function(err) {
+            reject(err);
+        });
     });
 }
 
@@ -659,4 +687,28 @@ export function blobToBase64(blob: Blob) : Promise<string> {
  */
 export function urlToBlob(str: string) : Promise<Blob> {
     return fetch(str).then(res => res.blob());
+}
+
+export function askModal(title: string, question: string, text_yes = "Oui", text_no = "Non") : Promise<MouseEvent> {
+    const modal = getBottomModal();
+    const instance = initBottomModal({ dismissible: false });
+
+    modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">${title}</h5>
+        <p class="flow-text">${question}</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__question_no" class="btn-flat green-text modal-close left">${text_no}</a>
+        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close right">${text_yes}</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+
+    instance.open();
+
+    return new Promise(function(resolve, reject) {
+        document.getElementById('__question_yes').addEventListener('click', resolve);
+        document.getElementById('__question_no').addEventListener('click', reject);
+    });
 }

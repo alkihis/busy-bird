@@ -1541,133 +1541,6 @@ define("vocal_recognition", ["require", "exports", "arytom/artyom"], function (r
     }
     exports.prompt = prompt;
 });
-////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
-/*
-{
-    "nom_formel/clé_du_formulaire": {
-        "name": "Nom réel (possiblement à afficher à l'écran)"
-        "fields": [
-            {}: FormEntity
-        ],
-        "locations": [
-            {}: FormLocation
-        ]
-    },
-    "nom_d_un_autre_formulaire": Form
-}
-
-Le formulaire DOIT comporter un champ de type "datetime",
-nommé "__date__" pour être affiché correctement dans
-la liste des formulaires enregistrés.
-Il peut être n'importe où dans le formulaire.
-*/
-define("form_schema", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Type à préciser dans le JSON, clé "type"
-     * Le type à préciser est la chaîne de caractères
-     */
-    var FormEntityType;
-    (function (FormEntityType) {
-        FormEntityType["integer"] = "integer";
-        FormEntityType["float"] = "float";
-        FormEntityType["select"] = "select";
-        FormEntityType["string"] = "string";
-        FormEntityType["bigstring"] = "textarea";
-        FormEntityType["checkbox"] = "checkbox";
-        FormEntityType["file"] = "file";
-        FormEntityType["slider"] = "slider";
-        FormEntityType["datetime"] = "datetime";
-        FormEntityType["divider"] = "divider";
-        FormEntityType["audio"] = "audio";
-    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    // Clé du JSON à charger automatiquement
-    exports.default_form_name = "cincle_plongeur";
-    // Classe contenant le formulaire JSON chargé et parsé
-    exports.Forms = new class {
-        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
-        // La clé du formulaire par défaut est contenu dans "default_form_name"
-        constructor() {
-            this.form_ready = false;
-            this.waiting_callee = [];
-            this.current = null;
-            this._current_key = null;
-            $.get('assets/form.json', {}, (json) => {
-                // Le JSON est reçu, on l'enregistre dans available_forms
-                this.available_forms = json;
-                // On met le form à ready
-                this.form_ready = true;
-                // On enregistre le formulaire par défaut (si la clé définie existe)
-                if (exports.default_form_name in this.available_forms) {
-                    this.current = this.available_forms[exports.default_form_name];
-                    this._current_key = exports.default_form_name;
-                }
-                else {
-                    this.current = { name: null, fields: [], locations: [] };
-                }
-                // On exécute les fonctions en attente
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func(this.available_forms, this.current);
-                }
-            }, 'json');
-        }
-        onReady(callback) {
-            if (this.form_ready) {
-                callback(this.available_forms, this.current);
-            }
-            else {
-                this.waiting_callee.push(callback);
-            }
-        }
-        formExists(name) {
-            return name in this.available_forms;
-        }
-        /**
-         * Change le formulaire courant renvoyé par onReady
-         * @param name clé d'accès au formulaire
-         */
-        changeForm(name) {
-            if (this.formExists(name)) {
-                this.current = this.available_forms[name];
-                this._current_key = name;
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Renvoie un formulaire, sans modifier le courant
-         * @param name clé d'accès au formulaire
-         */
-        getForm(name) {
-            if (this.formExists(name)) {
-                return this.available_forms[name];
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Retourne un tableau de tuples contenant en
-         * première position la clé d'accès au formulaire,
-         * et en seconde position son nom textuel à présenter à l'utilisateur
-         * @returns [string, string][]
-         */
-        getAvailableForms() {
-            const keys = Object.keys(this.available_forms);
-            const tuples = [];
-            for (const key of keys) {
-                tuples.push([key, this.available_forms[key].name]);
-            }
-            return tuples;
-        }
-        get current_key() {
-            return this._current_key;
-        }
-    };
-});
 define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -1934,11 +1807,13 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
         }
     };
 });
-define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition"], function (require, exports, interface_1, helpers_2, logger_1, audio_listener_1, form_schema_1, vocal_recognition_1) {
+define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager"], function (require, exports, interface_1, helpers_2, logger_1, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
     exports.MAX_LIEUX_AFFICHES = 20;
+    exports.API_URL = "https://projet.alkihis.fr/";
+    exports.ENABLE_FORM_DOWNLOAD = true;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -1974,10 +1849,11 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         // Sinon, si mobile, on passe sur dataDirectory
         helpers_2.changeDir();
         logger_1.Logger.init();
+        form_schema_1.Forms.init();
         // @ts-ignore Force à demander la permission pour enregistrer du son
         const permissions = cordova.plugins.permissions;
         permissions.requestPermission(permissions.RECORD_AUDIO, status => {
-            console.log(status);
+            // console.log(status);
         }, e => { console.log(e); });
         // Initialise le bouton retour
         document.addEventListener("backbutton", function () {
@@ -2018,12 +1894,12 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         }
         else {
             interface_1.PageManager.changePage(interface_1.AppPageName.home);
-            setTimeout(function () {
-                vocal_recognition_1.prompt().then(function (value) {
-                    logger_1.Logger.debug("Valeur affichée:", value);
-                    M.toast({ html: value });
-                });
-            }, 2000);
+            // setTimeout(function() {
+            //     prompt().then(function(value) {
+            //         Logger.debug("Valeur affichée:", value);
+            //         M.toast({html: value});
+            //     });
+            // }, 2000);
         }
     }
     function initDebug() {
@@ -2047,12 +1923,448 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
                 });
             },
             dateFormatter: helpers_2.dateFormatter,
-            prompt: vocal_recognition_1.prompt
+            prompt: vocal_recognition_1.prompt,
+            createNewUser: user_manager_1.createNewUser,
+            UserManager: user_manager_1.UserManager
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_3, main_1, interface_2, logger_2, audio_listener_2) {
+define("user_manager", ["require", "exports", "main", "helpers", "logger"], function (require, exports, main_1, helpers_3, logger_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.UserManager = new class {
+        constructor() {
+            this._username = null;
+            this._token = null;
+            const usr = localStorage.getItem('__username_manager');
+            const tkn = localStorage.getItem('__token_manager');
+            if (usr && tkn) {
+                this._username = usr;
+                this._token = tkn;
+            }
+        }
+        get username() {
+            return this._username;
+        }
+        get token() {
+            return this._token;
+        }
+        login(username, password) {
+            return new Promise((resolve, reject) => {
+                logger_2.Logger.warn(main_1.API_URL + "users/login.json");
+                fetch(main_1.API_URL + "users/login.json?username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password))
+                    .then((response) => {
+                    return response.json();
+                }).then((json) => {
+                    if (json.error_code)
+                        throw json.error_code;
+                    this.logSomeone(username, json.access_token);
+                    resolve();
+                }).catch((error) => {
+                    reject(error);
+                });
+            });
+        }
+        logSomeone(username, token) {
+            this._token = token;
+            this._username = username;
+            localStorage.setItem('__username_manager', username);
+            localStorage.setItem('__token_manager', token);
+        }
+        unlog() {
+            localStorage.removeItem('__username_manager');
+            localStorage.removeItem('__token_manager');
+            this._username = null;
+            this._token = null;
+        }
+        get logged() {
+            return this._username !== null;
+        }
+        createUser(username, password, admin_password) {
+            const data = new FormData();
+            data.append("username", username);
+            data.append("password", password);
+            data.append("admin_password", admin_password);
+            return new Promise((resolve, reject) => {
+                fetch(main_1.API_URL + "users/create.json", {
+                    method: "POST",
+                    body: data
+                }).then((response) => {
+                    return response.json();
+                }).then((json) => {
+                    if (json.error_code)
+                        throw json.error_code;
+                    this.logSomeone(username, json.access_token);
+                    resolve();
+                }).catch((error) => {
+                    reject(error);
+                });
+            });
+        }
+    };
+    function createNewUser() {
+        const modal = helpers_3.getModal();
+        const instance = helpers_3.initModal({ dismissible: false });
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">Créer un utilisateur</h5>
+        <form class="row" id="__modal_form_new_user">
+            <div class="row col s12 input-field">
+                <label for="__user_new">Nom d'utilisateur</label>
+                <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
+            </div>
+            <div class="row col s12 input-field">
+                <label for="__user_psw">Mot de passe</label>
+                <input type="password" class="validate" required id="__user_psw" name="user_psw">
+            </div>
+            <div class="row col s12 input-field">
+                <label for="__user_psw_r">Mot de passe (confirmation)</label>
+                <input type="password" class="validate" required id="__user_psw_r" name="user_psw_r">
+            </div>
+            <div class="row col s12 input-field">
+                <label for="__user_psw_a">Mot de passe administrateur</label>
+                <input type="password" class="validate" required id="__user_psw_a" name="user_psw_a">
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat red-text left modal-close">Annuler</a>
+        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Créer utilisateur</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        instance.open();
+        const orig_psw = document.getElementById('__user_psw');
+        document.getElementById('__user_psw_r').onchange = function () {
+            const e = this;
+            if (e.value !== orig_psw.value) {
+                e.classList.add('invalid');
+                e.classList.remove('valid');
+            }
+            else {
+                e.classList.add('valid');
+                e.classList.remove('invalid');
+            }
+        };
+        let modal_save = null;
+        document.getElementById('__modal_create_new_user').onclick = function () {
+            const form = document.getElementById('__modal_form_new_user');
+            const name = form.user_new.value.trim();
+            const psw = form.user_psw.value.trim();
+            const psw_r = form.user_psw_r.value.trim();
+            const psw_a = form.user_psw_a.value.trim();
+            if (!name) {
+                M.toast({ html: "Le nom ne peut pas être vide." });
+                return;
+            }
+            if (!psw) {
+                M.toast({ html: "Le mot de passe ne peut pas être vide." });
+                return;
+            }
+            if (psw !== psw_r) {
+                M.toast({ html: "Mot de passe et confirmation doivent correspondre." });
+                return;
+            }
+            if (!psw_a) {
+                M.toast({ html: "Le mot de passe administrateur est nécessaire." });
+                return;
+            }
+            modal_save = document.createDocumentFragment();
+            let child;
+            while (child = modal.firstChild) {
+                modal_save.appendChild(child);
+            }
+            modal.innerHTML = helpers_3.getModalPreloader("Création de l'utilisateur...");
+            exports.UserManager.createUser(name, psw, psw_a)
+                .then(function () {
+                M.toast({ html: "Utilisateur créé avec succès." });
+                instance.close();
+            }).catch(function (error) {
+                console.log(error);
+                if (typeof error === 'number') {
+                    if (error === 6) {
+                        M.toast({ html: "Le mot de passe administrateur est invalide." });
+                    }
+                    else if (error === 12) {
+                        M.toast({ html: "Cet utilisateur existe déjà." });
+                    }
+                    else {
+                        M.toast({ html: "Une erreur inconnue est survenue." });
+                    }
+                }
+                modal.innerHTML = "";
+                let e;
+                while (e = modal_save.firstChild) {
+                    modal.appendChild(e);
+                }
+            });
+        };
+    }
+    exports.createNewUser = createNewUser;
+    function loginUser() {
+        return new Promise(function (resolve, reject) {
+            const modal = helpers_3.getModal();
+            const instance = helpers_3.initModal({ dismissible: false });
+            modal.innerHTML = `
+        <div class="modal-content">
+            <h5 class="no-margin-top">Connexion</h5>
+            <form class="row" id="__modal_form_new_user">
+                <div class="row col s12 input-field">
+                    <label for="__user_new">Nom d'utilisateur</label>
+                    <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
+                </div>
+                <div class="row col s12 input-field">
+                    <label for="__user_psw">Mot de passe</label>
+                    <input type="password" autocomplete="off" class="validate" required id="__user_psw" name="user_psw">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" id="__modal_cancel_user" class="btn-flat red-text left">Annuler</a>
+            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Connexion</a>
+            <div class="clearb"></div>
+        </div>
+        `;
+            instance.open();
+            let modal_save = null;
+            document.getElementById('__modal_cancel_user').onclick = function () {
+                instance.close();
+                reject();
+            };
+            document.getElementById('__modal_create_new_user').onclick = function () {
+                const form = document.getElementById('__modal_form_new_user');
+                const name = form.user_new.value.trim();
+                const psw = form.user_psw.value.trim();
+                if (!name) {
+                    M.toast({ html: "Le nom ne peut pas être vide." });
+                    return;
+                }
+                if (!psw) {
+                    M.toast({ html: "Le mot de passe ne peut pas être vide." });
+                    return;
+                }
+                modal_save = document.createDocumentFragment();
+                let child;
+                while (child = modal.firstChild) {
+                    modal_save.appendChild(child);
+                }
+                modal.innerHTML = helpers_3.getModalPreloader("Connexion");
+                exports.UserManager.login(name, psw)
+                    .then(function () {
+                    M.toast({ html: "Vous avez été connecté-e avec succès." });
+                    instance.close();
+                    // RESOLUTION DE LA PROMESSE
+                    resolve();
+                }).catch(function (error) {
+                    if (typeof error === 'number') {
+                        if (error === 10) {
+                            M.toast({ html: "Cet utilisateur n'existe pas." });
+                        }
+                        else if (error === 11) {
+                            M.toast({ html: "Votre mot de passe est invalide." });
+                        }
+                        else {
+                            M.toast({ html: "Une erreur inconnue est survenue." });
+                        }
+                    }
+                    else {
+                        M.toast({ html: error.message || JSON.stringify(error) });
+                    }
+                    modal.innerHTML = "";
+                    let e;
+                    while (e = modal_save.firstChild) {
+                        modal.appendChild(e);
+                    }
+                });
+            };
+        });
+    }
+    exports.loginUser = loginUser;
+});
+/**
+ *
+ * const data = new FormData();
+        data.append("username", username);
+        data.append("password", password);
+ * return new Promise((resolve, reject) => {
+            fetch(API_URL + "/users/login.json", {
+                method: "POST",
+                body: data
+            }).then((response) => {
+                return response.json();
+            }).then((json) => {
+                this._token = json.access_token;
+                this._username = username;
+
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+ */ 
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main"], function (require, exports, helpers_4, user_manager_2, main_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Type à préciser dans le JSON, clé "type"
+     * Le type à préciser est la chaîne de caractères
+     */
+    var FormEntityType;
+    (function (FormEntityType) {
+        FormEntityType["integer"] = "integer";
+        FormEntityType["float"] = "float";
+        FormEntityType["select"] = "select";
+        FormEntityType["string"] = "string";
+        FormEntityType["bigstring"] = "textarea";
+        FormEntityType["checkbox"] = "checkbox";
+        FormEntityType["file"] = "file";
+        FormEntityType["slider"] = "slider";
+        FormEntityType["datetime"] = "datetime";
+        FormEntityType["divider"] = "divider";
+        FormEntityType["audio"] = "audio";
+    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
+    // Clé du JSON à charger automatiquement
+    exports.default_form_name = "cincle_plongeur";
+    // Classe contenant le formulaire JSON chargé et parsé
+    exports.Forms = new class {
+        constructor() {
+            this.form_ready = false;
+            this.waiting_callee = [];
+            this.current = null;
+            this._current_key = null;
+            this.FORM_LOCATION = 'loaded_forms.json';
+        }
+        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
+        // La clé du formulaire par défaut est contenu dans "default_form_name"
+        init() {
+            const loadJSONInObject = (json, save = false) => {
+                // Le JSON est reçu, on l'enregistre dans available_forms
+                this.available_forms = json;
+                // On met le form à ready
+                this.form_ready = true;
+                // On enregistre le formulaire par défaut (si la clé définie existe)
+                if (exports.default_form_name in this.available_forms) {
+                    this.current = this.available_forms[exports.default_form_name];
+                    this._current_key = exports.default_form_name;
+                }
+                else {
+                    this.current = { name: null, fields: [], locations: [] };
+                }
+                // On sauvegarde les formulaires dans loaded_forms.json
+                // uniquement si demandé
+                if (save) {
+                    helpers_4.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+                }
+                // On exécute les fonctions en attente
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func(this.available_forms, this.current);
+                }
+            };
+            const readStandardForm = () => {
+                // On vérifie si le fichier loaded_forms.json existe
+                helpers_4.readFile(this.FORM_LOCATION)
+                    .then((string) => {
+                    loadJSONInObject(JSON.parse(string));
+                })
+                    .catch(() => {
+                    // Il n'existe pas, on doit le charger depuis les sources de l'application
+                    $.get('/assets/form.json', {}, (json) => {
+                        loadJSONInObject(json, true);
+                    }, 'json')
+                        .fail(function (error) {
+                        // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
+                        // @ts-ignore
+                        helpers_4.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                            .then(string => {
+                            loadJSONInObject(JSON.parse(string));
+                        })
+                            .catch((err) => {
+                            M.toast({ html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json' });
+                        });
+                    });
+                });
+            };
+            // @ts-ignore
+            if (main_2.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_2.UserManager.logged) {
+                const init_text = document.getElementById('__init_text_center');
+                if (init_text) {
+                    init_text.innerText = "Mise à jour des formulaires";
+                }
+                // On tente d'actualiser les formulaires disponibles
+                fetch(main_2.API_URL + "forms/available.json?access_token=" + user_manager_2.UserManager.token)
+                    .then(response => response.json())
+                    .then(json => {
+                    if (json.error_code)
+                        throw json.error_code;
+                    loadJSONInObject(json, true);
+                })
+                    .catch(error => {
+                    // Impossible de charger le JSON depuis le serveur
+                    readStandardForm();
+                });
+            }
+            else {
+                readStandardForm();
+            }
+        }
+        onReady(callback) {
+            if (this.form_ready) {
+                callback(this.available_forms, this.current);
+            }
+            else {
+                this.waiting_callee.push(callback);
+            }
+        }
+        formExists(name) {
+            return name in this.available_forms;
+        }
+        /**
+         * Change le formulaire courant renvoyé par onReady
+         * @param name clé d'accès au formulaire
+         */
+        changeForm(name) {
+            if (this.formExists(name)) {
+                this.current = this.available_forms[name];
+                this._current_key = name;
+            }
+            else {
+                throw new Error("Form does not exists");
+            }
+        }
+        /**
+         * Renvoie un formulaire, sans modifier le courant
+         * @param name clé d'accès au formulaire
+         */
+        getForm(name) {
+            if (this.formExists(name)) {
+                return this.available_forms[name];
+            }
+            else {
+                throw new Error("Form does not exists");
+            }
+        }
+        /**
+         * Retourne un tableau de tuples contenant en
+         * première position la clé d'accès au formulaire,
+         * et en seconde position son nom textuel à présenter à l'utilisateur
+         * @returns [string, string][]
+         */
+        getAvailableForms() {
+            const keys = Object.keys(this.available_forms);
+            const tuples = [];
+            for (const key of keys) {
+                tuples.push([key, this.available_forms[key].name]);
+            }
+            return tuples;
+        }
+        get current_key() {
+            return this._current_key;
+        }
+    };
+});
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_5, main_3, interface_2, logger_3, audio_listener_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2394,7 +2706,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     mic_btn.addEventListener('click', function () {
                         vocal_recognition_2.prompt().then(function (value) {
                             if (ele.remove_whitespaces) {
-                                value = value.replace(/ /g, '');
+                                value = value.replace(/ /g, '').replace(/à/iug, 'a');
                             }
                             htmle.value = value;
                             str_verif.call(htmle);
@@ -2498,7 +2810,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_3.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_5.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -2557,7 +2869,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    helpers_3.readFromFile(filled_form.fields[ele.name], function (base64) {
+                    helpers_5.readFromFile(filled_form.fields[ele.name], function (base64) {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
@@ -2616,12 +2928,12 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     function initFormSave(type) {
         console.log("Demarrage initFormSave");
         // Ouverture du modal de verification
-        const modal = helpers_3.getModal();
-        helpers_3.initModal({ dismissible: true });
+        const modal = helpers_5.getModal();
+        helpers_5.initModal({ dismissible: true });
         modal.classList.add('modal-fixed-footer');
-        helpers_3.getModalInstance().open();
+        helpers_5.getModalInstance().open();
         //Ouverture du premiere modal de chargement
-        modal.innerHTML = helpers_3.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
+        modal.innerHTML = helpers_5.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`);
         // creation de la liste d'erreurs
@@ -2715,11 +3027,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
         modal.appendChild(footer);
         document.getElementById("cancel_verif").onclick = function () {
-            helpers_3.getModalInstance().close();
+            helpers_5.getModalInstance().close();
         };
         if (!erreur_critique) {
             document.getElementById("valid_verif").onclick = function () {
-                helpers_3.getModalInstance().close();
+                helpers_5.getModalInstance().close();
                 const current_form_key = form_schema_2.Forms.current_key;
                 saveForm(current_form_key);
             };
@@ -2761,7 +3073,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 form_values.fields[i.name] = i.value;
             }
         }
-        writeImagesThenForm(force_name || helpers_3.generateId(20), form_values, form_save);
+        writeImagesThenForm(force_name || helpers_5.generateId(20), form_values, form_save);
     }
     exports.saveForm = saveForm;
     /**
@@ -2771,7 +3083,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function writeImagesThenForm(name, form_values, older_save) {
         function saveBlobToFile(resolve, reject, filename, input_name, blob) {
-            helpers_3.writeFile('form_data/' + name, filename, blob, function () {
+            helpers_5.writeFile('form_data/' + name, filename, blob, function () {
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
                 form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
@@ -2783,7 +3095,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         const parts = older_save.fields[input_name].split('/');
                         const file_name = parts.pop();
                         const dir_name = parts.join('/');
-                        helpers_3.removeFileByName(dir_name, file_name);
+                        helpers_5.removeFileByName(dir_name, file_name);
                     }
                 }
                 // Résout la promise
@@ -2794,7 +3106,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 reject(error);
             });
         }
-        helpers_3.getDir(function () {
+        helpers_5.getDir(function () {
             // Crée le dossier form_data si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
@@ -2834,8 +3146,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const file = audio.value;
                     const input_name = audio.name;
                     if (file) {
-                        const filename = helpers_3.generateId(20) + '.mp3';
-                        helpers_3.urlToBlob(file).then(function (blob) {
+                        const filename = helpers_5.generateId(20) + '.mp3';
+                        helpers_5.urlToBlob(file).then(function (blob) {
                             saveBlobToFile(resolve, reject, filename, input_name, blob);
                         });
                     }
@@ -2853,7 +3165,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             Promise.all(promises)
                 .then(function () {
                 // On écrit enfin le formulaire !
-                helpers_3.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
+                helpers_5.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
@@ -2932,7 +3244,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     initFormSave(current_form_key);
                 }
                 catch (e) {
-                    logger_2.Logger.error(JSON.stringify(e));
+                    logger_3.Logger.error(JSON.stringify(e));
                 }
             }
         });
@@ -2949,18 +3261,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Sinon, on ramène à la page précédente
             interface_2.PageManager.popPage();
         }
-        helpers_3.getModalInstance().close();
-        helpers_3.getModal().classList.remove('modal-fixed-footer');
+        helpers_5.getModalInstance().close();
+        helpers_5.getModal().classList.remove('modal-fixed-footer');
     }
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_3.getModal();
-        helpers_3.initModal({
+        const modal = helpers_5.getModal();
+        helpers_5.initModal({
             dismissible: false
         });
         // Ouvre le modal et insère un chargeur
-        helpers_3.getModalInstance().open();
-        modal.innerHTML = helpers_3.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        helpers_5.getModalInstance().open();
+        modal.innerHTML = helpers_5.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -2975,7 +3287,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             locationSelector(modal, current_form.locations, false);
         };
         // Cherche la localisation et remplit le modal
-        helpers_3.getLocation(function (coords) {
+        helpers_5.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords);
         }, function () {
@@ -3060,7 +3372,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 lieux_dispo.push({
                     name: lieu.name,
                     label: lieu.label,
-                    distance: helpers_3.calculateDistance(current_location.coords, lieu)
+                    distance: helpers_5.calculateDistance(current_location.coords, lieu)
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -3071,7 +3383,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_1.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_3.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -3114,7 +3426,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 loc_input.dataset.reallocation = labels_to_name[input.value];
-                helpers_3.getModalInstance().close();
+                helpers_5.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
@@ -3132,25 +3444,108 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports"], function (require, exports) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers"], function (require, exports, user_manager_3, form_schema_3, helpers_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    function headerText() {
+        return `${user_manager_3.UserManager.logged ?
+            "Vous êtes connecté-e en tant que <span class='underline'>" + user_manager_3.UserManager.username + "</span>"
+            : "Vous n'êtes pas connecté-e"}.`;
+    }
     function initSettingsPage(base) {
-        base.innerHTML = "";
+        const connecte = user_manager_3.UserManager.logged;
+        base.innerHTML = `
+    <div class="container row" id="main_settings_container">
+        <h4>Utilisateur</h4>
+        <h5 id="settings_main_text">${headerText()}</h5>
+    </div>
+    `;
+        ////// DEFINITION DU BOUTON DE CONNEXION
+        const container = document.getElementById('main_settings_container');
+        const button = document.createElement('button');
+        const header = document.getElementById('settings_main_text');
+        container.appendChild(button);
+        function logUserButton() {
+            button.type = "button";
+            button.innerHTML = "Se connecter";
+            button.classList.remove('red');
+            button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
+            button.onclick = function () {
+                user_manager_3.loginUser().then(function () {
+                    unlogUserButton();
+                    header.innerHTML = headerText();
+                });
+            };
+        }
+        function unlogUserButton() {
+            button.type = "button";
+            button.innerHTML = "Déconnexion";
+            button.classList.remove('blue');
+            button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
+            button.onclick = function () {
+                helpers_6.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+                    .then(function () {
+                    // L'utilisateur veut se déconnecter
+                    user_manager_3.UserManager.unlog();
+                    logUserButton();
+                    header.innerHTML = headerText();
+                })
+                    .catch(function () {
+                    // L'utilisateur ne se déconnecte pas, finalement
+                });
+            };
+        }
+        if (connecte) {
+            unlogUserButton();
+        }
+        else {
+            logUserButton();
+        }
+        /////// PARTIE DEUX: CHOIX DU FORMULAIRE ACTUELLEMENT CHARGE
+        container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>Formulaire actif</h4>
+    <p class="flow-text">
+        Ce formulaire correspond à celui proposé dans la page "Nouvelle entrée".
+    </p>
+    `);
+        const select = document.createElement('select');
+        select.classList.add('material-select');
+        container.appendChild(select);
+        form_schema_3.Forms.onReady(function () {
+            const available = form_schema_3.Forms.getAvailableForms();
+            for (const option of available) {
+                const o = document.createElement('option');
+                o.value = option[0];
+                o.innerText = option[1];
+                if (option[0] === form_schema_3.Forms.current_key) {
+                    o.selected = true;
+                }
+                select.appendChild(o);
+            }
+            M.FormSelect.init(select);
+        });
+        select.addEventListener('change', function () {
+            const value = select.value;
+            if (form_schema_3.Forms.formExists(value)) {
+                form_schema_3.Forms.changeForm(value);
+            }
+        });
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_4, form_schema_3, interface_3) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_7, form_schema_4, interface_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
-        if (!form_schema_3.Forms.formExists(form.type)) {
+        if (!form_schema_4.Forms.formExists(form.type)) {
             M.toast({ html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible." });
             return;
         }
-        const current_form = form_schema_3.Forms.getForm(form.type);
-        const base = helpers_4.getBase();
+        const current_form = form_schema_4.Forms.getForm(form.type);
+        const base = helpers_7.getBase();
         interface_3.PageManager.pushPage(interface_3.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     function appendFileEntry(json, ph) {
@@ -3159,8 +3554,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         selector.classList.add('collection-item');
         const container = document.createElement('div');
         let id = json[0].name;
-        if (form_schema_3.Forms.formExists(save.type)) {
-            const id_f = form_schema_3.Forms.getForm(save.type).id_field;
+        if (form_schema_4.Forms.formExists(save.type)) {
+            const id_f = form_schema_4.Forms.getForm(save.type).id_field;
             if (id_f) {
                 // Si un champ existe pour ce formulaire
                 id = save.fields[id_f] || json[0].name;
@@ -3170,7 +3565,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         container.innerHTML = `
         <div class="left">
             ${id} <br> 
-            Modifié le ${helpers_4.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_7.formatDate(new Date(json[0].lastModified), true)}
         </div>`;
         // Ajoute le bouton de suppression
         const delete_btn = document.createElement('a');
@@ -3199,7 +3594,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     function readAllFilesOfDirectory(dirName) {
         const dirreader = new Promise(function (resolve, reject) {
-            helpers_4.getDir(function (dirEntry) {
+            helpers_7.getDir(function (dirEntry) {
                 // Lecture de tous les fichiers du répertoire
                 const reader = dirEntry.createReader();
                 reader.readEntries(function (entries) {
@@ -3241,8 +3636,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         return dirreader;
     }
     function modalDeleteForm(id) {
-        const modal = helpers_4.getBottomModal();
-        helpers_4.initBottomModal({}, `<div class="modal-content">
+        const modal = helpers_7.getBottomModal();
+        helpers_7.initBottomModal({}, `<div class="modal-content">
             <h4>Supprimer ce formulaire ?</h4>
             <p>
                 Vous ne pourrez pas le restaurer ultérieurement.
@@ -3253,7 +3648,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
             <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
         </div>
         `);
-        const instance = helpers_4.getBottomModalInstance();
+        const instance = helpers_7.getBottomModalInstance();
         document.getElementById('delete_form_modal').onclick = function () {
             deleteForm(id).then(function () {
                 M.toast({ html: "Entrée supprimée." });
@@ -3273,10 +3668,10 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
-                helpers_4.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
-                    helpers_4.getDir(function (dirEntry) {
+                helpers_7.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_7.getDir(function (dirEntry) {
                         dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                            helpers_4.removeFilePromise(fileEntry).then(function () {
+                            helpers_7.removeFilePromise(fileEntry).then(function () {
                                 resolve();
                             }).catch(reject);
                         }, function () {
@@ -3294,28 +3689,30 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     function initSavedForm(base) {
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
-        readAllFilesOfDirectory('forms').then(function (all_promises) {
-            Promise.all(all_promises).then(function (files) {
-                files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
-                for (const f of files) {
-                    appendFileEntry(f, placeholder);
-                }
-                base.innerHTML = "";
-                base.appendChild(placeholder);
-                if (files.length === 0) {
-                    base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
-                }
+        form_schema_4.Forms.onReady(function () {
+            readAllFilesOfDirectory('forms').then(function (all_promises) {
+                Promise.all(all_promises).then(function (files) {
+                    files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
+                    for (const f of files) {
+                        appendFileEntry(f, placeholder);
+                    }
+                    base.innerHTML = "";
+                    base.appendChild(placeholder);
+                    if (files.length === 0) {
+                        base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
+                    }
+                }).catch(function (err) {
+                    throw err;
+                });
             }).catch(function (err) {
-                throw err;
+                console.log(err);
+                base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
             });
-        }).catch(function (err) {
-            console.log(err);
-            base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
         });
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_5, form_1, settings_page_1, saved_forms_1, main_2) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_8, form_1, settings_page_1, saved_forms_1, main_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -3398,14 +3795,14 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
                 this.pages_holder = [];
             }
             // On écrit le preloader dans la base et on change l'historique
-            const base = helpers_5.getBase();
-            base.innerHTML = helpers_5.getPreloader("Chargement");
+            const base = helpers_8.getBase();
+            base.innerHTML = helpers_8.getPreloader("Chargement");
             if (window.history) {
                 window.history.pushState({}, "", "/?" + pagename);
             }
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
-                main_2.SIDENAV_OBJ.close();
+                main_4.SIDENAV_OBJ.close();
             }
             // On appelle la fonction de création de la page
             page.callback(base, additionnals);
@@ -3431,7 +3828,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_5.getBase();
+            const actual_base = helpers_8.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -3464,7 +3861,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            helpers_5.getBase().remove();
+            helpers_8.getBase().remove();
             // Met le fragment dans le DOM
             document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
             // Remet le bon titre
@@ -3488,7 +3885,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
-                    helpers_5.getModalInstance().close();
+                    helpers_8.getModalInstance().close();
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
@@ -3534,8 +3931,8 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     }
     exports.initHomePage = initHomePage;
     function modalBackHome(callbackIfTrue) {
-        const modal = helpers_5.getBottomModal();
-        const instance = helpers_5.initBottomModal();
+        const modal = helpers_8.getBottomModal();
+        const instance = helpers_8.initBottomModal();
         modal.innerHTML = `
     <div class="modal-content">
         <h5 class="no-margin-top">Aller à la page précédente ?</h5>
@@ -3552,7 +3949,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     }
     exports.modalBackHome = modalBackHome;
 });
-define("helpers", ["require", "exports", "interface"], function (require, exports, interface_4) {
+define("helpers", ["require", "exports", "interface", "logger"], function (require, exports, interface_4, logger_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -3653,7 +4050,7 @@ define("helpers", ["require", "exports", "interface"], function (require, export
      * @param text Texte à insérer comme message de chargement
      * @returns string HTML à insérer dans la racine d'un modal
      */
-    function getModalPreloader(text, footer) {
+    function getModalPreloader(text, footer = "") {
         return `<div class="modal-content">
     <center>
         ${exports.SMALL_PRELOADER}
@@ -3744,6 +4141,30 @@ define("helpers", ["require", "exports", "interface"], function (require, export
         });
     }
     exports.readFromFile = readFromFile;
+    function readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
+        const pathToFile = forceBaseDir + fileName;
+        logger_4.Logger.info(pathToFile);
+        return new Promise(function (resolve, reject) {
+            // @ts-ignore
+            window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
+                fileEntry.file(function (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = function (e) {
+                        resolve(this.result);
+                    };
+                    if (asBase64) {
+                        reader.readAsDataURL(file);
+                    }
+                    else {
+                        reader.readAsText(file);
+                    }
+                }, reject);
+            }, function (err) {
+                reject(err);
+            });
+        });
+    }
+    exports.readFile = readFile;
     /**
      * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
      * Sans dirName, renvoie la racine du système de fichiers.
@@ -4169,14 +4590,35 @@ define("helpers", ["require", "exports", "interface"], function (require, export
         return fetch(str).then(res => res.blob());
     }
     exports.urlToBlob = urlToBlob;
+    function askModal(title, question, text_yes = "Oui", text_no = "Non") {
+        const modal = getBottomModal();
+        const instance = initBottomModal({ dismissible: false });
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">${title}</h5>
+        <p class="flow-text">${question}</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__question_no" class="btn-flat green-text modal-close left">${text_no}</a>
+        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close right">${text_yes}</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        instance.open();
+        return new Promise(function (resolve, reject) {
+            document.getElementById('__question_yes').addEventListener('click', resolve);
+            document.getElementById('__question_no').addEventListener('click', reject);
+        });
+    }
+    exports.askModal = askModal;
 });
-define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_6, logger_3) {
+define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_9, logger_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function newModalRecord(button, input, ele) {
         let recorder = null;
-        const modal = helpers_6.getModal();
-        const instance = helpers_6.initModal({}, helpers_6.getModalPreloader("Chargement", ''));
+        const modal = helpers_9.getModal();
+        const instance = helpers_9.initModal({}, helpers_9.getModalPreloader("Chargement", ''));
         instance.open();
         let audioContent = null;
         let blobSize = 0;
@@ -4243,7 +4685,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
             </p>`;
                 btn_stop.classList.remove('hide');
             }).catch((e) => {
-                logger_3.Logger.error("Impossible de lancer l'écoute.", e);
+                logger_5.Logger.error("Impossible de lancer l'écoute.", e);
                 player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
             });
         }
@@ -4255,7 +4697,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
                 .stop()
                 .getMp3().then(([buffer, blob]) => {
                 blobSize = blob.size;
-                helpers_6.blobToBase64(blob).then(function (base64) {
+                helpers_9.blobToBase64(blob).then(function (base64) {
                     audioContent = base64;
                     btn_confirm.classList.remove('hide');
                     player.innerHTML = `<figure>
@@ -4266,7 +4708,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
                 });
             }).catch((e) => {
                 M.toast({ html: 'Impossible de lire votre enregistrement' });
-                logger_3.Logger.error("Enregistrement échoué:", e.message);
+                logger_5.Logger.error("Enregistrement échoué:", e.message);
             });
         }
     }
