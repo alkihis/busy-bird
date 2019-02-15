@@ -51,16 +51,16 @@
     },
     "cordova-plugin-android-permissions": {
       "PACKAGE_NAME": "com.lbbe.busybird"
-    }
-  },
-  "dependent_plugins": {
-    "cordova-plugin-compat": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "es6-promise-plugin": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "phonegap-plugin-media-stream": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    }
+  },
+  "dependent_plugins": {
+    "cordova-plugin-compat": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     }
   }

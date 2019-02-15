@@ -86,4 +86,6 @@
     <plugin name="cordova-plugin-media" spec="5.0.2" />
     <plugin name="phonegap-plugin-media-recorder" spec="1.1.0" />
     <plugin name="cordova-plugin-android-permissions" spec="1.0.0" />
+    <plugin name="es6-promise-plugin" spec="4.2.2" />
+    <plugin name="phonegap-plugin-media-stream" spec="1.2.1" />
 </widget>

@@ -62,7 +62,9 @@
       "cordova-plugin-file": {},
       "cordova-plugin-media": {},
       "phonegap-plugin-media-recorder": {},
-      "cordova-plugin-android-permissions": {}
+      "cordova-plugin-android-permissions": {},
+      "es6-promise-plugin": {},
+      "phonegap-plugin-media-stream": {}
     }
   }
 }
