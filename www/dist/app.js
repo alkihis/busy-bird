@@ -1519,8 +1519,9 @@ define("vocal_recognition", ["require", "exports", "arytom/artyom"], function (r
                     smart: true,
                     options,
                     beforePrompt: () => {
-                        console.log("Before ask");
-                        M.toast({ html: "Init" });
+                        setTimeout(function () {
+                            M.toast({ html: "Parlez maintenant" });
+                        }, 400);
                     },
                     onMatch: (i, wildcard) => {
                         let action;
@@ -1930,7 +1931,7 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("user_manager", ["require", "exports", "main", "helpers", "logger"], function (require, exports, main_1, helpers_3, logger_2) {
+define("user_manager", ["require", "exports", "main", "helpers"], function (require, exports, main_1, helpers_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.UserManager = new class {
@@ -1952,16 +1953,17 @@ define("user_manager", ["require", "exports", "main", "helpers", "logger"], func
         }
         login(username, password) {
             return new Promise((resolve, reject) => {
-                logger_2.Logger.warn(main_1.API_URL + "users/login.json");
                 fetch(main_1.API_URL + "users/login.json?username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password))
                     .then((response) => {
                     return response.json();
-                }).then((json) => {
+                })
+                    .then((json) => {
                     if (json.error_code)
                         throw json.error_code;
                     this.logSomeone(username, json.access_token);
                     resolve();
-                }).catch((error) => {
+                })
+                    .catch((error) => {
                     reject(error);
                 });
             });
@@ -2281,17 +2283,19 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
                             loadJSONInObject(JSON.parse(string));
                         })
                             .catch((err) => {
+                            // @ts-ignore
                             M.toast({ html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json' });
                         });
                     });
                 });
             };
+            const init_text = document.getElementById('__init_text_center');
+            console.log('hello23');
+            if (init_text) {
+                init_text.innerText = "Mise à jour des formulaires";
+            }
             // @ts-ignore
             if (main_2.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_2.UserManager.logged) {
-                const init_text = document.getElementById('__init_text_center');
-                if (init_text) {
-                    init_text.innerText = "Mise à jour des formulaires";
-                }
                 // On tente d'actualiser les formulaires disponibles
                 fetch(main_2.API_URL + "forms/available.json?access_token=" + user_manager_2.UserManager.token)
                     .then(response => response.json())
@@ -2364,7 +2368,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
         }
     };
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_5, main_3, interface_2, logger_3, audio_listener_2) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_5, main_3, interface_2, logger_2, audio_listener_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3244,7 +3248,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     initFormSave(current_form_key);
                 }
                 catch (e) {
-                    logger_3.Logger.error(JSON.stringify(e));
+                    logger_2.Logger.error(JSON.stringify(e));
                 }
             }
         });
@@ -3712,7 +3716,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main"], function (require, exports, helpers_8, form_1, settings_page_1, saved_forms_1, main_4) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "user_manager"], function (require, exports, helpers_8, form_1, settings_page_1, saved_forms_1, main_4, user_manager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -3923,6 +3927,13 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             pour les biologistes.
             Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
         </p>
+        <p class="flow-text red-text">
+            ${!user_manager_4.UserManager.logged ? `
+                Vous n'êtes pas connecté dans l'application. Vous ne serez pas en mesure de
+                saisir de nouvelles entrées sans être authentifié. Veuillez vous connecter via
+                les paramètres de l'application.
+            ` : ''}
+        </p>
     </div>
     `;
         // Initialise les champs materialize et le select
@@ -3949,7 +3960,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     }
     exports.modalBackHome = modalBackHome;
 });
-define("helpers", ["require", "exports", "interface", "logger"], function (require, exports, interface_4, logger_4) {
+define("helpers", ["require", "exports", "interface"], function (require, exports, interface_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -4143,7 +4154,6 @@ define("helpers", ["require", "exports", "interface", "logger"], function (requi
     exports.readFromFile = readFromFile;
     function readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
         const pathToFile = forceBaseDir + fileName;
-        logger_4.Logger.info(pathToFile);
         return new Promise(function (resolve, reject) {
             // @ts-ignore
             window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
@@ -4612,7 +4622,7 @@ define("helpers", ["require", "exports", "interface", "logger"], function (requi
     }
     exports.askModal = askModal;
 });
-define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_9, logger_5) {
+define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_9, logger_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function newModalRecord(button, input, ele) {
@@ -4685,7 +4695,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
             </p>`;
                 btn_stop.classList.remove('hide');
             }).catch((e) => {
-                logger_5.Logger.error("Impossible de lancer l'écoute.", e);
+                logger_3.Logger.error("Impossible de lancer l'écoute.", e);
                 player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
             });
         }
@@ -4708,7 +4718,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
                 });
             }).catch((e) => {
                 M.toast({ html: 'Impossible de lire votre enregistrement' });
-                logger_5.Logger.error("Enregistrement échoué:", e.message);
+                logger_3.Logger.error("Enregistrement échoué:", e.message);
             });
         }
     }

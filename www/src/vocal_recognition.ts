@@ -37,10 +37,11 @@ export function prompt(text: string = "Valeur ?", options: string[] = ["*"]) : P
                 smart: true,
                 options,
                 beforePrompt: () => {
-                    console.log("Before ask");
-                    M.toast({html: "Init"})
+                    setTimeout(function() {
+                        M.toast({html: "Parlez maintenant"})
+                    }, 400);
                 },
-                onMatch: (i,wildcard) => { // i returns the index of the given options    
+                onMatch: (i, wildcard) => { // i returns the index of the given options    
                     let action;
             
                     action = () => {

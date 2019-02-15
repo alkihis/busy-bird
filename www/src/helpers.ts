@@ -201,7 +201,6 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
 
 export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLDER) : Promise<string> {
     const pathToFile = forceBaseDir + fileName;
-    Logger.info(pathToFile);
 
     return new Promise(function(resolve, reject) {
         // @ts-ignore

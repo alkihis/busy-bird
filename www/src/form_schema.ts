@@ -144,19 +144,23 @@ export const Forms = new class {
                                 loadJSONInObject(JSON.parse(string));
                             })
                             .catch((err) => {
+                                // @ts-ignore
                                 M.toast({html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json'});
                             })
                     });
                 });
         };
 
+
+        const init_text = document.getElementById('__init_text_center');
+        console.log('hello23');
+
+        if (init_text) {
+            init_text.innerText = "Mise à jour des formulaires";
+        }
+
         // @ts-ignore
         if (ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && UserManager.logged) {
-            const init_text = document.getElementById('__init_text_center');
-            if (init_text) {
-                init_text.innerText = "Mise à jour des formulaires";
-            }
-
             // On tente d'actualiser les formulaires disponibles
             fetch(API_URL + "forms/available.json?access_token=" + UserManager.token)
                 .then(response => response.json())

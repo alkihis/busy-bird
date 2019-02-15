@@ -26,16 +26,17 @@ export const UserManager = new class {
 
     public login(username: string, password: string) : Promise<void> {
         return new Promise((resolve, reject) => {
-            Logger.warn(API_URL + "users/login.json");
             fetch(API_URL + "users/login.json?username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password))
                 .then((response) => {
                     return response.json();
-                }).then((json) => {
+                })
+                .then((json) => {
                     if (json.error_code) throw json.error_code;
 
                     this.logSomeone(username, json.access_token);
                     resolve();
-                }).catch((error) => {
+                })
+                .catch((error) => {
                     reject(error);
                 });
         }); 
