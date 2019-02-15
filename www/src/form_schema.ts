@@ -51,6 +51,8 @@ export interface FormEntity {
     default_value?: string | boolean;
     tip_on_invalid?: string;
     vocal_access_words?: string[];
+    allow_voice_control?: boolean;
+    remove_whitespaces?: boolean;
 }
 
 interface SelectOption {

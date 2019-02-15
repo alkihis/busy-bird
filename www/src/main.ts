@@ -3,6 +3,7 @@ import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDis
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType } from "./form_schema";
+import { prompt } from "./vocal_recognition";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -96,6 +97,13 @@ function initApp() {
     }
     else {
         PageManager.changePage(AppPageName.home);
+
+        setTimeout(function() {
+            prompt().then(function(value) {
+                Logger.debug("Valeur affichée:", value);
+                M.toast({html: value});
+            });
+        }, 2000);
     }
 }
 
@@ -121,7 +129,8 @@ function initDebug() {
                 type: FormEntityType.audio
             });
         },
-        dateFormatter
+        dateFormatter,
+        prompt
     };
 }
 

@@ -1485,7 +1485,7 @@ define("arytom/artyom", ["require", "exports"], function (require, exports) {
     }
     exports.default = Artyom;
 });
-define("test_aytom", ["require", "exports", "arytom/artyom"], function (require, exports, artyom_1) {
+define("vocal_recognition", ["require", "exports", "arytom/artyom"], function (require, exports, artyom_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     artyom_1 = __importDefault(artyom_1);
@@ -1501,23 +1501,10 @@ define("test_aytom", ["require", "exports", "arytom/artyom"], function (require,
             this._Jarvis = new artyom_1.default();
         }
     };
-    function test_jarvis() {
-        let j = exports.Jarvis.Jarvis;
-        j.fatality();
-        setTimeout(function () {
-            j.addCommands([{
-                    smart: true,
-                    indexes: ["Test *"],
-                    action: function (i, w) {
-                        alert(w);
-                    }
-                }, {
-                    smart: true,
-                    indexes: ["Busy bird *", "hello *"],
-                    action: function (i, w) {
-                        alert(w);
-                    }
-                }]);
+    function prompt(text = "Valeur ?", options = ["*"]) {
+        return new Promise(function (resolve, reject) {
+            const j = exports.Jarvis.Jarvis;
+            j.fatality();
             j.initialize({
                 lang: "fr-FR",
                 debug: true,
@@ -1525,31 +1512,34 @@ define("test_aytom", ["require", "exports", "arytom/artyom"], function (require,
                 speed: 1,
                 continuous: false
             });
-            M.toast({ html: "écoute" });
-            // let last_text = "";
-            // const d = j.newDictation({
-            //     continuous: false,
-            //     onResult:function(text){
-            //         // Show the Recognized text in the console
-            //         if (text === "") {
-            //             M.toast({html: "Fin d'écoute. Texte final: " + last_text});
-            //             console.log("Final", last_text);
-            //             d.stop();
-            //             return;
-            //         }
-            //         else {
-            //             M.toast({html: "Texte reconnu: "+text});
-            //             last_text = text;
-            //         }
-            //     },
-            //     onStart:function(){
-            //         console.log("Dictation started by the user");
-            //     }
-            // });
-            // d.start();
-        }, 250);
+            try {
+                j.newPrompt({
+                    question: text,
+                    //We set the smart property to true to accept wildcards
+                    smart: true,
+                    options,
+                    beforePrompt: () => {
+                        console.log("Before ask");
+                        M.toast({ html: "Init" });
+                    },
+                    onMatch: (i, wildcard) => {
+                        let action;
+                        action = () => {
+                            resolve(wildcard);
+                        };
+                        // A function needs to be returned in onMatch event
+                        // in order to accomplish what you want to execute
+                        return action;
+                    }
+                });
+            }
+            catch (e) {
+                // Artyom crashes on Cordova. Catching error.
+                // Logger.error(e.stack, e.message);
+            }
+        });
     }
-    exports.test_jarvis = test_jarvis;
+    exports.prompt = prompt;
 });
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /*
@@ -1944,7 +1934,7 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
         }
     };
 });
-define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema"], function (require, exports, interface_1, helpers_2, logger_1, audio_listener_1, form_schema_1) {
+define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition"], function (require, exports, interface_1, helpers_2, logger_1, audio_listener_1, form_schema_1, vocal_recognition_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -2028,6 +2018,12 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         }
         else {
             interface_1.PageManager.changePage(interface_1.AppPageName.home);
+            setTimeout(function () {
+                vocal_recognition_1.prompt().then(function (value) {
+                    logger_1.Logger.debug("Valeur affichée:", value);
+                    M.toast({ html: value });
+                });
+            }, 2000);
         }
     }
     function initDebug() {
@@ -2050,12 +2046,13 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
                     type: form_schema_1.FormEntityType.audio
                 });
             },
-            dateFormatter: helpers_2.dateFormatter
+            dateFormatter: helpers_2.dateFormatter,
+            prompt: vocal_recognition_1.prompt
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, form_schema_2, helpers_3, main_1, interface_2, logger_2, audio_listener_2) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_3, main_1, interface_2, logger_2, audio_listener_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2183,7 +2180,12 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 continue;
             }
             else if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
+                const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
+                if (ele.allow_voice_control) {
+                    wrapper.classList.add('s11');
+                    wrapper.classList.remove('s12');
+                }
                 const htmle = document.createElement('input');
                 htmle.autocomplete = "off";
                 const label = document.createElement('label');
@@ -2234,7 +2236,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 contraintes.push(['type', ele.type === form_schema_2.FormEntityType.float ? 'float' : 'int']);
                 htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
-                htmle.addEventListener('change', function () {
+                const num_verif = function () {
                     let valid = true;
                     let value;
                     try {
@@ -2287,10 +2289,36 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     else {
                         setInvalid(this);
                     }
-                });
-                element_to_add = wrapper;
+                };
+                htmle.addEventListener('change', num_verif);
+                real_wrapper.appendChild(wrapper);
+                if (ele.allow_voice_control) {
+                    // On ajoute le bouton micro
+                    const mic_btn = document.createElement('div');
+                    mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                    mic_btn.style.paddingRight = "0";
+                    mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+                    mic_btn.addEventListener('click', function () {
+                        vocal_recognition_2.prompt().then(function (value) {
+                            value = value.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
+                            if (!isNaN(Number(value))) {
+                                htmle.value = value;
+                                num_verif.call(htmle);
+                                M.updateTextFields();
+                            }
+                            else {
+                                M.toast({ html: "Nombre incorrect reconnu." });
+                            }
+                        });
+                    });
+                    real_wrapper.appendChild(mic_btn);
+                }
+                element_to_add = real_wrapper;
             }
             else if (ele.type === form_schema_2.FormEntityType.string || ele.type === form_schema_2.FormEntityType.bigstring) {
+                const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
                 let htmle;
                 if (ele.type === form_schema_2.FormEntityType.string) {
@@ -2301,6 +2329,10 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 else {
                     htmle = document.createElement('textarea');
                     htmle.classList.add('materialize-textarea');
+                }
+                if (ele.allow_voice_control) {
+                    wrapper.classList.add('s11');
+                    wrapper.classList.remove('s12');
                 }
                 htmle.classList.add('input-form-element');
                 const label = document.createElement('label');
@@ -2323,7 +2355,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 }
                 htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
-                htmle.addEventListener('change', function () {
+                const str_verif = function () {
                     let valid = true;
                     let value = this.value;
                     if (typeof value === 'string') {
@@ -2348,8 +2380,34 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     else {
                         setInvalid(this);
                     }
-                });
-                element_to_add = wrapper;
+                };
+                htmle.addEventListener('change', str_verif);
+                real_wrapper.appendChild(wrapper);
+                if (ele.allow_voice_control) {
+                    // On ajoute le bouton micro
+                    const mic_btn = document.createElement('div');
+                    mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                    mic_btn.style.paddingRight = "0";
+                    mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+                    mic_btn.addEventListener('click', function () {
+                        vocal_recognition_2.prompt().then(function (value) {
+                            if (ele.remove_whitespaces) {
+                                value = value.replace(/ /g, '');
+                            }
+                            htmle.value = value;
+                            str_verif.call(htmle);
+                            M.updateTextFields();
+                            try {
+                                M.textareaAutoResize(htmle);
+                            }
+                            catch (e) { }
+                        });
+                    });
+                    real_wrapper.appendChild(mic_btn);
+                }
+                element_to_add = real_wrapper;
             }
             else if (ele.type === form_schema_2.FormEntityType.select) {
                 const wrapper = createInputWrapper();
@@ -2366,6 +2424,14 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                     htmlopt.innerText = opt.label;
                     htmle.appendChild(htmlopt);
                 }
+                // const mic_btn = document.createElement('div');
+                // if (!htmle.multiple) {
+                //     mic_btn.addEventListener('click', function() {
+                //         prompt("Valeur ?", Array.from(htmle.options).map(e => e.label)).then(function(value) {
+                //             htmle.value = value;
+                //         });
+                //     });
+                // }
                 if (filled_form && ele.name in filled_form.fields) {
                     if (ele.select_options.multiple) {
                         $(htmle).val(filled_form.fields[ele.name]);
@@ -2386,7 +2452,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 const input = document.createElement('input');
                 const span = document.createElement('span');
                 fillStandardInputValues(input, ele, span);
-                wrapper.classList.add('row', 'col', 's12', 'input-checkbox');
+                wrapper.classList.add('row', 'col', 's12', 'input-checkbox', 'flex-center-aligner');
                 input.classList.add('filled-in', 'input-form-element');
                 input.type = "checkbox";
                 input.checked = ele.default_value;
@@ -2516,7 +2582,7 @@ define("form", ["require", "exports", "form_schema", "helpers", "main", "interfa
                 const input = document.createElement('input');
                 const span = document.createElement('span');
                 fillStandardInputValues(input, ele);
-                wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch');
+                wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch', 'flex-center-aligner');
                 input.classList.add('input-form-element', 'input-slider-element');
                 input.type = "checkbox";
                 input.checked = ele.default_value;

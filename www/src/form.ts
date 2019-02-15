@@ -1,4 +1,4 @@
-import { test_jarvis, Jarvis } from "./test_aytom";
+import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob } from "./helpers";
@@ -156,7 +156,14 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         }
 
         else if (ele.type === FormEntityType.integer || ele.type === FormEntityType.float) {
+            const real_wrapper = document.createElement('div');
+
             const wrapper = createInputWrapper();
+            if (ele.allow_voice_control) {
+                wrapper.classList.add('s11');
+                wrapper.classList.remove('s12');
+            }
+            
             const htmle = document.createElement('input');
             htmle.autocomplete = "off";
             const label = document.createElement('label');
@@ -215,7 +222,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
             // Attachage de l'évènement de vérification
-            htmle.addEventListener('change', function() {
+            const num_verif = function() {
                 let valid = true;
 
                 let value: number;
@@ -273,12 +280,43 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 else {
                     setInvalid(this);
                 }
-            });
+            };
 
-            element_to_add = wrapper;
+            htmle.addEventListener('change', num_verif);
+
+            real_wrapper.appendChild(wrapper);
+
+            if (ele.allow_voice_control) {
+                // On ajoute le bouton micro
+                const mic_btn = document.createElement('div');
+                mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                mic_btn.style.paddingRight = "0";
+                mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+
+                mic_btn.addEventListener('click', function() {
+                    prompt().then(function(value) {
+                        value = value.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
+
+                        if (!isNaN(Number(value))) {
+                            htmle.value = value;
+                            num_verif.call(htmle);
+                            M.updateTextFields();
+                        }
+                        else {
+                            M.toast({html: "Nombre incorrect reconnu."});
+                        }
+                    });
+                });
+
+                real_wrapper.appendChild(mic_btn);
+            }
+            element_to_add = real_wrapper;
         }
 
         else if (ele.type === FormEntityType.string || ele.type === FormEntityType.bigstring) {
+            const real_wrapper = document.createElement('div');
             const wrapper = createInputWrapper();
 
             let htmle: HTMLInputElement | HTMLTextAreaElement;
@@ -290,6 +328,11 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             else {
                 htmle = document.createElement('textarea');
                 htmle.classList.add('materialize-textarea');
+            }
+
+            if (ele.allow_voice_control) {
+                wrapper.classList.add('s11');
+                wrapper.classList.remove('s12');
             }
 
             htmle.classList.add('input-form-element');
@@ -319,7 +362,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
             // Attachage de l'évènement de vérification
-            htmle.addEventListener('change', function() {
+            const str_verif = function() {
                 let valid = true;
 
                 let value: string = this.value;
@@ -348,9 +391,38 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 else {
                     setInvalid(this);
                 }
-            });
+            };
 
-            element_to_add = wrapper;
+            htmle.addEventListener('change', str_verif);
+            real_wrapper.appendChild(wrapper);
+
+            if (ele.allow_voice_control) {
+                // On ajoute le bouton micro
+                const mic_btn = document.createElement('div');
+                mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                mic_btn.style.paddingRight = "0";
+
+                mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+
+                mic_btn.addEventListener('click', function() {
+                    prompt().then(function(value) {
+                        if (ele.remove_whitespaces) {
+                            value = value.replace(/ /g, '').replace(/à/iug, 'a');
+                        }
+
+                        htmle.value = value;
+                        str_verif.call(htmle);
+                        M.updateTextFields();
+                        try { M.textareaAutoResize(htmle); } catch (e) {}
+                    });
+                });
+
+                real_wrapper.appendChild(mic_btn);
+            }
+            
+            element_to_add = real_wrapper;
         }
 
         else if (ele.type === FormEntityType.select) {
@@ -372,6 +444,15 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
                 htmle.appendChild(htmlopt);
             }
+
+            // const mic_btn = document.createElement('div');
+            // if (!htmle.multiple) {
+            //     mic_btn.addEventListener('click', function() {
+            //         prompt("Valeur ?", Array.from(htmle.options).map(e => e.label)).then(function(value) {
+            //             htmle.value = value;
+            //         });
+            //     });
+            // }
 
             if (filled_form && ele.name in filled_form.fields) {
                 if (ele.select_options.multiple) {
@@ -399,7 +480,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             fillStandardInputValues(input, ele, span as HTMLLabelElement);
 
-            wrapper.classList.add('row', 'col', 's12', 'input-checkbox');
+            wrapper.classList.add('row', 'col', 's12', 'input-checkbox', 'flex-center-aligner');
             input.classList.add('filled-in', 'input-form-element');
             input.type = "checkbox";
             input.checked = ele.default_value as boolean;
@@ -569,7 +650,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             fillStandardInputValues(input, ele);
 
-            wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch');
+            wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch', 'flex-center-aligner');
             input.classList.add('input-form-element', 'input-slider-element');
             input.type = "checkbox";
             input.checked = ele.default_value as boolean;
