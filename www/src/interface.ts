@@ -111,14 +111,14 @@ export const PageManager = new class {
             SIDENAV_OBJ.close();
         }
 
-        // On appelle la fonction de création de la page
-        page.callback(base, additionnals);
-
         this.actual_page = page;
         this._should_wait = page.ask_change;
 
         // On met le titre de la page dans la barre de navigation
         document.getElementById('nav_title').innerText = force_name || page.name;
+
+        // On appelle la fonction de création de la page
+        page.callback(base, additionnals);
 
         this.updateReturnBtn();
     }

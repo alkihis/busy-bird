@@ -5,6 +5,7 @@ import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
 import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
+import { SyncManager } from "./SyncManager";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -49,6 +50,7 @@ function initApp() {
 
     Logger.init();
     Forms.init(); 
+    SyncManager.init();
 
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
@@ -136,7 +138,8 @@ function initDebug() {
         dateFormatter,
         prompt,
         createNewUser,
-        UserManager
+        UserManager,
+        SyncManager
     };
 }
 

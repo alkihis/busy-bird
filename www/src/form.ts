@@ -6,6 +6,8 @@ import { MAX_LIEUX_AFFICHES } from "./main";
 import { PageManager, AppPageName } from "./interface";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
+import { UserManager } from "./user_manager";
+import { SyncManager } from "./SyncManager";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -824,7 +826,9 @@ export function saveForm(type: string, force_name?: string, form_save?: FormSave
     const form_values: FormSave = {
         fields: {},
         type,
-        location: (document.getElementById('__location__id') as HTMLInputElement).dataset.reallocation
+        location: (document.getElementById('__location__id') as HTMLInputElement).dataset.reallocation,
+        owner: (form_save ? form_save.owner : UserManager.username),
+        metadata: {}
     };
 
     for (const input of document.getElementsByClassName('input-form-element')) {
@@ -865,6 +869,7 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
             // Enregistre le nom du fichier sauvegardé dans le formulaire,
             // dans la valeur du champ field
             form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+            form_values.metadata[input_name] = filename;
 
             if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
                 // Si une image était déjà présente
@@ -921,9 +926,18 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                     else {
                         if (older_save && input_name in older_save.fields) {
                             form_values.fields[input_name] = older_save.fields[input_name];
+
+                            if (typeof older_save.fields[input_name] === 'string') {
+                                const parts = (older_save.fields[input_name] as string).split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                            else {
+                                form_values.metadata[input_name] = null;
+                            }
                         }
                         else {
                             form_values.fields[input_name] = null;
+                            form_values.metadata[input_name] = null;
                         }
 
                         resolve();
@@ -951,9 +965,18 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                     else {
                         if (older_save && input_name in older_save.fields) {
                             form_values.fields[input_name] = older_save.fields[input_name];
+
+                            if (typeof older_save.fields[input_name] === 'string') {
+                                const parts = (older_save.fields[input_name] as string).split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                            else {
+                                form_values.metadata[input_name] = null;
+                            }
                         }
                         else {
                             form_values.fields[input_name] = null;
+                            form_values.metadata[input_name] = null;
                         }
 
                         resolve();
@@ -964,9 +987,17 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
 
         Promise.all(promises)
             .then(function() {
+                // On supprime les metadonnées vides du form
+                for (const n in form_values.metadata) {
+                    if (form_values.metadata[n] === null) {
+                        delete form_values.metadata[n];
+                    }
+                }
+
                 // On écrit enfin le formulaire !
                 writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
                     M.toast({html: "Écriture du formulaire et de ses données réussie."});
+                    SyncManager.add(name, form_values);
 
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
@@ -1001,7 +1032,6 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
             loadFormPage(base, current, edition_mode);
         });
     }
-
 }
 
 /**
@@ -1010,6 +1040,25 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
  */
 export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode?: {save: FormSave, name: string}) {
     base.innerHTML = "";
+
+    if (!edition_mode && !UserManager.logged) {
+        // Si on est en mode création et qu'on est pas connecté
+        base.innerHTML = `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
+                <p class="flow-text red-text text-lighten-1">
+                    Vous devez vous connecter pour saisir une nouvelle entrée.
+                </p>
+                <p class="flow-text">
+                    Connectez-vous dans les paramètres.
+                </p>
+            </div>
+        </div>
+        `;
+        PageManager.should_wait = false;
+        return;
+    }
 
     const base_block = document.createElement('div');
     base_block.classList.add('row', 'container');

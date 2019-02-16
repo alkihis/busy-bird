@@ -127,8 +127,45 @@ main {
     text-align: center;
 }
 
+.vertical-center-less {
+    margin-top: calc(32vh - 1.64rem);
+    text-align: center;
+}
+
 .v-bottom {
     vertical-align: bottom;
+}
+
+.rotate-90 {
+    transform: rotate(90deg);
+}
+
+.big-text {
+    font-size: 2rem;
+}
+
+.relative-container {
+    position: relative;
+}
+
+.absolute-container {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+}
+
+.absolute-center-container {
+    text-align: center;
+}
+
+p.smiley.big-text {
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    margin-left: 20px;
+    font-size: 5rem;
 }
 
 .sidenav .background img {

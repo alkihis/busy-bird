@@ -2,6 +2,7 @@ import { getDir, printObj, formatDate, removeFile, getBottomModal, initBottomMod
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./interface";
 import { constructForm, saveForm } from "./form";
+import { SyncManager } from "./SyncManager";
 
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
@@ -90,7 +91,7 @@ function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormS
                                         resolve([file, JSON.parse(this.result as string)]);
                                     } catch (e) {
                                         console.log("JSON mal formé:", this.result);
-                                        resolve([file, { fields: {}, type: "", location: "" }])
+                                        resolve([file, { fields: {}, type: "", location: "", owner: "", metadata: {} }])
                                     }
                                     
                                 };
@@ -161,6 +162,8 @@ function deleteForm(id: string) : Promise<void> {
     if (id.match(/\.json$/)) {
         id = id.substring(0, id.length - 5);
     }
+
+    SyncManager.remove(id);
 
     return new Promise(function(resolve, reject) {
         if (id) {

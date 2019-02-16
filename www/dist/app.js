@@ -2,8 +2,6 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-// Lance main.ts
-require(['main']);
 /**
  * Artyom.js is a voice control, speech recognition and speech synthesis JavaScript library.
  *
@@ -1808,128 +1806,107 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
         }
     };
 });
-define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager"], function (require, exports, interface_1, helpers_2, logger_1, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_1) {
+define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_2, logger_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.SIDENAV_OBJ = null;
-    exports.MAX_LIEUX_AFFICHES = 20;
-    exports.API_URL = "https://projet.alkihis.fr/";
-    exports.ENABLE_FORM_DOWNLOAD = true;
-    exports.app = {
-        // Application Constructor
-        initialize: function () {
-            this.bindEvents();
-        },
-        // Bind Event Listeners
-        //
-        // Bind any events that are required on startup. Common events are:
-        // 'load', 'deviceready', 'offline', and 'online'.
-        bindEvents: function () {
-            document.addEventListener('deviceready', this.onDeviceReady, false);
-        },
-        // deviceready Event Handler
-        //
-        // The scope of 'this' is the event. In order to call the 'receivedEvent'
-        // function, we must explicitly call 'app.receivedEvent(...);'
-        onDeviceReady: function () {
-            exports.app.receivedEvent('deviceready');
-        },
-        // Update DOM on a Received Event
-        receivedEvent: function (id) {
-            // var parentElement = document.getElementById(id);
-            // var listeningElement = parentElement.querySelector('.listening');
-            // var receivedElement = parentElement.querySelector('.received');
-            // listeningElement.setAttribute('style', 'display:none;');
-            // receivedElement.setAttribute('style', 'display:block;');
-            // console.log('Received Event: ' + id);
-        }
-    };
-    function initApp() {
-        // Change le répertoire de données
-        // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
-        // Sinon, si mobile, on passe sur dataDirectory
-        helpers_2.changeDir();
-        logger_1.Logger.init();
-        form_schema_1.Forms.init();
-        // @ts-ignore Force à demander la permission pour enregistrer du son
-        const permissions = cordova.plugins.permissions;
-        permissions.requestPermission(permissions.RECORD_AUDIO, status => {
-            // console.log(status);
-        }, e => { console.log(e); });
-        // Initialise le bouton retour
-        document.addEventListener("backbutton", function () {
-            interface_1.PageManager.goBack();
-        }, false);
-        // Initialise le sidenav
-        const elem = document.querySelector('.sidenav');
-        exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
-        // Bind des éléments du sidenav
-        // Home
-        document.getElementById('nav_home').onclick = function () {
-            interface_1.PageManager.pushPage(interface_1.AppPageName.home);
+    function newModalRecord(button, input, ele) {
+        let recorder = null;
+        const modal = helpers_2.getModal();
+        const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement", ''));
+        instance.open();
+        let audioContent = null;
+        let blobSize = 0;
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 style="margin-top: 0;">${ele.label}</h5>
+        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
+        <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
+        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
+        <div class=clearb></div>
+        <div id="__media_record_player" class="modal-record-audio-player">${input.value ? `
+            <figure>
+                <figcaption>Enregistrement</figcaption>
+                <audio controls src="${input.value}"></audio>
+            </figure>
+        ` : ''}</div>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat green-text right ${input.value ? "" : "hide"}" id="__media_record_save">Sauvegarder</a>
+        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        const btn_start = document.getElementById('__media_record_record');
+        const btn_stop = document.getElementById('__media_record_stop');
+        const btn_confirm = document.getElementById('__media_record_save');
+        const btn_cancel = document.getElementById('__media_record_cancel');
+        const player = document.getElementById('__media_record_player');
+        //add events to those 2 buttons
+        btn_start.addEventListener("click", startRecording);
+        btn_stop.addEventListener("click", stopRecording);
+        btn_confirm.onclick = function () {
+            if (audioContent) {
+                input.value = audioContent;
+                input.dataset.duration = ((blobSize / 256000) * 8).toString();
+                // Met à jour le bouton
+                const duration = (blobSize / 256000) * 8;
+                button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                button.classList.remove('blue');
+                button.classList.add('green');
+            }
+            instance.close();
+            // Clean le modal et donc les variables associées
+            modal.innerHTML = "";
         };
-        // Form
-        document.getElementById('nav_form_new').onclick = function () {
-            interface_1.PageManager.pushPage(interface_1.AppPageName.form);
+        btn_cancel.onclick = function () {
+            instance.close();
+            // Clean le modal et donc les variables associées
+            modal.innerHTML = "";
         };
-        // Saved
-        document.getElementById('nav_form_saved').onclick = function () {
-            interface_1.PageManager.pushPage(interface_1.AppPageName.saved);
-        };
-        // Settigns
-        document.getElementById('nav_settings').onclick = function () {
-            interface_1.PageManager.pushPage(interface_1.AppPageName.settings);
-        };
-        exports.app.initialize();
-        initDebug();
-        helpers_2.initModal();
-        // Check si on est à une page spéciale
-        let href = "";
-        if (window.location) {
-            href = location.href.split('#')[0].split('?');
-            // Récupère la partie de l'URL après la query string et avant le #
-            href = href[href.length - 1];
+        function startRecording() {
+            btn_start.classList.add('hide');
+            player.innerHTML = `<p class='flow-text center'>
+                Initialisation...
+            </p>`;
+            // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
+            recorder = new MicRecorder({
+                bitRate: 256
+            });
+            recorder.start().then(function () {
+                player.innerHTML = `<p class='flow-text center'>
+                <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
+                Enregistrement en cours
+            </p>`;
+                btn_stop.classList.remove('hide');
+            }).catch((e) => {
+                logger_1.Logger.error("Impossible de lancer l'écoute.", e);
+                player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
+            });
         }
-        if (href && interface_1.PageManager.pageExists(href)) {
-            interface_1.PageManager.changePage(href);
-        }
-        else {
-            interface_1.PageManager.changePage(interface_1.AppPageName.home);
-            // setTimeout(function() {
-            //     prompt().then(function(value) {
-            //         Logger.debug("Valeur affichée:", value);
-            //         M.toast({html: value});
-            //     });
-            // }, 2000);
-        }
-    }
-    function initDebug() {
-        window["DEBUG"] = {
-            PageManager: interface_1.PageManager,
-            readFromFile: helpers_2.readFromFile,
-            listDir: helpers_2.listDir,
-            saveDefaultForm: helpers_2.saveDefaultForm,
-            createDir: helpers_2.createDir,
-            getLocation: helpers_2.getLocation,
-            testDistance: helpers_2.testDistance,
-            rmrf: helpers_2.rmrf,
-            rmrfPromise: helpers_2.rmrfPromise,
-            Logger: logger_1.Logger,
-            modalBackHome: interface_1.modalBackHome,
-            recorder: function () {
-                audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
-                    name: "__test__",
-                    label: "Test",
-                    type: form_schema_1.FormEntityType.audio
+        function stopRecording() {
+            // Once you are done singing your best song, stop and get the mp3.
+            btn_stop.classList.add('hide');
+            player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
+            recorder
+                .stop()
+                .getMp3().then(([buffer, blob]) => {
+                blobSize = blob.size;
+                helpers_2.blobToBase64(blob).then(function (base64) {
+                    audioContent = base64;
+                    btn_confirm.classList.remove('hide');
+                    player.innerHTML = `<figure>
+                        <figcaption>Enregistrement</figcaption>
+                        <audio controls src="${base64}"></audio>
+                    </figure>`;
+                    btn_start.classList.remove('hide');
                 });
-            },
-            dateFormatter: helpers_2.dateFormatter,
-            prompt: vocal_recognition_1.prompt,
-            createNewUser: user_manager_1.createNewUser,
-            UserManager: user_manager_1.UserManager
-        };
+            }).catch((e) => {
+                M.toast({ html: 'Impossible de lire votre enregistrement' });
+                logger_1.Logger.error("Enregistrement échoué:", e.message);
+            });
+        }
     }
-    document.addEventListener('deviceready', initApp, false);
+    exports.newModalRecord = newModalRecord;
 });
 define("user_manager", ["require", "exports", "main", "helpers"], function (require, exports, main_1, helpers_3) {
     "use strict";
@@ -2205,170 +2182,132 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
             });
         });
  */ 
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main"], function (require, exports, helpers_4, user_manager_2, main_2) {
+define("main", ["require", "exports", "interface", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager"], function (require, exports, interface_1, helpers_4, logger_2, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_1, SyncManager_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Type à préciser dans le JSON, clé "type"
-     * Le type à préciser est la chaîne de caractères
-     */
-    var FormEntityType;
-    (function (FormEntityType) {
-        FormEntityType["integer"] = "integer";
-        FormEntityType["float"] = "float";
-        FormEntityType["select"] = "select";
-        FormEntityType["string"] = "string";
-        FormEntityType["bigstring"] = "textarea";
-        FormEntityType["checkbox"] = "checkbox";
-        FormEntityType["file"] = "file";
-        FormEntityType["slider"] = "slider";
-        FormEntityType["datetime"] = "datetime";
-        FormEntityType["divider"] = "divider";
-        FormEntityType["audio"] = "audio";
-    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    // Clé du JSON à charger automatiquement
-    exports.default_form_name = "cincle_plongeur";
-    // Classe contenant le formulaire JSON chargé et parsé
-    exports.Forms = new class {
-        constructor() {
-            this.form_ready = false;
-            this.waiting_callee = [];
-            this.current = null;
-            this._current_key = null;
-            this.FORM_LOCATION = 'loaded_forms.json';
-        }
-        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
-        // La clé du formulaire par défaut est contenu dans "default_form_name"
-        init() {
-            const loadJSONInObject = (json, save = false) => {
-                // Le JSON est reçu, on l'enregistre dans available_forms
-                this.available_forms = json;
-                // On met le form à ready
-                this.form_ready = true;
-                // On enregistre le formulaire par défaut (si la clé définie existe)
-                if (exports.default_form_name in this.available_forms) {
-                    this.current = this.available_forms[exports.default_form_name];
-                    this._current_key = exports.default_form_name;
-                }
-                else {
-                    this.current = { name: null, fields: [], locations: [] };
-                }
-                // On sauvegarde les formulaires dans loaded_forms.json
-                // uniquement si demandé
-                if (save) {
-                    helpers_4.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
-                }
-                // On exécute les fonctions en attente
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func(this.available_forms, this.current);
-                }
-            };
-            const readStandardForm = () => {
-                // On vérifie si le fichier loaded_forms.json existe
-                helpers_4.readFile(this.FORM_LOCATION)
-                    .then((string) => {
-                    loadJSONInObject(JSON.parse(string));
-                })
-                    .catch(() => {
-                    // Il n'existe pas, on doit le charger depuis les sources de l'application
-                    $.get('/assets/form.json', {}, (json) => {
-                        loadJSONInObject(json, true);
-                    }, 'json')
-                        .fail(function (error) {
-                        // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
-                        // @ts-ignore
-                        helpers_4.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
-                            .then(string => {
-                            loadJSONInObject(JSON.parse(string));
-                        })
-                            .catch((err) => {
-                            // @ts-ignore
-                            M.toast({ html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json' });
-                        });
-                    });
-                });
-            };
-            const init_text = document.getElementById('__init_text_center');
-            console.log('hello23');
-            if (init_text) {
-                init_text.innerText = "Mise à jour des formulaires";
-            }
-            // @ts-ignore
-            if (main_2.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_2.UserManager.logged) {
-                // On tente d'actualiser les formulaires disponibles
-                fetch(main_2.API_URL + "forms/available.json?access_token=" + user_manager_2.UserManager.token)
-                    .then(response => response.json())
-                    .then(json => {
-                    if (json.error_code)
-                        throw json.error_code;
-                    loadJSONInObject(json, true);
-                })
-                    .catch(error => {
-                    // Impossible de charger le JSON depuis le serveur
-                    readStandardForm();
-                });
-            }
-            else {
-                readStandardForm();
-            }
-        }
-        onReady(callback) {
-            if (this.form_ready) {
-                callback(this.available_forms, this.current);
-            }
-            else {
-                this.waiting_callee.push(callback);
-            }
-        }
-        formExists(name) {
-            return name in this.available_forms;
-        }
-        /**
-         * Change le formulaire courant renvoyé par onReady
-         * @param name clé d'accès au formulaire
-         */
-        changeForm(name) {
-            if (this.formExists(name)) {
-                this.current = this.available_forms[name];
-                this._current_key = name;
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Renvoie un formulaire, sans modifier le courant
-         * @param name clé d'accès au formulaire
-         */
-        getForm(name) {
-            if (this.formExists(name)) {
-                return this.available_forms[name];
-            }
-            else {
-                throw new Error("Form does not exists");
-            }
-        }
-        /**
-         * Retourne un tableau de tuples contenant en
-         * première position la clé d'accès au formulaire,
-         * et en seconde position son nom textuel à présenter à l'utilisateur
-         * @returns [string, string][]
-         */
-        getAvailableForms() {
-            const keys = Object.keys(this.available_forms);
-            const tuples = [];
-            for (const key of keys) {
-                tuples.push([key, this.available_forms[key].name]);
-            }
-            return tuples;
-        }
-        get current_key() {
-            return this._current_key;
+    exports.SIDENAV_OBJ = null;
+    exports.MAX_LIEUX_AFFICHES = 20;
+    exports.API_URL = "https://projet.alkihis.fr/";
+    exports.ENABLE_FORM_DOWNLOAD = true;
+    exports.app = {
+        // Application Constructor
+        initialize: function () {
+            this.bindEvents();
+        },
+        // Bind Event Listeners
+        //
+        // Bind any events that are required on startup. Common events are:
+        // 'load', 'deviceready', 'offline', and 'online'.
+        bindEvents: function () {
+            document.addEventListener('deviceready', this.onDeviceReady, false);
+        },
+        // deviceready Event Handler
+        //
+        // The scope of 'this' is the event. In order to call the 'receivedEvent'
+        // function, we must explicitly call 'app.receivedEvent(...);'
+        onDeviceReady: function () {
+            exports.app.receivedEvent('deviceready');
+        },
+        // Update DOM on a Received Event
+        receivedEvent: function (id) {
+            // var parentElement = document.getElementById(id);
+            // var listeningElement = parentElement.querySelector('.listening');
+            // var receivedElement = parentElement.querySelector('.received');
+            // listeningElement.setAttribute('style', 'display:none;');
+            // receivedElement.setAttribute('style', 'display:block;');
+            // console.log('Received Event: ' + id);
         }
     };
+    function initApp() {
+        // Change le répertoire de données
+        // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
+        // Sinon, si mobile, on passe sur dataDirectory
+        helpers_4.changeDir();
+        logger_2.Logger.init();
+        form_schema_1.Forms.init();
+        SyncManager_1.SyncManager.init();
+        // @ts-ignore Force à demander la permission pour enregistrer du son
+        const permissions = cordova.plugins.permissions;
+        permissions.requestPermission(permissions.RECORD_AUDIO, status => {
+            // console.log(status);
+        }, e => { console.log(e); });
+        // Initialise le bouton retour
+        document.addEventListener("backbutton", function () {
+            interface_1.PageManager.goBack();
+        }, false);
+        // Initialise le sidenav
+        const elem = document.querySelector('.sidenav');
+        exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
+        // Bind des éléments du sidenav
+        // Home
+        document.getElementById('nav_home').onclick = function () {
+            interface_1.PageManager.pushPage(interface_1.AppPageName.home);
+        };
+        // Form
+        document.getElementById('nav_form_new').onclick = function () {
+            interface_1.PageManager.pushPage(interface_1.AppPageName.form);
+        };
+        // Saved
+        document.getElementById('nav_form_saved').onclick = function () {
+            interface_1.PageManager.pushPage(interface_1.AppPageName.saved);
+        };
+        // Settigns
+        document.getElementById('nav_settings').onclick = function () {
+            interface_1.PageManager.pushPage(interface_1.AppPageName.settings);
+        };
+        exports.app.initialize();
+        initDebug();
+        helpers_4.initModal();
+        // Check si on est à une page spéciale
+        let href = "";
+        if (window.location) {
+            href = location.href.split('#')[0].split('?');
+            // Récupère la partie de l'URL après la query string et avant le #
+            href = href[href.length - 1];
+        }
+        if (href && interface_1.PageManager.pageExists(href)) {
+            interface_1.PageManager.changePage(href);
+        }
+        else {
+            interface_1.PageManager.changePage(interface_1.AppPageName.home);
+            // setTimeout(function() {
+            //     prompt().then(function(value) {
+            //         Logger.debug("Valeur affichée:", value);
+            //         M.toast({html: value});
+            //     });
+            // }, 2000);
+        }
+    }
+    function initDebug() {
+        window["DEBUG"] = {
+            PageManager: interface_1.PageManager,
+            readFromFile: helpers_4.readFromFile,
+            listDir: helpers_4.listDir,
+            saveDefaultForm: helpers_4.saveDefaultForm,
+            createDir: helpers_4.createDir,
+            getLocation: helpers_4.getLocation,
+            testDistance: helpers_4.testDistance,
+            rmrf: helpers_4.rmrf,
+            rmrfPromise: helpers_4.rmrfPromise,
+            Logger: logger_2.Logger,
+            modalBackHome: interface_1.modalBackHome,
+            recorder: function () {
+                audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
+                    name: "__test__",
+                    label: "Test",
+                    type: form_schema_1.FormEntityType.audio
+                });
+            },
+            dateFormatter: helpers_4.dateFormatter,
+            prompt: vocal_recognition_1.prompt,
+            createNewUser: user_manager_1.createNewUser,
+            UserManager: user_manager_1.UserManager,
+            SyncManager: SyncManager_1.SyncManager
+        };
+    }
+    document.addEventListener('deviceready', initApp, false);
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "interface", "logger", "audio_listener"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_5, main_3, interface_2, logger_2, audio_listener_2) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "interface", "logger", "audio_listener", "user_manager", "SyncManager"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_5, main_2, interface_2, logger_3, audio_listener_2, user_manager_2, SyncManager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3052,7 +2991,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const form_values = {
             fields: {},
             type,
-            location: document.getElementById('__location__id').dataset.reallocation
+            location: document.getElementById('__location__id').dataset.reallocation,
+            owner: (form_save ? form_save.owner : user_manager_2.UserManager.username),
+            metadata: {}
         };
         for (const input of document.getElementsByClassName('input-form-element')) {
             const i = input;
@@ -3091,6 +3032,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
                 form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+                form_values.metadata[input_name] = filename;
                 if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
                     // Si une image était déjà présente
                     if (older_save.fields[input_name] !== form_values.fields[input_name]) {
@@ -3135,9 +3077,17 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     else {
                         if (older_save && input_name in older_save.fields) {
                             form_values.fields[input_name] = older_save.fields[input_name];
+                            if (typeof older_save.fields[input_name] === 'string') {
+                                const parts = older_save.fields[input_name].split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                            else {
+                                form_values.metadata[input_name] = null;
+                            }
                         }
                         else {
                             form_values.fields[input_name] = null;
+                            form_values.metadata[input_name] = null;
                         }
                         resolve();
                     }
@@ -3158,9 +3108,17 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     else {
                         if (older_save && input_name in older_save.fields) {
                             form_values.fields[input_name] = older_save.fields[input_name];
+                            if (typeof older_save.fields[input_name] === 'string') {
+                                const parts = older_save.fields[input_name].split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                            else {
+                                form_values.metadata[input_name] = null;
+                            }
                         }
                         else {
                             form_values.fields[input_name] = null;
+                            form_values.metadata[input_name] = null;
                         }
                         resolve();
                     }
@@ -3168,9 +3126,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             }
             Promise.all(promises)
                 .then(function () {
+                // On supprime les metadonnées vides du form
+                for (const n in form_values.metadata) {
+                    if (form_values.metadata[n] === null) {
+                        delete form_values.metadata[n];
+                    }
+                }
                 // On écrit enfin le formulaire !
                 helpers_5.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
+                    SyncManager_2.SyncManager.add(name, form_values);
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
                         interface_2.PageManager.popPage();
@@ -3210,6 +3175,24 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function loadFormPage(base, current_form, edition_mode) {
         base.innerHTML = "";
+        if (!edition_mode && !user_manager_2.UserManager.logged) {
+            // Si on est en mode création et qu'on est pas connecté
+            base.innerHTML = `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
+                <p class="flow-text red-text text-lighten-1">
+                    Vous devez vous connecter pour saisir une nouvelle entrée.
+                </p>
+                <p class="flow-text">
+                    Connectez-vous dans les paramètres.
+                </p>
+            </div>
+        </div>
+        `;
+            interface_2.PageManager.should_wait = false;
+            return;
+        }
         const base_block = document.createElement('div');
         base_block.classList.add('row', 'container');
         const placeh = document.createElement('form');
@@ -3248,7 +3231,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     initFormSave(current_form_key);
                 }
                 catch (e) {
-                    logger_2.Logger.error(JSON.stringify(e));
+                    logger_3.Logger.error(JSON.stringify(e));
                 }
             }
         });
@@ -3387,7 +3370,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_3.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_2.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -3539,7 +3522,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface"], function (require, exports, helpers_7, form_schema_4, interface_3) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "SyncManager"], function (require, exports, helpers_7, form_schema_4, interface_3, SyncManager_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
@@ -3614,7 +3597,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
                                     }
                                     catch (e) {
                                         console.log("JSON mal formé:", this.result);
-                                        resolve([file, { fields: {}, type: "", location: "" }]);
+                                        resolve([file, { fields: {}, type: "", location: "", owner: "", metadata: {} }]);
                                     }
                                 };
                                 reader.onerror = function (err) {
@@ -3669,6 +3652,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         if (id.match(/\.json$/)) {
             id = id.substring(0, id.length - 5);
         }
+        SyncManager_3.SyncManager.remove(id);
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
@@ -3716,7 +3700,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
     }
     exports.initSavedForm = initSavedForm;
 });
-define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "user_manager"], function (require, exports, helpers_8, form_1, settings_page_1, saved_forms_1, main_4, user_manager_4) {
+define("interface", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "user_manager"], function (require, exports, helpers_8, form_1, settings_page_1, saved_forms_1, main_3, user_manager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -3806,14 +3790,14 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             }
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
-                main_4.SIDENAV_OBJ.close();
+                main_3.SIDENAV_OBJ.close();
             }
-            // On appelle la fonction de création de la page
-            page.callback(base, additionnals);
             this.actual_page = page;
             this._should_wait = page.ask_change;
             // On met le titre de la page dans la barre de navigation
             document.getElementById('nav_title').innerText = force_name || page.name;
+            // On appelle la fonction de création de la page
+            page.callback(base, additionnals);
             this.updateReturnBtn();
         }
         cleanWaitingPages() {
@@ -4622,105 +4606,356 @@ define("helpers", ["require", "exports", "interface"], function (require, export
     }
     exports.askModal = askModal;
 });
-define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_9, logger_3) {
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main"], function (require, exports, helpers_9, user_manager_5, main_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function newModalRecord(button, input, ele) {
-        let recorder = null;
-        const modal = helpers_9.getModal();
-        const instance = helpers_9.initModal({}, helpers_9.getModalPreloader("Chargement", ''));
-        instance.open();
-        let audioContent = null;
-        let blobSize = 0;
-        modal.innerHTML = `
-    <div class="modal-content">
-        <h5 style="margin-top: 0;">${ele.label}</h5>
-        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
-        <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
-        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
-        <div class=clearb></div>
-        <div id="__media_record_player" class="modal-record-audio-player">${input.value ? `
-            <figure>
-                <figcaption>Enregistrement</figcaption>
-                <audio controls src="${input.value}"></audio>
-            </figure>
-        ` : ''}</div>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" class="btn-flat green-text right ${input.value ? "" : "hide"}" id="__media_record_save">Sauvegarder</a>
-        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Annuler</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-        const btn_start = document.getElementById('__media_record_record');
-        const btn_stop = document.getElementById('__media_record_stop');
-        const btn_confirm = document.getElementById('__media_record_save');
-        const btn_cancel = document.getElementById('__media_record_cancel');
-        const player = document.getElementById('__media_record_player');
-        //add events to those 2 buttons
-        btn_start.addEventListener("click", startRecording);
-        btn_stop.addEventListener("click", stopRecording);
-        btn_confirm.onclick = function () {
-            if (audioContent) {
-                input.value = audioContent;
-                input.dataset.duration = ((blobSize / 256000) * 8).toString();
-                // Met à jour le bouton
-                const duration = (blobSize / 256000) * 8;
-                button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
-                button.classList.remove('blue');
-                button.classList.add('green');
-            }
-            instance.close();
-            // Clean le modal et donc les variables associées
-            modal.innerHTML = "";
-        };
-        btn_cancel.onclick = function () {
-            instance.close();
-            // Clean le modal et donc les variables associées
-            modal.innerHTML = "";
-        };
-        function startRecording() {
-            btn_start.classList.add('hide');
-            player.innerHTML = `<p class='flow-text center'>
-                Initialisation...
-            </p>`;
-            // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
-            recorder = new MicRecorder({
-                bitRate: 256
-            });
-            recorder.start().then(function () {
-                player.innerHTML = `<p class='flow-text center'>
-                <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
-                Enregistrement en cours
-            </p>`;
-                btn_stop.classList.remove('hide');
-            }).catch((e) => {
-                logger_3.Logger.error("Impossible de lancer l'écoute.", e);
-                player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
-            });
+    /**
+     * Type à préciser dans le JSON, clé "type"
+     * Le type à préciser est la chaîne de caractères
+     */
+    var FormEntityType;
+    (function (FormEntityType) {
+        FormEntityType["integer"] = "integer";
+        FormEntityType["float"] = "float";
+        FormEntityType["select"] = "select";
+        FormEntityType["string"] = "string";
+        FormEntityType["bigstring"] = "textarea";
+        FormEntityType["checkbox"] = "checkbox";
+        FormEntityType["file"] = "file";
+        FormEntityType["slider"] = "slider";
+        FormEntityType["datetime"] = "datetime";
+        FormEntityType["divider"] = "divider";
+        FormEntityType["audio"] = "audio";
+    })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
+    // Clé du JSON à charger automatiquement
+    exports.default_form_name = "cincle_plongeur";
+    // Classe contenant le formulaire JSON chargé et parsé
+    exports.Forms = new class {
+        constructor() {
+            this.form_ready = false;
+            this.waiting_callee = [];
+            this.current = null;
+            this._current_key = null;
+            this.FORM_LOCATION = 'loaded_forms.json';
         }
-        function stopRecording() {
-            // Once you are done singing your best song, stop and get the mp3.
-            btn_stop.classList.add('hide');
-            player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
-            recorder
-                .stop()
-                .getMp3().then(([buffer, blob]) => {
-                blobSize = blob.size;
-                helpers_9.blobToBase64(blob).then(function (base64) {
-                    audioContent = base64;
-                    btn_confirm.classList.remove('hide');
-                    player.innerHTML = `<figure>
-                        <figcaption>Enregistrement</figcaption>
-                        <audio controls src="${base64}"></audio>
-                    </figure>`;
-                    btn_start.classList.remove('hide');
+        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
+        // La clé du formulaire par défaut est contenu dans "default_form_name"
+        init() {
+            const loadJSONInObject = (json, save = false) => {
+                // Le JSON est reçu, on l'enregistre dans available_forms
+                this.available_forms = json;
+                // On met le form à ready
+                this.form_ready = true;
+                // On enregistre le formulaire par défaut (si la clé définie existe)
+                if (exports.default_form_name in this.available_forms) {
+                    this.current = this.available_forms[exports.default_form_name];
+                    this._current_key = exports.default_form_name;
+                }
+                else {
+                    this.current = { name: null, fields: [], locations: [] };
+                }
+                // On sauvegarde les formulaires dans loaded_forms.json
+                // uniquement si demandé
+                if (save) {
+                    helpers_9.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+                }
+                // On exécute les fonctions en attente
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func(this.available_forms, this.current);
+                }
+            };
+            const readStandardForm = () => {
+                // On vérifie si le fichier loaded_forms.json existe
+                helpers_9.readFile(this.FORM_LOCATION)
+                    .then((string) => {
+                    loadJSONInObject(JSON.parse(string));
+                })
+                    .catch(() => {
+                    // Il n'existe pas, on doit le charger depuis les sources de l'application
+                    $.get('/assets/form.json', {}, (json) => {
+                        loadJSONInObject(json, true);
+                    }, 'json')
+                        .fail(function (error) {
+                        // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
+                        // @ts-ignore
+                        helpers_9.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                            .then(string => {
+                            loadJSONInObject(JSON.parse(string));
+                        })
+                            .catch((err) => {
+                            // @ts-ignore
+                            M.toast({ html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json' });
+                        });
+                    });
                 });
-            }).catch((e) => {
-                M.toast({ html: 'Impossible de lire votre enregistrement' });
-                logger_3.Logger.error("Enregistrement échoué:", e.message);
+            };
+            const init_text = document.getElementById('__init_text_center');
+            if (init_text) {
+                init_text.innerText = "Mise à jour des formulaires";
+            }
+            // @ts-ignore
+            if (main_4.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_5.UserManager.logged) {
+                // On tente d'actualiser les formulaires disponibles
+                fetch(main_4.API_URL + "forms/available.json?access_token=" + user_manager_5.UserManager.token)
+                    .then(response => response.json())
+                    .then(json => {
+                    if (json.error_code)
+                        throw json.error_code;
+                    loadJSONInObject(json, true);
+                })
+                    .catch(error => {
+                    // Impossible de charger le JSON depuis le serveur
+                    readStandardForm();
+                });
+            }
+            else {
+                readStandardForm();
+            }
+        }
+        onReady(callback) {
+            if (this.form_ready) {
+                callback(this.available_forms, this.current);
+            }
+            else {
+                this.waiting_callee.push(callback);
+            }
+        }
+        formExists(name) {
+            return name in this.available_forms;
+        }
+        /**
+         * Change le formulaire courant renvoyé par onReady
+         * @param name clé d'accès au formulaire
+         */
+        changeForm(name) {
+            if (this.formExists(name)) {
+                this.current = this.available_forms[name];
+                this._current_key = name;
+            }
+            else {
+                throw new Error("Form does not exists");
+            }
+        }
+        /**
+         * Renvoie un formulaire, sans modifier le courant
+         * @param name clé d'accès au formulaire
+         */
+        getForm(name) {
+            if (this.formExists(name)) {
+                return this.available_forms[name];
+            }
+            else {
+                throw new Error("Form does not exists");
+            }
+        }
+        /**
+         * Retourne un tableau de tuples contenant en
+         * première position la clé d'accès au formulaire,
+         * et en seconde position son nom textuel à présenter à l'utilisateur
+         * @returns [string, string][]
+         */
+        getAvailableForms() {
+            const keys = Object.keys(this.available_forms);
+            const tuples = [];
+            for (const key of keys) {
+                tuples.push([key, this.available_forms[key].name]);
+            }
+            return tuples;
+        }
+        get current_key() {
+            return this._current_key;
+        }
+    };
+});
+define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager"], function (require, exports, logger_4, localforage_1, main_5, helpers_10, user_manager_6) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    localforage_1 = __importDefault(localforage_1);
+    const SyncList = new class {
+        init() {
+            localforage_1.default.config({
+                driver: [localforage_1.default.INDEXEDDB,
+                    localforage_1.default.WEBSQL,
+                    localforage_1.default.LOCALSTORAGE],
+                name: 'forms',
+                version: 1.0,
+                storeName: 'keyvaluepairs',
+                description: 'Enregistre les formulaires liés par ID => {type, metadata}'
             });
         }
-    }
-    exports.newModalRecord = newModalRecord;
+        add(id, value) {
+            return localforage_1.default.setItem(id, value);
+        }
+        get(id) {
+            return localforage_1.default.getItem(id);
+        }
+        remove(id) {
+            return localforage_1.default.removeItem(id);
+        }
+        listSaved() {
+            return localforage_1.default.keys();
+        }
+        clear() {
+            return localforage_1.default.clear();
+        }
+    };
+    exports.SyncManager = new class {
+        constructor() {
+            this.in_sync = false;
+            this.list = SyncList;
+        }
+        init() {
+            this.list.init();
+        }
+        add(id, data) {
+            const saveItem = (id, type, metadata) => {
+                return this.list.add(id, { type, metadata });
+            };
+            return this.list.get(id)
+                .then(value => {
+                if (value === null) {
+                    // La valeur n'est pas stockée
+                    return saveItem(id, data.type, data.metadata);
+                }
+                else {
+                    // Vérification si les métadonnées sont différentes
+                    let diff = false;
+                    for (const k in value.metadata) {
+                        if (!(k in data.metadata) || data.metadata[k] !== value.metadata[k]) {
+                            diff = true;
+                            break;
+                        }
+                    }
+                    if (diff) {
+                        return saveItem(id, data.type, data.metadata);
+                    }
+                    else {
+                        return { type: data.type, metadata: data.metadata };
+                    }
+                }
+            });
+        }
+        remove(id) {
+            return this.list.remove(id);
+        }
+        sendForm(id, data) {
+            // Renvoie une promise réussie si l'envoi du formulaire 
+            // et de ses métadonnées a réussi.
+            return new Promise((resolve, reject) => {
+                // Récupération du fichier
+                helpers_10.readFile('forms/' + id + ".json")
+                    .then(content => {
+                    const d = new FormData();
+                    d.append("id", id);
+                    d.append("form", content);
+                    d.append("access_token", user_manager_6.UserManager.token);
+                    return fetch(main_5.API_URL + "forms/send.json", {
+                        method: "POST",
+                        body: d
+                    }).then((response) => {
+                        return response.json();
+                    }).then((json) => {
+                        if (json.error_code)
+                            throw json.error_code;
+                        return json;
+                    });
+                })
+                    .then(json => {
+                    // Le JSON est envoyé !
+                    if (json.status && json.send_metadata) {
+                        // Si on doit envoyer les fichiers en plus
+                        const base_path = "form_data/" + id + "/";
+                        const promises = [];
+                        for (const metadata in data.metadata) {
+                            const file = base_path + data.metadata[metadata];
+                            const basename = data.metadata[metadata];
+                            promises.push(new Promise((res, rej) => {
+                                helpers_10.readFile(file, true)
+                                    .then(base64 => {
+                                    base64 = base64.split(',')[1];
+                                    const d = new FormData();
+                                    d.append("id", id);
+                                    d.append("type", data.type);
+                                    d.append("filename", basename);
+                                    d.append("data", base64);
+                                    d.append("access_token", user_manager_6.UserManager.token);
+                                    return fetch(main_5.API_URL + "forms/metadata_send.json", {
+                                        method: "POST",
+                                        body: d
+                                    }).then((response) => {
+                                        return response.json();
+                                    }).then((json) => {
+                                        if (json.error_code)
+                                            rej(json.error_code);
+                                        res(json);
+                                    });
+                                })
+                                    .catch(res);
+                            }));
+                        }
+                        Promise.all(promises)
+                            .then(values => {
+                            resolve();
+                        })
+                            .catch(err => {
+                            reject();
+                        });
+                    }
+                    else {
+                        resolve();
+                    }
+                })
+                    .catch(reject);
+            });
+        }
+        available() {
+            return this.list.listSaved();
+        }
+        sync() {
+            if (this.in_sync) {
+                return Promise.reject({ code: 1 });
+            }
+            logger_4.Logger.info("Synchronisation démarrée");
+            this.in_sync = true;
+            return new Promise((resolve, reject) => {
+                const promises = [];
+                this.list.listSaved()
+                    .then(entries => {
+                    this.in_sync = false;
+                    for (const id of entries) {
+                        // Pour chaque clé disponible
+                        promises.push(new Promise((res, rej) => {
+                            this.list.get(id)
+                                .then(value => {
+                                return this.sendForm(id, value);
+                            })
+                                .then(sended => {
+                                res();
+                            })
+                                .catch(reject);
+                        }));
+                    }
+                    Promise.all(promises)
+                        .then(v => {
+                        this.list.clear();
+                        this.in_sync = false;
+                        logger_4.Logger.info("Synchronisation réussie");
+                        resolve();
+                    })
+                        .catch(r => {
+                        this.in_sync = false;
+                        logger_4.Logger.info("Synchronisation échouée:", r);
+                        reject();
+                    });
+                })
+                    .catch(reject);
+            });
+        }
+        clear() {
+            this.list.clear();
+        }
+    };
 });
+// Lance main.ts
+require(['main']);

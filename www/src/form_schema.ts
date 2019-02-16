@@ -153,7 +153,6 @@ export const Forms = new class {
 
 
         const init_text = document.getElementById('__init_text_center');
-        console.log('hello23');
 
         if (init_text) {
             init_text.innerText = "Mise à jour des formulaires";
@@ -249,6 +248,8 @@ export interface FormSave {
     type: string;
     fields: FormSaveEntities;
     location: string;
+    owner: string;
+    metadata: {[fieldName: string]: string};
 }
 
 export interface FormSaveEntities {
