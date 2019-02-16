@@ -3431,7 +3431,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers"], function (require, exports, user_manager_3, form_schema_3, helpers_6) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager"], function (require, exports, user_manager_3, form_schema_3, helpers_6, SyncManager_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function headerText() {
@@ -3519,10 +3519,17 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 form_schema_3.Forms.changeForm(value);
             }
         });
+        const syncbtn = document.createElement('button');
+        syncbtn.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
+        syncbtn.innerHTML = "Synchroniser";
+        syncbtn.onclick = function () {
+            SyncManager_3.SyncManager.sync();
+        };
+        container.appendChild(syncbtn);
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "SyncManager"], function (require, exports, helpers_7, form_schema_4, interface_3, SyncManager_3) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "interface", "SyncManager"], function (require, exports, helpers_7, form_schema_4, interface_3, SyncManager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
@@ -3652,7 +3659,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "interfac
         if (id.match(/\.json$/)) {
             id = id.substring(0, id.length - 5);
         }
-        SyncManager_3.SyncManager.remove(id);
+        SyncManager_4.SyncManager.remove(id);
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
@@ -4159,6 +4166,35 @@ define("helpers", ["require", "exports", "interface"], function (require, export
         });
     }
     exports.readFile = readFile;
+    function readFileFromEntry(fileEntry, asBase64 = false) {
+        return new Promise(function (resolve, reject) {
+            fileEntry.file(function (file) {
+                const reader = new FileReader();
+                reader.onloadend = function (e) {
+                    resolve(this.result);
+                };
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
+            }, reject);
+        });
+    }
+    exports.readFileFromEntry = readFileFromEntry;
+    /**
+     * Version Promise de getDir.
+     * Voir getDir().
+     * @param dirName string Nom du répertoire
+     * @return Promise<DirectoryEntry>
+     */
+    function getDirP(dirName) {
+        return new Promise((resolve, reject) => {
+            getDir(resolve, dirName, reject);
+        });
+    }
+    exports.getDirP = getDirP;
     /**
      * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
      * Sans dirName, renvoie la racine du système de fichiers.
@@ -4285,6 +4321,17 @@ define("helpers", ["require", "exports", "interface"], function (require, export
         }, path);
     }
     exports.listDir = listDir;
+    function dirEntries(dirEntry) {
+        return new Promise(function (resolve, reject) {
+            const reader = dirEntry.createReader();
+            reader.readEntries(function (entries) {
+                resolve(entries);
+            }, function (err) {
+                reject(err);
+            });
+        });
+    }
+    exports.dirEntries = dirEntries;
     /**
      * Fonction de test.
      * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
@@ -4889,6 +4936,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                                         if (json.error_code)
                                             rej(json.error_code);
                                         res(json);
+                                    }).catch(error => {
+                                        M.toast({ html: "Impossible d'envoyer " + basename + "." });
+                                        rej(error);
                                     });
                                 })
                                     .catch(res);
@@ -4912,28 +4962,111 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         available() {
             return this.list.listSaved();
         }
-        sync() {
+        /**
+         * Obtient tous les fichiers JSON disponibles sur l'appareil
+         */
+        getAllCurrentFiles() {
+            return helpers_10.getDirP('forms')
+                .then(dirEntry => {
+                return helpers_10.dirEntries(dirEntry);
+            })
+                .then(entries => {
+                // On a les différents JSON situés dans le dossier 'forms', désormais,
+                // sous forme de FileEntry
+                const promises = [];
+                // On ajoute chaque entrée
+                for (const entry of entries) {
+                    promises.push(new Promise((resolve, reject) => {
+                        helpers_10.readFileFromEntry(entry)
+                            .then(text => {
+                            const json = JSON.parse(text);
+                            resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
+                        })
+                            .catch(reject);
+                    }));
+                }
+                // On attend que tout soit OK
+                return Promise.all(promises);
+            });
+        }
+        /**
+         * Supprime le cache de sauvegarde et ajoute tous les fichiers JSON disponibles dans celui-ci
+         */
+        addAllFiles() {
+            // On obtient tous les fichiers disponibles
+            return this.getAllCurrentFiles()
+                .then(forms => {
+                // On vide le cache actuel
+                return this.list.clear()
+                    .then(() => {
+                    return forms;
+                });
+            })
+                .then((forms) => {
+                const promises = [];
+                // Pour chaque form dispo, on l'ajoute dans le cache à sauvegarder
+                for (const form of forms) {
+                    promises.push(this.list.add(form[0], form[1]));
+                }
+                return Promise.all(promises)
+                    .then(res => {
+                    return;
+                });
+            });
+        }
+        sync(force_all = false, clear_cache = false) {
             if (this.in_sync) {
                 return Promise.reject({ code: 1 });
             }
-            logger_4.Logger.info("Synchronisation démarrée");
+            M.toast({ html: "Synchronisation démarrée" });
             this.in_sync = true;
+            let data_cache = {};
+            let use_cache = false;
             return new Promise((resolve, reject) => {
                 const promises = [];
-                this.list.listSaved()
+                let entries_promise;
+                if (force_all) {
+                    if (clear_cache) {
+                        entries_promise = this.addAllFiles().then(() => {
+                            return this.list.listSaved();
+                        });
+                    }
+                    else {
+                        use_cache = true;
+                        entries_promise = this.getAllCurrentFiles().then((forms) => {
+                            // Ne récupère que les ID (en première position du tuple)
+                            // On sauvegarde le SList qui sera injecté
+                            forms.forEach(e => { data_cache[e[0]] = e[1]; });
+                            return forms.map(e => e[0]);
+                        });
+                    }
+                }
+                else {
+                    entries_promise = this.list.listSaved();
+                }
+                // Utilisé pour soit lire depuis le cache, soit lire depuis this.list
+                const id_getter = (id) => {
+                    if (use_cache) {
+                        return Promise.resolve(data_cache[id]);
+                    }
+                    else {
+                        return this.list.get(id);
+                    }
+                };
+                entries_promise
                     .then(entries => {
                     this.in_sync = false;
                     for (const id of entries) {
                         // Pour chaque clé disponible
                         promises.push(new Promise((res, rej) => {
-                            this.list.get(id)
+                            id_getter(id)
                                 .then(value => {
                                 return this.sendForm(id, value);
                             })
                                 .then(sended => {
                                 res();
                             })
-                                .catch(reject);
+                                .catch(rej);
                         }));
                     }
                     Promise.all(promises)
@@ -4941,15 +5074,22 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         this.list.clear();
                         this.in_sync = false;
                         logger_4.Logger.info("Synchronisation réussie");
+                        M.toast({ html: "Synchronisation réussie" });
                         resolve();
                     })
                         .catch(r => {
                         this.in_sync = false;
                         logger_4.Logger.info("Synchronisation échouée:", r);
+                        M.toast({ html: "Synchronisation échouée" });
                         reject();
                     });
                 })
-                    .catch(reject);
+                    .catch(r => {
+                    this.in_sync = false;
+                    logger_4.Logger.info("Synchronisation échouée:", r);
+                    M.toast({ html: "Synchronisation échouée" });
+                    reject();
+                });
             });
         }
         clear() {

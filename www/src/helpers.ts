@@ -225,6 +225,37 @@ export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLD
     });
 }
 
+export function readFileFromEntry(fileEntry, asBase64 = false) : Promise<string> {
+    return new Promise(function(resolve, reject) {
+        fileEntry.file(function (file) {
+            const reader = new FileReader();
+    
+            reader.onloadend = function (e) {
+                resolve(this.result as string);
+            };
+    
+            if (asBase64) {
+                reader.readAsDataURL(file);
+            }
+            else {
+                reader.readAsText(file);
+            }
+        }, reject);
+    });
+}
+
+/**
+ * Version Promise de getDir.
+ * Voir getDir().
+ * @param dirName string Nom du répertoire
+ * @return Promise<DirectoryEntry>
+ */
+export function getDirP(dirName: string) : Promise<any> {
+    return new Promise((resolve, reject) => {
+        getDir(resolve, dirName, reject);
+    });
+}
+
 /**
  * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
  * Sans dirName, renvoie la racine du système de fichiers.
@@ -359,6 +390,20 @@ export function listDir(path: string = "") : void {
             }
         );
     }, path);
+}
+
+export function dirEntries(dirEntry) : Promise<any> {
+    return new Promise(function(resolve, reject) {
+        const reader = dirEntry.createReader();
+        reader.readEntries(
+            function (entries) {
+                resolve(entries);
+            },
+            function (err) {
+                reject(err);
+            }
+        );
+    });
 }
 
 /**

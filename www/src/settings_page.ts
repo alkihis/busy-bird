@@ -1,6 +1,7 @@
 import { UserManager, loginUser } from "./user_manager";
 import { Forms } from "./form_schema";
 import { askModal } from "./helpers";
+import { SyncManager } from "./SyncManager";
 
 function headerText() : string {
     return `${UserManager.logged ? 
@@ -104,4 +105,12 @@ export function initSettingsPage(base: HTMLElement) {
             Forms.changeForm(value);
         }
     });
+
+    const syncbtn = document.createElement('button');
+    syncbtn.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
+    syncbtn.innerHTML = "Synchroniser";
+    syncbtn.onclick = function() {
+        SyncManager.sync();
+    }
+    container.appendChild(syncbtn);
 }

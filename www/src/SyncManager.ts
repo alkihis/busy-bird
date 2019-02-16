@@ -2,7 +2,7 @@ import { FormSave } from "./form_schema";
 import { Logger } from "./logger";
 import localforage from 'localforage';
 import { API_URL } from "./main";
-import { readFile } from "./helpers";
+import { readFile, getDir, getDirP, dirEntries, readFileFromEntry } from "./helpers";
 import { UserManager } from "./user_manager";
 
 const SyncList = new class {
@@ -138,7 +138,10 @@ export const SyncManager = new class {
                                             if (json.error_code) rej(json.error_code);
                     
                                             res(json);
-                                        });
+                                        }).catch(error => {
+                                            M.toast({html: "Impossible d'envoyer " + basename + "."});
+                                            rej(error);
+                                        })
                                     })
                                     .catch(res);
                             }))
@@ -164,33 +167,124 @@ export const SyncManager = new class {
         return this.list.listSaved();
     }
 
-    public sync() : Promise<any> {
+    /**
+     * Obtient tous les fichiers JSON disponibles sur l'appareil
+     */
+    protected getAllCurrentFiles() : Promise<[string, SList][]> {
+        return getDirP('forms')
+            .then(dirEntry => {
+                return dirEntries(dirEntry);
+            })
+            .then(entries => {
+                // On a les différents JSON situés dans le dossier 'forms', désormais,
+                // sous forme de FileEntry
+                const promises: Promise<[string, SList]>[] = [];
+
+                // On ajoute chaque entrée
+                for (const entry of entries) {
+                    promises.push(new Promise((resolve, reject) => {
+                        readFileFromEntry(entry)
+                            .then(text => {
+                                const json: FormSave = JSON.parse(text);
+                                resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
+                            })
+                            .catch(reject);
+                    }));
+                }
+
+                // On attend que tout soit OK
+                return Promise.all(promises);
+            });
+    }
+
+    /**
+     * Supprime le cache de sauvegarde et ajoute tous les fichiers JSON disponibles dans celui-ci
+     */
+    protected addAllFiles() : Promise<void> {
+        // On obtient tous les fichiers disponibles
+        return this.getAllCurrentFiles()
+            .then(forms => {
+                // On vide le cache actuel
+                return this.list.clear()
+                    .then(() => {
+                        return forms;
+                    });
+            })
+            .then((forms: [string, SList][]) => {
+                const promises = [];
+
+                // Pour chaque form dispo, on l'ajoute dans le cache à sauvegarder
+                for (const form of forms) {
+                    promises.push(this.list.add(form[0], form[1]));
+                }
+
+                return Promise.all(promises)
+                    .then(res => {
+                        return;
+                    });
+            });
+    }
+
+    public sync(force_all = false, clear_cache = false) : Promise<any> {
         if (this.in_sync) {
             return Promise.reject({code: 1});
         }
 
-        Logger.info("Synchronisation démarrée");
+        M.toast({html: "Synchronisation démarrée"});
 
         this.in_sync = true;
+        let data_cache: any = {};
+        let use_cache = false;
 
         return new Promise((resolve, reject) => {
             const promises = [];
+            let entries_promise: Promise<string[]>;
 
-            this.list.listSaved()
+            if (force_all) {
+                if (clear_cache) {
+                    entries_promise = this.addAllFiles().then(() => {
+                        return this.list.listSaved();
+                    });
+                }
+                else {
+                    use_cache = true;
+                    entries_promise = this.getAllCurrentFiles().then((forms: [string, SList][]) => {
+                        // Ne récupère que les ID (en première position du tuple)
+                        // On sauvegarde le SList qui sera injecté
+                        forms.forEach(e => { data_cache[e[0]] = e[1]; });
+                        return forms.map(e => e[0]);
+                    });
+                }
+            }
+            else {
+                entries_promise = this.list.listSaved();
+            }
+
+            // Utilisé pour soit lire depuis le cache, soit lire depuis this.list
+            const id_getter = (id) => {
+                if (use_cache) {
+                    return Promise.resolve(data_cache[id]);
+                }
+                else {
+                    return this.list.get(id);
+                }
+            };
+
+            entries_promise
                 .then(entries => {
                     this.in_sync = false;
                     
                     for (const id of entries) {
                         // Pour chaque clé disponible
                         promises.push(new Promise((res, rej) => {
-                            this.list.get(id)
+                            id_getter(id)
                                 .then(value => {
                                     return this.sendForm(id, value);
                                 })
                                 .then(sended => {
                                     res();
                                 })
-                                .catch(reject);
+                                .catch(rej);
                         }));
                     }
 
@@ -199,15 +293,22 @@ export const SyncManager = new class {
                             this.list.clear();
                             this.in_sync = false;
                             Logger.info("Synchronisation réussie");
+                            M.toast({html: "Synchronisation réussie"});
                             resolve();
                         })
                         .catch(r => {
                             this.in_sync = false;
                             Logger.info("Synchronisation échouée:", r);
+                            M.toast({html: "Synchronisation échouée"});
                             reject();
                         });
                 })
-                .catch(reject);
+                .catch(r => {
+                    this.in_sync = false;
+                    Logger.info("Synchronisation échouée:", r);
+                    M.toast({html: "Synchronisation échouée"});
+                    reject();
+                });
         });
     }
 
