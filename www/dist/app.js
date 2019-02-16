@@ -3163,7 +3163,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             form_schema_2.Forms.onReady(function (available, current) {
                 if (form_schema_2.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_5.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formualaire à utiliser dans les paramètres.");
+                    base.innerHTML = helpers_5.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
+                    interface_2.PageManager.should_wait = false;
                 }
                 else {
                     loadFormPage(base, current, edition_mode);
@@ -3492,12 +3493,12 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         select.classList.add('material-select');
         container.appendChild(select);
         form_schema_3.Forms.onReady(function () {
-            const available = form_schema_3.Forms.getAvailableForms();
+            const available = [["", "Aucun"], ...form_schema_3.Forms.getAvailableForms()];
             for (const option of available) {
                 const o = document.createElement('option');
                 o.value = option[0];
                 o.innerText = option[1];
-                if (option[0] === form_schema_3.Forms.current_key) {
+                if (option[0] === form_schema_3.Forms.current_key || (option[0] === "" && form_schema_3.Forms.current_key === null)) {
                     o.selected = true;
                 }
                 select.appendChild(o);
@@ -3505,7 +3506,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             M.FormSelect.init(select);
         });
         select.addEventListener('change', function () {
-            const value = select.value;
+            const value = select.value || null;
             if (form_schema_3.Forms.formExists(value)) {
                 form_schema_3.Forms.changeForm(value, true);
             }
@@ -4734,6 +4735,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             this.current = null;
             this._current_key = null;
             this._default_form_key = null;
+            this.DEAD_FORM_SCHEMA = { name: null, fields: [], locations: [] };
             this.FORM_LOCATION = 'loaded_forms.json';
             if (localStorage.getItem('default_form_key')) {
                 this._default_form_key = localStorage.getItem('default_form_key');
@@ -4756,7 +4758,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                     this._current_key = this._default_form_key;
                 }
                 else {
-                    this.current = { name: null, fields: [], locations: [] };
+                    this.current = this.DEAD_FORM_SCHEMA;
                 }
                 // On sauvegarde les formulaires dans loaded_forms.json
                 // uniquement si demandé
@@ -4828,7 +4830,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             }
         }
         formExists(name) {
-            return name in this.available_forms;
+            return name === null || name in this.available_forms;
         }
         /**
          * Change le formulaire courant renvoyé par onReady
@@ -4836,10 +4838,21 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * @param make_default enregistre le nouveau formulaire comme clé par défaut
          */
         changeForm(name, make_default = false) {
+            if (name === null) {
+                // On supprime le formulaire chargé
+                this.current = this.DEAD_FORM_SCHEMA;
+                this._current_key = null;
+                if (make_default) {
+                    this.default_form_key = null;
+                }
+                return;
+            }
             if (this.formExists(name)) {
                 this.current = this.available_forms[name];
                 this._current_key = name;
-                this.default_form_key = name;
+                if (make_default) {
+                    this.default_form_key = name;
+                }
             }
             else {
                 throw new Error("Form does not exists");
@@ -4879,7 +4892,12 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
         set default_form_key(v) {
             this._default_form_key = v;
-            localStorage.setItem('default_form_key', v);
+            if (v === null) {
+                localStorage.removeItem('default_form_key');
+            }
+            else {
+                localStorage.setItem('default_form_key', v);
+            }
         }
     };
 });
@@ -5042,13 +5060,13 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 const promises = [];
                 // On ajoute chaque entrée
                 for (const entry of entries) {
-                    promises.push(new Promise((resolve, reject) => {
-                        helpers_10.readFileFromEntry(entry)
-                            .then(text => {
-                            const json = JSON.parse(text);
-                            resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
-                        })
-                            .catch(reject);
+                    promises.push(helpers_10.readFileFromEntry(entry)
+                        .then(text => {
+                        const json = JSON.parse(text);
+                        return [
+                            entry.name.split('.json')[0],
+                            { type: json.type, metadata: json.metadata }
+                        ];
                     }));
                 }
                 // On attend que tout soit OK
@@ -5089,7 +5107,6 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             let data_cache = {};
             let use_cache = false;
             return new Promise((resolve, reject) => {
-                const promises = [];
                 let entries_promise;
                 if (force_all) {
                     if (clear_cache) {
@@ -5119,20 +5136,15 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         return this.list.get(id);
                     }
                 };
+                const promises = [];
                 entries_promise
                     .then(entries => {
                     this.in_sync = false;
                     for (const id of entries) {
                         // Pour chaque clé disponible
-                        promises.push(new Promise((res, rej) => {
-                            id_getter(id)
-                                .then(value => {
-                                return this.sendForm(id, value);
-                            })
-                                .then(sended => {
-                                res();
-                            })
-                                .catch(rej);
+                        promises.push(id_getter(id)
+                            .then(value => {
+                            return this.sendForm(id, value);
                         }));
                     }
                     Promise.all(promises)

@@ -180,14 +180,16 @@ export const SyncManager = new class {
 
                 // On ajoute chaque entrée
                 for (const entry of entries) {
-                    promises.push(new Promise((resolve, reject) => {
+                    promises.push(
                         readFileFromEntry(entry)
                             .then(text => {
                                 const json: FormSave = JSON.parse(text);
-                                resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
+                                return [
+                                    entry.name.split('.json')[0], 
+                                    { type: json.type, metadata: json.metadata }
+                                ] as [string, SList];
                             })
-                            .catch(reject);
-                    }));
+                    );
                 }
 
                 // On attend que tout soit OK
@@ -235,7 +237,6 @@ export const SyncManager = new class {
         let use_cache = false;
 
         return new Promise((resolve, reject) => {
-            const promises = [];
             let entries_promise: Promise<string[]>;
 
             if (force_all) {
@@ -268,22 +269,19 @@ export const SyncManager = new class {
                 }
             };
 
+            const promises = [];
             entries_promise
                 .then(entries => {
                     this.in_sync = false;
                     
                     for (const id of entries) {
                         // Pour chaque clé disponible
-                        promises.push(new Promise((res, rej) => {
+                        promises.push(
                             id_getter(id)
                                 .then(value => {
                                     return this.sendForm(id, value);
                                 })
-                                .then(sended => {
-                                    res();
-                                })
-                                .catch(rej);
-                        }));
+                        );
                     }
 
                     Promise.all(promises)

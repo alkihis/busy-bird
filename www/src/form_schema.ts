@@ -89,6 +89,7 @@ export const Forms = new class {
     protected current: Form = null;
     protected _current_key: string = null;
     protected _default_form_key: string = null;
+    protected readonly DEAD_FORM_SCHEMA: Form = {name: null, fields: [], locations: []};
 
     protected readonly FORM_LOCATION: string = 'loaded_forms.json';
 
@@ -117,7 +118,7 @@ export const Forms = new class {
                 this._current_key = this._default_form_key;
             }
             else {
-                this.current = {name: null, fields: [], locations: []};
+                this.current = this.DEAD_FORM_SCHEMA;
             }
 
             // On sauvegarde les formulaires dans loaded_forms.json
@@ -198,7 +199,7 @@ export const Forms = new class {
     }
 
     public formExists(name: string) : boolean {
-        return name in this.available_forms;
+        return name === null || name in this.available_forms;
     }
 
     /**
@@ -207,10 +208,24 @@ export const Forms = new class {
      * @param make_default enregistre le nouveau formulaire comme clé par défaut
      */
     public changeForm(name: string, make_default: boolean = false) : void {
+        if (name === null) {
+            // On supprime le formulaire chargé
+            this.current = this.DEAD_FORM_SCHEMA;
+            this._current_key = null;
+
+            if (make_default) {
+                this.default_form_key = null;
+            }
+            return;
+        }
+
         if (this.formExists(name)) {
             this.current = this.available_forms[name]; 
             this._current_key = name;
-            this.default_form_key = name;
+
+            if (make_default) {
+                this.default_form_key = name;
+            }
         }
         else {
             throw new Error("Form does not exists");
@@ -257,7 +272,13 @@ export const Forms = new class {
 
     public set default_form_key(v: string) {
         this._default_form_key = v;
-        localStorage.setItem('default_form_key', v);
+
+        if (v === null) {
+            localStorage.removeItem('default_form_key');
+        }
+        else {
+            localStorage.setItem('default_form_key', v);
+        }
     }
 };
 

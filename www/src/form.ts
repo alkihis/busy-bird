@@ -1033,8 +1033,9 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
                 // Aucun formulaire n'est chargé !
                 base.innerHTML = displayErrorMessage(
                     "Aucun formulaire n'est chargé.", 
-                    "Sélectionnez le formualaire à utiliser dans les paramètres."
+                    "Sélectionnez le formulaire à utiliser dans les paramètres."
                 );
+                PageManager.should_wait = false;
             }
             else {
                 loadFormPage(base, current, edition_mode);

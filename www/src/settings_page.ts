@@ -82,14 +82,14 @@ export function initSettingsPage(base: HTMLElement) {
     container.appendChild(select);
     
     Forms.onReady(function() {
-        const available = Forms.getAvailableForms();
+        const available = [["", "Aucun"], ...Forms.getAvailableForms()];
 
         for (const option of available) {
             const o = document.createElement('option');
             o.value = option[0];
             o.innerText = option[1];
 
-            if (option[0] === Forms.current_key) {
+            if (option[0] === Forms.current_key || (option[0] === "" && Forms.current_key === null)) {
                 o.selected = true;
             }
             select.appendChild(o);
@@ -99,7 +99,7 @@ export function initSettingsPage(base: HTMLElement) {
     });
 
     select.addEventListener('change', function() {
-        const value = select.value;
+        const value = select.value || null;
 
         if (Forms.formExists(value)) {
             Forms.changeForm(value, true);
