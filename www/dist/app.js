@@ -2261,22 +2261,19 @@ define("main", ["require", "exports", "interface", "helpers", "logger", "audio_l
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
-            href = location.href.split('#')[0].split('?');
+            const tmp = location.href.split('#')[0].split('?');
             // Récupère la partie de l'URL après la query string et avant le #
-            href = href[href.length - 1];
+            href = tmp[tmp.length - 1];
         }
-        if (href && interface_1.PageManager.pageExists(href)) {
-            interface_1.PageManager.changePage(href);
-        }
-        else {
-            interface_1.PageManager.changePage(interface_1.AppPageName.home);
-            // setTimeout(function() {
-            //     prompt().then(function(value) {
-            //         Logger.debug("Valeur affichée:", value);
-            //         M.toast({html: value});
-            //     });
-            // }, 2000);
-        }
+        // Quand les forms sont prêts, on affiche l'app !
+        form_schema_1.Forms.onReady(function () {
+            if (href && interface_1.PageManager.pageExists(href)) {
+                interface_1.PageManager.changePage(href);
+            }
+            else {
+                interface_1.PageManager.changePage(interface_1.AppPageName.home);
+            }
+        });
     }
     function initDebug() {
         window["DEBUG"] = {
@@ -3164,7 +3161,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
         else {
             form_schema_2.Forms.onReady(function (available, current) {
-                loadFormPage(base, current, edition_mode);
+                if (form_schema_2.Forms.current_key === null) {
+                    // Aucun formulaire n'est chargé !
+                    base.innerHTML = helpers_5.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formualaire à utiliser dans les paramètres.");
+                }
+                else {
+                    loadFormPage(base, current, edition_mode);
+                }
             });
         }
     }
@@ -3177,19 +3180,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base.innerHTML = "";
         if (!edition_mode && !user_manager_2.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = `
-        <div class="absolute-container">
-            <div class="absolute-center-container">
-                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
-                <p class="flow-text red-text text-lighten-1">
-                    Vous devez vous connecter pour saisir une nouvelle entrée.
-                </p>
-                <p class="flow-text">
-                    Connectez-vous dans les paramètres.
-                </p>
-            </div>
-        </div>
-        `;
+            base.innerHTML = base.innerHTML = helpers_5.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
             interface_2.PageManager.should_wait = false;
             return;
         }
@@ -3516,16 +3507,45 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         select.addEventListener('change', function () {
             const value = select.value;
             if (form_schema_3.Forms.formExists(value)) {
-                form_schema_3.Forms.changeForm(value);
+                form_schema_3.Forms.changeForm(value, true);
             }
         });
+        container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <h4>Synchronisation</h4>
+    <p class="flow-text">
+        Synchronisez vos entrées de formulaire avec un serveur distant.
+    </p>
+    `);
         const syncbtn = document.createElement('button');
-        syncbtn.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
+        syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn.innerHTML = "Synchroniser";
         syncbtn.onclick = function () {
             SyncManager_3.SyncManager.sync();
         };
         container.appendChild(syncbtn);
+        const syncbtn2 = document.createElement('button');
+        syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
+        syncbtn2.innerHTML = "Tout resynchroniser";
+        syncbtn2.onclick = function () {
+            helpers_6.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+                // L'utilisateur a dit oui
+                SyncManager_3.SyncManager.sync(true);
+            });
+        };
+        container.appendChild(syncbtn2);
+        const syncbtn3 = document.createElement('button');
+        syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
+        syncbtn3.innerHTML = "Vider cache et synchroniser";
+        syncbtn3.onclick = function () {
+            helpers_6.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
+            N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
+            Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+                // L'utilisateur a dit oui
+                SyncManager_3.SyncManager.sync(true, true);
+            });
+        };
+        container.appendChild(syncbtn3);
     }
     exports.initSettingsPage = initSettingsPage;
 });
@@ -4652,10 +4672,42 @@ define("helpers", ["require", "exports", "interface"], function (require, export
         });
     }
     exports.askModal = askModal;
+    function escapeHTML(text) {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    exports.escapeHTML = escapeHTML;
+    function displayErrorMessage(title, message) {
+        return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
+                <p class="flow-text red-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
+    }
+    exports.displayErrorMessage = displayErrorMessage;
 });
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main"], function (require, exports, helpers_9, user_manager_5, main_4) {
+define("fetch_timeout", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    function default_1(url, options, timeout = 7000) {
+        return Promise.race([
+            fetch(url, options),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+        ]);
+    }
+    exports.default = default_1;
+});
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_9, user_manager_5, main_4, fetch_timeout_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    fetch_timeout_1 = __importDefault(fetch_timeout_1);
     /**
      * Type à préciser dans le JSON, clé "type"
      * Le type à préciser est la chaîne de caractères
@@ -4674,8 +4726,6 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
         FormEntityType["divider"] = "divider";
         FormEntityType["audio"] = "audio";
     })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    // Clé du JSON à charger automatiquement
-    exports.default_form_name = "cincle_plongeur";
     // Classe contenant le formulaire JSON chargé et parsé
     exports.Forms = new class {
         constructor() {
@@ -4683,7 +4733,14 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
             this.waiting_callee = [];
             this.current = null;
             this._current_key = null;
+            this._default_form_key = null;
             this.FORM_LOCATION = 'loaded_forms.json';
+            if (localStorage.getItem('default_form_key')) {
+                this._default_form_key = localStorage.getItem('default_form_key');
+            }
+            // Sauvegarde dans le localStorage quoiqu'il arrive
+            this.default_form_key = this._default_form_key;
+            /** call init() after constructor() ! */
         }
         // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
         // La clé du formulaire par défaut est contenu dans "default_form_name"
@@ -4694,9 +4751,9 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
                 // On met le form à ready
                 this.form_ready = true;
                 // On enregistre le formulaire par défaut (si la clé définie existe)
-                if (exports.default_form_name in this.available_forms) {
-                    this.current = this.available_forms[exports.default_form_name];
-                    this._current_key = exports.default_form_name;
+                if (this._default_form_key in this.available_forms) {
+                    this.current = this.available_forms[this._default_form_key];
+                    this._current_key = this._default_form_key;
                 }
                 else {
                     this.current = { name: null, fields: [], locations: [] };
@@ -4744,7 +4801,8 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
             // @ts-ignore
             if (main_4.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_5.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
-                fetch(main_4.API_URL + "forms/available.json?access_token=" + user_manager_5.UserManager.token)
+                // On attend au max 20 secondes
+                fetch_timeout_1.default(main_4.API_URL + "forms/available.json?access_token=" + user_manager_5.UserManager.token, undefined, 20000)
                     .then(response => response.json())
                     .then(json => {
                     if (json.error_code)
@@ -4752,6 +4810,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
                     loadJSONInObject(json, true);
                 })
                     .catch(error => {
+                    console.log("Timeout/fail for forms");
                     // Impossible de charger le JSON depuis le serveur
                     readStandardForm();
                 });
@@ -4774,11 +4833,13 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
         /**
          * Change le formulaire courant renvoyé par onReady
          * @param name clé d'accès au formulaire
+         * @param make_default enregistre le nouveau formulaire comme clé par défaut
          */
-        changeForm(name) {
+        changeForm(name, make_default = false) {
             if (this.formExists(name)) {
                 this.current = this.available_forms[name];
                 this._current_key = name;
+                this.default_form_key = name;
             }
             else {
                 throw new Error("Form does not exists");
@@ -4812,6 +4873,13 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main"],
         }
         get current_key() {
             return this._current_key;
+        }
+        get default_form_key() {
+            return this._default_form_key;
+        }
+        set default_form_key(v) {
+            this._default_form_key = v;
+            localStorage.setItem('default_form_key', v);
         }
     };
 });
@@ -4967,9 +5035,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          */
         getAllCurrentFiles() {
             return helpers_10.getDirP('forms')
-                .then(dirEntry => {
-                return helpers_10.dirEntries(dirEntry);
-            })
+                .then(helpers_10.dirEntries)
                 .then(entries => {
                 // On a les différents JSON situés dans le dossier 'forms', désormais,
                 // sous forme de FileEntry

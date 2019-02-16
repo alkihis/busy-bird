@@ -172,9 +172,7 @@ export const SyncManager = new class {
      */
     protected getAllCurrentFiles() : Promise<[string, SList][]> {
         return getDirP('forms')
-            .then(dirEntry => {
-                return dirEntries(dirEntry);
-            })
+            .then(dirEntries)
             .then(entries => {
                 // On a les différents JSON situés dans le dossier 'forms', désormais,
                 // sous forme de FileEntry

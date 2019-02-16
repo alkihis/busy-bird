@@ -2,6 +2,7 @@ import { readFile, writeFile } from "./helpers";
 import { Logger } from "./logger";
 import { UserManager } from "./user_manager";
 import { API_URL, ENABLE_FORM_DOWNLOAD } from "./main";
+import fetch from './fetch_timeout';
 
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /* 
@@ -77,9 +78,6 @@ export enum FormEntityType {
     audio = "audio"
 }
 
-// Clé du JSON à charger automatiquement
-export const default_form_name: string = "cincle_plongeur";
-
 // Type de fonction à passer en paramètre à onReady(callback)
 type FormCallback = (available?: {[formName: string] : Form}, current?: Form) => any;
 
@@ -90,10 +88,20 @@ export const Forms = new class {
     protected available_forms: {[formName: string] : Form};
     protected current: Form = null;
     protected _current_key: string = null;
+    protected _default_form_key: string = null;
 
     protected readonly FORM_LOCATION: string = 'loaded_forms.json';
 
-    constructor() { /** call init() instead */ }
+    constructor() { 
+        if (localStorage.getItem('default_form_key')) {
+            this._default_form_key = localStorage.getItem('default_form_key');
+        }
+
+        // Sauvegarde dans le localStorage quoiqu'il arrive
+        this.default_form_key = this._default_form_key;
+
+        /** call init() after constructor() ! */ 
+    }
 
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
     // La clé du formulaire par défaut est contenu dans "default_form_name"
@@ -104,9 +112,9 @@ export const Forms = new class {
             // On met le form à ready
             this.form_ready = true;
             // On enregistre le formulaire par défaut (si la clé définie existe)
-            if (default_form_name in this.available_forms) {
-                this.current = this.available_forms[default_form_name]; 
-                this._current_key = default_form_name;
+            if (this._default_form_key in this.available_forms) {
+                this.current = this.available_forms[this._default_form_key]; 
+                this._current_key = this._default_form_key;
             }
             else {
                 this.current = {name: null, fields: [], locations: []};
@@ -161,7 +169,8 @@ export const Forms = new class {
         // @ts-ignore
         if (ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && UserManager.logged) {
             // On tente d'actualiser les formulaires disponibles
-            fetch(API_URL + "forms/available.json?access_token=" + UserManager.token)
+            // On attend au max 20 secondes
+            fetch(API_URL + "forms/available.json?access_token=" + UserManager.token, undefined, 20000)
                 .then(response => response.json())
                 .then(json => {
                     if (json.error_code) throw json.error_code;
@@ -169,6 +178,7 @@ export const Forms = new class {
                     loadJSONInObject(json, true);
                 })
                 .catch(error => {
+                    console.log("Timeout/fail for forms");
                     // Impossible de charger le JSON depuis le serveur
                     readStandardForm();
                 });
@@ -194,11 +204,13 @@ export const Forms = new class {
     /**
      * Change le formulaire courant renvoyé par onReady
      * @param name clé d'accès au formulaire
+     * @param make_default enregistre le nouveau formulaire comme clé par défaut
      */
-    public changeForm(name: string) : void {
+    public changeForm(name: string, make_default: boolean = false) : void {
         if (this.formExists(name)) {
             this.current = this.available_forms[name]; 
             this._current_key = name;
+            this.default_form_key = name;
         }
         else {
             throw new Error("Form does not exists");
@@ -237,6 +249,15 @@ export const Forms = new class {
 
     public get current_key() : string {
         return this._current_key;
+    }
+
+    public get default_form_key() : string {
+        return this._default_form_key;
+    }
+
+    public set default_form_key(v: string) {
+        this._default_form_key = v;
+        localStorage.setItem('default_form_key', v);
     }
 };
 

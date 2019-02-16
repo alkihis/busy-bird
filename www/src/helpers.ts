@@ -756,3 +756,23 @@ export function askModal(title: string, question: string, text_yes = "Oui", text
         document.getElementById('__question_no').addEventListener('click', reject);
     });
 }
+
+export function escapeHTML(text: string) : string {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function displayErrorMessage(title: string, message: string) : string {
+    return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
+                <p class="flow-text red-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
+}

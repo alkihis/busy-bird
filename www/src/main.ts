@@ -90,27 +90,23 @@ function initApp() {
     initModal();
 
     // Check si on est à une page spéciale
-    let href: string | string[] = "";
+    let href: string = "";
 
     if (window.location) {
-        href = location.href.split('#')[0].split('?');
+        const tmp = location.href.split('#')[0].split('?');
         // Récupère la partie de l'URL après la query string et avant le #
-        href = href[href.length - 1];
+        href = tmp[tmp.length - 1];
     }
 
-    if (href && PageManager.pageExists(href)) {
-        PageManager.changePage(href as AppPageName);
-    }
-    else {
-        PageManager.changePage(AppPageName.home);
-
-        // setTimeout(function() {
-        //     prompt().then(function(value) {
-        //         Logger.debug("Valeur affichée:", value);
-        //         M.toast({html: value});
-        //     });
-        // }, 2000);
-    }
+    // Quand les forms sont prêts, on affiche l'app !
+    Forms.onReady(function() {
+        if (href && PageManager.pageExists(href)) {
+            PageManager.changePage(href as AppPageName);
+        }
+        else {
+            PageManager.changePage(AppPageName.home);
+        }
+    });
 }
 
 function initDebug() {

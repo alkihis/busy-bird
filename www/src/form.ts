@@ -1,7 +1,7 @@
 import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
 import { PageManager, AppPageName } from "./interface";
 import { Logger } from "./logger";
@@ -1029,7 +1029,16 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
     }
     else {
         Forms.onReady(function(available, current) {
-            loadFormPage(base, current, edition_mode);
+            if (Forms.current_key === null) {
+                // Aucun formulaire n'est chargé !
+                base.innerHTML = displayErrorMessage(
+                    "Aucun formulaire n'est chargé.", 
+                    "Sélectionnez le formualaire à utiliser dans les paramètres."
+                );
+            }
+            else {
+                loadFormPage(base, current, edition_mode);
+            }
         });
     }
 }
@@ -1043,19 +1052,10 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
 
     if (!edition_mode && !UserManager.logged) {
         // Si on est en mode création et qu'on est pas connecté
-        base.innerHTML = `
-        <div class="absolute-container">
-            <div class="absolute-center-container">
-                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
-                <p class="flow-text red-text text-lighten-1">
-                    Vous devez vous connecter pour saisir une nouvelle entrée.
-                </p>
-                <p class="flow-text">
-                    Connectez-vous dans les paramètres.
-                </p>
-            </div>
-        </div>
-        `;
+        base.innerHTML = base.innerHTML = displayErrorMessage(
+            "Vous devez vous connecter pour saisir une nouvelle entrée.", 
+            "Connectez-vous dans les paramètres."
+        );
         PageManager.should_wait = false;
         return;
     }
