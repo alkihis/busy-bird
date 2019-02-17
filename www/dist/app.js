@@ -2792,7 +2792,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const wrapper = document.createElement('div');
                 wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
                 const label = document.createElement('p');
-                label.classList.add('no-margin-top');
+                label.classList.add('no-margin-top', 'form-audio-label');
                 label.innerText = ele.label;
                 wrapper.appendChild(label);
                 const button = document.createElement('button');
@@ -3522,7 +3522,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn.innerHTML = "Synchroniser";
         syncbtn.onclick = function () {
-            SyncManager_3.SyncManager.sync();
+            SyncManager_3.SyncManager.graphicalSync();
         };
         container.appendChild(syncbtn);
         const syncbtn2 = document.createElement('button');
@@ -3531,7 +3531,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn2.onclick = function () {
             helpers_6.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
                 // L'utilisateur a dit oui
-                SyncManager_3.SyncManager.sync(true);
+                SyncManager_3.SyncManager.graphicalSync(true);
             });
         };
         container.appendChild(syncbtn2);
@@ -3543,7 +3543,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
             Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
                 // L'utilisateur a dit oui
-                SyncManager_3.SyncManager.sync(true, true);
+                SyncManager_3.SyncManager.graphicalSync(true, true);
             });
         };
         container.appendChild(syncbtn3);
@@ -3741,6 +3741,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
     })(AppPageName = exports.AppPageName || (exports.AppPageName = {}));
     exports.PageManager = new class {
         constructor() {
+            this.lock_return_button = false;
             /**
              * Déclaration des pages possibles
              * Chaque clé de AppPages doit être une possibilité de AppPageName
@@ -3822,6 +3823,7 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
             }
             this.actual_page = page;
             this._should_wait = page.ask_change;
+            this.lock_return_button = false;
             // On met le titre de la page dans la barre de navigation
             document.getElementById('nav_title').innerText = force_name || page.name;
             // On appelle la fonction de création de la page
@@ -3898,6 +3900,9 @@ define("interface", ["require", "exports", "helpers", "form", "settings_page", "
          * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
          */
         goBack() {
+            if (this.lock_return_button) {
+                return;
+            }
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
@@ -3994,6 +3999,7 @@ define("helpers", ["require", "exports", "interface"], function (require, export
 <div class="preloader-wrapper small active">
     ${exports.PRELOADER_BASE}
 </div>`;
+    exports.MODAL_PRELOADER_TEXT_ID = "__classic_preloader_text";
     /**
      * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
      */
@@ -4078,7 +4084,7 @@ define("helpers", ["require", "exports", "interface"], function (require, export
     <center>
         ${exports.SMALL_PRELOADER}
     </center>
-    <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
+    <center class="flow-text pre-wrapper" id="${exports.MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px">${text}</center>
     </div>
     ${footer}
     `;
@@ -4668,8 +4674,15 @@ define("helpers", ["require", "exports", "interface"], function (require, export
     `;
         instance.open();
         return new Promise(function (resolve, reject) {
-            document.getElementById('__question_yes').addEventListener('click', resolve);
-            document.getElementById('__question_no').addEventListener('click', reject);
+            interface_4.PageManager.lock_return_button = true;
+            document.getElementById('__question_yes').addEventListener('click', () => {
+                interface_4.PageManager.lock_return_button = false;
+                resolve();
+            });
+            document.getElementById('__question_no').addEventListener('click', () => {
+                interface_4.PageManager.lock_return_button = false;
+                reject();
+            });
         });
     }
     exports.askModal = askModal;
@@ -4979,6 +4992,10 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 // Récupération du fichier
                 helpers_10.readFile('forms/' + id + ".json")
                     .then(content => {
+                    if (!this.in_sync) {
+                        reject();
+                        return;
+                    }
                     const d = new FormData();
                     d.append("id", id);
                     d.append("form", content);
@@ -4995,12 +5012,21 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     });
                 })
                     .then(json => {
+                    if (!this.in_sync) {
+                        reject();
+                        return;
+                    }
                     // Le JSON est envoyé !
                     if (json.status && json.send_metadata) {
                         // Si on doit envoyer les fichiers en plus
                         const base_path = "form_data/" + id + "/";
                         const promises = [];
+                        // json.send_metadata est un tableau de fichiers à envoyer
                         for (const metadata in data.metadata) {
+                            if (json.send_metadata.indexOf(metadata) === -1) {
+                                // La donnée actuelle n'est pas demandée par le serveur
+                                continue;
+                            }
                             const file = base_path + data.metadata[metadata];
                             const basename = data.metadata[metadata];
                             promises.push(new Promise((res, rej) => {
@@ -5098,15 +5124,102 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 });
             });
         }
-        sync(force_all = false, clear_cache = false) {
+        /**
+         * Lance la synchronisation et affiche son état dans un modal
+         * @param force_all Forcer l'envoi de tous les formulaires
+         * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
+         */
+        graphicalSync(force_all = false, clear_cache = false) {
+            const modal = helpers_10.getModal();
+            const instance = helpers_10.initModal({ dismissible: false }, helpers_10.getModalPreloader("Initialisation...", `<div class="modal-footer">
+                    <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Annuler</a>
+                    <div class="clearb"></div>
+                </div>`));
+            instance.open();
+            let cancel_clicked = false;
+            const text = document.getElementById(helpers_10.MODAL_PRELOADER_TEXT_ID);
+            const modal_cancel = document.getElementById('__sync_modal_cancel');
+            modal_cancel.onclick = () => {
+                cancel_clicked = true;
+                this.in_sync = false;
+                if (text)
+                    text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
+            };
+            return this.sync(force_all, clear_cache, text)
+                .then(data => {
+                instance.close();
+                return data;
+            })
+                .catch(reason => {
+                if (cancel_clicked) {
+                    instance.close();
+                }
+                else {
+                    // Modifie le texte du modal
+                    modal.innerHTML = `
+                    <div class="modal-content">
+                        <h5 class="red-text">Impossible de synchroniser</h5>
+                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                        <div class="clearb"></div>
+                    </div>
+                    `;
+                }
+                return Promise.reject(reason);
+            });
+        }
+        /**
+         * Divise le nombre d'éléments à envoyer par requête.
+         * Attention, augmente drastiquement le nombre d'appels de fonctions; et donc l'empreinte mémoire.
+         * @param id_getter Fonction pour récupérer un ID depuis la BDD
+         * @param entries Tableau des IDs à envoyer
+         * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
+         * @param position Position actuelle dans le tableau d'entrées (utilisation interne)
+         */
+        subSyncDivider(id_getter, entries, text_element, position = 0) {
+            const promise_by_step = 10;
+            const subset = entries.slice(position, promise_by_step + position);
+            const promises = [];
+            // Cas d'arrêt
+            if (subset.length === 0) {
+                return Promise.resolve();
+            }
+            let i = 1;
+            for (const id of subset) {
+                // Pour chaque clé disponible
+                promises.push(id_getter(id)
+                    .then(value => {
+                    if (text_element) {
+                        text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i + position}/${entries.length})`;
+                    }
+                    i++;
+                    return this.sendForm(id, value);
+                }));
+            }
+            return Promise.all(promises)
+                .then(() => {
+                return this.subSyncDivider(id_getter, entries, text_element, position + promise_by_step);
+            });
+        }
+        /**
+         * Synchronise les formulaires courants avec la BDD distante
+         * @param force_all Forcer l'envoi de tous les formulaires
+         * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
+         * @param text_element Élément HTML dans lequel écrire l'avancement
+         */
+        sync(force_all = false, clear_cache = false, text_element) {
             if (this.in_sync) {
                 return Promise.reject({ code: 1 });
             }
-            M.toast({ html: "Synchronisation démarrée" });
             this.in_sync = true;
             let data_cache = {};
             let use_cache = false;
             return new Promise((resolve, reject) => {
+                if (text_element) {
+                    text_element.innerText = "Lecture des données à synchroniser";
+                }
                 let entries_promise;
                 if (force_all) {
                     if (clear_cache) {
@@ -5139,19 +5252,14 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 const promises = [];
                 entries_promise
                     .then(entries => {
-                    this.in_sync = false;
-                    for (const id of entries) {
-                        // Pour chaque clé disponible
-                        promises.push(id_getter(id)
-                            .then(value => {
-                            return this.sendForm(id, value);
-                        }));
+                    if (!this.in_sync) {
+                        reject();
+                        return;
                     }
-                    Promise.all(promises)
+                    this.subSyncDivider(id_getter, entries, text_element)
                         .then(v => {
                         this.list.clear();
                         this.in_sync = false;
-                        logger_4.Logger.info("Synchronisation réussie");
                         M.toast({ html: "Synchronisation réussie" });
                         resolve();
                     })
@@ -5169,6 +5277,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     reject();
                 });
             });
+        }
+        cancelSync() {
+            this.in_sync = false;
         }
         clear() {
             this.list.clear();

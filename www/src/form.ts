@@ -594,7 +594,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
 
             const label = document.createElement('p');
-            label.classList.add('no-margin-top');
+            label.classList.add('no-margin-top', 'form-audio-label');
             label.innerText = ele.label;
             wrapper.appendChild(label);
 

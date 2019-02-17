@@ -117,7 +117,7 @@ export function initSettingsPage(base: HTMLElement) {
     syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
     syncbtn.innerHTML = "Synchroniser";
     syncbtn.onclick = function() {
-        SyncManager.sync();
+        SyncManager.graphicalSync();
     }
     container.appendChild(syncbtn);
 
@@ -130,7 +130,7 @@ export function initSettingsPage(base: HTMLElement) {
             "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
         ).then(() => {
             // L'utilisateur a dit oui
-            SyncManager.sync(true);
+            SyncManager.graphicalSync(true);
         });
     }
     container.appendChild(syncbtn2);
@@ -146,7 +146,7 @@ export function initSettingsPage(base: HTMLElement) {
             Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
         ).then(() => {
             // L'utilisateur a dit oui
-            SyncManager.sync(true, true);
+            SyncManager.graphicalSync(true, true);
         });
     }
     container.appendChild(syncbtn3);

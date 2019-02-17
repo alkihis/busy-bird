@@ -21,6 +21,8 @@ export const SMALL_PRELOADER = `
     ${PRELOADER_BASE}
 </div>`;
 
+export const MODAL_PRELOADER_TEXT_ID = "__classic_preloader_text";
+
 /**
  * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
  */
@@ -109,7 +111,7 @@ export function getModalPreloader(text: string, footer: string = "") : string {
     <center>
         ${SMALL_PRELOADER}
     </center>
-    <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
+    <center class="flow-text pre-wrapper" id="${MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px">${text}</center>
     </div>
     ${footer}
     `;
@@ -752,8 +754,16 @@ export function askModal(title: string, question: string, text_yes = "Oui", text
     instance.open();
 
     return new Promise(function(resolve, reject) {
-        document.getElementById('__question_yes').addEventListener('click', resolve);
-        document.getElementById('__question_no').addEventListener('click', reject);
+        PageManager.lock_return_button = true;
+
+        document.getElementById('__question_yes').addEventListener('click', () => {
+            PageManager.lock_return_button = false;
+            resolve();
+        });
+        document.getElementById('__question_no').addEventListener('click', () => {
+            PageManager.lock_return_button = false;
+            reject();
+        });
     });
 }
 

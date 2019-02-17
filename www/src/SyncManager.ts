@@ -2,7 +2,7 @@ import { FormSave } from "./form_schema";
 import { Logger } from "./logger";
 import localforage from 'localforage';
 import { API_URL } from "./main";
-import { readFile, getDir, getDirP, dirEntries, readFileFromEntry } from "./helpers";
+import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID } from "./helpers";
 import { UserManager } from "./user_manager";
 
 const SyncList = new class {
@@ -90,6 +90,11 @@ export const SyncManager = new class {
             // Récupération du fichier
             readFile('forms/' + id + ".json")
                 .then(content => {
+                    if (!this.in_sync) {
+                        reject();
+                        return;
+                    }
+
                     const d = new FormData();
                     d.append("id", id);
                     d.append("form", content);
@@ -107,6 +112,11 @@ export const SyncManager = new class {
                     });
                 })
                 .then(json => {
+                    if (!this.in_sync) {
+                        reject();
+                        return;
+                    }
+
                     // Le JSON est envoyé !
                     if (json.status && json.send_metadata) {
                         // Si on doit envoyer les fichiers en plus
@@ -114,7 +124,14 @@ export const SyncManager = new class {
 
                         const promises: Promise<any>[] = [];
 
+                        // json.send_metadata est un tableau de fichiers à envoyer
+
                         for (const metadata in data.metadata) {
+                            if ((json.send_metadata as string[]).indexOf(metadata) === -1) {
+                                // La donnée actuelle n'est pas demandée par le serveur
+                                continue;
+                            }
+
                             const file = base_path + data.metadata[metadata];
                             const basename = data.metadata[metadata];
 
@@ -225,18 +242,126 @@ export const SyncManager = new class {
             });
     }
 
-    public sync(force_all = false, clear_cache = false) : Promise<any> {
+    /**
+     * Lance la synchronisation et affiche son état dans un modal
+     * @param force_all Forcer l'envoi de tous les formulaires
+     * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
+     */
+    public graphicalSync(force_all = false, clear_cache = false) : Promise<any> {
+        const modal = getModal();
+        const instance = initModal(
+            {dismissible: false}, 
+            getModalPreloader(
+                "Initialisation...", 
+                `<div class="modal-footer">
+                    <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Annuler</a>
+                    <div class="clearb"></div>
+                </div>`
+            )
+        );
+        
+        instance.open();
+
+        let cancel_clicked = false;
+
+        const text = document.getElementById(MODAL_PRELOADER_TEXT_ID);
+        const modal_cancel = document.getElementById('__sync_modal_cancel');
+        modal_cancel.onclick = () => {
+            cancel_clicked = true;
+            this.in_sync = false;
+
+            if (text)
+                text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
+        }
+
+        return this.sync(force_all, clear_cache, text)
+            .then(data => {
+                instance.close();
+
+                return data;
+            })
+            .catch(reason => {
+                if (cancel_clicked) {
+                    instance.close();
+                }
+                else {
+                    // Modifie le texte du modal
+                    modal.innerHTML = `
+                    <div class="modal-content">
+                        <h5 class="red-text">Impossible de synchroniser</h5>
+                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                        <div class="clearb"></div>
+                    </div>
+                    `;
+                }
+
+                return Promise.reject(reason);
+            });
+    }
+
+    /**
+     * Divise le nombre d'éléments à envoyer par requête.
+     * Attention, augmente drastiquement le nombre d'appels de fonctions; et donc l'empreinte mémoire.
+     * @param id_getter Fonction pour récupérer un ID depuis la BDD
+     * @param entries Tableau des IDs à envoyer
+     * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
+     * @param position Position actuelle dans le tableau d'entrées (utilisation interne)
+     */
+    protected subSyncDivider(id_getter: Function, entries: string[], text_element?: HTMLElement, position = 0) : Promise<any> {
+        const promise_by_step = 10;
+        const subset = entries.slice(position, promise_by_step + position);
+        const promises: Promise<any>[] = [];
+
+        // Cas d'arrêt
+        if (subset.length === 0) {
+            return Promise.resolve();
+        }
+
+        let i = 1;
+        for (const id of subset) {
+            // Pour chaque clé disponible
+            promises.push(
+                id_getter(id)
+                    .then(value => {
+                        if (text_element) {
+                            text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i+position}/${entries.length})`;
+                        }
+                        i++;
+
+                        return this.sendForm(id, value);
+                    })
+            );
+        }
+
+        return Promise.all(promises)
+            .then(() => {
+                return this.subSyncDivider(id_getter, entries, text_element, position + promise_by_step);
+            })
+    }
+
+    /**
+     * Synchronise les formulaires courants avec la BDD distante
+     * @param force_all Forcer l'envoi de tous les formulaires
+     * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
+     * @param text_element Élément HTML dans lequel écrire l'avancement
+     */
+    public sync(force_all = false, clear_cache = false, text_element?: HTMLElement) : Promise<any> {
         if (this.in_sync) {
             return Promise.reject({code: 1});
         }
-
-        M.toast({html: "Synchronisation démarrée"});
 
         this.in_sync = true;
         let data_cache: any = {};
         let use_cache = false;
 
         return new Promise((resolve, reject) => {
+            if (text_element) {
+                text_element.innerText = "Lecture des données à synchroniser";
+            }
+
             let entries_promise: Promise<string[]>;
 
             if (force_all) {
@@ -271,24 +396,17 @@ export const SyncManager = new class {
 
             const promises = [];
             entries_promise
-                .then(entries => {
-                    this.in_sync = false;
-                    
-                    for (const id of entries) {
-                        // Pour chaque clé disponible
-                        promises.push(
-                            id_getter(id)
-                                .then(value => {
-                                    return this.sendForm(id, value);
-                                })
-                        );
+                .then(entries => {   
+                    if (!this.in_sync) {
+                        reject();
+                        return;
                     }
 
-                    Promise.all(promises)
+                    this.subSyncDivider(id_getter, entries, text_element)
                         .then(v => {
                             this.list.clear();
                             this.in_sync = false;
-                            Logger.info("Synchronisation réussie");
+
                             M.toast({html: "Synchronisation réussie"});
                             resolve();
                         })
@@ -306,6 +424,10 @@ export const SyncManager = new class {
                     reject();
                 });
         });
+    }
+
+    protected cancelSync() : void {
+        this.in_sync = false;
     }
 
     public clear() {

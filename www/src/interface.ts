@@ -22,6 +22,7 @@ export enum AppPageName {
 export const PageManager = new class {
     protected actual_page: AppPageObj;
     protected _should_wait: boolean;
+    public lock_return_button: boolean = false;
 
     /**
      * Déclaration des pages possibles
@@ -113,6 +114,7 @@ export const PageManager = new class {
 
         this.actual_page = page;
         this._should_wait = page.ask_change;
+        this.lock_return_button = false;
 
         // On met le titre de la page dans la barre de navigation
         document.getElementById('nav_title').innerText = force_name || page.name;
@@ -207,6 +209,10 @@ export const PageManager = new class {
      * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
      */
     public goBack() : void {
+        if (this.lock_return_button) {
+            return;
+        }
+
         const stepBack = () => {
             // Ferme le modal possiblement ouvert
             try { getModalInstance().close(); } catch (e) { }

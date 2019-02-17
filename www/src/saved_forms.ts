@@ -1,7 +1,6 @@
-import { getDir, printObj, formatDate, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise } from "./helpers";
+import { getDir, printObj, formatDate, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./interface";
-import { constructForm, saveForm } from "./form";
 import { SyncManager } from "./SyncManager";
 
 function editAForm(form: FormSave, name: string) {

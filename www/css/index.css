@@ -253,7 +253,7 @@ p.smiley.big-text {
     font-size: 1.1rem;
 }
 
-label {
+label, .form-audio-label {
     font-size: 1rem;
 }
 
