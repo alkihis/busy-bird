@@ -1,4 +1,5 @@
-import { PageManager, AppPageName, modalBackHome } from "./interface";
+import { modalBackHome } from "./interface";
+import { PageManager, AppPageName } from './PageManager';
 import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";

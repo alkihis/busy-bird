@@ -3,7 +3,7 @@ import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from 
 import Artyom from "./arytom/artyom";
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
-import { PageManager, AppPageName } from "./interface";
+import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { UserManager } from "./user_manager";

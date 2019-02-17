@@ -1,5 +1,4 @@
-import { PageManager } from "./interface";
-import { Logger } from "./logger";
+import { PageManager } from "./PageManager";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -735,7 +734,15 @@ export function urlToBlob(str: string) : Promise<Blob> {
     return fetch(str).then(res => res.blob());
 }
 
-export function askModal(title: string, question: string, text_yes = "Oui", text_no = "Non") : Promise<MouseEvent> {
+/**
+ * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
+ * @param title string Titre affiché sur le modal
+ * @param question string Question complète / détails sur l'action qui sera réalisée
+ * @param text_yes string Texte affiché sur le bouton de validation
+ * @param text_no string Texte affiché sur le bouton d'annulation
+ * @returns Promise<void> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
+ */
+export function askModal(title: string, question: string, text_yes = "Oui", text_no = "Non") : Promise<void> {
     const modal = getBottomModal();
     const instance = initBottomModal({ dismissible: false });
 

@@ -106,7 +106,7 @@ export const Forms = new class {
 
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
     // La clé du formulaire par défaut est contenu dans "default_form_name"
-    public init() : void {
+    public init(crash_if_not_form_download = false) : Promise<any> {
         const loadJSONInObject = (json: any, save = false) => {
             // Le JSON est reçu, on l'enregistre dans available_forms
             this.available_forms = json;
@@ -171,7 +171,7 @@ export const Forms = new class {
         if (ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && UserManager.logged) {
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes
-            fetch(API_URL + "forms/available.json?access_token=" + UserManager.token, undefined, 20000)
+            return fetch(API_URL + "forms/available.json?access_token=" + UserManager.token, undefined, 20000)
                 .then(response => response.json())
                 .then(json => {
                     if (json.error_code) throw json.error_code;
@@ -181,10 +181,17 @@ export const Forms = new class {
                 .catch(error => {
                     console.log("Timeout/fail for forms");
                     // Impossible de charger le JSON depuis le serveur
+                    if (crash_if_not_form_download) {
+                        return Promise.reject(error);
+                    }
+
                     readStandardForm();
                 });
         }
         else {
+            if (crash_if_not_form_download) {
+                return Promise.reject();
+            }
             readStandardForm();
         }
     }

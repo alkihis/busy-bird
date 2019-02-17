@@ -4,6 +4,15 @@ import localforage from 'localforage';
 import { API_URL } from "./main";
 import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID } from "./helpers";
 import { UserManager } from "./user_manager";
+import fetch from './fetch_timeout';
+
+// en millisecondes
+const MAX_TIMEOUT_FOR_FORM = 10000;
+const MAX_TIMEOUT_FOR_METADATA = 120000;
+
+// Nombre de formulaires à envoyer en même temps
+// Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
+const PROMISE_BY_SYNC_STEP = 10;
 
 const SyncList = new class {
     public init() {
@@ -103,7 +112,7 @@ export const SyncManager = new class {
                     return fetch(API_URL + "forms/send.json", {
                         method: "POST",
                         body: d
-                    }).then((response) => {
+                    }, MAX_TIMEOUT_FOR_FORM).then((response) => {
                         return response.json();
                     }).then((json) => {
                         if (json.error_code) throw json.error_code;
@@ -149,7 +158,7 @@ export const SyncManager = new class {
                                         return fetch(API_URL + "forms/metadata_send.json", {
                                             method: "POST",
                                             body: d
-                                        }).then((response) => {
+                                        }, MAX_TIMEOUT_FOR_METADATA).then((response) => {
                                             return response.json();
                                         }).then((json) => {
                                             if (json.error_code) rej(json.error_code);
@@ -288,7 +297,7 @@ export const SyncManager = new class {
                     // Modifie le texte du modal
                     modal.innerHTML = `
                     <div class="modal-content">
-                        <h5 class="red-text">Impossible de synchroniser</h5>
+                        <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
                         <p class="flow-text">Veuillez réessayer ultérieurement.</p>
                     </div>
                     <div class="modal-footer">
@@ -311,8 +320,7 @@ export const SyncManager = new class {
      * @param position Position actuelle dans le tableau d'entrées (utilisation interne)
      */
     protected subSyncDivider(id_getter: Function, entries: string[], text_element?: HTMLElement, position = 0) : Promise<any> {
-        const promise_by_step = 10;
-        const subset = entries.slice(position, promise_by_step + position);
+        const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
         const promises: Promise<any>[] = [];
 
         // Cas d'arrêt
@@ -338,7 +346,7 @@ export const SyncManager = new class {
 
         return Promise.all(promises)
             .then(() => {
-                return this.subSyncDivider(id_getter, entries, text_element, position + promise_by_step);
+                return this.subSyncDivider(id_getter, entries, text_element, position + PROMISE_BY_SYNC_STEP);
             })
     }
 

@@ -1,12 +1,29 @@
 import { UserManager, loginUser } from "./user_manager";
 import { Forms } from "./form_schema";
-import { askModal } from "./helpers";
+import { askModal, initModal, getModalPreloader } from "./helpers";
 import { SyncManager } from "./SyncManager";
+import { PageManager } from "./PageManager";
 
 function headerText() : string {
     return `${UserManager.logged ? 
         "Vous êtes connecté-e en tant que <span class='underline'>" + UserManager.username + "</span>" 
         : "Vous n'êtes pas connecté-e"}.`;
+}
+
+function formActualisationModal() : void {
+    const instance = initModal({dismissible: false}, getModalPreloader("Actualisation..."));
+    instance.open();
+
+    Forms.init(true)
+        .then(() => {
+            M.toast({html: "Actualisation terminée."});
+            instance.close();
+            PageManager.reload();
+        })
+        .catch((error) => {
+            M.toast({html: "Impossible d'actualiser les formulaires."});
+            instance.close();
+        })
 }
 
 export function initSettingsPage(base: HTMLElement) {
@@ -108,6 +125,7 @@ export function initSettingsPage(base: HTMLElement) {
 
     container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
     <h4>Synchronisation</h4>
     <p class="flow-text">
         Synchronisez vos entrées de formulaire avec un serveur distant.
@@ -150,4 +168,24 @@ export function initSettingsPage(base: HTMLElement) {
         });
     }
     container.appendChild(syncbtn3);
+
+    /// BOUTON POUR FORCER ACTUALISATION DES FORMULAIRES
+    container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    `);
+
+    const formbtn = document.createElement('button');
+    formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
+    formbtn.innerHTML = "Actualiser schéma formulaires";
+    formbtn.onclick = function() {
+        askModal(
+            "Actualiser les schémas ?", 
+            "L'actualisation des schémas de formulaires récupèrera les schémas à jour depuis le serveur du LBBE."
+        ).then(() => {
+            // L'utilisateur a dit oui
+            formActualisationModal();
+        });
+    }
+    container.appendChild(formbtn);
 }
