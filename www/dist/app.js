@@ -2544,58 +2544,13 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
         }
     };
 });
-define("interface", ["require", "exports", "helpers", "user_manager"], function (require, exports, helpers_2, user_manager_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.APP_NAME = "Busy Bird";
-    function initHomePage(base) {
-        base.innerHTML = "<h2 class='center'>" + exports.APP_NAME + "</h2>" + `
-    <div class="container">
-        <p class="flow-text">
-            Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
-            pour les biologistes.
-            Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
-        </p>
-        <p class="flow-text red-text">
-            ${!user_manager_1.UserManager.logged ? `
-                Vous n'êtes pas connecté dans l'application. Vous ne serez pas en mesure de
-                saisir de nouvelles entrées sans être authentifié. Veuillez vous connecter via
-                les paramètres de l'application.
-            ` : ''}
-        </p>
-    </div>
-    `;
-        // Initialise les champs materialize et le select
-        M.updateTextFields();
-        $('select').formSelect();
-    }
-    exports.initHomePage = initHomePage;
-    function modalBackHome(callbackIfTrue) {
-        const modal = helpers_2.getBottomModal();
-        const instance = helpers_2.initBottomModal();
-        modal.innerHTML = `
-    <div class="modal-content">
-        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
-        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
-        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-        document.getElementById('__modal_back_home').onclick = callbackIfTrue;
-        instance.open();
-    }
-    exports.modalBackHome = modalBackHome;
-});
-define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_3, logger_1) {
+define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_2, logger_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function newModalRecord(button, input, ele) {
         let recorder = null;
-        const modal = helpers_3.getModal();
-        const instance = helpers_3.initModal({}, helpers_3.getModalPreloader("Chargement", ''));
+        const modal = helpers_2.getModal();
+        const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement", ''));
         instance.open();
         let audioContent = null;
         let blobSize = 0;
@@ -2674,7 +2629,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
                 .stop()
                 .getMp3().then(([buffer, blob]) => {
                 blobSize = blob.size;
-                helpers_3.blobToBase64(blob).then(function (base64) {
+                helpers_2.blobToBase64(blob).then(function (base64) {
                     audioContent = base64;
                     btn_confirm.classList.remove('hide');
                     player.innerHTML = `<figure>
@@ -2702,7 +2657,7 @@ define("fetch_timeout", ["require", "exports"], function (require, exports) {
     }
     exports.default = default_1;
 });
-define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout"], function (require, exports, logger_2, localforage_1, main_1, helpers_4, user_manager_2, fetch_timeout_1) {
+define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout"], function (require, exports, logger_2, localforage_1, main_1, helpers_3, user_manager_1, fetch_timeout_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
@@ -2785,7 +2740,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             // et de ses métadonnées a réussi.
             return new Promise((resolve, reject) => {
                 // Récupération du fichier
-                helpers_4.readFile('forms/' + id + ".json")
+                helpers_3.readFile('forms/' + id + ".json")
                     .then(content => {
                     if (!this.in_sync) {
                         reject();
@@ -2794,7 +2749,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     const d = new FormData();
                     d.append("id", id);
                     d.append("form", content);
-                    d.append("access_token", user_manager_2.UserManager.token);
+                    d.append("access_token", user_manager_1.UserManager.token);
                     return fetch_timeout_1.default(main_1.API_URL + "forms/send.json", {
                         method: "POST",
                         body: d
@@ -2825,7 +2780,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                             const file = base_path + data.metadata[metadata];
                             const basename = data.metadata[metadata];
                             promises.push(new Promise((res, rej) => {
-                                helpers_4.readFile(file, true)
+                                helpers_3.readFile(file, true)
                                     .then(base64 => {
                                     base64 = base64.split(',')[1];
                                     const d = new FormData();
@@ -2833,7 +2788,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                                     d.append("type", data.type);
                                     d.append("filename", basename);
                                     d.append("data", base64);
-                                    d.append("access_token", user_manager_2.UserManager.token);
+                                    d.append("access_token", user_manager_1.UserManager.token);
                                     return fetch_timeout_1.default(main_1.API_URL + "forms/metadata_send.json", {
                                         method: "POST",
                                         body: d
@@ -2873,15 +2828,15 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * Obtient tous les fichiers JSON disponibles sur l'appareil
          */
         getAllCurrentFiles() {
-            return helpers_4.getDirP('forms')
-                .then(helpers_4.dirEntries)
+            return helpers_3.getDirP('forms')
+                .then(helpers_3.dirEntries)
                 .then(entries => {
                 // On a les différents JSON situés dans le dossier 'forms', désormais,
                 // sous forme de FileEntry
                 const promises = [];
                 // On ajoute chaque entrée
                 for (const entry of entries) {
-                    promises.push(helpers_4.readFileFromEntry(entry)
+                    promises.push(helpers_3.readFileFromEntry(entry)
                         .then(text => {
                         const json = JSON.parse(text);
                         return [
@@ -2925,14 +2880,14 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
          */
         graphicalSync(force_all = false, clear_cache = false) {
-            const modal = helpers_4.getModal();
-            const instance = helpers_4.initModal({ dismissible: false }, helpers_4.getModalPreloader("Initialisation...", `<div class="modal-footer">
+            const modal = helpers_3.getModal();
+            const instance = helpers_3.initModal({ dismissible: false }, helpers_3.getModalPreloader("Initialisation...", `<div class="modal-footer">
                     <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Annuler</a>
                     <div class="clearb"></div>
                 </div>`));
             instance.open();
             let cancel_clicked = false;
-            const text = document.getElementById(helpers_4.MODAL_PRELOADER_TEXT_ID);
+            const text = document.getElementById(helpers_3.MODAL_PRELOADER_TEXT_ID);
             const modal_cancel = document.getElementById('__sync_modal_cancel');
             modal_cancel.onclick = () => {
                 cancel_clicked = true;
@@ -3080,7 +3035,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         }
     };
 });
-define("main", ["require", "exports", "interface", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager"], function (require, exports, interface_1, PageManager_2, helpers_5, logger_3, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_3, SyncManager_1) {
+define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager"], function (require, exports, PageManager_2, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_2, SyncManager_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -3120,7 +3075,7 @@ define("main", ["require", "exports", "interface", "PageManager", "helpers", "lo
         // Change le répertoire de données
         // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
         // Sinon, si mobile, on passe sur dataDirectory
-        helpers_5.changeDir();
+        helpers_4.changeDir();
         logger_3.Logger.init();
         form_schema_1.Forms.init();
         SyncManager_1.SyncManager.init();
@@ -3155,7 +3110,7 @@ define("main", ["require", "exports", "interface", "PageManager", "helpers", "lo
         };
         exports.app.initialize();
         initDebug();
-        helpers_5.initModal();
+        helpers_4.initModal();
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
@@ -3176,16 +3131,16 @@ define("main", ["require", "exports", "interface", "PageManager", "helpers", "lo
     function initDebug() {
         window["DEBUG"] = {
             PageManager: PageManager_2.PageManager,
-            readFromFile: helpers_5.readFromFile,
-            listDir: helpers_5.listDir,
-            saveDefaultForm: helpers_5.saveDefaultForm,
-            createDir: helpers_5.createDir,
-            getLocation: helpers_5.getLocation,
-            testDistance: helpers_5.testDistance,
-            rmrf: helpers_5.rmrf,
-            rmrfPromise: helpers_5.rmrfPromise,
+            readFromFile: helpers_4.readFromFile,
+            listDir: helpers_4.listDir,
+            saveDefaultForm: helpers_4.saveDefaultForm,
+            createDir: helpers_4.createDir,
+            getLocation: helpers_4.getLocation,
+            testDistance: helpers_4.testDistance,
+            rmrf: helpers_4.rmrf,
+            rmrfPromise: helpers_4.rmrfPromise,
             Logger: logger_3.Logger,
-            modalBackHome: interface_1.modalBackHome,
+            modalBackHome: PageManager_2.modalBackHome,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
                     name: "__test__",
@@ -3193,16 +3148,16 @@ define("main", ["require", "exports", "interface", "PageManager", "helpers", "lo
                     type: form_schema_1.FormEntityType.audio
                 });
             },
-            dateFormatter: helpers_5.dateFormatter,
+            dateFormatter: helpers_4.dateFormatter,
             prompt: vocal_recognition_1.prompt,
-            createNewUser: user_manager_3.createNewUser,
-            UserManager: user_manager_3.UserManager,
+            createNewUser: user_manager_2.createNewUser,
+            UserManager: user_manager_2.UserManager,
             SyncManager: SyncManager_1.SyncManager
         };
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("user_manager", ["require", "exports", "main", "helpers"], function (require, exports, main_2, helpers_6) {
+define("user_manager", ["require", "exports", "main", "helpers"], function (require, exports, main_2, helpers_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.UserManager = new class {
@@ -3277,8 +3232,8 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
         }
     };
     function createNewUser() {
-        const modal = helpers_6.getModal();
-        const instance = helpers_6.initModal({ dismissible: false });
+        const modal = helpers_5.getModal();
+        const instance = helpers_5.initModal({ dismissible: false });
         modal.innerHTML = `
     <div class="modal-content">
         <h5 class="no-margin-top">Créer un utilisateur</h5>
@@ -3348,7 +3303,7 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
             while (child = modal.firstChild) {
                 modal_save.appendChild(child);
             }
-            modal.innerHTML = helpers_6.getModalPreloader("Création de l'utilisateur...");
+            modal.innerHTML = helpers_5.getModalPreloader("Création de l'utilisateur...");
             exports.UserManager.createUser(name, psw, psw_a)
                 .then(function () {
                 M.toast({ html: "Utilisateur créé avec succès." });
@@ -3377,8 +3332,8 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
     exports.createNewUser = createNewUser;
     function loginUser() {
         return new Promise(function (resolve, reject) {
-            const modal = helpers_6.getModal();
-            const instance = helpers_6.initModal({ dismissible: false });
+            const modal = helpers_5.getModal();
+            const instance = helpers_5.initModal({ dismissible: false });
             modal.innerHTML = `
         <div class="modal-content">
             <h5 class="no-margin-top">Connexion</h5>
@@ -3422,7 +3377,7 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
                 while (child = modal.firstChild) {
                     modal_save.appendChild(child);
                 }
-                modal.innerHTML = helpers_6.getModalPreloader("Connexion");
+                modal.innerHTML = helpers_5.getModalPreloader("Connexion");
                 exports.UserManager.login(name, psw)
                     .then(function () {
                     M.toast({ html: "Vous avez été connecté-e avec succès." });
@@ -3476,7 +3431,7 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
             });
         });
  */ 
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_7, user_manager_4, main_3, fetch_timeout_2) {
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_6, user_manager_3, main_3, fetch_timeout_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_2 = __importDefault(fetch_timeout_2);
@@ -3534,7 +3489,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 // On sauvegarde les formulaires dans loaded_forms.json
                 // uniquement si demandé
                 if (save) {
-                    helpers_7.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+                    helpers_6.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
                 }
                 // On exécute les fonctions en attente
                 let func;
@@ -3544,7 +3499,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             };
             const readStandardForm = () => {
                 // On vérifie si le fichier loaded_forms.json existe
-                helpers_7.readFile(this.FORM_LOCATION)
+                helpers_6.readFile(this.FORM_LOCATION)
                     .then((string) => {
                     loadJSONInObject(JSON.parse(string));
                 })
@@ -3556,7 +3511,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                         .fail(function (error) {
                         // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
                         // @ts-ignore
-                        helpers_7.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                        helpers_6.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {
                             loadJSONInObject(JSON.parse(string));
                         })
@@ -3572,10 +3527,10 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 init_text.innerText = "Mise à jour des formulaires";
             }
             // @ts-ignore
-            if (main_3.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_4.UserManager.logged) {
+            if (main_3.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
-                return fetch_timeout_2.default(main_3.API_URL + "forms/available.json?access_token=" + user_manager_4.UserManager.token, undefined, 20000)
+                return fetch_timeout_2.default(main_3.API_URL + "forms/available.json?access_token=" + user_manager_3.UserManager.token, undefined, 20000)
                     .then(response => response.json())
                     .then(json => {
                     if (json.error_code)
@@ -3678,7 +3633,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_8, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_5, SyncManager_2) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_7, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -4124,7 +4079,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_8.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_7.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -4183,7 +4138,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    helpers_8.readFromFile(filled_form.fields[ele.name], function (base64) {
+                    helpers_7.readFromFile(filled_form.fields[ele.name], function (base64) {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
@@ -4242,12 +4197,12 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     function initFormSave(type) {
         console.log("Demarrage initFormSave");
         // Ouverture du modal de verification
-        const modal = helpers_8.getModal();
-        helpers_8.initModal({ dismissible: true });
+        const modal = helpers_7.getModal();
+        helpers_7.initModal({ dismissible: true });
         modal.classList.add('modal-fixed-footer');
-        helpers_8.getModalInstance().open();
+        helpers_7.getModalInstance().open();
         //Ouverture du premiere modal de chargement
-        modal.innerHTML = helpers_8.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
+        modal.innerHTML = helpers_7.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`);
         // creation de la liste d'erreurs
@@ -4341,11 +4296,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
         modal.appendChild(footer);
         document.getElementById("cancel_verif").onclick = function () {
-            helpers_8.getModalInstance().close();
+            helpers_7.getModalInstance().close();
         };
         if (!erreur_critique) {
             document.getElementById("valid_verif").onclick = function () {
-                helpers_8.getModalInstance().close();
+                helpers_7.getModalInstance().close();
                 const current_form_key = form_schema_2.Forms.current_key;
                 saveForm(current_form_key);
             };
@@ -4363,7 +4318,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             fields: {},
             type,
             location: document.getElementById('__location__id').dataset.reallocation,
-            owner: (form_save ? form_save.owner : user_manager_5.UserManager.username),
+            owner: (form_save ? form_save.owner : user_manager_4.UserManager.username),
             metadata: {}
         };
         for (const input of document.getElementsByClassName('input-form-element')) {
@@ -4389,7 +4344,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 form_values.fields[i.name] = i.value;
             }
         }
-        writeImagesThenForm(force_name || helpers_8.generateId(20), form_values, form_save);
+        writeImagesThenForm(force_name || helpers_7.generateId(20), form_values, form_save);
     }
     exports.saveForm = saveForm;
     /**
@@ -4399,7 +4354,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function writeImagesThenForm(name, form_values, older_save) {
         function saveBlobToFile(resolve, reject, filename, input_name, blob) {
-            helpers_8.writeFile('form_data/' + name, filename, blob, function () {
+            helpers_7.writeFile('form_data/' + name, filename, blob, function () {
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
                 form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
@@ -4412,7 +4367,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         const parts = older_save.fields[input_name].split('/');
                         const file_name = parts.pop();
                         const dir_name = parts.join('/');
-                        helpers_8.removeFileByName(dir_name, file_name);
+                        helpers_7.removeFileByName(dir_name, file_name);
                     }
                 }
                 // Résout la promise
@@ -4423,7 +4378,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 reject(error);
             });
         }
-        helpers_8.getDir(function () {
+        helpers_7.getDir(function () {
             // Crée le dossier form_data si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
@@ -4471,8 +4426,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const file = audio.value;
                     const input_name = audio.name;
                     if (file) {
-                        const filename = helpers_8.generateId(20) + '.mp3';
-                        helpers_8.urlToBlob(file).then(function (blob) {
+                        const filename = helpers_7.generateId(20) + '.mp3';
+                        helpers_7.urlToBlob(file).then(function (blob) {
                             saveBlobToFile(resolve, reject, filename, input_name, blob);
                         });
                     }
@@ -4504,7 +4459,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     }
                 }
                 // On écrit enfin le formulaire !
-                helpers_8.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
+                helpers_7.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                     M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                     SyncManager_2.SyncManager.add(name, form_values);
                     if (older_save) {
@@ -4537,7 +4492,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             form_schema_2.Forms.onReady(function (available, current) {
                 if (form_schema_2.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_8.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
+                    base.innerHTML = helpers_7.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
                 }
                 else {
@@ -4553,9 +4508,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function loadFormPage(base, current_form, edition_mode) {
         base.innerHTML = "";
-        if (!edition_mode && !user_manager_5.UserManager.logged) {
+        if (!edition_mode && !user_manager_4.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = base.innerHTML = helpers_8.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
+            base.innerHTML = base.innerHTML = helpers_7.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
             PageManager_3.PageManager.should_wait = false;
             return;
         }
@@ -4614,18 +4569,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Sinon, on ramène à la page précédente
             PageManager_3.PageManager.popPage();
         }
-        helpers_8.getModalInstance().close();
-        helpers_8.getModal().classList.remove('modal-fixed-footer');
+        helpers_7.getModalInstance().close();
+        helpers_7.getModal().classList.remove('modal-fixed-footer');
     }
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_8.getModal();
-        helpers_8.initModal({
+        const modal = helpers_7.getModal();
+        helpers_7.initModal({
             dismissible: false
         });
         // Ouvre le modal et insère un chargeur
-        helpers_8.getModalInstance().open();
-        modal.innerHTML = helpers_8.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        helpers_7.getModalInstance().open();
+        modal.innerHTML = helpers_7.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -4640,7 +4595,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             locationSelector(modal, current_form.locations, false);
         };
         // Cherche la localisation et remplit le modal
-        helpers_8.getLocation(function (coords) {
+        helpers_7.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords);
         }, function () {
@@ -4725,7 +4680,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 lieux_dispo.push({
                     name: lieu.name,
                     label: lieu.label,
-                    distance: helpers_8.calculateDistance(current_location.coords, lieu)
+                    distance: helpers_7.calculateDistance(current_location.coords, lieu)
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -4779,7 +4734,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 loc_input.dataset.reallocation = labels_to_name[input.value];
-                helpers_8.getModalInstance().close();
+                helpers_7.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
@@ -4797,16 +4752,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager"], function (require, exports, user_manager_6, form_schema_3, helpers_9, SyncManager_3, PageManager_4) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager"], function (require, exports, user_manager_5, form_schema_3, helpers_8, SyncManager_3, PageManager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function headerText() {
-        return `${user_manager_6.UserManager.logged ?
-            "Vous êtes connecté-e en tant que <span class='underline'>" + user_manager_6.UserManager.username + "</span>"
+        return `${user_manager_5.UserManager.logged ?
+            "Vous êtes connecté-e en tant que <span class='underline'>" + user_manager_5.UserManager.username + "</span>"
             : "Vous n'êtes pas connecté-e"}.`;
     }
     function formActualisationModal() {
-        const instance = helpers_9.initModal({ dismissible: false }, helpers_9.getModalPreloader("Actualisation..."));
+        const instance = helpers_8.initModal({ dismissible: false }, helpers_8.getModalPreloader("Actualisation..."));
         instance.open();
         form_schema_3.Forms.init(true)
             .then(() => {
@@ -4815,12 +4770,12 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             PageManager_4.PageManager.reload();
         })
             .catch((error) => {
-            M.toast({ html: "Impossible d'actualiser les formulaires." });
+            M.toast({ html: "Impossible d'actualiser les schémas." });
             instance.close();
         });
     }
     function initSettingsPage(base) {
-        const connecte = user_manager_6.UserManager.logged;
+        const connecte = user_manager_5.UserManager.logged;
         base.innerHTML = `
     <div class="container row" id="main_settings_container">
         <h4>Utilisateur</h4>
@@ -4838,7 +4793,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.remove('red');
             button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
             button.onclick = function () {
-                user_manager_6.loginUser().then(function () {
+                user_manager_5.loginUser().then(function () {
                     unlogUserButton();
                     header.innerHTML = headerText();
                 });
@@ -4850,10 +4805,10 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.remove('blue');
             button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
             button.onclick = function () {
-                helpers_9.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+                helpers_8.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
                     .then(function () {
                     // L'utilisateur veut se déconnecter
-                    user_manager_6.UserManager.unlog();
+                    user_manager_5.UserManager.unlog();
                     logUserButton();
                     header.innerHTML = headerText();
                 })
@@ -4918,7 +4873,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn2.innerHTML = "Tout resynchroniser";
         syncbtn2.onclick = function () {
-            helpers_9.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+            helpers_8.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
                 // L'utilisateur a dit oui
                 SyncManager_3.SyncManager.graphicalSync(true);
             });
@@ -4928,7 +4883,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn3.innerHTML = "Vider cache et synchroniser";
         syncbtn3.onclick = function () {
-            helpers_9.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
+            helpers_8.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
             N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
             Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
                 // L'utilisateur a dit oui
@@ -4943,9 +4898,9 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     `);
         const formbtn = document.createElement('button');
         formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
-        formbtn.innerHTML = "Actualiser schéma formulaires";
+        formbtn.innerHTML = "Actualiser schémas formulaire";
         formbtn.onclick = function () {
-            helpers_9.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaires récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
+            helpers_8.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
                 // L'utilisateur a dit oui
                 formActualisationModal();
             });
@@ -4954,7 +4909,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager"], function (require, exports, helpers_10, form_schema_4, PageManager_5, SyncManager_4) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager"], function (require, exports, helpers_9, form_schema_4, PageManager_5, SyncManager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
@@ -4964,7 +4919,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             return;
         }
         const current_form = form_schema_4.Forms.getForm(form.type);
-        const base = helpers_10.getBase();
+        const base = helpers_9.getBase();
         PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     function appendFileEntry(json, ph) {
@@ -4984,7 +4939,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         container.innerHTML = `
         <div class="left">
             ${id} <br> 
-            Modifié le ${helpers_10.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_9.formatDate(new Date(json[0].lastModified), true)}
         </div>`;
         // Ajoute le bouton de suppression
         const delete_btn = document.createElement('a');
@@ -5013,7 +4968,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     function readAllFilesOfDirectory(dirName) {
         const dirreader = new Promise(function (resolve, reject) {
-            helpers_10.getDir(function (dirEntry) {
+            helpers_9.getDir(function (dirEntry) {
                 // Lecture de tous les fichiers du répertoire
                 const reader = dirEntry.createReader();
                 reader.readEntries(function (entries) {
@@ -5055,8 +5010,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return dirreader;
     }
     function modalDeleteForm(id) {
-        const modal = helpers_10.getBottomModal();
-        helpers_10.initBottomModal({}, `<div class="modal-content">
+        const modal = helpers_9.getBottomModal();
+        helpers_9.initBottomModal({}, `<div class="modal-content">
             <h4>Supprimer ce formulaire ?</h4>
             <p>
                 Vous ne pourrez pas le restaurer ultérieurement.
@@ -5067,7 +5022,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
         </div>
         `);
-        const instance = helpers_10.getBottomModalInstance();
+        const instance = helpers_9.getBottomModalInstance();
         document.getElementById('delete_form_modal').onclick = function () {
             deleteForm(id).then(function () {
                 M.toast({ html: "Entrée supprimée." });
@@ -5088,10 +5043,10 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
-                helpers_10.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
-                    helpers_10.getDir(function (dirEntry) {
+                helpers_9.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_9.getDir(function (dirEntry) {
                         dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                            helpers_10.removeFilePromise(fileEntry).then(function () {
+                            helpers_9.removeFilePromise(fileEntry).then(function () {
                                 resolve();
                             }).catch(reject);
                         }, function () {
@@ -5132,9 +5087,50 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "interface"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, main_5, interface_2) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "user_manager"], function (require, exports, helpers_10, form_1, settings_page_1, saved_forms_1, main_5, user_manager_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.APP_NAME = "Busy Bird";
+    function initHomePage(base) {
+        base.innerHTML = "<h2 class='center'>" + exports.APP_NAME + "</h2>" + `
+    <div class="container">
+        <p class="flow-text">
+            Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
+            pour les biologistes.
+            Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
+        </p>
+        <p class="flow-text red-text">
+            ${!user_manager_6.UserManager.logged ? `
+                Vous n'êtes pas connecté dans l'application. Vous ne serez pas en mesure de
+                saisir de nouvelles entrées sans être authentifié. Veuillez vous connecter via
+                les paramètres de l'application.
+            ` : ''}
+        </p>
+    </div>
+    `;
+        // Initialise les champs materialize et le select
+        M.updateTextFields();
+        $('select').formSelect();
+    }
+    exports.initHomePage = initHomePage;
+    function modalBackHome(callbackIfTrue) {
+        const modal = helpers_10.getBottomModal();
+        const instance = helpers_10.initBottomModal();
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
+        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
+        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        document.getElementById('__modal_back_home').onclick = callbackIfTrue;
+        instance.open();
+    }
+    exports.modalBackHome = modalBackHome;
     var AppPageName;
     (function (AppPageName) {
         AppPageName["form"] = "form";
@@ -5168,7 +5164,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 },
                 home: {
                     name: "Accueil",
-                    callback: interface_2.initHomePage,
+                    callback: initHomePage,
                     reload_on_restore: false
                 }
             };
@@ -5221,8 +5217,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 this.pages_holder = [];
             }
             // On écrit le preloader dans la base et on change l'historique
-            const base = helpers_11.getBase();
-            base.innerHTML = helpers_11.getPreloader("Chargement");
+            const base = helpers_10.getBase();
+            base.innerHTML = helpers_10.getPreloader("Chargement");
             if (window.history) {
                 window.history.pushState({}, "", "/?" + pagename);
             }
@@ -5255,7 +5251,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_11.getBase();
+            const actual_base = helpers_10.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -5288,7 +5284,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            helpers_11.getBase().remove();
+            helpers_10.getBase().remove();
             // Met le fragment dans le DOM
             document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
             // Remet le bon titre
@@ -5315,7 +5311,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
-                    helpers_11.getModalInstance().close();
+                    helpers_10.getModalInstance().close();
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
@@ -5326,7 +5322,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             };
             if (this.should_wait) {
-                interface_2.modalBackHome(stepBack);
+                modalBackHome(stepBack);
             }
             else {
                 stepBack();

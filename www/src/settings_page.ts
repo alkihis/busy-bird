@@ -21,7 +21,7 @@ function formActualisationModal() : void {
             PageManager.reload();
         })
         .catch((error) => {
-            M.toast({html: "Impossible d'actualiser les formulaires."});
+            M.toast({html: "Impossible d'actualiser les schémas."});
             instance.close();
         })
 }
@@ -177,11 +177,11 @@ export function initSettingsPage(base: HTMLElement) {
 
     const formbtn = document.createElement('button');
     formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
-    formbtn.innerHTML = "Actualiser schéma formulaires";
+    formbtn.innerHTML = "Actualiser schémas formulaire";
     formbtn.onclick = function() {
         askModal(
             "Actualiser les schémas ?", 
-            "L'actualisation des schémas de formulaires récupèrera les schémas à jour depuis le serveur du LBBE."
+            "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE."
         ).then(() => {
             // L'utilisateur a dit oui
             formActualisationModal();
