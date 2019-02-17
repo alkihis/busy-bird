@@ -1,9 +1,9 @@
-import { getBase, getPreloader, getModalInstance } from "./helpers";
+import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance } from "./helpers";
 import { initFormPage } from "./form";
 import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
 import { SIDENAV_OBJ } from "./main";
-import { initHomePage, modalToHome } from "./home";
+import { initHomePage } from "./home";
 
 interface AppPageObj {
     not_sidenav_close?: boolean;
@@ -213,7 +213,7 @@ export const PageManager = new class {
     /**
      * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
      */
-    public goBack() : void {
+    public goBack(force_asking = false) : void {
         if (this.lock_return_button) {
             return;
         }
@@ -221,6 +221,7 @@ export const PageManager = new class {
         const stepBack = () => {
             // Ferme le modal possiblement ouvert
             try { getModalInstance().close(); } catch (e) { }
+            try { getBottomModalInstance().close(); } catch (e) { }
             
             if (this.isPageWaiting()) {
                 this.popPage();
@@ -230,8 +231,10 @@ export const PageManager = new class {
             }
         };
     
-        if (this.should_wait) {
-            modalToHome(stepBack);
+        if (this.should_wait || force_asking) {
+            askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
+                .then(stepBack)
+                .catch(() => {})
         }
         else {
             stepBack();

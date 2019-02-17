@@ -6,7 +6,6 @@ import { FormEntityType, Forms } from "./form_schema";
 import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
-import { modalToHome } from './home';
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -123,7 +122,6 @@ function initDebug() {
         rmrf,
         rmrfPromise,
         Logger,
-        modalToHome,
         recorder: function() {
             newModalRecord(document.createElement('button'), document.createElement('input'),
             {
