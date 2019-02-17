@@ -1,4 +1,4 @@
-import { PageManager, AppPageName, modalBackHome } from './PageManager';
+import { PageManager, AppPageName } from './PageManager';
 import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
@@ -6,6 +6,7 @@ import { FormEntityType, Forms } from "./form_schema";
 import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
+import { modalToHome } from './home';
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
@@ -110,7 +111,7 @@ function initApp() {
 }
 
 function initDebug() {
-    
+
     window["DEBUG"] = {
         PageManager,
         readFromFile,
@@ -122,7 +123,7 @@ function initDebug() {
         rmrf,
         rmrfPromise,
         Logger,
-        modalBackHome,
+        modalToHome,
         recorder: function() {
             newModalRecord(document.createElement('button'), document.createElement('input'),
             {
