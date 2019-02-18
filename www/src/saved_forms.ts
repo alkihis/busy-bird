@@ -34,6 +34,9 @@ function deleteAll() : Promise<any> {
             return Promise.all(promises);
         })
         .then(() => {
+            return SyncManager.clear();
+        })
+        .then(() => {
             M.toast({html: "Fichiers supprimés avec succès"});
             PageManager.reload();
         })

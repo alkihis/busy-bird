@@ -69,8 +69,8 @@ export const PageManager = new class {
     /**
      * Recharge la page actuelle. (la vide et réexécute le callback configuré dans la AppPageObj)
      */
-    public reload(additionnals?: any) {
-        this.changePage(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals);
+    public reload(additionnals?: any, reset_scroll = false) {
+        this.changePage(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals, reset_scroll);
     }
 
     /**
@@ -78,7 +78,7 @@ export const PageManager = new class {
      * @param AppPageName page 
      * @param delete_paused supprime les pages sauvegardées
      */
-    public changePage(page: AppPageName | AppPageObj, delete_paused: boolean = true, force_name?: string | null, additionnals?: any) : void {
+    public changePage(page: AppPageName | AppPageObj, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : void {
         let pagename: string = "";
         if (typeof page === 'string') {
             // AppPageName
@@ -127,8 +127,10 @@ export const PageManager = new class {
         // On appelle la fonction de création de la page
         page.callback(base, additionnals);
 
-        // Ramène en haut de la page
-        window.scrollTo(0, 0);
+        if (reset_scroll) {
+            // Ramène en haut de la page
+            window.scrollTo(0, 0);
+        }
 
         this.updateReturnBtn();
     }
@@ -203,7 +205,7 @@ export const PageManager = new class {
 
         if (this.actual_page.reload_on_restore) {
             if (typeof this.actual_page.reload_on_restore === 'boolean') {
-                this.changePage(this.actual_page, false);
+                this.changePage(this.actual_page, false, undefined, undefined, false);
             }
             else {
                 this.actual_page.reload_on_restore();

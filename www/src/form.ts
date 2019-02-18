@@ -911,7 +911,7 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
 
                         document.getElementById('__after_save_new').onclick = function() {
                             setTimeout(() => {
-                                PageManager.reload();
+                                PageManager.reload(undefined, true);
                             }, 150);
                         };
                     }

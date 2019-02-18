@@ -2810,7 +2810,6 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             // et de ses métadonnées a réussi.
             return new Promise((resolve, reject) => {
                 // Récupération du fichier
-                logger_2.Logger.info("Lecture de " + id);
                 helpers_3.readFile('forms/' + id + ".json")
                     .then(content => {
                     if (!this.in_sync) {
@@ -3045,7 +3044,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         <div class="modal-content">
                             <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
                             <p class="flow-text">
-                                ${cause}
+                                ${cause}<br>
                                 Veuillez réessayer ultérieurement.
                             </p>
                         </div>
@@ -3065,7 +3064,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     <div class="modal-content">
                         <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
                         <p class="flow-text">
-                            Une erreur inconnue est survenue.
+                            Une erreur inconnue est survenue.<br>
                             Veuillez réessayer ultérieurement.
                         </p>
                     </div>
@@ -3097,15 +3096,15 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             for (const id of subset) {
                 // Pour chaque clé disponible
                 promises.push(id_getter(id)
+                    .catch(error => {
+                    return Promise.reject({ code: "id_getter", error });
+                })
                     .then(value => {
                     if (text_element) {
                         text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i + position}/${entries.length})`;
                     }
                     i++;
                     return this.sendForm(id, value);
-                })
-                    .catch(error => {
-                    return Promise.reject({ code: "id_getter", error });
                 }));
             }
             return Promise.all(promises)
@@ -3192,7 +3191,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             this.in_sync = false;
         }
         clear() {
-            this.list.clear();
+            return this.list.clear();
         }
         remainingToSync() {
             return this.list.getRemainingToSync();
@@ -4540,7 +4539,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         };
                         document.getElementById('__after_save_new').onclick = function () {
                             setTimeout(() => {
-                                PageManager_3.PageManager.reload();
+                                PageManager_3.PageManager.reload(undefined, true);
                             }, 150);
                         };
                     }
@@ -5184,6 +5183,9 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             return Promise.all(promises);
         })
             .then(() => {
+            return SyncManager_4.SyncManager.clear();
+        })
+            .then(() => {
             M.toast({ html: "Fichiers supprimés avec succès" });
             PageManager_5.PageManager.reload();
         });
@@ -5597,15 +5599,15 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         /**
          * Recharge la page actuelle. (la vide et réexécute le callback configuré dans la AppPageObj)
          */
-        reload(additionnals) {
-            this.changePage(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals);
+        reload(additionnals, reset_scroll = false) {
+            this.changePage(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals, reset_scroll);
         }
         /**
          * Change l'affichage et charge la page "page" dans le bloc principal
          * @param AppPageName page
          * @param delete_paused supprime les pages sauvegardées
          */
-        changePage(page, delete_paused = true, force_name, additionnals) {
+        changePage(page, delete_paused = true, force_name, additionnals, reset_scroll = true) {
             let pagename = "";
             if (typeof page === 'string') {
                 // AppPageName
@@ -5645,8 +5647,10 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             document.getElementById('nav_title').innerText = force_name || page.name;
             // On appelle la fonction de création de la page
             page.callback(base, additionnals);
-            // Ramène en haut de la page
-            window.scrollTo(0, 0);
+            if (reset_scroll) {
+                // Ramène en haut de la page
+                window.scrollTo(0, 0);
+            }
             this.updateReturnBtn();
         }
         cleanWaitingPages() {
@@ -5707,7 +5711,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             this._should_wait = last_page.ask;
             if (this.actual_page.reload_on_restore) {
                 if (typeof this.actual_page.reload_on_restore === 'boolean') {
-                    this.changePage(this.actual_page, false);
+                    this.changePage(this.actual_page, false, undefined, undefined, false);
                 }
                 else {
                     this.actual_page.reload_on_restore();

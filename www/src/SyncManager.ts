@@ -101,7 +101,6 @@ export const SyncManager = new class {
         // et de ses métadonnées a réussi.
         return new Promise((resolve, reject) => {
             // Récupération du fichier
-            Logger.info("Lecture de " + id);
             readFile('forms/' + id + ".json")
                 .then(content => {
                     if (!this.in_sync) {
@@ -376,7 +375,7 @@ export const SyncManager = new class {
                         <div class="modal-content">
                             <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
                             <p class="flow-text">
-                                ${cause}
+                                ${cause}<br>
                                 Veuillez réessayer ultérieurement.
                             </p>
                         </div>
@@ -396,7 +395,7 @@ export const SyncManager = new class {
                     <div class="modal-content">
                         <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
                         <p class="flow-text">
-                            Une erreur inconnue est survenue.
+                            Une erreur inconnue est survenue.<br>
                             Veuillez réessayer ultérieurement.
                         </p>
                     </div>
@@ -433,6 +432,9 @@ export const SyncManager = new class {
             // Pour chaque clé disponible
             promises.push(
                 id_getter(id)
+                    .catch(error => {
+                        return Promise.reject({code: "id_getter", error});
+                    })
                     .then(value => {
                         if (text_element) {
                             text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i+position}/${entries.length})`;
@@ -440,9 +442,6 @@ export const SyncManager = new class {
                         i++;
 
                         return this.sendForm(id, value);
-                    })
-                    .catch(error => {
-                        return Promise.reject({code: "id_getter", error});
                     })
             );
         }
@@ -542,8 +541,8 @@ export const SyncManager = new class {
         this.in_sync = false;
     }
 
-    public clear() {
-        this.list.clear();
+    public clear() : Promise<void> {
+        return this.list.clear();
     }
 
     public remainingToSync() : Promise<number> {
