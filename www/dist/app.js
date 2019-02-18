@@ -4472,9 +4472,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             }
         }
         // Éléments FILE (ici, possiblement que des images)
-        for (const e of document.getElementsByClassName('input-image-element')) {
+        for (const e of document.querySelectorAll('.input-image-element[required]')) {
             const filei = e;
-            if (filei.files.length === 0 && filei.required) {
+            if (filei.files.length === 0) {
                 const label = document.querySelector(`input[data-for="${filei.id}"]`);
                 let name = filei.name;
                 if (label) {
@@ -4484,9 +4484,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             }
         }
         // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
-        for (const e of document.getElementsByClassName('input-audio-element')) {
+        for (const e of document.querySelectorAll('.input-audio-element[required]')) {
             const hiddeni = e;
-            if (!hiddeni.value && hiddeni.required) {
+            if (!hiddeni.value) {
                 elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
             }
         }

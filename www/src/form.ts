@@ -828,10 +828,10 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
     }
 
     // Éléments FILE (ici, possiblement que des images)
-    for (const e of document.getElementsByClassName('input-image-element')) {
+    for (const e of document.querySelectorAll('.input-image-element[required]')) {
         const filei = e as HTMLInputElement;
 
-        if (filei.files.length === 0 && filei.required) {
+        if (filei.files.length === 0) {
             const label = document.querySelector(`input[data-for="${filei.id}"]`) as HTMLElement;
             let name = filei.name;
             if (label) {
@@ -843,10 +843,10 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
     }
 
     // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
-    for (const e of document.getElementsByClassName('input-audio-element')) {
+    for (const e of document.querySelectorAll('.input-audio-element[required]')) {
         const hiddeni = e as HTMLInputElement;
 
-        if (!hiddeni.value && hiddeni.required) {
+        if (!hiddeni.value) {
             elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
         }
     }
