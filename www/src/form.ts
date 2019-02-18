@@ -86,8 +86,14 @@ function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement | H
         label.innerText = ele.label;
     }
 
-    htmle.dataset.valid = ele.required ? "0" : "1";
-    htmle.value = ele.default_value as string || "";
+    if (htmle.tagName === "INPUT" && htmle.type === "checkbox") {
+        htmle.dataset.valid = "1";
+        (htmle as HTMLInputElement).checked = ele.default_value as boolean;
+    }
+    else {
+        htmle.dataset.valid = ele.required ? "0" : "1";
+        htmle.value = ele.default_value as string || "";
+    }
 
     return htmle;
 }
@@ -364,7 +370,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
             // Attachage de l'évènement de vérification
-            const str_verif = function() {
+            const str_verif = function(this: HTMLInputElement | HTMLTextAreaElement) {
                 let valid = true;
 
                 let value: string = this.value;
@@ -438,6 +444,10 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             // Création des options
             htmle.multiple = ele.select_options.multiple;
 
+            if (!htmle.multiple) {
+                htmle.dataset.valid = "1";
+            }
+
             for (const opt of ele.select_options.options) {
                 const htmlopt = document.createElement('option');
                 htmlopt.selected = opt.selected;
@@ -445,6 +455,23 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 htmlopt.innerText = opt.label;
 
                 htmle.appendChild(htmlopt);
+            }
+
+            if (htmle.multiple && ele.required) {
+                // On doit mettre un évènement pour vérifier si le select est vide
+                // Attachage de l'évènement de vérification
+                const select_verif = function(this: HTMLInputElement | HTMLTextAreaElement) {
+                    let value: string = this.value;
+
+                    if (value) {
+                        setValid(this);
+                    }
+                    else {
+                        setInvalid(this);
+                    }
+                };
+
+                htmle.addEventListener('change', select_verif);
             }
 
             // const mic_btn = document.createElement('div');
@@ -478,14 +505,13 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             const wrapper = document.createElement('p');
             const label = document.createElement('label');
             const input = document.createElement('input');
+            input.type = "checkbox";
             const span = document.createElement('span');
 
             fillStandardInputValues(input, ele, span as HTMLLabelElement);
 
             wrapper.classList.add('row', 'col', 's12', 'input-checkbox', 'flex-center-aligner');
             input.classList.add('filled-in', 'input-form-element');
-            input.type = "checkbox";
-            input.checked = ele.default_value as boolean;
 
             if (filled_form && ele.name in filled_form.fields) {
                 input.checked = filled_form.fields[ele.name] as boolean;
@@ -512,6 +538,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             input.classList.add('input-form-element');
 
             fillStandardInputValues(input, ele, label);
+
+            // les datetime sont TOUJOURS valides, si ils sont pleins
+            input.dataset.valid = "1";
 
             if (filled_form && ele.name in filled_form.fields) {
                 input.value = filled_form.fields[ele.name] as string;
@@ -648,14 +677,13 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             const wrapper = document.createElement('div');
             const label = document.createElement('label');
             const input = document.createElement('input');
+            input.type = "checkbox";
             const span = document.createElement('span');
 
             fillStandardInputValues(input, ele);
 
             wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch', 'flex-center-aligner');
             input.classList.add('input-form-element', 'input-slider-element');
-            input.type = "checkbox";
-            input.checked = ele.default_value as boolean;
             span.classList.add('lever');
 
             wrapper.appendChild(label);
@@ -695,23 +723,26 @@ function initFormSave(type: string, force_name?: string, form_save?: FormSave): 
     console.log("Demarrage initFormSave")
     // Ouverture du modal de verification
     const modal = getModal();
-    initModal({ dismissible: true });
-    modal.classList.add('modal-fixed-footer');
-    getModalInstance().open();
-    //Ouverture du premiere modal de chargement
-    modal.innerHTML = getModalPreloader(
+    const instance = initModal({ dismissible: true }, getModalPreloader(
         "Validation du formulaire...\nCeci peut prendre quelques secondes",
         `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`
-    );
+    ));
+
+    modal.classList.add('modal-fixed-footer');
+
+    // Ouverture du premiere modal de chargement
+    instance.open();
 
     // creation de la liste d'erreurs
     let list_erreur = document.createElement("div");
     list_erreur.classList.add("modal-content");
+
     let element_erreur = document.createElement("ul");
     element_erreur.classList.add("collection")
     list_erreur.appendChild(element_erreur);
+
     //Ajouter verification avant d'ajouter bouton valider
     let erreur_critique: boolean = false;
 
@@ -733,10 +764,6 @@ function initFormSave(type: string, force_name?: string, form_save?: FormSave): 
             });
         }
 
-        // console.log(name );
-        // console.log(i.type);
-        // console.log(contraintes);
-
         //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
         if (i.required && !i.value) {
             let erreur = document.createElement("li");
@@ -757,34 +784,34 @@ function initFormSave(type: string, force_name?: string, form_save?: FormSave): 
             }
         }
         else if (i.type !== "checkbox") {
-          if (!i.value) {
-              let erreur = document.createElement("li");
-              erreur.classList.add("collection-item");
-              erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
-              element_erreur.appendChild(erreur);
-          }
-          else if (i.type === "number") {
-              if (contraintes) {
-                if ( (Number(i.value) <= Number(contraintes['min']) ) || ( Number(i.value)  >= Number(contraintes['max']) )){
-                  let erreur = document.createElement("li");
-                  erreur.classList.add("collection-item");
-                  erreur.innerHTML = "<b>" + name + "</b> : Intervale non respecté";
-                  element_erreur.appendChild(erreur);
-                }
-                // ajouter precision else if ()
-              }
-          }
-          else if (i.type === "text") {
-            if (contraintes) {
-              if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))){
+            if (!i.value) {
                 let erreur = document.createElement("li");
                 erreur.classList.add("collection-item");
-                erreur.innerHTML = "<b>" + name + "</b> : Taille non respecté";
+                erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
                 element_erreur.appendChild(erreur);
-              } ;
             }
-          }
-          }
+            else if (i.type === "number") {
+                if (contraintes) {
+                    if ((Number(i.value) <= Number(contraintes['min'])) || (Number(i.value) >= Number(contraintes['max']))) {
+                        let erreur = document.createElement("li");
+                        erreur.classList.add("collection-item");
+                        erreur.innerHTML = "<b>" + name + "</b> : Intervale non respecté";
+                        element_erreur.appendChild(erreur);
+                    }
+                    // ajouter precision else if ()
+                }
+            }
+            else if (i.type === "text") {
+                if (contraintes) {
+                    if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))) {
+                        let erreur = document.createElement("li");
+                        erreur.classList.add("collection-item");
+                        erreur.innerHTML = "<b>" + name + "</b> : Taille non respecté";
+                        element_erreur.appendChild(erreur);
+                    };
+                }
+            }
+        }
     }
 
 
@@ -1132,11 +1159,11 @@ function cancelGeoLocModal() : void {
 function callLocationSelector(current_form: Form) : void {
     // Obtient l'élément HTML du modal
     const modal = getModal();
-    initModal({
+    const instance = initModal({
         dismissible: false
     });
     // Ouvre le modal et insère un chargeur
-    getModalInstance().open();
+    instance.open();
     modal.innerHTML = getModalPreloader(
         "Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.",
         `<div class="modal-footer">

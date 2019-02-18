@@ -2707,6 +2707,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         listSaved() {
             return localforage_1.default.keys();
         }
+        getRemainingToSync() {
+            return localforage_1.default.keys().then(keys => keys.length);
+        }
         clear() {
             return localforage_1.default.clear();
         }
@@ -3048,6 +3051,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         clear() {
             this.list.clear();
         }
+        remainingToSync() {
+            return this.list.getRemainingToSync();
+        }
     };
 });
 define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager"], function (require, exports, PageManager_2, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_2, SyncManager_1) {
@@ -3248,6 +3254,7 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
     function createNewUser() {
         const modal = helpers_5.getModal();
         const instance = helpers_5.initModal({ dismissible: false });
+        modal.classList.add('modal-fixed-footer');
         modal.innerHTML = `
     <div class="modal-content">
         <h5 class="no-margin-top">Créer un utilisateur</h5>
@@ -3715,8 +3722,14 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             label.htmlFor = htmle.id;
             label.innerText = ele.label;
         }
-        htmle.dataset.valid = ele.required ? "0" : "1";
-        htmle.value = ele.default_value || "";
+        if (htmle.tagName === "INPUT" && htmle.type === "checkbox") {
+            htmle.dataset.valid = "1";
+            htmle.checked = ele.default_value;
+        }
+        else {
+            htmle.dataset.valid = ele.required ? "0" : "1";
+            htmle.value = ele.default_value || "";
+        }
         return htmle;
     }
     /**
@@ -4012,12 +4025,29 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 fillStandardInputValues(htmle, ele, label);
                 // Création des options
                 htmle.multiple = ele.select_options.multiple;
+                if (!htmle.multiple) {
+                    htmle.dataset.valid = "1";
+                }
                 for (const opt of ele.select_options.options) {
                     const htmlopt = document.createElement('option');
                     htmlopt.selected = opt.selected;
                     htmlopt.value = opt.value;
                     htmlopt.innerText = opt.label;
                     htmle.appendChild(htmlopt);
+                }
+                if (htmle.multiple && ele.required) {
+                    // On doit mettre un évènement pour vérifier si le select est vide
+                    // Attachage de l'évènement de vérification
+                    const select_verif = function () {
+                        let value = this.value;
+                        if (value) {
+                            setValid(this);
+                        }
+                        else {
+                            setInvalid(this);
+                        }
+                    };
+                    htmle.addEventListener('change', select_verif);
                 }
                 // const mic_btn = document.createElement('div');
                 // if (!htmle.multiple) {
@@ -4045,12 +4075,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
+                input.type = "checkbox";
                 const span = document.createElement('span');
                 fillStandardInputValues(input, ele, span);
                 wrapper.classList.add('row', 'col', 's12', 'input-checkbox', 'flex-center-aligner');
                 input.classList.add('filled-in', 'input-form-element');
-                input.type = "checkbox";
-                input.checked = ele.default_value;
                 if (filled_form && ele.name in filled_form.fields) {
                     input.checked = filled_form.fields[ele.name];
                 }
@@ -4070,6 +4099,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 input.type = "datetime-local";
                 input.classList.add('input-form-element');
                 fillStandardInputValues(input, ele, label);
+                // les datetime sont TOUJOURS valides, si ils sont pleins
+                input.dataset.valid = "1";
                 if (filled_form && ele.name in filled_form.fields) {
                     input.value = filled_form.fields[ele.name];
                 }
@@ -4175,12 +4206,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const wrapper = document.createElement('div');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
+                input.type = "checkbox";
                 const span = document.createElement('span');
                 fillStandardInputValues(input, ele);
                 wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch', 'flex-center-aligner');
                 input.classList.add('input-form-element', 'input-slider-element');
-                input.type = "checkbox";
-                input.checked = ele.default_value;
                 span.classList.add('lever');
                 wrapper.appendChild(label);
                 // Texte si not checked
@@ -4212,13 +4242,12 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         console.log("Demarrage initFormSave");
         // Ouverture du modal de verification
         const modal = helpers_7.getModal();
-        helpers_7.initModal({ dismissible: true });
-        modal.classList.add('modal-fixed-footer');
-        helpers_7.getModalInstance().open();
-        //Ouverture du premiere modal de chargement
-        modal.innerHTML = helpers_7.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
+        const instance = helpers_7.initModal({ dismissible: true }, helpers_7.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
-        </div>`);
+        </div>`));
+        modal.classList.add('modal-fixed-footer');
+        // Ouverture du premiere modal de chargement
+        instance.open();
         // creation de la liste d'erreurs
         let list_erreur = document.createElement("div");
         list_erreur.classList.add("modal-content");
@@ -4244,9 +4273,6 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     contraintes[name] = value;
                 });
             }
-            // console.log(name );
-            // console.log(i.type);
-            // console.log(contraintes);
             //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
             if (i.required && !i.value) {
                 let erreur = document.createElement("li");
@@ -4588,11 +4614,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
         const modal = helpers_7.getModal();
-        helpers_7.initModal({
+        const instance = helpers_7.initModal({
             dismissible: false
         });
         // Ouvre le modal et insère un chargeur
-        helpers_7.getModalInstance().open();
+        instance.open();
         modal.innerHTML = helpers_7.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
@@ -5090,7 +5116,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager"], function (require, exports, user_manager_6) {
+define("home", ["require", "exports", "user_manager", "SyncManager"], function (require, exports, user_manager_6, SyncManager_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -5109,13 +5135,49 @@ define("home", ["require", "exports", "user_manager"], function (require, export
                 les paramètres de l'application.
             ` : ''}
         </p>
+        <div id="__home_container"></div>
     </div>
     `;
+        const home_container = document.getElementById('__home_container');
+        function goodConnection() {
+            // @ts-ignore
+            const networkState = navigator.connection.type;
+            // @ts-ignore
+            return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
+        }
+        SyncManager_5.SyncManager.remainingToSync()
+            .then(count => {
+            if (goodConnection()) {
+                if (count > 15) {
+                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${count} entrées).</span><br>
+                        <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`, "Synchronisation");
+                }
+                else if (count > 0) {
+                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">
+                            Vous avez ${count} élément${count > 1 ? 's' : ''} en attente de synchronisation.
+                        </span>`, "Synchronisation");
+                }
+            }
+            else {
+                home_container.innerHTML = createCardPanel(`
+                    <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
+                    <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
+                    <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`);
+            }
+        });
         // Initialise les champs materialize et le select
         M.updateTextFields();
         $('select').formSelect();
     }
     exports.initHomePage = initHomePage;
+    function createCardPanel(html_text, title) {
+        return `
+        <div class="card-panel card-perso">
+            ${title ? `<h6 class="no-margin-top">${title}</h6>` : ''}
+            <p class="flow-text no-margin-top no-margin-bottom">${html_text}</p>
+        </div>
+    `;
+    }
 });
 define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "home"], function (require, exports, helpers_10, form_1, settings_page_1, saved_forms_1, main_5, home_1) {
     "use strict";

@@ -43,6 +43,10 @@ const SyncList = new class {
         return localforage.keys();
     }
 
+    public getRemainingToSync() : Promise<number> {
+        return localforage.keys().then(keys => keys.length);
+    }
+
     public clear() : Promise<void> {
         return localforage.clear();
     }
@@ -440,6 +444,10 @@ export const SyncManager = new class {
 
     public clear() {
         this.list.clear();
+    }
+
+    public remainingToSync() : Promise<number> {
+        return this.list.getRemainingToSync();
     }
 };
 

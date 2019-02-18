@@ -266,3 +266,7 @@ label, .form-audio-label {
     overflow: auto;
     font-size: 0.95rem;
 }
+
+.card-perso {
+    border-radius: 8px;    
+}

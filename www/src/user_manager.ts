@@ -87,6 +87,7 @@ export const UserManager = new class {
 export function createNewUser() : void {
     const modal = getModal();
     const instance = initModal({ dismissible: false });
+    modal.classList.add('modal-fixed-footer');
 
     modal.innerHTML = `
     <div class="modal-content">
