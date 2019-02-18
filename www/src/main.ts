@@ -1,11 +1,16 @@
-import { PageManager, AppPageName, modalBackHome } from "./interface";
+import { PageManager, AppPageName } from './PageManager';
 import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
-import { FormEntityType } from "./form_schema";
+import { FormEntityType, Forms } from "./form_schema";
+import { prompt } from "./vocal_recognition";
+import { createNewUser, UserManager } from "./user_manager";
+import { SyncManager } from "./SyncManager";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
+export const API_URL = "https://projet.alkihis.fr/";
+export const ENABLE_FORM_DOWNLOAD = true;
 
 export const app = {
     // Application Constructor
@@ -44,11 +49,13 @@ function initApp() {
     changeDir();
 
     Logger.init();
+    Forms.init(); 
+    SyncManager.init();
 
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
     permissions.requestPermission(permissions.RECORD_AUDIO, status => {
-        console.log(status);
+        // console.log(status);
     }, e => {console.log(e)});
 
     // Initialise le bouton retour
@@ -83,24 +90,27 @@ function initApp() {
     initModal();
 
     // Check si on est à une page spéciale
-    let href: string | string[] = "";
+    let href: string = "";
 
     if (window.location) {
-        href = location.href.split('#')[0].split('?');
+        const tmp = location.href.split('#')[0].split('?');
         // Récupère la partie de l'URL après la query string et avant le #
-        href = href[href.length - 1];
+        href = tmp[tmp.length - 1];
     }
 
-    if (href && PageManager.pageExists(href)) {
-        PageManager.changePage(href as AppPageName);
-    }
-    else {
-        PageManager.changePage(AppPageName.home);
-    }
+    // Quand les forms sont prêts, on affiche l'app !
+    Forms.onReady(function() {
+        if (href && PageManager.pageExists(href)) {
+            PageManager.changePage(href as AppPageName);
+        }
+        else {
+            PageManager.changePage(AppPageName.home);
+        }
+    });
 }
 
 function initDebug() {
-    
+
     window["DEBUG"] = {
         PageManager,
         readFromFile,
@@ -112,7 +122,6 @@ function initDebug() {
         rmrf,
         rmrfPromise,
         Logger,
-        modalBackHome,
         recorder: function() {
             newModalRecord(document.createElement('button'), document.createElement('input'),
             {
@@ -121,7 +130,11 @@ function initDebug() {
                 type: FormEntityType.audio
             });
         },
-        dateFormatter
+        dateFormatter,
+        prompt,
+        createNewUser,
+        UserManager,
+        SyncManager
     };
 }
 

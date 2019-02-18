@@ -51,6 +51,7 @@
     },
     "cordova-plugin-android-permissions": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+<<<<<<< HEAD
     },
     "cordova-plugin-media-capture": {
       "PACKAGE_NAME": "com.lbbe.busybird"
@@ -59,11 +60,24 @@
   "dependent_plugins": {
     "cordova-plugin-compat": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+=======
+>>>>>>> f2a325942047f1bbd807bf054b85700783bf6dc3
     },
     "es6-promise-plugin": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "phonegap-plugin-media-stream": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-whitelist": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-media-capture": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    }
+  },
+  "dependent_plugins": {
+    "cordova-plugin-compat": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     }
   }

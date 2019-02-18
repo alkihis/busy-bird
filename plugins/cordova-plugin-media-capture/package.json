@@ -30,6 +30,10 @@
     "type": "range"
   },
   "_requiredBy": [
+<<<<<<< HEAD
+=======
+    "#USER",
+>>>>>>> f2a325942047f1bbd807bf054b85700783bf6dc3
     "/"
   ],
   "_resolved": "https://registry.npmjs.org/cordova-plugin-media-capture/-/cordova-plugin-media-capture-1.4.3.tgz",

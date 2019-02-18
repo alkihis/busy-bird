@@ -127,8 +127,45 @@ main {
     text-align: center;
 }
 
+.vertical-center-less {
+    margin-top: calc(32vh - 1.64rem);
+    text-align: center;
+}
+
 .v-bottom {
     vertical-align: bottom;
+}
+
+.rotate-90 {
+    transform: rotate(90deg);
+}
+
+.big-text {
+    font-size: 2rem;
+}
+
+.relative-container {
+    position: relative;
+}
+
+.absolute-container {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+}
+
+.absolute-center-container {
+    text-align: center;
+}
+
+p.smiley.big-text {
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    margin-left: 16px;
+    font-size: 5rem;
 }
 
 .sidenav .background img {
@@ -169,4 +206,63 @@ main {
     height: fit-content;
     line-height: 1.5em;
     padding: 8px 0 !important;
+}
+
+.mic-wrapper {
+    margin-top: 22px;
+    text-align: right;
+}
+
+.mic-wrapper i {
+    vertical-align: sub;
+}
+
+.flex-center-aligner {
+    align-self: center;
+    align-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-checkbox, .input-slider {
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+.underline {
+    text-decoration: underline;
+}
+
+.btn-margins {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.btn-small-margins {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+/* TAILLE DES ELEMENTS */
+.select-wrapper + label {
+    font-size: 1rem !important;
+}
+
+[type="checkbox"] + span:not(.lever) {
+    font-size: 1.1rem;
+}
+
+label, .form-audio-label {
+    font-size: 1rem;
+}
+
+.input-field > label {
+    font-size: 1.2rem;
+}
+/* FIN TAILLE DES ELEMENTS */
+
+.modal .collection-item {
+    overflow: auto;
+    font-size: 0.95rem;
 }

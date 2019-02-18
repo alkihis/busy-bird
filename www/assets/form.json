@@ -33,7 +33,9 @@
             "label": "Numéro de bague",
             "type": "string",
             "placeholder": "Composé de chiffres et de lettres",
-            "required": true
+            "required": true,
+            "remove_whitespaces": true,
+            "allow_voice_control": true
         }, {
             "name": "new",
             "label": "Individu nouveau",
@@ -275,7 +277,9 @@
             "range": {"min": 10, "max": 10},
             "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
             "placeholder": "Composé de 10 chiffres et de lettres",
-            "required": true
+            "required": true,
+            "remove_whitespaces": true,
+            "allow_voice_control": true
         }, {
             "name": "mass",
             "label": "Poids",
@@ -283,7 +287,8 @@
             "range": {"min": 30, "max": 100},
             "placeholder": "Entre 30g et 100g ±0.1g",
             "float_precision": 0.1,
-            "tip_on_invalid": "Unité gramme. 30g min, 100 max, précision 0.1."
+            "tip_on_invalid": "Unité gramme. 30g min, 100 max, précision 0.1.",
+            "allow_voice_control": true
         }, {
             "name": "tarsus",
             "label": "Tarse",
@@ -291,7 +296,8 @@
             "range": {"min": 20, "max": 40},
             "placeholder": "Entre 20mm et 40mm ±0.1mm",
             "float_precision": 0.1,
-            "tip_on_invalid": "Unité mm. 20mm min, 40 max, précision 0.1"
+            "tip_on_invalid": "Unité mm. 20mm min, 40 max, précision 0.1",
+            "allow_voice_control": true
         }, {
             "name": "wing",
             "label": "Aile",
@@ -299,7 +305,8 @@
             "range": {"min": 60, "max": 120},
             "placeholder": "Entre 60mm et 120mm ±0.5mm",
             "float_precision": 0.5,
-            "tip_on_invalid": "Unité mm. 60mm min, 120 max, précision 0.5"
+            "tip_on_invalid": "Unité mm. 60mm min, 120 max, précision 0.5",
+            "allow_voice_control": true
         }, {
             "name": "abraded",
             "label": "État des plumes",
@@ -324,7 +331,8 @@
             "range": {"min": 30, "max": 80},
             "placeholder": "Entre 30mm et 80mm ±0.5mm",
             "float_precision": 0.5,
-            "tip_on_invalid": "Unité mm. 30mm min, 80 max, précision 0.5"
+            "tip_on_invalid": "Unité mm. 30mm min, 80 max, précision 0.5",
+            "allow_voice_control": true
         }, {
             "name": "third_prim",
             "label": "Longueur 3ème primaire",
@@ -332,7 +340,8 @@
             "range": {"min": 40, "max": 90},
             "placeholder": "Entre 40mm et 90mm ±0.5mm",
             "float_precision": 0.5,
-            "tip_on_invalid": "Unité mm. 40mm min, 90 max, précision 0.5"
+            "tip_on_invalid": "Unité mm. 40mm min, 90 max, précision 0.5",
+            "allow_voice_control": true
         }, {
             "name": "sk_bl_lght",
             "label": "Longueur tête plus bec",
@@ -340,7 +349,8 @@
             "range": {"min": 30, "max": 70},
             "placeholder": "Entre 30mm et 70mm ±0.1mm",
             "float_precision": 0.1,
-            "tip_on_invalid": "Unité mm. 30mm min, 70 max, précision 0.1"
+            "tip_on_invalid": "Unité mm. 30mm min, 70 max, précision 0.1",
+            "allow_voice_control": true
         }, {
             "name": "bl_lght",
             "label": "Longueur bec seul",
@@ -348,7 +358,8 @@
             "range": {"min": 10, "max": 30},
             "placeholder": "Entre 10mm et 30mm ±0.1mm",
             "float_precision": 0.1,
-            "tip_on_invalid": "Unité mm. 10mm min, 30 max, précision 0.1"
+            "tip_on_invalid": "Unité mm. 10mm min, 30 max, précision 0.1",
+            "allow_voice_control": true
         }, {
             "name": "blood_patch",
             "label": "Présence plaque incubatrice",
@@ -359,11 +370,12 @@
             "type": "checkbox"
         }, {
             "name": "breath",
-            "label": "Nb de mouvements respiratoires / 30s",
+            "label": "Mouvements respiratoires / 30s",
             "type": "integer",
             "placeholder": "Compris entre 10 et 200",
             "range": {"min": 10, "max": 200},
-            "tip_on_invalid": "Doit être compris entre 10 et 200."
+            "tip_on_invalid": "Doit être compris entre 10 et 200.",
+            "allow_voice_control": true
         }, {
             "name": "card_rythm",
             "label": "Rythme cardiaque",
@@ -560,7 +572,8 @@
         }, {
             "name": "comments",
             "label": "Commentaires",
-            "type": "textarea"
+            "type": "textarea",
+            "allow_voice_control": true
         } ],
         "locations": [ {
             "name": "ruisseau_nid_ouest_aval",

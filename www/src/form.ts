@@ -1,11 +1,13 @@
-import { test_jarvis, Jarvis } from "./test_aytom";
+import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
-import { PageManager, AppPageName } from "./interface";
+import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
+import { UserManager } from "./user_manager";
+import { SyncManager } from "./SyncManager";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -156,7 +158,14 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         }
 
         else if (ele.type === FormEntityType.integer || ele.type === FormEntityType.float) {
+            const real_wrapper = document.createElement('div');
+
             const wrapper = createInputWrapper();
+            if (ele.allow_voice_control) {
+                wrapper.classList.add('s11');
+                wrapper.classList.remove('s12');
+            }
+            
             const htmle = document.createElement('input');
             htmle.autocomplete = "off";
             const label = document.createElement('label');
@@ -215,7 +224,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
             // Attachage de l'évènement de vérification
-            htmle.addEventListener('change', function() {
+            const num_verif = function() {
                 let valid = true;
 
                 let value: number;
@@ -273,12 +282,43 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 else {
                     setInvalid(this);
                 }
-            });
+            };
 
-            element_to_add = wrapper;
+            htmle.addEventListener('change', num_verif);
+
+            real_wrapper.appendChild(wrapper);
+
+            if (ele.allow_voice_control) {
+                // On ajoute le bouton micro
+                const mic_btn = document.createElement('div');
+                mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                mic_btn.style.paddingRight = "0";
+                mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+
+                mic_btn.addEventListener('click', function() {
+                    prompt().then(function(value) {
+                        value = value.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
+
+                        if (!isNaN(Number(value))) {
+                            htmle.value = value;
+                            num_verif.call(htmle);
+                            M.updateTextFields();
+                        }
+                        else {
+                            M.toast({html: "Nombre incorrect reconnu."});
+                        }
+                    });
+                });
+
+                real_wrapper.appendChild(mic_btn);
+            }
+            element_to_add = real_wrapper;
         }
 
         else if (ele.type === FormEntityType.string || ele.type === FormEntityType.bigstring) {
+            const real_wrapper = document.createElement('div');
             const wrapper = createInputWrapper();
 
             let htmle: HTMLInputElement | HTMLTextAreaElement;
@@ -290,6 +330,11 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             else {
                 htmle = document.createElement('textarea');
                 htmle.classList.add('materialize-textarea');
+            }
+
+            if (ele.allow_voice_control) {
+                wrapper.classList.add('s11');
+                wrapper.classList.remove('s12');
             }
 
             htmle.classList.add('input-form-element');
@@ -319,7 +364,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
             // Attachage de l'évènement de vérification
-            htmle.addEventListener('change', function() {
+            const str_verif = function() {
                 let valid = true;
 
                 let value: string = this.value;
@@ -348,9 +393,38 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 else {
                     setInvalid(this);
                 }
-            });
+            };
 
-            element_to_add = wrapper;
+            htmle.addEventListener('change', str_verif);
+            real_wrapper.appendChild(wrapper);
+
+            if (ele.allow_voice_control) {
+                // On ajoute le bouton micro
+                const mic_btn = document.createElement('div');
+                mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                mic_btn.style.paddingRight = "0";
+
+                mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+
+                mic_btn.addEventListener('click', function() {
+                    prompt().then(function(value) {
+                        if (ele.remove_whitespaces) {
+                            value = value.replace(/ /g, '').replace(/à/iug, 'a');
+                        }
+
+                        htmle.value = value;
+                        str_verif.call(htmle);
+                        M.updateTextFields();
+                        try { M.textareaAutoResize(htmle); } catch (e) {}
+                    });
+                });
+
+                real_wrapper.appendChild(mic_btn);
+            }
+            
+            element_to_add = real_wrapper;
         }
 
         else if (ele.type === FormEntityType.select) {
@@ -372,6 +446,15 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
                 htmle.appendChild(htmlopt);
             }
+
+            // const mic_btn = document.createElement('div');
+            // if (!htmle.multiple) {
+            //     mic_btn.addEventListener('click', function() {
+            //         prompt("Valeur ?", Array.from(htmle.options).map(e => e.label)).then(function(value) {
+            //             htmle.value = value;
+            //         });
+            //     });
+            // }
 
             if (filled_form && ele.name in filled_form.fields) {
                 if (ele.select_options.multiple) {
@@ -399,7 +482,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             fillStandardInputValues(input, ele, span as HTMLLabelElement);
 
-            wrapper.classList.add('row', 'col', 's12', 'input-checkbox');
+            wrapper.classList.add('row', 'col', 's12', 'input-checkbox', 'flex-center-aligner');
             input.classList.add('filled-in', 'input-form-element');
             input.type = "checkbox";
             input.checked = ele.default_value as boolean;
@@ -511,7 +594,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
 
             const label = document.createElement('p');
-            label.classList.add('no-margin-top');
+            label.classList.add('no-margin-top', 'form-audio-label');
             label.innerText = ele.label;
             wrapper.appendChild(label);
 
@@ -569,7 +652,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             fillStandardInputValues(input, ele);
 
-            wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch');
+            wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch', 'flex-center-aligner');
             input.classList.add('input-form-element', 'input-slider-element');
             input.type = "checkbox";
             input.checked = ele.default_value as boolean;
@@ -608,7 +691,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
  * Initie la sauvegarde: présente et vérifie les champs
  *  @param type
  */
-function initFormSave(type: string): any {
+function initFormSave(type: string, force_name?: string, form_save?: FormSave): any {
     console.log("Demarrage initFormSave")
     // Ouverture du modal de verification
     const modal = getModal();
@@ -725,8 +808,7 @@ function initFormSave(type: string): any {
     if (!erreur_critique) {
         document.getElementById("valid_verif").onclick = function() {
             getModalInstance().close();
-            const current_form_key = Forms.current_key;
-            saveForm(current_form_key);
+            saveForm(type, force_name, form_save);
         }
 
 
@@ -743,7 +825,9 @@ export function saveForm(type: string, force_name?: string, form_save?: FormSave
     const form_values: FormSave = {
         fields: {},
         type,
-        location: (document.getElementById('__location__id') as HTMLInputElement).dataset.reallocation
+        location: (document.getElementById('__location__id') as HTMLInputElement).dataset.reallocation,
+        owner: (form_save ? form_save.owner : UserManager.username),
+        metadata: {}
     };
 
     for (const input of document.getElementsByClassName('input-form-element')) {
@@ -784,6 +868,7 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
             // Enregistre le nom du fichier sauvegardé dans le formulaire,
             // dans la valeur du champ field
             form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
+            form_values.metadata[input_name] = filename;
 
             if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
                 // Si une image était déjà présente
@@ -840,9 +925,18 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                     else {
                         if (older_save && input_name in older_save.fields) {
                             form_values.fields[input_name] = older_save.fields[input_name];
+
+                            if (typeof older_save.fields[input_name] === 'string') {
+                                const parts = (older_save.fields[input_name] as string).split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                            else {
+                                form_values.metadata[input_name] = null;
+                            }
                         }
                         else {
                             form_values.fields[input_name] = null;
+                            form_values.metadata[input_name] = null;
                         }
 
                         resolve();
@@ -870,9 +964,18 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                     else {
                         if (older_save && input_name in older_save.fields) {
                             form_values.fields[input_name] = older_save.fields[input_name];
+
+                            if (typeof older_save.fields[input_name] === 'string') {
+                                const parts = (older_save.fields[input_name] as string).split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                            else {
+                                form_values.metadata[input_name] = null;
+                            }
                         }
                         else {
                             form_values.fields[input_name] = null;
+                            form_values.metadata[input_name] = null;
                         }
 
                         resolve();
@@ -883,9 +986,17 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
 
         Promise.all(promises)
             .then(function() {
+                // On supprime les metadonnées vides du form
+                for (const n in form_values.metadata) {
+                    if (form_values.metadata[n] === null) {
+                        delete form_values.metadata[n];
+                    }
+                }
+
                 // On écrit enfin le formulaire !
                 writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
                     M.toast({html: "Écriture du formulaire et de ses données réussie."});
+                    SyncManager.add(name, form_values);
 
                     if (older_save) {
                         // On vient de la page d'édition de formulaire déjà créés
@@ -917,10 +1028,19 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
     }
     else {
         Forms.onReady(function(available, current) {
-            loadFormPage(base, current, edition_mode);
+            if (Forms.current_key === null) {
+                // Aucun formulaire n'est chargé !
+                base.innerHTML = displayErrorMessage(
+                    "Aucun formulaire n'est chargé.", 
+                    "Sélectionnez le formulaire à utiliser dans les paramètres."
+                );
+                PageManager.should_wait = false;
+            }
+            else {
+                loadFormPage(base, current, edition_mode);
+            }
         });
     }
-
 }
 
 /**
@@ -929,6 +1049,16 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
  */
 export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode?: {save: FormSave, name: string}) {
     base.innerHTML = "";
+
+    if (!edition_mode && !UserManager.logged) {
+        // Si on est en mode création et qu'on est pas connecté
+        base.innerHTML = base.innerHTML = displayErrorMessage(
+            "Vous devez vous connecter pour saisir une nouvelle entrée.", 
+            "Connectez-vous dans les paramètres."
+        );
+        PageManager.should_wait = false;
+        return;
+    }
 
     const base_block = document.createElement('div');
     base_block.classList.add('row', 'container');
@@ -970,7 +1100,7 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     const current_form_key = Forms.current_key;
     btn.addEventListener('click', function() {
         if (edition_mode) {
-            saveForm(current_form_key, edition_mode.name, edition_mode.save);
+            saveForm(edition_mode.save.type, edition_mode.name, edition_mode.save);
         }
         else {
             try {

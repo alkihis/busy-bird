@@ -1,3 +1,9 @@
+import { readFile, writeFile } from "./helpers";
+import { Logger } from "./logger";
+import { UserManager } from "./user_manager";
+import { API_URL, ENABLE_FORM_DOWNLOAD } from "./main";
+import fetch from './fetch_timeout';
+
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /* 
 {
@@ -51,6 +57,8 @@ export interface FormEntity {
     default_value?: string | boolean;
     tip_on_invalid?: string;
     vocal_access_words?: string[];
+    allow_voice_control?: boolean;
+    remove_whitespaces?: boolean;
 }
 
 interface SelectOption {
@@ -70,9 +78,6 @@ export enum FormEntityType {
     audio = "audio"
 }
 
-// Clé du JSON à charger automatiquement
-export const default_form_name: string = "cincle_plongeur";
-
 // Type de fonction à passer en paramètre à onReady(callback)
 type FormCallback = (available?: {[formName: string] : Form}, current?: Form) => any;
 
@@ -83,22 +88,43 @@ export const Forms = new class {
     protected available_forms: {[formName: string] : Form};
     protected current: Form = null;
     protected _current_key: string = null;
+    protected _default_form_key: string = null;
+    protected readonly DEAD_FORM_SCHEMA: Form = {name: null, fields: [], locations: []};
+
+    protected readonly FORM_LOCATION: string = 'loaded_forms.json';
+
+    constructor() { 
+        if (localStorage.getItem('default_form_key')) {
+            this._default_form_key = localStorage.getItem('default_form_key');
+        }
+
+        // Sauvegarde dans le localStorage quoiqu'il arrive
+        this.default_form_key = this._default_form_key;
+
+        /** call init() after constructor() ! */ 
+    }
 
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
     // La clé du formulaire par défaut est contenu dans "default_form_name"
-    constructor() {
-        $.get('assets/form.json', {}, (json: any) => {    
+    public init(crash_if_not_form_download = false) : Promise<any> {
+        const loadJSONInObject = (json: any, save = false) => {
             // Le JSON est reçu, on l'enregistre dans available_forms
             this.available_forms = json;
             // On met le form à ready
             this.form_ready = true;
             // On enregistre le formulaire par défaut (si la clé définie existe)
-            if (default_form_name in this.available_forms) {
-                this.current = this.available_forms[default_form_name]; 
-                this._current_key = default_form_name;
+            if (this._default_form_key in this.available_forms) {
+                this.current = this.available_forms[this._default_form_key]; 
+                this._current_key = this._default_form_key;
             }
             else {
-                this.current = {name: null, fields: [], locations: []};
+                this.current = this.DEAD_FORM_SCHEMA;
+            }
+
+            // On sauvegarde les formulaires dans loaded_forms.json
+            // uniquement si demandé
+            if (save) {
+                writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
             }
     
             // On exécute les fonctions en attente
@@ -106,7 +132,68 @@ export const Forms = new class {
             while (func = this.waiting_callee.pop()) {
                 func(this.available_forms, this.current);
             }
-        }, 'json');
+        };
+
+        const readStandardForm = () => {
+            // On vérifie si le fichier loaded_forms.json existe
+            readFile(this.FORM_LOCATION)
+                .then((string) => {
+                    loadJSONInObject(JSON.parse(string));
+                })
+                .catch(() => {
+                    // Il n'existe pas, on doit le charger depuis les sources de l'application
+                    $.get('/assets/form.json', {}, (json: any) => {
+                        loadJSONInObject(json, true);
+                    }, 'json')
+                    .fail(function(error) {
+                        // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
+                        // @ts-ignore
+                        readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                            .then(string => {
+                                loadJSONInObject(JSON.parse(string));
+                            })
+                            .catch((err) => {
+                                // @ts-ignore
+                                M.toast({html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json'});
+                            })
+                    });
+                });
+        };
+
+
+        const init_text = document.getElementById('__init_text_center');
+
+        if (init_text) {
+            init_text.innerText = "Mise à jour des formulaires";
+        }
+
+        // @ts-ignore
+        if (ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && UserManager.logged) {
+            // On tente d'actualiser les formulaires disponibles
+            // On attend au max 20 secondes
+            return fetch(API_URL + "forms/available.json?access_token=" + UserManager.token, undefined, 20000)
+                .then(response => response.json())
+                .then(json => {
+                    if (json.error_code) throw json.error_code;
+
+                    loadJSONInObject(json, true);
+                })
+                .catch(error => {
+                    console.log("Timeout/fail for forms");
+                    // Impossible de charger le JSON depuis le serveur
+                    if (crash_if_not_form_download) {
+                        return Promise.reject(error);
+                    }
+
+                    readStandardForm();
+                });
+        }
+        else {
+            if (crash_if_not_form_download) {
+                return Promise.reject();
+            }
+            readStandardForm();
+        }
     }
 
     public onReady(callback: FormCallback) : void {
@@ -119,17 +206,33 @@ export const Forms = new class {
     }
 
     public formExists(name: string) : boolean {
-        return name in this.available_forms;
+        return name === null || name in this.available_forms;
     }
 
     /**
      * Change le formulaire courant renvoyé par onReady
      * @param name clé d'accès au formulaire
+     * @param make_default enregistre le nouveau formulaire comme clé par défaut
      */
-    public changeForm(name: string) : void {
+    public changeForm(name: string, make_default: boolean = false) : void {
+        if (name === null) {
+            // On supprime le formulaire chargé
+            this.current = this.DEAD_FORM_SCHEMA;
+            this._current_key = null;
+
+            if (make_default) {
+                this.default_form_key = null;
+            }
+            return;
+        }
+
         if (this.formExists(name)) {
             this.current = this.available_forms[name]; 
             this._current_key = name;
+
+            if (make_default) {
+                this.default_form_key = name;
+            }
         }
         else {
             throw new Error("Form does not exists");
@@ -169,6 +272,21 @@ export const Forms = new class {
     public get current_key() : string {
         return this._current_key;
     }
+
+    public get default_form_key() : string {
+        return this._default_form_key;
+    }
+
+    public set default_form_key(v: string) {
+        this._default_form_key = v;
+
+        if (v === null) {
+            localStorage.removeItem('default_form_key');
+        }
+        else {
+            localStorage.setItem('default_form_key', v);
+        }
+    }
 };
 
 /**
@@ -179,6 +297,8 @@ export interface FormSave {
     type: string;
     fields: FormSaveEntities;
     location: string;
+    owner: string;
+    metadata: {[fieldName: string]: string};
 }
 
 export interface FormSaveEntities {

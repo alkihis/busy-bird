@@ -1,4 +1,4 @@
-import { PageManager } from "./interface";
+import { PageManager } from "./PageManager";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -19,6 +19,8 @@ export const SMALL_PRELOADER = `
 <div class="preloader-wrapper small active">
     ${PRELOADER_BASE}
 </div>`;
+
+export const MODAL_PRELOADER_TEXT_ID = "__classic_preloader_text";
 
 /**
  * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
@@ -103,12 +105,12 @@ export function getPreloader(text: string) : string {
  * @param text Texte à insérer comme message de chargement
  * @returns string HTML à insérer dans la racine d'un modal
  */
-export function getModalPreloader(text: string, footer?: string) : string {
+export function getModalPreloader(text: string, footer: string = "") : string {
     return `<div class="modal-content">
     <center>
         ${SMALL_PRELOADER}
     </center>
-    <center class="flow-text pre-wrapper" style="margin-top: 10px">${text}</center>
+    <center class="flow-text pre-wrapper" id="${MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px">${text}</center>
     </div>
     ${footer}
     `;
@@ -195,6 +197,63 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
         else {
             console.log("not found");
         }
+    });
+}
+
+export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLDER) : Promise<string> {
+    const pathToFile = forceBaseDir + fileName;
+
+    return new Promise(function(resolve, reject) {
+        // @ts-ignore
+        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
+            fileEntry.file(function (file) {
+                const reader = new FileReader();
+    
+                reader.onloadend = function (e) {
+                    resolve(this.result as string);
+                };
+    
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
+            }, reject);
+        }, function(err) {
+            reject(err);
+        });
+    });
+}
+
+export function readFileFromEntry(fileEntry, asBase64 = false) : Promise<string> {
+    return new Promise(function(resolve, reject) {
+        fileEntry.file(function (file) {
+            const reader = new FileReader();
+    
+            reader.onloadend = function (e) {
+                resolve(this.result as string);
+            };
+    
+            if (asBase64) {
+                reader.readAsDataURL(file);
+            }
+            else {
+                reader.readAsText(file);
+            }
+        }, reject);
+    });
+}
+
+/**
+ * Version Promise de getDir.
+ * Voir getDir().
+ * @param dirName string Nom du répertoire
+ * @return Promise<DirectoryEntry>
+ */
+export function getDirP(dirName: string) : Promise<any> {
+    return new Promise((resolve, reject) => {
+        getDir(resolve, dirName, reject);
     });
 }
 
@@ -332,6 +391,20 @@ export function listDir(path: string = "") : void {
             }
         );
     }, path);
+}
+
+export function dirEntries(dirEntry) : Promise<any> {
+    return new Promise(function(resolve, reject) {
+        const reader = dirEntry.createReader();
+        reader.readEntries(
+            function (entries) {
+                resolve(entries);
+            },
+            function (err) {
+                reject(err);
+            }
+        );
+    });
 }
 
 /**
@@ -659,4 +732,79 @@ export function blobToBase64(blob: Blob) : Promise<string> {
  */
 export function urlToBlob(str: string) : Promise<Blob> {
     return fetch(str).then(res => res.blob());
+}
+
+/**
+ * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
+ * @param title string Titre affiché sur le modal
+ * @param question string Question complète / détails sur l'action qui sera réalisée
+ * @param text_yes string Texte affiché sur le bouton de validation
+ * @param text_no string Texte affiché sur le bouton d'annulation
+ * @returns Promise<void> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
+ */
+export function askModal(title: string, question: string, text_yes = "Oui", text_no = "Non") : Promise<void> {
+    const modal = getBottomModal();
+    const instance = initBottomModal({ dismissible: false });
+
+    modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">${title}</h5>
+        <p class="flow-text">${question}</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__question_no" class="btn-flat green-text modal-close left">${text_no}</a>
+        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close right">${text_yes}</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+
+    instance.open();
+
+    return new Promise(function(resolve, reject) {
+        PageManager.lock_return_button = true;
+
+        document.getElementById('__question_yes').addEventListener('click', () => {
+            PageManager.lock_return_button = false;
+            resolve();
+        });
+        document.getElementById('__question_no').addEventListener('click', () => {
+            PageManager.lock_return_button = false;
+            reject();
+        });
+    });
+}
+
+export function escapeHTML(text: string) : string {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function displayInformalMessage(title: string, message: string = "") : string {
+    return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="flow-text grey-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+export function displayErrorMessage(title: string, message: string) : string {
+    return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
+                <p class="flow-text red-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
 }

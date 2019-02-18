@@ -1,10 +1,9 @@
-import { getBase, getPreloader, generateId, getBottomModal, initBottomModal, getModalPreloader, getModalInstance } from "./helpers";
+import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance } from "./helpers";
 import { initFormPage } from "./form";
 import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
 import { SIDENAV_OBJ } from "./main";
-
-export const APP_NAME = "Busy Bird";
+import { initHomePage } from "./home";
 
 interface AppPageObj {
     not_sidenav_close?: boolean;
@@ -21,6 +20,7 @@ export enum AppPageName {
 export const PageManager = new class {
     protected actual_page: AppPageObj;
     protected _should_wait: boolean;
+    public lock_return_button: boolean = false;
 
     /**
      * Déclaration des pages possibles
@@ -67,6 +67,13 @@ export const PageManager = new class {
     }
 
     /**
+     * Recharge la page actuelle. (la vide et réexécute le callback configuré dans la AppPageObj)
+     */
+    public reload(additionnals?: any) {
+        this.changePage(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals);
+    }
+
+    /**
      * Change l'affichage et charge la page "page" dans le bloc principal
      * @param AppPageName page 
      * @param delete_paused supprime les pages sauvegardées
@@ -110,14 +117,15 @@ export const PageManager = new class {
             SIDENAV_OBJ.close();
         }
 
-        // On appelle la fonction de création de la page
-        page.callback(base, additionnals);
-
         this.actual_page = page;
         this._should_wait = page.ask_change;
+        this.lock_return_button = false;
 
         // On met le titre de la page dans la barre de navigation
         document.getElementById('nav_title').innerText = force_name || page.name;
+
+        // On appelle la fonction de création de la page
+        page.callback(base, additionnals);
 
         this.updateReturnBtn();
     }
@@ -205,10 +213,15 @@ export const PageManager = new class {
     /**
      * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
      */
-    public goBack() : void {
+    public goBack(force_asking = false) : void {
+        if (this.lock_return_button) {
+            return;
+        }
+
         const stepBack = () => {
             // Ferme le modal possiblement ouvert
             try { getModalInstance().close(); } catch (e) { }
+            try { getBottomModalInstance().close(); } catch (e) { }
             
             if (this.isPageWaiting()) {
                 this.popPage();
@@ -218,8 +231,10 @@ export const PageManager = new class {
             }
         };
     
-        if (this.should_wait) {
-            modalBackHome(stepBack);
+        if (this.should_wait || force_asking) {
+            askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
+                .then(stepBack)
+                .catch(() => {})
         }
         else {
             stepBack();
@@ -241,41 +256,4 @@ export const PageManager = new class {
     public isPageWaiting() : boolean {
         return this.pages_holder.length > 0;
     }
-}
-
-export function initHomePage(base: HTMLElement) : void {
-    base.innerHTML = "<h2 class='center'>"+ APP_NAME +"</h2>" + `
-    <div class="container">
-        <p class="flow-text">
-            Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
-            pour les biologistes.
-            Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
-        </p>
-    </div>
-    `;
-
-    // Initialise les champs materialize et le select
-    M.updateTextFields();
-    $('select').formSelect();
-}
-
-export function modalBackHome(callbackIfTrue: (evt?: MouseEvent) => void) : void {
-    const modal = getBottomModal();
-    const instance = initBottomModal();
-
-    modal.innerHTML = `
-    <div class="modal-content">
-        <h5 class="no-margin-top">Aller à la page précédente ?</h5>
-        <p class="flow-text">Les modifications sur la page actuelle seront perdues.</p>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" id="__modal_back_home" class="btn-flat red-text right modal-close">Retour</a>
-        <a href="#!" class="btn-flat blue-text left modal-close">Annuler</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-
-    document.getElementById('__modal_back_home').onclick = callbackIfTrue;
-
-    instance.open();
 }

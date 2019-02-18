@@ -136,17 +136,17 @@
   "phonegap-plugin-media-stream": {
     "source": {
       "type": "registry",
-      "id": "phonegap-plugin-media-stream@^1.2.0"
+      "id": "phonegap-plugin-media-stream@1.2.1"
     },
-    "is_top_level": false,
+    "is_top_level": true,
     "variables": {}
   },
   "es6-promise-plugin": {
     "source": {
       "type": "registry",
-      "id": "es6-promise-plugin"
+      "id": "es6-promise-plugin@4.2.2"
     },
-    "is_top_level": false,
+    "is_top_level": true,
     "variables": {}
   },
   "phonegap-plugin-media-recorder": {
@@ -161,6 +161,14 @@
     "source": {
       "type": "registry",
       "id": "cordova-plugin-android-permissions@1.0.0"
+    },
+    "is_top_level": true,
+    "variables": {}
+  },
+  "cordova-plugin-whitelist": {
+    "source": {
+      "type": "registry",
+      "id": "https://github.com/apache/cordova-plugin-whitelist.git"
     },
     "is_top_level": true,
     "variables": {}

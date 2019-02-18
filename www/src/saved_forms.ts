@@ -1,11 +1,12 @@
-import { getDir, printObj, formatDate, removeFile, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise } from "./helpers";
+import { getDir, formatDate, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
-import { PageManager, AppPageName } from "./interface";
-import { constructForm, saveForm } from "./form";
+import { PageManager, AppPageName } from "./PageManager";
+import { SyncManager } from "./SyncManager";
+import { Logger } from "./logger";
 
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
-    if (!Forms.formExists(form.type)) {
+    if (form.type === null || !Forms.formExists(form.type)) {
         M.toast({html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible."});
         return;
     }
@@ -25,7 +26,7 @@ function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     const container = document.createElement('div');
     let id = json[0].name;
 
-    if (Forms.formExists(save.type)) {
+    if (save.type !== null && Forms.formExists(save.type)) {
         const id_f = Forms.getForm(save.type).id_field;
         if (id_f) {
             // Si un champ existe pour ce formulaire
@@ -90,7 +91,7 @@ function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormS
                                         resolve([file, JSON.parse(this.result as string)]);
                                     } catch (e) {
                                         console.log("JSON mal formé:", this.result);
-                                        resolve([file, { fields: {}, type: "", location: "" }])
+                                        resolve([file, { fields: {}, type: "", location: "", owner: "", metadata: {} }])
                                     }
                                     
                                 };
@@ -125,42 +126,29 @@ function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormS
 }
 
 function modalDeleteForm(id: string) {
-    const modal = getBottomModal();
-
-    initBottomModal(
-        {}, 
-        `<div class="modal-content">
-            <h4>Supprimer ce formulaire ?</h4>
-            <p>
-                Vous ne pourrez pas le restaurer ultérieurement.
-            </p>
-        </div>
-        <div class="modal-footer">
-            <a href="#!" class="modal-close green-text btn-flat left">Annuler</a>
-            <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
-        </div>
-        `
-    );
-
-    const instance = getBottomModalInstance();
-    document.getElementById('delete_form_modal').onclick = function() {
-        deleteForm(id).then(function() {
-            M.toast({html: "Entrée supprimée."});
-            PageManager.changePage(AppPageName.saved, false);
-            instance.close();
-        }).catch(function(err) {
-            M.toast({html: "Impossible de supprimer: " + err});
-            instance.close();
+    askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+        .then(() => {
+            // L'utilisateur demande la suppression
+            deleteForm(id)
+                .then(function() {
+                    M.toast({html: "Entrée supprimée."});
+                    PageManager.reload();
+                })
+                .catch(function(err) {
+                    M.toast({html: "Impossible de supprimer: " + err});
+                });
+        })
+        .catch(() => {
+            // Annulation
         });
-    };
-
-    instance.open();
 }
 
 function deleteForm(id: string) : Promise<void> {
     if (id.match(/\.json$/)) {
         id = id.substring(0, id.length - 5);
     }
+
+    SyncManager.remove(id);
 
     return new Promise(function(resolve, reject) {
         if (id) {
@@ -188,27 +176,31 @@ export function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
 
-    readAllFilesOfDirectory('forms').then(function(all_promises) {
-        Promise.all(all_promises).then(function(files: [File, FormSave][]) {
-            files = files.sort(
-                (a, b) => b[0].lastModified - a[0].lastModified
-            );
+    Forms.onReady(function() {
+        readAllFilesOfDirectory('forms').then(all_promises => 
+            Promise.all(all_promises).then(function(files: [File, FormSave][]) {
+                // Tri des fichiers; le plus récent en premier
+                files = files.sort(
+                    (a, b) => b[0].lastModified - a[0].lastModified
+                );
 
-            for (const f of files) {
-                appendFileEntry(f, placeholder);
-            }
+                for (const f of files) {
+                    appendFileEntry(f, placeholder);
+                }
 
-            base.innerHTML = "";
-            base.appendChild(placeholder);
-
-            if (files.length === 0) {
-                base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
-            }
-        }).catch(function(err) {
-            throw err;
+                base.innerHTML = "";
+                base.appendChild(placeholder);
+    
+                if (files.length === 0) {
+                    base.innerHTML = displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                }
+                
+            }).catch(function(err) {
+                throw err;
+            })
+        ).catch(function(err) {
+            Logger.error("Impossible de charger les fichiers", err.message, err.stack);
+            base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. ("+err.message+")");
         });
-    }).catch(function(err) {
-        console.log(err);
-        base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
     });
 }
