@@ -778,6 +778,21 @@ export function escapeHTML(text: string) : string {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+export function displayInformalMessage(title: string, message: string = "") : string {
+    return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="flow-text grey-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
+}
+
 export function displayErrorMessage(title: string, message: string) : string {
     return `
         <div class="absolute-container">

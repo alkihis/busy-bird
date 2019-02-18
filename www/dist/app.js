@@ -723,6 +723,21 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
     exports.escapeHTML = escapeHTML;
+    function displayInformalMessage(title, message = "") {
+        return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="flow-text grey-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
+    }
+    exports.displayInformalMessage = displayInformalMessage;
     function displayErrorMessage(title, message) {
         return `
         <div class="absolute-container">
@@ -4908,7 +4923,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager"], function (require, exports, helpers_9, form_schema_4, PageManager_5, SyncManager_4) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_9, form_schema_4, PageManager_5, SyncManager_4, logger_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
@@ -4927,7 +4942,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         selector.classList.add('collection-item');
         const container = document.createElement('div');
         let id = json[0].name;
-        if (form_schema_4.Forms.formExists(save.type)) {
+        if (save.type !== null && form_schema_4.Forms.formExists(save.type)) {
             const id_f = form_schema_4.Forms.getForm(save.type).id_field;
             if (id_f) {
                 // Si un champ existe pour ce formulaire
@@ -5064,23 +5079,22 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
         form_schema_4.Forms.onReady(function () {
-            readAllFilesOfDirectory('forms').then(function (all_promises) {
-                Promise.all(all_promises).then(function (files) {
-                    files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
-                    for (const f of files) {
-                        appendFileEntry(f, placeholder);
-                    }
-                    base.innerHTML = "";
-                    base.appendChild(placeholder);
-                    if (files.length === 0) {
-                        base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
-                    }
-                }).catch(function (err) {
-                    throw err;
-                });
+            readAllFilesOfDirectory('forms').then(all_promises => Promise.all(all_promises).then(function (files) {
+                // Tri des fichiers; le plus récent en premier
+                files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
+                for (const f of files) {
+                    appendFileEntry(f, placeholder);
+                }
+                base.innerHTML = "";
+                base.appendChild(placeholder);
+                if (files.length === 0) {
+                    base.innerHTML = helpers_9.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                }
             }).catch(function (err) {
-                console.log(err);
-                base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
+                throw err;
+            })).catch(function (err) {
+                logger_5.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
+                base.innerHTML = helpers_9.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             });
         });
     }

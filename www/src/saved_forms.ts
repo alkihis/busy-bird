@@ -1,7 +1,8 @@
-import { getDir, printObj, formatDate, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise } from "./helpers";
+import { getDir, formatDate, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
+import { Logger } from "./logger";
 
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
@@ -25,7 +26,7 @@ function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     const container = document.createElement('div');
     let id = json[0].name;
 
-    if (Forms.formExists(save.type)) {
+    if (save.type !== null && Forms.formExists(save.type)) {
         const id_f = Forms.getForm(save.type).id_field;
         if (id_f) {
             // Si un champ existe pour ce formulaire
@@ -191,13 +192,13 @@ export function initSavedForm(base: HTMLElement) {
     placeholder.classList.add('collection', 'no-margin-top');
 
     Forms.onReady(function() {
-        readAllFilesOfDirectory('forms').then(function(all_promises) {
+        readAllFilesOfDirectory('forms').then(all_promises => 
             Promise.all(all_promises).then(function(files: [File, FormSave][]) {
-
+                // Tri des fichiers; le plus récent en premier
                 files = files.sort(
                     (a, b) => b[0].lastModified - a[0].lastModified
                 );
-    
+
                 for (const f of files) {
                     appendFileEntry(f, placeholder);
                 }
@@ -206,15 +207,15 @@ export function initSavedForm(base: HTMLElement) {
                 base.appendChild(placeholder);
     
                 if (files.length === 0) {
-                    base.innerHTML = "<h5 class='empty vertical-center'>Vous n'avez aucun formulaire sauvegardé.</h5>";
+                    base.innerHTML = displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
                 }
                 
             }).catch(function(err) {
                 throw err;
-            });
-        }).catch(function(err) {
-            console.log(err);
-            base.innerHTML = "<h4 class='red-text'>Impossible de charger les fichiers.</h4>";
+            })
+        ).catch(function(err) {
+            Logger.error("Impossible de charger les fichiers", err.message, err.stack);
+            base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. ("+err.message+")");
         });
     });
 }
