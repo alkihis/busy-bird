@@ -7,72 +7,64 @@
     "files": {}
   },
   "installed_plugins": {
+    "cordova-plugin-android-permissions": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
     "cordova-plugin-battery-status": {
-      "PACKAGE_NAME": "com.phonegap.helloworld"
+      "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "cordova-plugin-device": {
-      "PACKAGE_NAME": "com.phonegap.helloworld"
-    },
-    "cordova-plugin-dialogs": {
-      "PACKAGE_NAME": "com.phonegap.helloworld"
-    },
-    "cordova-plugin-globalization": {
-      "PACKAGE_NAME": "com.phonegap.helloworld"
-    },
-    "cordova-plugin-inappbrowser": {
-      "PACKAGE_NAME": "com.phonegap.helloworld"
-    },
-    "cordova-plugin-network-information": {
-      "PACKAGE_NAME": "com.phonegap.helloworld"
-    },
-    "cordova-plugin-vibration": {
-      "PACKAGE_NAME": "com.phonegap.helloworld"
-    },
-    "phonegap-plugin-speech-synthesis": {
-      "PACKAGE_NAME": "com.lbbe.birdsaver"
-    },
-    "cordova-plugin-speechrecognition": {
-      "PACKAGE_NAME": "com.lbbe.birdsaver"
+    "cordova-plugin-camera": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "cordova-plugin-crosswalk-webview-v2": {
-      "PACKAGE_NAME": "com.lbbe.birdsaver"
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-device": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-dialogs": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "cordova-plugin-file": {
-      "PACKAGE_NAME": "com.lbbe.birdsaver"
-    },
-    "cordova-plugin-media": {
-      "PACKAGE_NAME": "com.lbbe.birdsaver"
+      "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "cordova-plugin-geolocation": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "phonegap-plugin-media-recorder": {
+    "cordova-plugin-globalization": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "cordova-plugin-android-permissions": {
+    "cordova-plugin-inappbrowser": {
       "PACKAGE_NAME": "com.lbbe.busybird"
-<<<<<<< HEAD
+    },
+    "cordova-plugin-media": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "cordova-plugin-media-capture": {
       "PACKAGE_NAME": "com.lbbe.busybird"
-    }
-  },
-  "dependent_plugins": {
-    "cordova-plugin-compat": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
-=======
->>>>>>> f2a325942047f1bbd807bf054b85700783bf6dc3
     },
-    "es6-promise-plugin": {
+    "cordova-plugin-network-information": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "phonegap-plugin-media-stream": {
+    "cordova-plugin-speechrecognition": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-vibration": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "cordova-plugin-whitelist": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "cordova-plugin-media-capture": {
+    "es6-promise-plugin": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-media-recorder": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-media-stream": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-speech-synthesis": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
