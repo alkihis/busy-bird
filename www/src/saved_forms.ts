@@ -245,7 +245,7 @@ export function initSavedForm(base: HTMLElement) {
                                 .catch(() => {
                                     deleteAll();
                                 });
-                            }, 400);
+                            }, 150);
                         })
                         .catch(() => {});
                     });

@@ -127,6 +127,9 @@ export const PageManager = new class {
         // On appelle la fonction de création de la page
         page.callback(base, additionnals);
 
+        // Ramène en haut de la page
+        window.scrollTo(0, 0);
+
         this.updateReturnBtn();
     }
 

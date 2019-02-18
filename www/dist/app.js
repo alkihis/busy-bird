@@ -687,6 +687,28 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
      * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
      * @param title string Titre affiché sur le modal
      * @param question string Question complète / détails sur l'action qui sera réalisée
+     * @param text_close string Texte affiché sur le bouton de fermeture
+     */
+    function informalBottomModal(title, question, text_close = "Fermer") {
+        const modal = getBottomModal();
+        const instance = initBottomModal();
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">${title}</h5>
+        <p class="flow-text">${question}</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat blue-text modal-close right">${text_close}</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        instance.open();
+    }
+    exports.informalBottomModal = informalBottomModal;
+    /**
+     * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
+     * @param title string Titre affiché sur le modal
+     * @param question string Question complète / détails sur l'action qui sera réalisée
      * @param text_yes string Texte affiché sur le bouton de validation
      * @param text_no string Texte affiché sur le bouton d'annulation
      * @returns Promise<void> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
@@ -2708,8 +2730,8 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
     localforage_1 = __importDefault(localforage_1);
     fetch_timeout_1 = __importDefault(fetch_timeout_1);
     // en millisecondes
-    const MAX_TIMEOUT_FOR_FORM = 10000;
-    const MAX_TIMEOUT_FOR_METADATA = 120000;
+    const MAX_TIMEOUT_FOR_FORM = 20000;
+    const MAX_TIMEOUT_FOR_METADATA = 180000;
     // Nombre de formulaires à envoyer en même temps
     // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
     const PROMISE_BY_SYNC_STEP = 10;
@@ -2788,10 +2810,11 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             // et de ses métadonnées a réussi.
             return new Promise((resolve, reject) => {
                 // Récupération du fichier
+                logger_2.Logger.info("Lecture de " + id);
                 helpers_3.readFile('forms/' + id + ".json")
                     .then(content => {
                     if (!this.in_sync) {
-                        reject();
+                        reject({ code: "aborted" });
                         return;
                     }
                     const d = new FormData();
@@ -2801,9 +2824,15 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     return fetch_timeout_1.default(main_1.API_URL + "forms/send.json", {
                         method: "POST",
                         body: d
-                    }, MAX_TIMEOUT_FOR_FORM).then((response) => {
+                    }, MAX_TIMEOUT_FOR_FORM)
+                        .catch((error) => {
+                        reject({ code: "json_send", error });
+                        throw '';
+                    })
+                        .then(response => {
                         return response.json();
-                    }).then((json) => {
+                    })
+                        .then((json) => {
                         if (json.error_code)
                             throw json.error_code;
                         return json;
@@ -2811,7 +2840,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 })
                     .then(json => {
                     if (!this.in_sync) {
-                        reject();
+                        reject({ code: "aborted" });
                         return;
                     }
                     // Le JSON est envoyé !
@@ -2840,15 +2869,18 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                                     return fetch_timeout_1.default(main_1.API_URL + "forms/metadata_send.json", {
                                         method: "POST",
                                         body: d
-                                    }, MAX_TIMEOUT_FOR_METADATA).then((response) => {
+                                    }, MAX_TIMEOUT_FOR_METADATA)
+                                        .then((response) => {
                                         return response.json();
-                                    }).then((json) => {
+                                    })
+                                        .then((json) => {
                                         if (json.error_code)
                                             rej(json.error_code);
                                         res(json);
-                                    }).catch(error => {
+                                    })
+                                        .catch(error => {
                                         M.toast({ html: "Impossible d'envoyer " + basename + "." });
-                                        rej(error);
+                                        rej({ code: "metadata_send", error });
                                     });
                                 })
                                     .catch(res);
@@ -2859,14 +2891,17 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                             resolve();
                         })
                             .catch(err => {
-                            reject();
+                            reject(err);
                         });
                     }
                     else {
                         resolve();
                     }
                 })
-                    .catch(reject);
+                    .catch((error) => {
+                    logger_2.Logger.info("Impossible de lire le fichier", error.message);
+                    reject({ code: "file_read", error });
+                });
             });
         }
         available() {
@@ -2950,61 +2985,92 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 return data;
             })
                 .catch(reason => {
-                // Si jamais la syncho a été refusée parce qu'une est déjà en cours
-                if (typeof reason === 'object' && reason.code === 1) {
-                    modal.innerHTML = `
-                    <div class="modal-content">
-                        <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
-                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
-                        <div class="center">
-                            <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                if (reason && typeof reason === 'object') {
+                    logger_2.Logger.error("Sync fail:", reason);
+                    // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                    if (reason.code === "already") {
+                        modal.innerHTML = `
+                        <div class="modal-content">
+                            <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
+                            <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                            <div class="center">
+                                <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                            </div>
+                            <div class="clearb"></div>
                         </div>
-                        <div class="clearb"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
-                        <div class="clearb"></div>
-                    </div>
-                    `;
-                    const that = this;
-                    document.getElementById('__ask_sync_cancel').onclick = function () {
-                        const text = document.createElement('p');
-                        text.classList.add('center', 'flow-text');
-                        this.insertAdjacentElement('afterend', text);
-                        that.cancelSync();
-                        const a_element = this;
-                        a_element.style.display = "none";
-                        function launch_timeout() {
-                            setTimeout(() => {
-                                if (!a_element)
-                                    return;
-                                if (that.in_sync) {
-                                    launch_timeout();
-                                }
-                                else {
-                                    if (text) {
-                                        text.classList.add('red-text');
-                                        text.innerText = "Synchronisation annulée.";
+                        <div class="modal-footer">
+                            <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                            <div class="clearb"></div>
+                        </div>
+                        `;
+                        const that = this;
+                        document.getElementById('__ask_sync_cancel').onclick = function () {
+                            const text = document.createElement('p');
+                            text.classList.add('center', 'flow-text');
+                            this.insertAdjacentElement('afterend', text);
+                            that.cancelSync();
+                            const a_element = this;
+                            a_element.style.display = "none";
+                            function launch_timeout() {
+                                setTimeout(() => {
+                                    if (!a_element)
+                                        return;
+                                    if (that.in_sync) {
+                                        launch_timeout();
                                     }
-                                }
-                            }, 500);
-                        }
-                        launch_timeout();
-                    };
+                                    else {
+                                        if (text) {
+                                            text.classList.add('red-text');
+                                            text.innerText = "Synchronisation annulée.";
+                                        }
+                                    }
+                                }, 500);
+                            }
+                            launch_timeout();
+                        };
+                    }
+                    else if (typeof reason.code === "string") {
+                        let cause = (function (reason) {
+                            switch (reason) {
+                                case "aborted": return "La synchonisation a été annulée.";
+                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
+                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
+                                default: return "Erreur inconnue.";
+                            }
+                        })(reason.code);
+                        // Modifie le texte du modal
+                        modal.innerHTML = `
+                        <div class="modal-content">
+                            <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
+                            <p class="flow-text">
+                                ${cause}
+                                Veuillez réessayer ultérieurement.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
+                            <div class="clearb"></div>
+                        </div>
+                        `;
+                    }
                 }
                 else if (cancel_clicked) {
                     instance.close();
                 }
                 else {
-                    M.toast({ html: "Synchronisation échouée" });
                     // Modifie le texte du modal
                     modal.innerHTML = `
                     <div class="modal-content">
                         <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
-                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                        <p class="flow-text">
+                            Une erreur inconnue est survenue.
+                            Veuillez réessayer ultérieurement.
+                        </p>
                     </div>
                     <div class="modal-footer">
-                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                        <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
                         <div class="clearb"></div>
                     </div>
                     `;
@@ -3037,6 +3103,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     }
                     i++;
                     return this.sendForm(id, value);
+                })
+                    .catch(error => {
+                    return Promise.reject({ code: "id_getter", error });
                 }));
             }
             return Promise.all(promises)
@@ -3060,7 +3129,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          */
         sync(force_all = false, clear_cache = false, text_element) {
             if (this.in_sync) {
-                return Promise.reject({ code: 1 });
+                return Promise.reject({ code: 'already' });
             }
             this.in_sync = true;
             let data_cache = {};
@@ -3098,30 +3167,24 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         return this.list.get(id);
                     }
                 };
-                const promises = [];
                 entries_promise
                     .then(entries => {
                     if (!this.in_sync) {
-                        reject();
+                        reject({ code: "aborted" });
                         return;
                     }
-                    this.subSyncDivider(id_getter, entries, text_element)
+                    return this.subSyncDivider(id_getter, entries, text_element)
                         .then(v => {
                         this.list.clear();
                         this.in_sync = false;
                         // La synchro a réussi !
                         resolve();
-                    })
-                        .catch(r => {
-                        this.in_sync = false;
-                        logger_2.Logger.info("Synchronisation échouée:", r);
-                        reject();
                     });
                 })
                     .catch(r => {
                     this.in_sync = false;
                     logger_2.Logger.info("Synchronisation échouée:", r);
-                    reject();
+                    reject(r);
                 });
             });
         }
@@ -3143,6 +3206,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.MAX_LIEUX_AFFICHES = 20;
     exports.API_URL = "https://projet.alkihis.fr/";
     exports.ENABLE_FORM_DOWNLOAD = true;
+    exports.ID_COMPLEXITY = 20;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -4443,16 +4507,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             save_btn.classList.add('btn-flat', 'right', 'green-text');
             save_btn.innerText = "Sauvegarder";
             save_btn.onclick = function () {
-                modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours...");
+                modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
                 modal.classList.remove('modal-fixed-footer');
-                saveForm(type, force_name, form_save)
+                const unique_id = force_name || helpers_7.generateId(main_4.ID_COMPLEXITY);
+                saveForm(type, unique_id, form_save)
                     .then((form_values) => {
-                    SyncManager_2.SyncManager.add(name, form_values);
+                    SyncManager_2.SyncManager.add(unique_id, form_values);
                     if (form_save) {
+                        instance.close();
                         M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager_3.PageManager.popPage();
-                        PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
+                        // PageManager.reload();
                     }
                     else {
                         // On demande si on veut faire une nouvelle entrée
@@ -4473,7 +4539,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                             PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
                         };
                         document.getElementById('__after_save_new').onclick = function () {
-                            PageManager_3.PageManager.reload();
+                            setTimeout(() => {
+                                PageManager_3.PageManager.reload();
+                            }, 150);
                         };
                     }
                 })
@@ -4495,9 +4563,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     /**
      * Sauvegarde le formulaire actuel dans un fichier .json
      *  @param type
-     *  @param force_name? Force un nom pour le formulaire
+     *  @param nom ID du formulaire
      */
-    function saveForm(type, force_name, form_save) {
+    function saveForm(type, name, form_save) {
         const form_values = {
             fields: {},
             type,
@@ -4528,7 +4596,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 form_values.fields[i.name] = i.value;
             }
         }
-        return writeDataThenForm(force_name || helpers_7.generateId(20), form_values, form_save);
+        return writeDataThenForm(name, form_values, form_save);
     }
     exports.saveForm = saveForm;
     /**
@@ -4611,7 +4679,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const file = audio.value;
                     const input_name = audio.name;
                     if (file) {
-                        const filename = helpers_7.generateId(20) + '.mp3';
+                        const filename = helpers_7.generateId(main_4.ID_COMPLEXITY) + '.mp3';
                         helpers_7.urlToBlob(file).then(function (blob) {
                             saveBlobToFile(resolve, reject, filename, input_name, blob);
                         });
@@ -5074,10 +5142,15 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
         formbtn.innerHTML = "Actualiser schémas formulaire";
         formbtn.onclick = function () {
-            helpers_8.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
-                // L'utilisateur a dit oui
-                formActualisationModal();
-            });
+            if (user_manager_5.UserManager.logged) {
+                helpers_8.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
+                    // L'utilisateur a dit oui
+                    formActualisationModal();
+                });
+            }
+            else {
+                helpers_8.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+            }
         };
         container.appendChild(formbtn);
     }
@@ -5280,7 +5353,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                                     .catch(() => {
                                     deleteAll();
                                 });
-                            }, 400);
+                            }, 150);
                         })
                             .catch(() => { });
                     });
@@ -5572,6 +5645,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             document.getElementById('nav_title').innerText = force_name || page.name;
             // On appelle la fonction de création de la page
             page.callback(base, additionnals);
+            // Ramène en haut de la page
+            window.scrollTo(0, 0);
             this.updateReturnBtn();
         }
         cleanWaitingPages() {

@@ -11,6 +11,7 @@ export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20;
 export const API_URL = "https://projet.alkihis.fr/";
 export const ENABLE_FORM_DOWNLOAD = true;
+export const ID_COMPLEXITY = 20;
 
 export const app = {
     // Application Constructor

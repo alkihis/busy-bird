@@ -2,7 +2,7 @@ import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage, getDirP } from "./helpers";
-import { MAX_LIEUX_AFFICHES } from "./main";
+import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
@@ -873,19 +873,21 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
         save_btn.innerText = "Sauvegarder";
 
         save_btn.onclick = function() {
-            modal.innerHTML = getModalPreloader("Sauvegarde en cours...");
+            modal.innerHTML = getModalPreloader("Sauvegarde en cours");
             modal.classList.remove('modal-fixed-footer');
+            const unique_id = force_name || generateId(ID_COMPLEXITY);
 
-            saveForm(type, force_name, form_save)
+            saveForm(type, unique_id, form_save)
                 .then((form_values) => {
-                    SyncManager.add(name, form_values);
+                    SyncManager.add(unique_id, form_values);
 
                     if (form_save) {
+                        instance.close();
                         M.toast({html: "Écriture du formulaire et de ses données réussie."});
 
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager.popPage();
-                        PageManager.changePage(AppPageName.saved, false);
+                        // PageManager.reload();
                     }
                     else {
                         // On demande si on veut faire une nouvelle entrée
@@ -908,7 +910,9 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
                         };
 
                         document.getElementById('__after_save_new').onclick = function() {
-                            PageManager.reload();
+                            setTimeout(() => {
+                                PageManager.reload();
+                            }, 150);
                         };
                     }
 
@@ -936,9 +940,9 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
 /**
  * Sauvegarde le formulaire actuel dans un fichier .json
  *  @param type
- *  @param force_name? Force un nom pour le formulaire
+ *  @param nom ID du formulaire
  */
-export function saveForm(type: string, force_name?: string, form_save?: FormSave) : Promise<FormSave> {
+export function saveForm(type: string, name: string, form_save?: FormSave) : Promise<FormSave> {
     const form_values: FormSave = {
         fields: {},
         type,
@@ -971,7 +975,7 @@ export function saveForm(type: string, force_name?: string, form_save?: FormSave
         }
     }
 
-    return writeDataThenForm(force_name || generateId(20), form_values, form_save);
+    return writeDataThenForm(name, form_values, form_save);
 }
 
 /**
@@ -1073,7 +1077,7 @@ function writeDataThenForm(name: string, form_values: FormSave, older_save?: For
                     const input_name = (audio as HTMLInputElement).name;
 
                     if (file) {
-                        const filename = generateId(20) + '.mp3';
+                        const filename = generateId(ID_COMPLEXITY) + '.mp3';
 
                         urlToBlob(file).then(function(blob) {
                             saveBlobToFile(resolve, reject, filename, input_name, blob);

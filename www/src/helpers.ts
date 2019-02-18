@@ -738,6 +738,30 @@ export function urlToBlob(str: string) : Promise<Blob> {
  * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
  * @param title string Titre affiché sur le modal
  * @param question string Question complète / détails sur l'action qui sera réalisée
+ * @param text_close string Texte affiché sur le bouton de fermeture
+ */
+export function informalBottomModal(title: string, question: string, text_close = "Fermer") : void {
+    const modal = getBottomModal();
+    const instance = initBottomModal();
+
+    modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">${title}</h5>
+        <p class="flow-text">${question}</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat blue-text modal-close right">${text_close}</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+
+    instance.open();
+}
+
+/**
+ * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
+ * @param title string Titre affiché sur le modal
+ * @param question string Question complète / détails sur l'action qui sera réalisée
  * @param text_yes string Texte affiché sur le bouton de validation
  * @param text_no string Texte affiché sur le bouton d'annulation
  * @returns Promise<void> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.

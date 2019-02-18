@@ -7,8 +7,8 @@ import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
 
 // en millisecondes
-const MAX_TIMEOUT_FOR_FORM = 10000;
-const MAX_TIMEOUT_FOR_METADATA = 120000;
+const MAX_TIMEOUT_FOR_FORM = 20000;
+const MAX_TIMEOUT_FOR_METADATA = 180000;
 
 // Nombre de formulaires à envoyer en même temps
 // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
@@ -101,10 +101,11 @@ export const SyncManager = new class {
         // et de ses métadonnées a réussi.
         return new Promise((resolve, reject) => {
             // Récupération du fichier
+            Logger.info("Lecture de " + id);
             readFile('forms/' + id + ".json")
                 .then(content => {
                     if (!this.in_sync) {
-                        reject();
+                        reject({code: "aborted"});
                         return;
                     }
 
@@ -116,9 +117,15 @@ export const SyncManager = new class {
                     return fetch(API_URL + "forms/send.json", {
                         method: "POST",
                         body: d
-                    }, MAX_TIMEOUT_FOR_FORM).then((response) => {
+                    }, MAX_TIMEOUT_FOR_FORM)
+                    .catch((error): never => {
+                        reject({code: "json_send", error});
+                        throw '';
+                    })
+                    .then(response => {
                         return response.json();
-                    }).then((json) => {
+                    })
+                    .then((json) => {
                         if (json.error_code) throw json.error_code;
 
                         return json;
@@ -126,7 +133,7 @@ export const SyncManager = new class {
                 })
                 .then(json => {
                     if (!this.in_sync) {
-                        reject();
+                        reject({code: "aborted"});
                         return;
                     }
 
@@ -162,15 +169,18 @@ export const SyncManager = new class {
                                         return fetch(API_URL + "forms/metadata_send.json", {
                                             method: "POST",
                                             body: d
-                                        }, MAX_TIMEOUT_FOR_METADATA).then((response) => {
+                                        }, MAX_TIMEOUT_FOR_METADATA)
+                                        .then((response) => {
                                             return response.json();
-                                        }).then((json) => {
+                                        })
+                                        .then((json) => {
                                             if (json.error_code) rej(json.error_code);
                     
                                             res(json);
-                                        }).catch(error => {
+                                        })
+                                        .catch(error => {
                                             M.toast({html: "Impossible d'envoyer " + basename + "."});
-                                            rej(error);
+                                            rej({code: "metadata_send", error});
                                         })
                                     })
                                     .catch(res);
@@ -182,14 +192,17 @@ export const SyncManager = new class {
                                 resolve();
                             })
                             .catch(err => {
-                                reject();
+                                reject(err);
                             })
                     }
                     else {
                         resolve();
                     }
                 })
-                .catch(reject);
+                .catch((error) => {
+                    Logger.info("Impossible de lire le fichier", error.message);
+                    reject({code: "file_read", error});
+                });
         });
     }
 
@@ -296,66 +309,99 @@ export const SyncManager = new class {
                 return data;
             })
             .catch(reason => {
-                // Si jamais la syncho a été refusée parce qu'une est déjà en cours
-                if (typeof reason === 'object' && reason.code === 1) {
-                    modal.innerHTML = `
-                    <div class="modal-content">
-                        <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
-                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
-                        <div class="center">
-                            <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                if (reason && typeof reason === 'object') {
+                    Logger.error("Sync fail:", reason);
+
+                    // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                    if (reason.code === "already") {
+                        modal.innerHTML = `
+                        <div class="modal-content">
+                            <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
+                            <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                            <div class="center">
+                                <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                            </div>
+                            <div class="clearb"></div>
                         </div>
-                        <div class="clearb"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
-                        <div class="clearb"></div>
-                    </div>
-                    `;
-
-                    const that = this;
-
-                    document.getElementById('__ask_sync_cancel').onclick = function(this: GlobalEventHandlers) {
-                        const text = document.createElement('p');
-                        text.classList.add('center', 'flow-text');
-                        (this as HTMLElement).insertAdjacentElement('afterend', text);
-                        that.cancelSync();
-
-                        const a_element = this as HTMLElement;
-                        a_element.style.display = "none";
-
-                        function launch_timeout() {
-                            setTimeout(() => {
-                                if (!a_element) return;
-
-                                if (that.in_sync) {
-                                    launch_timeout();
-                                }
-                                else {
-                                    if (text) {
-                                        text.classList.add('red-text');
-                                        text.innerText = "Synchronisation annulée.";
+                        <div class="modal-footer">
+                            <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                            <div class="clearb"></div>
+                        </div>
+                        `;
+    
+                        const that = this;
+    
+                        document.getElementById('__ask_sync_cancel').onclick = function(this: GlobalEventHandlers) {
+                            const text = document.createElement('p');
+                            text.classList.add('center', 'flow-text');
+                            (this as HTMLElement).insertAdjacentElement('afterend', text);
+                            that.cancelSync();
+    
+                            const a_element = this as HTMLElement;
+                            a_element.style.display = "none";
+    
+                            function launch_timeout() {
+                                setTimeout(() => {
+                                    if (!a_element) return;
+    
+                                    if (that.in_sync) {
+                                        launch_timeout();
                                     }
-                                }
-                            }, 500);
-                        }
+                                    else {
+                                        if (text) {
+                                            text.classList.add('red-text');
+                                            text.innerText = "Synchronisation annulée.";
+                                        }
+                                    }
+                                }, 500);
+                            }
+    
+                            launch_timeout();
+                        };
+                    }
+                    else if (typeof reason.code === "string") {
+                        let cause = (function(reason) {
+                            switch (reason) {
+                                case "aborted": return "La synchonisation a été annulée.";
+                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
+                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
+                                default: return "Erreur inconnue.";
+                            }
+                        })(reason.code);
 
-                        launch_timeout();
-                    };
+                        // Modifie le texte du modal
+                        modal.innerHTML = `
+                        <div class="modal-content">
+                            <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
+                            <p class="flow-text">
+                                ${cause}
+                                Veuillez réessayer ultérieurement.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
+                            <div class="clearb"></div>
+                        </div>
+                        `;
+                    }
                 }
                 else if (cancel_clicked) {
                     instance.close();
                 }
                 else {
-                    M.toast({html: "Synchronisation échouée"});
                     // Modifie le texte du modal
                     modal.innerHTML = `
                     <div class="modal-content">
                         <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
-                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                        <p class="flow-text">
+                            Une erreur inconnue est survenue.
+                            Veuillez réessayer ultérieurement.
+                        </p>
                     </div>
                     <div class="modal-footer">
-                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                        <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
                         <div class="clearb"></div>
                     </div>
                     `;
@@ -395,6 +441,9 @@ export const SyncManager = new class {
 
                         return this.sendForm(id, value);
                     })
+                    .catch(error => {
+                        return Promise.reject({code: "id_getter", error});
+                    })
             );
         }
 
@@ -421,7 +470,7 @@ export const SyncManager = new class {
      */
     public sync(force_all = false, clear_cache = false, text_element?: HTMLElement) : Promise<any> {
         if (this.in_sync) {
-            return Promise.reject({code: 1});
+            return Promise.reject({code: 'already'});
         }
 
         this.in_sync = true;
@@ -465,32 +514,26 @@ export const SyncManager = new class {
                 }
             };
 
-            const promises = [];
             entries_promise
                 .then(entries => {   
                     if (!this.in_sync) {
-                        reject();
+                        reject({code: "aborted"});
                         return;
                     }
 
-                    this.subSyncDivider(id_getter, entries, text_element)
+                    return this.subSyncDivider(id_getter, entries, text_element)
                         .then(v => {
                             this.list.clear();
                             this.in_sync = false;
 
                             // La synchro a réussi !
                             resolve();
-                        })
-                        .catch(r => {
-                            this.in_sync = false;
-                            Logger.info("Synchronisation échouée:", r);
-                            reject();
                         });
                 })
                 .catch(r => {
                     this.in_sync = false;
                     Logger.info("Synchronisation échouée:", r);
-                    reject();
+                    reject(r);
                 });
         });
     }

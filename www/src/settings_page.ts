@@ -1,6 +1,6 @@
 import { UserManager, loginUser } from "./user_manager";
 import { Forms } from "./form_schema";
-import { askModal, initModal, getModalPreloader } from "./helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal } from "./helpers";
 import { SyncManager } from "./SyncManager";
 import { PageManager } from "./PageManager";
 
@@ -179,13 +179,18 @@ export function initSettingsPage(base: HTMLElement) {
     formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
     formbtn.innerHTML = "Actualiser schémas formulaire";
     formbtn.onclick = function() {
-        askModal(
-            "Actualiser les schémas ?", 
-            "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE."
-        ).then(() => {
-            // L'utilisateur a dit oui
-            formActualisationModal();
-        });
+        if (UserManager.logged) {
+            askModal(
+                "Actualiser les schémas ?", 
+                "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE."
+            ).then(() => {
+                // L'utilisateur a dit oui
+                formActualisationModal();
+            });
+        }
+        else {
+            informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+        }
     }
     container.appendChild(formbtn);
 }
