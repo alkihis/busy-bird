@@ -164,7 +164,14 @@ export function changeDir() {
 }
 
 let DIR_ENTRY = null;
-export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) {
+/**
+ * Lit un fichier et passe son résultat sous forme de texte ou base64 à callback
+ * @param fileName Nom du fichier
+ * @param callback Fonction appelée si réussie
+ * @param callbackIfFailed Fonction appelée en cas d'échec
+ * @param asBase64 true si le fichier doit être passé encodé en base64
+ */
+export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) : void {
     // @ts-ignore
     const pathToFile = FOLDER + fileName;
     // @ts-ignore
@@ -200,6 +207,24 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
     });
 }
 
+/**
+ * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
+ */
+export function toValidUrl() : string {
+    // @ts-ignore
+    if (device.platform === "browser") {
+        return '';
+    }
+    // @ts-ignore
+    return cordova.file.applicationDirectory + 'www/';
+}
+
+/**
+ * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
+ * @param fileName Nom du fichier
+ * @param asBase64 true si fichier passé en base64 dans la promesse
+ * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
+ */
 export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLDER) : Promise<string> {
     const pathToFile = forceBaseDir + fileName;
 
@@ -226,6 +251,11 @@ export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLD
     });
 }
 
+/**
+ * Lit un fichier en texte ou base64 depuis son FileEntry et envoie son résultat dans une Promise
+ * @param fileEntry FileEntry
+ * @param asBase64 true si fichier passé en base64 à la Promise
+ */
 export function readFileFromEntry(fileEntry, asBase64 = false) : Promise<string> {
     return new Promise(function(resolve, reject) {
         fileEntry.file(function (file) {

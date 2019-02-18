@@ -161,6 +161,13 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
     }
     exports.changeDir = changeDir;
     let DIR_ENTRY = null;
+    /**
+     * Lit un fichier et passe son résultat sous forme de texte ou base64 à callback
+     * @param fileName Nom du fichier
+     * @param callback Fonction appelée si réussie
+     * @param callbackIfFailed Fonction appelée en cas d'échec
+     * @param asBase64 true si le fichier doit être passé encodé en base64
+     */
     function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
         // @ts-ignore
         const pathToFile = FOLDER + fileName;
@@ -195,6 +202,24 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         });
     }
     exports.readFromFile = readFromFile;
+    /**
+     * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
+     */
+    function toValidUrl() {
+        // @ts-ignore
+        if (device.platform === "browser") {
+            return '';
+        }
+        // @ts-ignore
+        return cordova.file.applicationDirectory + 'www/';
+    }
+    exports.toValidUrl = toValidUrl;
+    /**
+     * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
+     * @param fileName Nom du fichier
+     * @param asBase64 true si fichier passé en base64 dans la promesse
+     * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
+     */
     function readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
         const pathToFile = forceBaseDir + fileName;
         return new Promise(function (resolve, reject) {
@@ -218,6 +243,11 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         });
     }
     exports.readFile = readFile;
+    /**
+     * Lit un fichier en texte ou base64 depuis son FileEntry et envoie son résultat dans une Promise
+     * @param fileEntry FileEntry
+     * @param asBase64 true si fichier passé en base64 à la Promise
+     */
     function readFileFromEntry(fileEntry, asBase64 = false) {
         return new Promise(function (resolve, reject) {
             fileEntry.file(function (file) {
@@ -3670,7 +3700,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 })
                     .catch(() => {
                     // Il n'existe pas, on doit le charger depuis les sources de l'application
-                    $.get('/assets/form.json', {}, (json) => {
+                    $.get(helpers_6.toValidUrl() + 'assets/form.json', {}, (json) => {
                         loadJSONInObject(json, true);
                     }, 'json')
                         .fail(function (error) {
@@ -5424,7 +5454,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
     function initHomePage(base) {
         base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
-        <img src="img/logo.png" class="home-logo">
+        <img src="${helpers_10.toValidUrl()}img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>

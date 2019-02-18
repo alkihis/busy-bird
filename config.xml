@@ -9,6 +9,7 @@
     </author>
     <content src="index.html" />
     <preference name="DisallowOverscroll" value="true" />
+    <preference name="websecurity" value="disable" />
     <preference name="android-minSdkVersion" value="19" />
     <platform name="android">
         <icon density="ldpi" src="www/res/icon/android/drawable-ldpi-icon.png" />
@@ -32,6 +33,7 @@
     </platform>
     <access origin="*" />
     <access origin="blob:" />
+    <access origin="cdvfile://*" />
     <access origin="file:///*" />
     <allow-navigation href="projet.alkihis.fr/*" />
     <allow-navigation href="*" />
@@ -40,6 +42,8 @@
     <allow-navigation href="http://*/*" />
     <allow-navigation href="https://*/*" />
     <allow-navigation href="data:*" />
+    <allow-navigation href="self" />
+    <access origin="self" />
     <access origin="content:///*" />
     <allow-navigation href="content:///*" />
     <allow-navigation href="cdvfile://*" />

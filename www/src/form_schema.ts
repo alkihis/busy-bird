@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "./helpers";
+import { readFile, writeFile, toValidUrl } from "./helpers";
 import { Logger } from "./logger";
 import { UserManager } from "./user_manager";
 import { API_URL, ENABLE_FORM_DOWNLOAD } from "./main";
@@ -142,7 +142,7 @@ export const Forms = new class {
                 })
                 .catch(() => {
                     // Il n'existe pas, on doit le charger depuis les sources de l'application
-                    $.get('/assets/form.json', {}, (json: any) => {
+                    $.get(toValidUrl() + 'assets/form.json', {}, (json: any) => {
                         loadJSONInObject(json, true);
                     }, 'json')
                     .fail(function(error) {

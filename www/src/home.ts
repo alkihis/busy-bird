@@ -1,6 +1,6 @@
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
-import { hasGoodConnection } from "./helpers";
+import { hasGoodConnection, toValidUrl } from "./helpers";
 import { APP_VERSION } from "./main";
 
 export const APP_NAME = "Busy Bird";
@@ -8,7 +8,7 @@ export const APP_NAME = "Busy Bird";
 export function initHomePage(base: HTMLElement) {
     base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
-        <img src="img/logo.png" class="home-logo">
+        <img src="${toValidUrl()}img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>

@@ -729,7 +729,7 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
     modal.classList.add('modal-fixed-footer');
     instance.open();
 
-    // [name, reason]
+    // [name, reason, element]
     type VerifiedElement = [string, string, HTMLInputElement | HTMLSelectElement];
 
     // Recherche des éléments à vérifier
