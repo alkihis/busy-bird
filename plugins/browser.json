@@ -51,6 +51,9 @@
     },
     "cordova-plugin-android-permissions": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-media-capture": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {
