@@ -1,4 +1,4 @@
-import { getDir, formatDate, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage } from "./helpers";
+import { getDir, formatDate, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
@@ -6,7 +6,7 @@ import { Logger } from "./logger";
 
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
-    if (!Forms.formExists(form.type)) {
+    if (form.type === null || !Forms.formExists(form.type)) {
         M.toast({html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible."});
         return;
     }
@@ -126,36 +126,21 @@ function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormS
 }
 
 function modalDeleteForm(id: string) {
-    const modal = getBottomModal();
-
-    initBottomModal(
-        {}, 
-        `<div class="modal-content">
-            <h4>Supprimer ce formulaire ?</h4>
-            <p>
-                Vous ne pourrez pas le restaurer ultérieurement.
-            </p>
-        </div>
-        <div class="modal-footer">
-            <a href="#!" class="modal-close green-text btn-flat left">Annuler</a>
-            <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
-        </div>
-        `
-    );
-
-    const instance = getBottomModalInstance();
-    document.getElementById('delete_form_modal').onclick = function() {
-        deleteForm(id).then(function() {
-            M.toast({html: "Entrée supprimée."});
-            PageManager.changePage(AppPageName.saved, false);
-            instance.close();
-        }).catch(function(err) {
-            M.toast({html: "Impossible de supprimer: " + err});
-            instance.close();
+    askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+        .then(() => {
+            // L'utilisateur demande la suppression
+            deleteForm(id)
+                .then(function() {
+                    M.toast({html: "Entrée supprimée."});
+                    PageManager.reload();
+                })
+                .catch(function(err) {
+                    M.toast({html: "Impossible de supprimer: " + err});
+                });
+        })
+        .catch(() => {
+            // Annulation
         });
-    };
-
-    instance.open();
 }
 
 function deleteForm(id: string) : Promise<void> {

@@ -4928,7 +4928,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
-        if (!form_schema_4.Forms.formExists(form.type)) {
+        if (form.type === null || !form_schema_4.Forms.formExists(form.type)) {
             M.toast({ html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible." });
             return;
         }
@@ -5024,30 +5024,21 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return dirreader;
     }
     function modalDeleteForm(id) {
-        const modal = helpers_9.getBottomModal();
-        helpers_9.initBottomModal({}, `<div class="modal-content">
-            <h4>Supprimer ce formulaire ?</h4>
-            <p>
-                Vous ne pourrez pas le restaurer ultérieurement.
-            </p>
-        </div>
-        <div class="modal-footer">
-            <a href="#!" class="modal-close green-text btn-flat left">Annuler</a>
-            <a href="#!" id="delete_form_modal" class="red-text btn-flat right">Supprimer</a>
-        </div>
-        `);
-        const instance = helpers_9.getBottomModalInstance();
-        document.getElementById('delete_form_modal').onclick = function () {
-            deleteForm(id).then(function () {
+        helpers_9.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+            .then(() => {
+            // L'utilisateur demande la suppression
+            deleteForm(id)
+                .then(function () {
                 M.toast({ html: "Entrée supprimée." });
-                PageManager_5.PageManager.changePage(PageManager_5.AppPageName.saved, false);
-                instance.close();
-            }).catch(function (err) {
+                PageManager_5.PageManager.reload();
+            })
+                .catch(function (err) {
                 M.toast({ html: "Impossible de supprimer: " + err });
-                instance.close();
             });
-        };
-        instance.open();
+        })
+            .catch(() => {
+            // Annulation
+        });
     }
     function deleteForm(id) {
         if (id.match(/\.json$/)) {
