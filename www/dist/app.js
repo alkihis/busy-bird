@@ -3206,6 +3206,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.API_URL = "https://projet.alkihis.fr/";
     exports.ENABLE_FORM_DOWNLOAD = true;
     exports.ID_COMPLEXITY = 20;
+    exports.APP_VERSION = 0.4;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -5371,17 +5372,21 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers"], function (require, exports, user_manager_6, SyncManager_5, helpers_10) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main"], function (require, exports, user_manager_6, SyncManager_5, helpers_10, main_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
     function initHomePage(base) {
-        base.innerHTML = "<h2 class='center'>" + exports.APP_NAME + "</h2>" + `
-    <div class="container">
-        <p class="flow-text">
+        base.innerHTML = `
+    <div class="flex-center-aligner home-top-element">
+        <img src="img/logo.png" class="home-logo">
+    </div>
+    <div class="container relative-container">
+        <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
+        <p class="flow-text center">
             Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
-            pour les biologistes.
-            Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
+            pour les biologistes.<br>
+            Commencez en choisissant "Nouvelle entrée" dans le menu de côté.<br>
         </p>
         <p class="flow-text red-text">
             ${!user_manager_6.UserManager.logged ? `
@@ -5394,6 +5399,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers"],
     </div>
     `;
         const home_container = document.getElementById('__home_container');
+        // Calcul du nombre de formulaires en attente de synchronisation
         SyncManager_5.SyncManager.remainingToSync()
             .then(count => {
             if (helpers_10.hasGoodConnection()) {
@@ -5542,7 +5548,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers"],
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "home"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, main_5, home_1) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "home"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, main_6, home_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var AppPageName;
@@ -5638,7 +5644,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             }
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
-                main_5.SIDENAV_OBJ.close();
+                main_6.SIDENAV_OBJ.close();
             }
             this.actual_page = page;
             this._should_wait = page.ask_change;

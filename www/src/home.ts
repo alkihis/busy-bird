@@ -1,16 +1,21 @@
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
 import { hasGoodConnection } from "./helpers";
+import { APP_VERSION } from "./main";
 
 export const APP_NAME = "Busy Bird";
 
 export function initHomePage(base: HTMLElement) {
-    base.innerHTML = "<h2 class='center'>"+ APP_NAME +"</h2>" + `
-    <div class="container">
-        <p class="flow-text">
+    base.innerHTML = `
+    <div class="flex-center-aligner home-top-element">
+        <img src="img/logo.png" class="home-logo">
+    </div>
+    <div class="container relative-container">
+        <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>
+        <p class="flow-text center">
             Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
-            pour les biologistes.
-            Commencez en choisissant le "Nouvelle entrée" dans le menu de côté.
+            pour les biologistes.<br>
+            Commencez en choisissant "Nouvelle entrée" dans le menu de côté.<br>
         </p>
         <p class="flow-text red-text">
             ${!UserManager.logged ? `
@@ -25,6 +30,7 @@ export function initHomePage(base: HTMLElement) {
 
     const home_container = document.getElementById('__home_container');
     
+    // Calcul du nombre de formulaires en attente de synchronisation
     SyncManager.remainingToSync()
         .then(count => {
             if (hasGoodConnection()) {

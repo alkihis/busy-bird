@@ -126,6 +126,16 @@ main {
     color: rgba(134, 134, 134, 0.76);
 }
 
+.version-text {
+    position: absolute;
+    right: 0;
+    top: -20px;
+}
+
+.very-tiny-text {
+    font-size: .7rem;
+}
+
 .vertical-center {
     margin-top: calc(40vh - 1.64rem);
     text-align: center;
@@ -202,6 +212,16 @@ p.smiley.big-text {
 
 .bold-text, .bold {
     font-weight: bold;
+}
+
+.home-top-element {
+    background-image: linear-gradient(#93e8ff59, #ffffff00);
+    margin-bottom: -20px;
+}
+
+img.home-logo {
+    width: auto;
+    height: 200px;
 }
 
 .btn-perso {
