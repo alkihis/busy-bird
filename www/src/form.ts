@@ -831,7 +831,7 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
     for (const e of document.getElementsByClassName('input-image-element')) {
         const filei = e as HTMLInputElement;
 
-        if (filei.required) {
+        if (filei.files.length === 0 && filei.required) {
             const label = document.querySelector(`input[data-for="${filei.id}"]`) as HTMLElement;
             let name = filei.name;
             if (label) {
@@ -846,7 +846,7 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
     for (const e of document.getElementsByClassName('input-audio-element')) {
         const hiddeni = e as HTMLInputElement;
 
-        if (hiddeni.required) {
+        if (!hiddeni.value && hiddeni.required) {
             elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
         }
     }
