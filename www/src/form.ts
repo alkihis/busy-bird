@@ -691,7 +691,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
  * Initie la sauvegarde: présente et vérifie les champs
  *  @param type
  */
-function initFormSave(type: string): any {
+function initFormSave(type: string, force_name?: string, form_save?: FormSave): any {
     console.log("Demarrage initFormSave")
     // Ouverture du modal de verification
     const modal = getModal();
@@ -808,8 +808,7 @@ function initFormSave(type: string): any {
     if (!erreur_critique) {
         document.getElementById("valid_verif").onclick = function() {
             getModalInstance().close();
-            const current_form_key = Forms.current_key;
-            saveForm(current_form_key);
+            saveForm(type, force_name, form_save);
         }
 
 
@@ -1101,7 +1100,7 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     const current_form_key = Forms.current_key;
     btn.addEventListener('click', function() {
         if (edition_mode) {
-            saveForm(current_form_key, edition_mode.name, edition_mode.save);
+            saveForm(edition_mode.save.type, edition_mode.name, edition_mode.save);
         }
         else {
             try {

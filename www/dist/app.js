@@ -4208,7 +4208,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * Initie la sauvegarde: présente et vérifie les champs
      *  @param type
      */
-    function initFormSave(type) {
+    function initFormSave(type, force_name, form_save) {
         console.log("Demarrage initFormSave");
         // Ouverture du modal de verification
         const modal = helpers_7.getModal();
@@ -4315,8 +4315,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         if (!erreur_critique) {
             document.getElementById("valid_verif").onclick = function () {
                 helpers_7.getModalInstance().close();
-                const current_form_key = form_schema_2.Forms.current_key;
-                saveForm(current_form_key);
+                saveForm(type, force_name, form_save);
             };
         }
         ;
@@ -4559,7 +4558,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const current_form_key = form_schema_2.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
-                saveForm(current_form_key, edition_mode.name, edition_mode.save);
+                saveForm(edition_mode.save.type, edition_mode.name, edition_mode.save);
             }
             else {
                 try {
