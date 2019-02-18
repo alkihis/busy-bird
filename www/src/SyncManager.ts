@@ -2,7 +2,7 @@ import { FormSave } from "./form_schema";
 import { Logger } from "./logger";
 import localforage from 'localforage';
 import { API_URL } from "./main";
-import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID } from "./helpers";
+import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection } from "./helpers";
 import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
 
@@ -289,15 +289,65 @@ export const SyncManager = new class {
 
         return this.sync(force_all, clear_cache, text)
             .then(data => {
+                M.toast({html: "Synchronisation réussie"});
+
                 instance.close();
 
                 return data;
             })
             .catch(reason => {
-                if (cancel_clicked) {
+                // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                if (typeof reason === 'object' && reason.code === 1) {
+                    modal.innerHTML = `
+                    <div class="modal-content">
+                        <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
+                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                        <div class="center">
+                            <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                        </div>
+                        <div class="clearb"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                        <div class="clearb"></div>
+                    </div>
+                    `;
+
+                    const that = this;
+
+                    document.getElementById('__ask_sync_cancel').onclick = function(this: GlobalEventHandlers) {
+                        const text = document.createElement('p');
+                        text.classList.add('center', 'flow-text');
+                        (this as HTMLElement).insertAdjacentElement('afterend', text);
+                        that.cancelSync();
+
+                        const a_element = this as HTMLElement;
+                        a_element.style.display = "none";
+
+                        function launch_timeout() {
+                            setTimeout(() => {
+                                if (!a_element) return;
+
+                                if (that.in_sync) {
+                                    launch_timeout();
+                                }
+                                else {
+                                    if (text) {
+                                        text.classList.add('red-text');
+                                        text.innerText = "Synchronisation annulée.";
+                                    }
+                                }
+                            }, 500);
+                        }
+
+                        launch_timeout();
+                    };
+                }
+                else if (cancel_clicked) {
                     instance.close();
                 }
                 else {
+                    M.toast({html: "Synchronisation échouée"});
                     // Modifie le texte du modal
                     modal.innerHTML = `
                     <div class="modal-content">
@@ -352,6 +402,15 @@ export const SyncManager = new class {
             .then(() => {
                 return this.subSyncDivider(id_getter, entries, text_element, position + PROMISE_BY_SYNC_STEP);
             })
+    }
+
+    /**
+     * Lance la synchronisation en arrière plan
+     */
+    protected launchBackgroundSync() : Promise<any> {
+        if (hasGoodConnection()) {
+            return this.sync();
+        }
     }
 
     /**
@@ -419,20 +478,18 @@ export const SyncManager = new class {
                             this.list.clear();
                             this.in_sync = false;
 
-                            M.toast({html: "Synchronisation réussie"});
+                            // La synchro a réussi !
                             resolve();
                         })
                         .catch(r => {
                             this.in_sync = false;
                             Logger.info("Synchronisation échouée:", r);
-                            M.toast({html: "Synchronisation échouée"});
                             reject();
                         });
                 })
                 .catch(r => {
                     this.in_sync = false;
                     Logger.info("Synchronisation échouée:", r);
-                    M.toast({html: "Synchronisation échouée"});
                     reject();
                 });
         });

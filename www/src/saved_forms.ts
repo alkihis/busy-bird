@@ -1,4 +1,4 @@
-import { getDir, formatDate, getBottomModal, initBottomModal, getBottomModalInstance, getBase, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal } from "./helpers";
+import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
@@ -12,10 +12,31 @@ function editAForm(form: FormSave, name: string) {
     }
 
     const current_form = Forms.getForm(form.type);
-
-    const base = getBase();
     
     PageManager.pushPage(AppPageName.form, "Modifier", {form: current_form, name, save: form});
+}
+
+function deleteAll() : Promise<any> {
+    // On veut supprimer tous les fichiers
+    // Récupération de tous les fichiers de forms
+    return getDirP('forms')
+        // Récupère les entries du répertoire
+        .then(dirEntries)
+        .then(entries => {
+            const promises: Promise<any>[] = [];
+
+            for (const e of entries) {
+                if (e.isFile) {
+                    promises.push(deleteForm(e.name));
+                }
+            }
+
+            return Promise.all(promises);
+        })
+        .then(() => {
+            M.toast({html: "Fichiers supprimés avec succès"});
+            PageManager.reload();
+        })
 }
 
 function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
@@ -193,6 +214,43 @@ export function initSavedForm(base: HTMLElement) {
     
                 if (files.length === 0) {
                     base.innerHTML = displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                }
+                else {
+                    // Bouton de suppression globale
+                    const delete_btn = convertHTMLToElement(`
+                        <div class="fixed-action-btn">
+                            <a class="btn-floating btn-large waves-effect waves-light red">
+                                <i class="material-icons">delete_sweep</i>
+                            </a>
+                        </div>`
+                    );
+
+                    delete_btn.addEventListener('click', () => {
+                        askModal(
+                            "Tout supprimer ?", 
+                            "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés."
+                        )
+                        .then(() => {
+                            setTimeout(function() {
+                                // Attend que le modal précédent se ferme
+                                askModal(
+                                    "Êtes-vous sûr-e ?", 
+                                    "La suppression est irréversible.",
+                                    "Annuler",
+                                    "Supprimer"
+                                )
+                                .then(() => {
+                                    // Annulation
+                                })
+                                .catch(() => {
+                                    deleteAll();
+                                });
+                            }, 400);
+                        })
+                        .catch(() => {});
+                    });
+
+                    base.insertAdjacentElement('beforeend', delete_btn);
                 }
                 
             }).catch(function(err) {

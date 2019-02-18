@@ -1,5 +1,6 @@
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
+import { hasGoodConnection } from "./helpers";
 
 export const APP_NAME = "Busy Bird";
 
@@ -24,16 +25,9 @@ export function initHomePage(base: HTMLElement) {
 
     const home_container = document.getElementById('__home_container');
     
-    function goodConnection() : boolean {
-        // @ts-ignore
-        const networkState = navigator.connection.type;
-        // @ts-ignore
-        return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
-    }
-    
     SyncManager.remainingToSync()
         .then(count => {
-            if (goodConnection()) {
+            if (hasGoodConnection()) {
                 if (count > 15) {
                     home_container.innerHTML = createCardPanel(
                         `<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${count} entrées).</span><br>
@@ -72,3 +66,136 @@ function createCardPanel(html_text: string, title?: string) : string {
         </div>
     `;
 }
+
+
+// ////// DEPRECATED
+// /**
+//  * Initie la sauvegarde: présente et vérifie les champs
+//  *  @param type
+//  */
+// function initFormSave(type: string, force_name?: string, form_save?: FormSave): any {
+//     console.log("Demarrage initFormSave")
+//     // Ouverture du modal de verification
+//     const modal = getModal();
+//     const instance = initModal({ dismissible: true }, getModalPreloader(
+//         "La vérification a probablement planté.<br>Merci de patienter quand même, on sait jamais.",
+//         `<div class="modal-footer">
+//             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
+//         </div>`
+//     ));
+
+//     modal.classList.add('modal-fixed-footer');
+
+//     // Ouverture du premiere modal de chargement
+//     instance.open();
+
+//     // creation de la liste d'erreurs
+//     let list_erreur = document.createElement("div");
+//     list_erreur.classList.add("modal-content");
+
+//     let element_erreur = document.createElement("ul");
+//     element_erreur.classList.add("collection")
+//     list_erreur.appendChild(element_erreur);
+
+//     //Ajouter verification avant d'ajouter bouton valider
+//     let erreur_critique: boolean = false;
+
+//     //Parcours tous les elements remplits ou non
+//     for (const input of document.getElementsByClassName('input-form-element')) {
+//         //Attribution du label plutot que son nom interne
+//         const i = input as HTMLInputElement;
+//         const label = document.querySelector(`label[for="${i.id}"]`);
+//         let name = i.name;
+//         if (label) {
+//             name = label.textContent;
+//         };
+
+//         const contraintes: any = {};
+//         if (i.dataset.constraints) {
+//             i.dataset.constraints.split(';').map((e: string) => {
+//                 const [name, value] = e.split('=');
+//                 contraintes[name] = value;
+//             });
+//         }
+
+//         //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
+//         if (i.required && !i.value) {
+//             let erreur = document.createElement("li");
+//             erreur.classList.add("collection-item");
+//             erreur.innerHTML = "<strong style='color: red;' >" + name + "</strong> : Champ requis";
+//             element_erreur.insertBefore(erreur, element_erreur.firstChild);
+//             erreur_critique = true;
+//             continue;
+//         }
+
+//         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
+//             const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
+//             if (selected.length == 0) {
+//                 let erreur = document.createElement("li");
+//                 erreur.classList.add("collection-item");
+//                 erreur.innerHTML = "<strong>" + name + "</strong> : Non renseigné";
+//                 element_erreur.appendChild(erreur);
+//             }
+//         }
+//         else if (i.type !== "checkbox") {
+//             if (!i.value) {
+//                 let erreur = document.createElement("li");
+//                 erreur.classList.add("collection-item");
+//                 erreur.innerHTML = "<strong>" + name + "</strong> : Non renseigné";
+//                 element_erreur.appendChild(erreur);
+//             }
+//             else if (i.type === "number") {
+//                 if (contraintes) {
+//                     if ((Number(i.value) <= Number(contraintes['min'])) || (Number(i.value) >= Number(contraintes['max']))) {
+//                         let erreur = document.createElement("li");
+//                         erreur.classList.add("collection-item");
+//                         erreur.innerHTML = "<strong>" + name + "</strong> : Intervale non respecté";
+//                         element_erreur.appendChild(erreur);
+//                     }
+//                     // ajouter precision else if ()
+//                 }
+//             }
+//             else if (i.type === "text") {
+//                 if (contraintes) {
+//                     if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))) {
+//                         let erreur = document.createElement("li");
+//                         erreur.classList.add("collection-item");
+//                         erreur.innerHTML = "<strong>" + name + "</strong> : Taille non respecté";
+//                         element_erreur.appendChild(erreur);
+//                     };
+//                 }
+//             }
+//         }
+//     }
+
+
+//     modal.innerHTML = "";
+//     modal.appendChild(list_erreur);
+//     let footer = document.createElement("div");
+//     footer.classList.add("modal-footer");
+//     if (erreur_critique) {
+//         footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
+//         </div>`;
+//     }
+//     else {
+//         footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+//         </div>`;
+//     }
+
+//     modal.appendChild(footer);
+//     document.getElementById("cancel_verif").onclick = function() {
+//         getModalInstance().close();
+//     };
+//     if (!erreur_critique) {
+//         document.getElementById("valid_verif").onclick = function() {
+//             getModalInstance().close();
+//             saveForm(type, force_name, form_save);
+//         }
+
+
+//     };
+//     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
+
+// }
+
+

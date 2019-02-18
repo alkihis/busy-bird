@@ -1,7 +1,7 @@
 import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
 import Artyom from "./arytom/artyom";
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage, getDirP } from "./helpers";
 import { MAX_LIEUX_AFFICHES } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
@@ -715,140 +715,230 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
     }
 }
 
-/**
- * Initie la sauvegarde: présente et vérifie les champs
- *  @param type
- */
-function initFormSave(type: string, force_name?: string, form_save?: FormSave): any {
-    console.log("Demarrage initFormSave")
+function beginFormSave(type: string, force_name?: string, form_save?: FormSave) : void {
     // Ouverture du modal de verification
     const modal = getModal();
-    const instance = initModal({ dismissible: true }, getModalPreloader(
-        "Validation du formulaire...\nCeci peut prendre quelques secondes",
+    const instance = initModal({ dismissible: false }, getModalPreloader(
+        "La vérification a probablement planté.<br>Merci de patienter quand même, on sait jamais.",
         `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`
     ));
 
     modal.classList.add('modal-fixed-footer');
-
-    // Ouverture du premiere modal de chargement
     instance.open();
 
-    // creation de la liste d'erreurs
-    let list_erreur = document.createElement("div");
-    list_erreur.classList.add("modal-content");
+    // [name, reason]
+    type VerifiedElement = [string, string, HTMLInputElement | HTMLSelectElement];
 
-    let element_erreur = document.createElement("ul");
-    element_erreur.classList.add("collection")
-    list_erreur.appendChild(element_erreur);
+    // Recherche des éléments à vérifier
+    const elements_failed: VerifiedElement[] = [];
+    const elements_warn: VerifiedElement[] = [];
 
-    //Ajouter verification avant d'ajouter bouton valider
-    let erreur_critique: boolean = false;
-
-    //Parcours tous les elements remplits ou non
-    for (const input of document.getElementsByClassName('input-form-element')) {
-        //Attribution du label plutot que son nom interne
-        const i = input as HTMLInputElement;
-        const label = document.querySelector(`label[for="${i.id}"]`);
-        let name = i.name;
+    for (const e of document.getElementsByClassName('input-form-element')) {
+        const element = e as HTMLInputElement | HTMLSelectElement;
+        const label = document.querySelector(`label[for="${element.id}"]`);
+        let name = element.name;
         if (label) {
             name = label.textContent;
         };
 
         const contraintes: any = {};
-        if (i.dataset.constraints) {
-            i.dataset.constraints.split(';').map((e: string) => {
+        if (element.dataset.constraints) {
+            element.dataset.constraints.split(';').map((e: string) => {
                 const [name, value] = e.split('=');
                 contraintes[name] = value;
             });
         }
 
-        //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
-        if (i.required && !i.value) {
-            let erreur = document.createElement("li");
-            erreur.classList.add("collection-item");
-            erreur.innerHTML = "<b style='color: red;' >" + name + "</b> : Champ requis";
-            element_erreur.insertBefore(erreur, element_erreur.firstChild);
-            erreur_critique = true;
-            continue;
+        if (element.required && !element.value) {
+            elements_failed.push([name, "Champ requis", element]);
         }
+        else {
+            let fail = false;
+            let str = "";
 
-        if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
-            const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
-            if (selected.length == 0) {
-                let erreur = document.createElement("li");
-                erreur.classList.add("collection-item");
-                erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
-                element_erreur.appendChild(erreur);
-            }
-        }
-        else if (i.type !== "checkbox") {
-            if (!i.value) {
-                let erreur = document.createElement("li");
-                erreur.classList.add("collection-item");
-                erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
-                element_erreur.appendChild(erreur);
-            }
-            else if (i.type === "number") {
-                if (contraintes) {
-                    if ((Number(i.value) <= Number(contraintes['min'])) || (Number(i.value) >= Number(contraintes['max']))) {
-                        let erreur = document.createElement("li");
-                        erreur.classList.add("collection-item");
-                        erreur.innerHTML = "<b>" + name + "</b> : Intervale non respecté";
-                        element_erreur.appendChild(erreur);
+            // Si le champ est requis et a une valeur, on recherche ses contraintes
+            if (Object.keys(contraintes).length > 0) {
+                if (element.type === "text" || element.tagName === "textarea") {
+                    if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                        fail = true;
+                        str += "La taille du texte doit dépasser " + contraintes.min + " caractères. ";
                     }
-                    // ajouter precision else if ()
+                    if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                        fail = true;
+                        str += "La taille du texte doit être inférieure à " + contraintes.max + " caractères. ";
+                    }
+                }
+                else if (element.type === "number") {
+                    if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                        fail = true;
+                        str += "Le nombre doit dépasser " + contraintes.min + ". ";
+                    }
+                    if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                        fail = true;
+                        str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
+                    }
+
+                    // Vérification de la précision
+                    if (contraintes.precision) {
+                        // Calcul de nombre de décimales requises
+                        // si le nombre demandé est un float
+                        let NB_DECIMALES: number = 0;
+                        const dec_part = contraintes.precision.toString().split('.');
+                        NB_DECIMALES = dec_part[1].length;
+
+                        // Si on a demandé à avoir un nombre de flottant précis
+                        const floating_point = element.value.split('.');
+
+                        if (floating_point.length > 1) {
+                            // Récupération de la partie décimale avec le bon nombre de décimales
+                            // (round obligatoire, à cause de la gestion des float imprécise)
+                            const partie_decimale = Number((Number(element.value) % 1).toFixed(NB_DECIMALES));
+
+                            // Si le nombre de chiffres après la virgule n'est pas le bon
+                            // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
+                            if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
+                                fail = true;
+                                str += "Le nombre n'a pas la précision requise (" + contraintes.precision + "). ";
+                            }
+                        }
+                        else {
+                            //Il n'y a pas de . dans le nombre
+                            fail = true;
+                            str += "Le nombre n'est pas un flottant. ";
+                        }
+                    }
                 }
             }
-            else if (i.type === "text") {
-                if (contraintes) {
-                    if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))) {
-                        let erreur = document.createElement("li");
-                        erreur.classList.add("collection-item");
-                        erreur.innerHTML = "<b>" + name + "</b> : Taille non respecté";
-                        element_erreur.appendChild(erreur);
-                    };
+
+            if (fail) {
+                if (element.required) {
+                    elements_failed.push([name, str, element]);
+                }
+                else {
+                    elements_warn.push([name, str, element]);
                 }
             }
+
+            // Si c'est autre chose, l'élément est forcément valide
         }
     }
 
+    // Construit les éléments dans le modal
+    const container = document.createElement('div');
+    container.classList.add('modal-content');
+
+    const list = document.createElement('ul');
+    list.classList.add('collection');
+
+    for (const error of elements_failed) {
+        const li = document.createElement('li');
+        li.classList.add("collection-item");
+
+        li.innerHTML = `
+            <span class="red-text bold">${error[0]}</span>: 
+            <span>${error[1]}</span>
+        `;
+        list.appendChild(li);
+    }
+
+    for (const warning of elements_warn) {
+        const li = document.createElement('li');
+        li.classList.add("collection-item");
+
+        li.innerHTML = `
+            <span class="bold">${warning[0]}</span>: 
+            <span>${warning[1]}</span>
+        `;
+        list.appendChild(li);
+    }
+
+    container.appendChild(list);
+
+    const footer = document.createElement('div');
+    footer.classList.add('modal-footer');
+
+    const cancel_btn = document.createElement('a');
+    cancel_btn.href = "#!";
+    cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
+    cancel_btn.innerText = "Corriger";
+
+    footer.appendChild(cancel_btn);
+
+    if (elements_failed.length === 0) {
+        const save_btn = document.createElement('a');
+        save_btn.href = "#!";
+        save_btn.classList.add('btn-flat', 'right', 'green-text');
+        save_btn.innerText = "Sauvegarder";
+
+        save_btn.onclick = function() {
+            modal.innerHTML = getModalPreloader("Sauvegarde en cours...");
+            modal.classList.remove('modal-fixed-footer');
+
+            saveForm(type, force_name, form_save)
+                .then((form_values) => {
+                    SyncManager.add(name, form_values);
+
+                    if (form_save) {
+                        M.toast({html: "Écriture du formulaire et de ses données réussie."});
+
+                        // On vient de la page d'édition de formulaire déjà créés
+                        PageManager.popPage();
+                        PageManager.changePage(AppPageName.saved, false);
+                    }
+                    else {
+                        // On demande si on veut faire une nouvelle entrée
+                        modal.innerHTML = `
+                        <div class="modal-content">
+                            <h5 class="no-margin-top">Saisir une nouvelle entrée ?</h5>
+                            <p class="flow-text">
+                                La précédente entrée a bien été enregistrée.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">Non</a>
+                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Oui</a>
+                            <div class="clearb"></div>
+                        </div>
+                        `;
+
+                        document.getElementById('__after_save_entries').onclick = function() {
+                            PageManager.changePage(AppPageName.saved, false);
+                        };
+
+                        document.getElementById('__after_save_new').onclick = function() {
+                            PageManager.reload();
+                        };
+                    }
+
+                })
+                .catch((error) => {
+                    instance.close();
+
+                    console.log(error);
+                    M.toast({html: "Impossible d'écrire le formulaire."});
+                })
+        };
+
+        footer.appendChild(save_btn);
+    }
+
+    const clearb = document.createElement('div');
+    clearb.classList.add('clearb');
+    footer.appendChild(clearb);
 
     modal.innerHTML = "";
-    modal.appendChild(list_erreur);
-    let footer = document.createElement("div");
-    footer.classList.add("modal-footer");
-    if (erreur_critique) {
-        footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
-        </div>`;
-    }
-    else {
-        footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
-        </div>`;
-    }
-
+    modal.appendChild(container);
     modal.appendChild(footer);
-    document.getElementById("cancel_verif").onclick = function() {
-        getModalInstance().close();
-    };
-    if (!erreur_critique) {
-        document.getElementById("valid_verif").onclick = function() {
-            getModalInstance().close();
-            saveForm(type, force_name, form_save);
-        }
-
-
-    };
-    // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
-
 }
+
 /**
  * Sauvegarde le formulaire actuel dans un fichier .json
  *  @param type
  *  @param force_name? Force un nom pour le formulaire
  */
-export function saveForm(type: string, force_name?: string, form_save?: FormSave) : void {
+export function saveForm(type: string, force_name?: string, form_save?: FormSave) : Promise<FormSave> {
     const form_values: FormSave = {
         fields: {},
         type,
@@ -881,15 +971,15 @@ export function saveForm(type: string, force_name?: string, form_save?: FormSave
         }
     }
 
-    writeImagesThenForm(force_name || generateId(20), form_values, form_save);
+    return writeDataThenForm(force_name || generateId(20), form_values, form_save);
 }
 
 /**
- * Ecrit les images présentes dans le formulaire dans un dossier spécifique,
+ * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
  * puis crée le formulaire
  * @param name Nom du formulaire (sans le .json)
  */
-function writeImagesThenForm(name: string, form_values: FormSave, older_save?: FormSave) : void {
+function writeDataThenForm(name: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
     function saveBlobToFile(resolve, reject, filename: string, input_name: string, blob: Blob) : void {
         writeFile('form_data/' + name, filename, blob, function() {
             // Enregistre le nom du fichier sauvegardé dans le formulaire,
@@ -918,7 +1008,8 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
         });
     }
 
-    getDir(function() {
+    return getDirP('form_data')
+        .then(() => {
         // Crée le dossier form_data si besoin
 
         // Récupère les images du formulaire
@@ -1011,7 +1102,7 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
             );
         }
 
-        Promise.all(promises)
+        return Promise.all(promises)
             .then(function() {
                 // On supprime les metadonnées vides du form
                 for (const n in form_values.metadata) {
@@ -1020,28 +1111,15 @@ function writeImagesThenForm(name: string, form_values: FormSave, older_save?: F
                     }
                 }
 
-                // On écrit enfin le formulaire !
-                writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
-                    M.toast({html: "Écriture du formulaire et de ses données réussie."});
-                    SyncManager.add(name, form_values);
-
-                    if (older_save) {
-                        // On vient de la page d'édition de formulaire déjà créés
-                        PageManager.popPage();
-                        PageManager.changePage(AppPageName.saved, false);
-                    }
-                    else {
-                        PageManager.changePage(AppPageName.form, false);
-                    }
-
-                    console.log(form_values);
-                });
+                return new Promise((resolve, reject) => {
+                    // On écrit enfin le formulaire !
+                    writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
+                        console.log(form_values);
+                        resolve(form_values);
+                    }, reject);
+                }) as Promise<FormSave>;
             })
-            .catch(function(error) {
-                console.log(error);
-                M.toast({html: "Impossible d'écrire le formulaire."});
-            });
-    }, 'form_data');
+    });
 }
 
 /**
@@ -1127,11 +1205,11 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     const current_form_key = Forms.current_key;
     btn.addEventListener('click', function() {
         if (edition_mode) {
-            saveForm(edition_mode.save.type, edition_mode.name, edition_mode.save);
+            beginFormSave(edition_mode.save.type, edition_mode.name, edition_mode.save);
         }
         else {
             try {
-                initFormSave(current_form_key);
+                beginFormSave(current_form_key);
             } catch (e) {
                 Logger.error(JSON.stringify(e));
             }

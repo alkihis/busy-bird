@@ -80,6 +80,10 @@ body {
     flex-direction: column;
 }
 
+nav {
+    background-color: #98b3c3;
+}
+
 main {
     flex: 1 0 auto;
 }
@@ -196,7 +200,7 @@ p.smiley.big-text {
     width: 100%;
 }
 
-.bold-text {
+.bold-text, .bold {
     font-weight: bold;
 }
 

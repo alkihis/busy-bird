@@ -774,10 +774,19 @@ export function askModal(title: string, question: string, text_yes = "Oui", text
     });
 }
 
+/**
+ * Échappe les caractères HTML de la chaîne text
+ * @param text string
+ */
 export function escapeHTML(text: string) : string {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * Renvoie une chaîne contenant de l'HTML représentant un message d'information
+ * @param title Titre du message
+ * @param message Message complémentaire
+ */
 export function displayInformalMessage(title: string, message: string = "") : string {
     return `
         <div class="absolute-container">
@@ -793,7 +802,12 @@ export function displayInformalMessage(title: string, message: string = "") : st
     `;
 }
 
-export function displayErrorMessage(title: string, message: string) : string {
+/**
+ * Renvoie une chaîne contenant de l'HTML représentant un message d'erreur
+ * @param title Titre a afficher (sera en rouge)
+ * @param message Message complémentaire
+ */
+export function displayErrorMessage(title: string, message: string = "") : string {
     return `
         <div class="absolute-container">
             <div class="absolute-center-container">
@@ -807,4 +821,20 @@ export function displayErrorMessage(title: string, message: string) : string {
             </div>
         </div>
     `;
+}
+
+/**
+ * Renvoie vrai si l'utilisateur est en ligne et a une connexion potable.
+ */
+export function hasGoodConnection() : boolean {
+    // @ts-ignore
+    const networkState = navigator.connection.type;
+    // @ts-ignore
+    return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
+}
+
+export function convertHTMLToElement(htmlString: string) : HTMLElement {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlString;
+    return tempDiv.firstElementChild as HTMLElement;
 }

@@ -719,10 +719,19 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         });
     }
     exports.askModal = askModal;
+    /**
+     * Échappe les caractères HTML de la chaîne text
+     * @param text string
+     */
     function escapeHTML(text) {
         return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
     exports.escapeHTML = escapeHTML;
+    /**
+     * Renvoie une chaîne contenant de l'HTML représentant un message d'information
+     * @param title Titre du message
+     * @param message Message complémentaire
+     */
     function displayInformalMessage(title, message = "") {
         return `
         <div class="absolute-container">
@@ -738,7 +747,12 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
     `;
     }
     exports.displayInformalMessage = displayInformalMessage;
-    function displayErrorMessage(title, message) {
+    /**
+     * Renvoie une chaîne contenant de l'HTML représentant un message d'erreur
+     * @param title Titre a afficher (sera en rouge)
+     * @param message Message complémentaire
+     */
+    function displayErrorMessage(title, message = "") {
         return `
         <div class="absolute-container">
             <div class="absolute-center-container">
@@ -754,6 +768,22 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
     `;
     }
     exports.displayErrorMessage = displayErrorMessage;
+    /**
+     * Renvoie vrai si l'utilisateur est en ligne et a une connexion potable.
+     */
+    function hasGoodConnection() {
+        // @ts-ignore
+        const networkState = navigator.connection.type;
+        // @ts-ignore
+        return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
+    }
+    exports.hasGoodConnection = hasGoodConnection;
+    function convertHTMLToElement(htmlString) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlString;
+        return tempDiv.firstElementChild;
+    }
+    exports.convertHTMLToElement = convertHTMLToElement;
 });
 /**
  * Artyom.js is a voice control, speech recognition and speech synthesis JavaScript library.
@@ -2915,14 +2945,58 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             };
             return this.sync(force_all, clear_cache, text)
                 .then(data => {
+                M.toast({ html: "Synchronisation réussie" });
                 instance.close();
                 return data;
             })
                 .catch(reason => {
-                if (cancel_clicked) {
+                // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                if (typeof reason === 'object' && reason.code === 1) {
+                    modal.innerHTML = `
+                    <div class="modal-content">
+                        <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
+                        <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                        <div class="center">
+                            <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                        </div>
+                        <div class="clearb"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                        <div class="clearb"></div>
+                    </div>
+                    `;
+                    const that = this;
+                    document.getElementById('__ask_sync_cancel').onclick = function () {
+                        const text = document.createElement('p');
+                        text.classList.add('center', 'flow-text');
+                        this.insertAdjacentElement('afterend', text);
+                        that.cancelSync();
+                        const a_element = this;
+                        a_element.style.display = "none";
+                        function launch_timeout() {
+                            setTimeout(() => {
+                                if (!a_element)
+                                    return;
+                                if (that.in_sync) {
+                                    launch_timeout();
+                                }
+                                else {
+                                    if (text) {
+                                        text.classList.add('red-text');
+                                        text.innerText = "Synchronisation annulée.";
+                                    }
+                                }
+                            }, 500);
+                        }
+                        launch_timeout();
+                    };
+                }
+                else if (cancel_clicked) {
                     instance.close();
                 }
                 else {
+                    M.toast({ html: "Synchronisation échouée" });
                     // Modifie le texte du modal
                     modal.innerHTML = `
                     <div class="modal-content">
@@ -2969,6 +3043,14 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 .then(() => {
                 return this.subSyncDivider(id_getter, entries, text_element, position + PROMISE_BY_SYNC_STEP);
             });
+        }
+        /**
+         * Lance la synchronisation en arrière plan
+         */
+        launchBackgroundSync() {
+            if (helpers_3.hasGoodConnection()) {
+                return this.sync();
+            }
         }
         /**
          * Synchronise les formulaires courants avec la BDD distante
@@ -3027,20 +3109,18 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         .then(v => {
                         this.list.clear();
                         this.in_sync = false;
-                        M.toast({ html: "Synchronisation réussie" });
+                        // La synchro a réussi !
                         resolve();
                     })
                         .catch(r => {
                         this.in_sync = false;
                         logger_2.Logger.info("Synchronisation échouée:", r);
-                        M.toast({ html: "Synchronisation échouée" });
                         reject();
                     });
                 })
                     .catch(r => {
                     this.in_sync = false;
                     logger_2.Logger.info("Synchronisation échouée:", r);
-                    M.toast({ html: "Synchronisation échouée" });
                     reject();
                 });
             });
@@ -4234,118 +4314,183 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
     }
     exports.constructForm = constructForm;
-    /**
-     * Initie la sauvegarde: présente et vérifie les champs
-     *  @param type
-     */
-    function initFormSave(type, force_name, form_save) {
-        console.log("Demarrage initFormSave");
+    function beginFormSave(type, force_name, form_save) {
         // Ouverture du modal de verification
         const modal = helpers_7.getModal();
-        const instance = helpers_7.initModal({ dismissible: true }, helpers_7.getModalPreloader("Validation du formulaire...\nCeci peut prendre quelques secondes", `<div class="modal-footer">
+        const instance = helpers_7.initModal({ dismissible: false }, helpers_7.getModalPreloader("La vérification a probablement planté.<br>Merci de patienter quand même, on sait jamais.", `<div class="modal-footer">
             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
         </div>`));
         modal.classList.add('modal-fixed-footer');
-        // Ouverture du premiere modal de chargement
         instance.open();
-        // creation de la liste d'erreurs
-        let list_erreur = document.createElement("div");
-        list_erreur.classList.add("modal-content");
-        let element_erreur = document.createElement("ul");
-        element_erreur.classList.add("collection");
-        list_erreur.appendChild(element_erreur);
-        //Ajouter verification avant d'ajouter bouton valider
-        let erreur_critique = false;
-        //Parcours tous les elements remplits ou non
-        for (const input of document.getElementsByClassName('input-form-element')) {
-            //Attribution du label plutot que son nom interne
-            const i = input;
-            const label = document.querySelector(`label[for="${i.id}"]`);
-            let name = i.name;
+        // Recherche des éléments à vérifier
+        const elements_failed = [];
+        const elements_warn = [];
+        for (const e of document.getElementsByClassName('input-form-element')) {
+            const element = e;
+            const label = document.querySelector(`label[for="${element.id}"]`);
+            let name = element.name;
             if (label) {
                 name = label.textContent;
             }
             ;
             const contraintes = {};
-            if (i.dataset.constraints) {
-                i.dataset.constraints.split(';').map((e) => {
+            if (element.dataset.constraints) {
+                element.dataset.constraints.split(';').map((e) => {
                     const [name, value] = e.split('=');
                     contraintes[name] = value;
                 });
             }
-            //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
-            if (i.required && !i.value) {
-                let erreur = document.createElement("li");
-                erreur.classList.add("collection-item");
-                erreur.innerHTML = "<b style='color: red;' >" + name + "</b> : Champ requis";
-                element_erreur.insertBefore(erreur, element_erreur.firstChild);
-                erreur_critique = true;
-                continue;
+            if (element.required && !element.value) {
+                elements_failed.push([name, "Champ requis", element]);
             }
-            if (input.tagName === "SELECT" && input.multiple) {
-                const selected = [...input.options].filter(option => option.selected).map(option => option.value);
-                if (selected.length == 0) {
-                    let erreur = document.createElement("li");
-                    erreur.classList.add("collection-item");
-                    erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
-                    element_erreur.appendChild(erreur);
-                }
-            }
-            else if (i.type !== "checkbox") {
-                if (!i.value) {
-                    let erreur = document.createElement("li");
-                    erreur.classList.add("collection-item");
-                    erreur.innerHTML = "<b>" + name + "</b> : Non renseigné";
-                    element_erreur.appendChild(erreur);
-                }
-                else if (i.type === "number") {
-                    if (contraintes) {
-                        if ((Number(i.value) <= Number(contraintes['min'])) || (Number(i.value) >= Number(contraintes['max']))) {
-                            let erreur = document.createElement("li");
-                            erreur.classList.add("collection-item");
-                            erreur.innerHTML = "<b>" + name + "</b> : Intervale non respecté";
-                            element_erreur.appendChild(erreur);
+            else {
+                let fail = false;
+                let str = "";
+                // Si le champ est requis et a une valeur, on recherche ses contraintes
+                if (Object.keys(contraintes).length > 0) {
+                    if (element.type === "text" || element.tagName === "textarea") {
+                        if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                            fail = true;
+                            str += "La taille du texte doit dépasser " + contraintes.min + " caractères. ";
                         }
-                        // ajouter precision else if ()
+                        if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                            fail = true;
+                            str += "La taille du texte doit être inférieure à " + contraintes.max + " caractères. ";
+                        }
+                    }
+                    else if (element.type === "number") {
+                        if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                            fail = true;
+                            str += "Le nombre doit dépasser " + contraintes.min + ". ";
+                        }
+                        if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                            fail = true;
+                            str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
+                        }
+                        // Vérification de la précision
+                        if (contraintes.precision) {
+                            // Calcul de nombre de décimales requises
+                            // si le nombre demandé est un float
+                            let NB_DECIMALES = 0;
+                            const dec_part = contraintes.precision.toString().split('.');
+                            NB_DECIMALES = dec_part[1].length;
+                            // Si on a demandé à avoir un nombre de flottant précis
+                            const floating_point = element.value.split('.');
+                            if (floating_point.length > 1) {
+                                // Récupération de la partie décimale avec le bon nombre de décimales
+                                // (round obligatoire, à cause de la gestion des float imprécise)
+                                const partie_decimale = Number((Number(element.value) % 1).toFixed(NB_DECIMALES));
+                                // Si le nombre de chiffres après la virgule n'est pas le bon
+                                // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
+                                if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
+                                    fail = true;
+                                    str += "Le nombre n'a pas la précision requise (" + contraintes.precision + "). ";
+                                }
+                            }
+                            else {
+                                //Il n'y a pas de . dans le nombre
+                                fail = true;
+                                str += "Le nombre n'est pas un flottant. ";
+                            }
+                        }
                     }
                 }
-                else if (i.type === "text") {
-                    if (contraintes) {
-                        if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))) {
-                            let erreur = document.createElement("li");
-                            erreur.classList.add("collection-item");
-                            erreur.innerHTML = "<b>" + name + "</b> : Taille non respecté";
-                            element_erreur.appendChild(erreur);
-                        }
-                        ;
+                if (fail) {
+                    if (element.required) {
+                        elements_failed.push([name, str, element]);
+                    }
+                    else {
+                        elements_warn.push([name, str, element]);
                     }
                 }
+                // Si c'est autre chose, l'élément est forcément valide
             }
         }
-        modal.innerHTML = "";
-        modal.appendChild(list_erreur);
-        let footer = document.createElement("div");
-        footer.classList.add("modal-footer");
-        if (erreur_critique) {
-            footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
-        </div>`;
+        // Construit les éléments dans le modal
+        const container = document.createElement('div');
+        container.classList.add('modal-content');
+        const list = document.createElement('ul');
+        list.classList.add('collection');
+        for (const error of elements_failed) {
+            const li = document.createElement('li');
+            li.classList.add("collection-item");
+            li.innerHTML = `
+            <span class="red-text bold">${error[0]}</span>: 
+            <span>${error[1]}</span>
+        `;
+            list.appendChild(li);
         }
-        else {
-            footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
-        </div>`;
+        for (const warning of elements_warn) {
+            const li = document.createElement('li');
+            li.classList.add("collection-item");
+            li.innerHTML = `
+            <span class="bold">${warning[0]}</span>: 
+            <span>${warning[1]}</span>
+        `;
+            list.appendChild(li);
         }
-        modal.appendChild(footer);
-        document.getElementById("cancel_verif").onclick = function () {
-            helpers_7.getModalInstance().close();
-        };
-        if (!erreur_critique) {
-            document.getElementById("valid_verif").onclick = function () {
-                helpers_7.getModalInstance().close();
-                saveForm(type, force_name, form_save);
+        container.appendChild(list);
+        const footer = document.createElement('div');
+        footer.classList.add('modal-footer');
+        const cancel_btn = document.createElement('a');
+        cancel_btn.href = "#!";
+        cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
+        cancel_btn.innerText = "Corriger";
+        footer.appendChild(cancel_btn);
+        if (elements_failed.length === 0) {
+            const save_btn = document.createElement('a');
+            save_btn.href = "#!";
+            save_btn.classList.add('btn-flat', 'right', 'green-text');
+            save_btn.innerText = "Sauvegarder";
+            save_btn.onclick = function () {
+                modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours...");
+                modal.classList.remove('modal-fixed-footer');
+                saveForm(type, force_name, form_save)
+                    .then((form_values) => {
+                    SyncManager_2.SyncManager.add(name, form_values);
+                    if (form_save) {
+                        M.toast({ html: "Écriture du formulaire et de ses données réussie." });
+                        // On vient de la page d'édition de formulaire déjà créés
+                        PageManager_3.PageManager.popPage();
+                        PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
+                    }
+                    else {
+                        // On demande si on veut faire une nouvelle entrée
+                        modal.innerHTML = `
+                        <div class="modal-content">
+                            <h5 class="no-margin-top">Saisir une nouvelle entrée ?</h5>
+                            <p class="flow-text">
+                                La précédente entrée a bien été enregistrée.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">Non</a>
+                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Oui</a>
+                            <div class="clearb"></div>
+                        </div>
+                        `;
+                        document.getElementById('__after_save_entries').onclick = function () {
+                            PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
+                        };
+                        document.getElementById('__after_save_new').onclick = function () {
+                            PageManager_3.PageManager.reload();
+                        };
+                    }
+                })
+                    .catch((error) => {
+                    instance.close();
+                    console.log(error);
+                    M.toast({ html: "Impossible d'écrire le formulaire." });
+                });
             };
+            footer.appendChild(save_btn);
         }
-        ;
-        // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
+        const clearb = document.createElement('div');
+        clearb.classList.add('clearb');
+        footer.appendChild(clearb);
+        modal.innerHTML = "";
+        modal.appendChild(container);
+        modal.appendChild(footer);
     }
     /**
      * Sauvegarde le formulaire actuel dans un fichier .json
@@ -4383,15 +4528,15 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 form_values.fields[i.name] = i.value;
             }
         }
-        writeImagesThenForm(force_name || helpers_7.generateId(20), form_values, form_save);
+        return writeDataThenForm(force_name || helpers_7.generateId(20), form_values, form_save);
     }
     exports.saveForm = saveForm;
     /**
-     * Ecrit les images présentes dans le formulaire dans un dossier spécifique,
+     * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
      * puis crée le formulaire
      * @param name Nom du formulaire (sans le .json)
      */
-    function writeImagesThenForm(name, form_values, older_save) {
+    function writeDataThenForm(name, form_values, older_save) {
         function saveBlobToFile(resolve, reject, filename, input_name, blob) {
             helpers_7.writeFile('form_data/' + name, filename, blob, function () {
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
@@ -4417,7 +4562,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 reject(error);
             });
         }
-        helpers_7.getDir(function () {
+        return helpers_7.getDirP('form_data')
+            .then(() => {
             // Crée le dossier form_data si besoin
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
@@ -4489,7 +4635,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     }
                 }));
             }
-            Promise.all(promises)
+            return Promise.all(promises)
                 .then(function () {
                 // On supprime les metadonnées vides du form
                 for (const n in form_values.metadata) {
@@ -4497,26 +4643,15 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         delete form_values.metadata[n];
                     }
                 }
-                // On écrit enfin le formulaire !
-                helpers_7.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
-                    M.toast({ html: "Écriture du formulaire et de ses données réussie." });
-                    SyncManager_2.SyncManager.add(name, form_values);
-                    if (older_save) {
-                        // On vient de la page d'édition de formulaire déjà créés
-                        PageManager_3.PageManager.popPage();
-                        PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
-                    }
-                    else {
-                        PageManager_3.PageManager.changePage(PageManager_3.AppPageName.form, false);
-                    }
-                    console.log(form_values);
+                return new Promise((resolve, reject) => {
+                    // On écrit enfin le formulaire !
+                    helpers_7.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
+                        console.log(form_values);
+                        resolve(form_values);
+                    }, reject);
                 });
-            })
-                .catch(function (error) {
-                console.log(error);
-                M.toast({ html: "Impossible d'écrire le formulaire." });
             });
-        }, 'form_data');
+        });
     }
     /**
      * Fonction qui va faire attendre l'arrivée du formulaire,
@@ -4584,11 +4719,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const current_form_key = form_schema_2.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
-                saveForm(edition_mode.save.type, edition_mode.name, edition_mode.save);
+                beginFormSave(edition_mode.save.type, edition_mode.name, edition_mode.save);
             }
             else {
                 try {
-                    initFormSave(current_form_key);
+                    beginFormSave(current_form_key);
                 }
                 catch (e) {
                     logger_4.Logger.error(JSON.stringify(e));
@@ -4958,8 +5093,27 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             return;
         }
         const current_form = form_schema_4.Forms.getForm(form.type);
-        const base = helpers_9.getBase();
         PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
+    }
+    function deleteAll() {
+        // On veut supprimer tous les fichiers
+        // Récupération de tous les fichiers de forms
+        return helpers_9.getDirP('forms')
+            // Récupère les entries du répertoire
+            .then(helpers_9.dirEntries)
+            .then(entries => {
+            const promises = [];
+            for (const e of entries) {
+                if (e.isFile) {
+                    promises.push(deleteForm(e.name));
+                }
+            }
+            return Promise.all(promises);
+        })
+            .then(() => {
+            M.toast({ html: "Fichiers supprimés avec succès" });
+            PageManager_5.PageManager.reload();
+        });
     }
     function appendFileEntry(json, ph) {
         const save = json[1];
@@ -5106,6 +5260,32 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 if (files.length === 0) {
                     base.innerHTML = helpers_9.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
                 }
+                else {
+                    // Bouton de suppression globale
+                    const delete_btn = helpers_9.convertHTMLToElement(`
+                        <div class="fixed-action-btn">
+                            <a class="btn-floating btn-large waves-effect waves-light red">
+                                <i class="material-icons">delete_sweep</i>
+                            </a>
+                        </div>`);
+                    delete_btn.addEventListener('click', () => {
+                        helpers_9.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
+                            .then(() => {
+                            setTimeout(function () {
+                                // Attend que le modal précédent se ferme
+                                helpers_9.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
+                                    .then(() => {
+                                    // Annulation
+                                })
+                                    .catch(() => {
+                                    deleteAll();
+                                });
+                            }, 400);
+                        })
+                            .catch(() => { });
+                    });
+                    base.insertAdjacentElement('beforeend', delete_btn);
+                }
             }).catch(function (err) {
                 throw err;
             })).catch(function (err) {
@@ -5116,7 +5296,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager"], function (require, exports, user_manager_6, SyncManager_5) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers"], function (require, exports, user_manager_6, SyncManager_5, helpers_10) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -5139,15 +5319,9 @@ define("home", ["require", "exports", "user_manager", "SyncManager"], function (
     </div>
     `;
         const home_container = document.getElementById('__home_container');
-        function goodConnection() {
-            // @ts-ignore
-            const networkState = navigator.connection.type;
-            // @ts-ignore
-            return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
-        }
         SyncManager_5.SyncManager.remainingToSync()
             .then(count => {
-            if (goodConnection()) {
+            if (helpers_10.hasGoodConnection()) {
                 if (count > 15) {
                     home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${count} entrées).</span><br>
                         <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`, "Synchronisation");
@@ -5179,7 +5353,121 @@ define("home", ["require", "exports", "user_manager", "SyncManager"], function (
     `;
     }
 });
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "home"], function (require, exports, helpers_10, form_1, settings_page_1, saved_forms_1, main_5, home_1) {
+// ////// DEPRECATED
+// /**
+//  * Initie la sauvegarde: présente et vérifie les champs
+//  *  @param type
+//  */
+// function initFormSave(type: string, force_name?: string, form_save?: FormSave): any {
+//     console.log("Demarrage initFormSave")
+//     // Ouverture du modal de verification
+//     const modal = getModal();
+//     const instance = initModal({ dismissible: true }, getModalPreloader(
+//         "La vérification a probablement planté.<br>Merci de patienter quand même, on sait jamais.",
+//         `<div class="modal-footer">
+//             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
+//         </div>`
+//     ));
+//     modal.classList.add('modal-fixed-footer');
+//     // Ouverture du premiere modal de chargement
+//     instance.open();
+//     // creation de la liste d'erreurs
+//     let list_erreur = document.createElement("div");
+//     list_erreur.classList.add("modal-content");
+//     let element_erreur = document.createElement("ul");
+//     element_erreur.classList.add("collection")
+//     list_erreur.appendChild(element_erreur);
+//     //Ajouter verification avant d'ajouter bouton valider
+//     let erreur_critique: boolean = false;
+//     //Parcours tous les elements remplits ou non
+//     for (const input of document.getElementsByClassName('input-form-element')) {
+//         //Attribution du label plutot que son nom interne
+//         const i = input as HTMLInputElement;
+//         const label = document.querySelector(`label[for="${i.id}"]`);
+//         let name = i.name;
+//         if (label) {
+//             name = label.textContent;
+//         };
+//         const contraintes: any = {};
+//         if (i.dataset.constraints) {
+//             i.dataset.constraints.split(';').map((e: string) => {
+//                 const [name, value] = e.split('=');
+//                 contraintes[name] = value;
+//             });
+//         }
+//         //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
+//         if (i.required && !i.value) {
+//             let erreur = document.createElement("li");
+//             erreur.classList.add("collection-item");
+//             erreur.innerHTML = "<strong style='color: red;' >" + name + "</strong> : Champ requis";
+//             element_erreur.insertBefore(erreur, element_erreur.firstChild);
+//             erreur_critique = true;
+//             continue;
+//         }
+//         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
+//             const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
+//             if (selected.length == 0) {
+//                 let erreur = document.createElement("li");
+//                 erreur.classList.add("collection-item");
+//                 erreur.innerHTML = "<strong>" + name + "</strong> : Non renseigné";
+//                 element_erreur.appendChild(erreur);
+//             }
+//         }
+//         else if (i.type !== "checkbox") {
+//             if (!i.value) {
+//                 let erreur = document.createElement("li");
+//                 erreur.classList.add("collection-item");
+//                 erreur.innerHTML = "<strong>" + name + "</strong> : Non renseigné";
+//                 element_erreur.appendChild(erreur);
+//             }
+//             else if (i.type === "number") {
+//                 if (contraintes) {
+//                     if ((Number(i.value) <= Number(contraintes['min'])) || (Number(i.value) >= Number(contraintes['max']))) {
+//                         let erreur = document.createElement("li");
+//                         erreur.classList.add("collection-item");
+//                         erreur.innerHTML = "<strong>" + name + "</strong> : Intervale non respecté";
+//                         element_erreur.appendChild(erreur);
+//                     }
+//                     // ajouter precision else if ()
+//                 }
+//             }
+//             else if (i.type === "text") {
+//                 if (contraintes) {
+//                     if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))) {
+//                         let erreur = document.createElement("li");
+//                         erreur.classList.add("collection-item");
+//                         erreur.innerHTML = "<strong>" + name + "</strong> : Taille non respecté";
+//                         element_erreur.appendChild(erreur);
+//                     };
+//                 }
+//             }
+//         }
+//     }
+//     modal.innerHTML = "";
+//     modal.appendChild(list_erreur);
+//     let footer = document.createElement("div");
+//     footer.classList.add("modal-footer");
+//     if (erreur_critique) {
+//         footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
+//         </div>`;
+//     }
+//     else {
+//         footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
+//         </div>`;
+//     }
+//     modal.appendChild(footer);
+//     document.getElementById("cancel_verif").onclick = function() {
+//         getModalInstance().close();
+//     };
+//     if (!erreur_critique) {
+//         document.getElementById("valid_verif").onclick = function() {
+//             getModalInstance().close();
+//             saveForm(type, force_name, form_save);
+//         }
+//     };
+//     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
+// }
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "home"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, main_5, home_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var AppPageName;
@@ -5268,8 +5556,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 this.pages_holder = [];
             }
             // On écrit le preloader dans la base et on change l'historique
-            const base = helpers_10.getBase();
-            base.innerHTML = helpers_10.getPreloader("Chargement");
+            const base = helpers_11.getBase();
+            base.innerHTML = helpers_11.getPreloader("Chargement");
             if (window.history) {
                 window.history.pushState({}, "", "/?" + pagename);
             }
@@ -5302,7 +5590,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_10.getBase();
+            const actual_base = helpers_11.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -5335,7 +5623,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            helpers_10.getBase().remove();
+            helpers_11.getBase().remove();
             // Met le fragment dans le DOM
             document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
             // Remet le bon titre
@@ -5362,11 +5650,11 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
-                    helpers_10.getModalInstance().close();
+                    helpers_11.getModalInstance().close();
                 }
                 catch (e) { }
                 try {
-                    helpers_10.getBottomModalInstance().close();
+                    helpers_11.getBottomModalInstance().close();
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
@@ -5377,7 +5665,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             };
             if (this.should_wait || force_asking) {
-                helpers_10.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
+                helpers_11.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
                     .then(stepBack)
                     .catch(() => { });
             }
