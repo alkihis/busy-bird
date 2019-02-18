@@ -603,10 +603,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             f_input.type = "text"; f_input.classList.add('file-path', 'validate');
             f_input.value = ele.label;
 
-            if (filled_form && ele.name in filled_form) {
-                // Afficher un aperçu de l'image
-                // TODO
-            }
+            // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
+            f_input.dataset.label = ele.label;
+            f_input.dataset.for = input.id;
 
             fwrapper.appendChild(f_input);
             wrapper.appendChild(fwrapper);
@@ -636,6 +635,8 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             const real_input = document.createElement('input');
             real_input.type = "hidden";
             real_input.classList.add('input-audio-element');
+            // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
+            real_input.dataset.label = ele.label;
 
             // Création d'un label vide pour l'input
             const hidden_label = document.createElement('label');
@@ -735,13 +736,14 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
     const elements_failed: VerifiedElement[] = [];
     const elements_warn: VerifiedElement[] = [];
 
+    // Input classiques: checkbox/slider, text, textarea, select, number
     for (const e of document.getElementsByClassName('input-form-element')) {
         const element = e as HTMLInputElement | HTMLSelectElement;
         const label = document.querySelector(`label[for="${element.id}"]`);
         let name = element.name;
         if (label) {
             name = label.textContent;
-        };
+        }
 
         const contraintes: any = {};
         if (element.dataset.constraints) {
@@ -771,11 +773,11 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
                     }
                 }
                 else if (element.type === "number") {
-                    if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                    if (typeof contraintes.min !== 'undefined' && Number(element.value) < contraintes.min) {
                         fail = true;
                         str += "Le nombre doit dépasser " + contraintes.min + ". ";
                     }
-                    if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                    if (typeof contraintes.max !== 'undefined' && Number(element.value) > contraintes.max) {
                         fail = true;
                         str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
                     }
@@ -825,37 +827,88 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
         }
     }
 
+    // Éléments FILE (ici, possiblement que des images)
+    for (const e of document.getElementsByClassName('input-image-element')) {
+        const filei = e as HTMLInputElement;
+
+        if (filei.required) {
+            const label = document.querySelector(`input[data-for="${filei.id}"]`) as HTMLElement;
+            let name = filei.name;
+            if (label) {
+                name = label.dataset.label;
+            }
+
+            elements_failed.push([name, "Fichier requis", filei]);
+        }
+    }
+
+    // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
+    for (const e of document.getElementsByClassName('input-audio-element')) {
+        const hiddeni = e as HTMLInputElement;
+
+        if (hiddeni.required) {
+            elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
+        }
+    }
+
     // Construit les éléments dans le modal
     const container = document.createElement('div');
     container.classList.add('modal-content');
 
-    const list = document.createElement('ul');
-    list.classList.add('collection');
+    if (elements_warn.length > 0 || elements_failed.length > 0) {
+        const par = document.createElement('p');
+        par.classList.add('flow-text', 'no-margin-top');
+        par.innerText = "Des erreurs "+ (!elements_failed.length ? 'potentielles' : '') +" ont été détectées.";
+        container.appendChild(par);
 
-    for (const error of elements_failed) {
-        const li = document.createElement('li');
-        li.classList.add("collection-item");
+        if (!elements_failed.length) {
+            const tinypar = document.createElement('p');
+            tinypar.style.marginTop = "-15px";
+            tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
+            container.appendChild(tinypar);
+        }
 
-        li.innerHTML = `
-            <span class="red-text bold">${error[0]}</span>: 
-            <span>${error[1]}</span>
-        `;
-        list.appendChild(li);
+        const list = document.createElement('ul');
+        list.classList.add('collection');
+    
+        for (const error of elements_failed) {
+            const li = document.createElement('li');
+            li.classList.add("collection-item");
+    
+            li.innerHTML = `
+                <span class="red-text bold">${error[0]}</span>: 
+                <span>${error[1]}</span>
+            `;
+            list.appendChild(li);
+        }
+    
+        for (const warning of elements_warn) {
+            const li = document.createElement('li');
+            li.classList.add("collection-item");
+    
+            li.innerHTML = `
+                <span class="bold">${warning[0]}</span>: 
+                <span>${warning[1]}</span>
+            `;
+            list.appendChild(li);
+        }
+    
+        container.appendChild(list);
+    }
+    else {
+        // On affiche un message de succès
+        const title = document.createElement('h5');
+        title.classList.add('no-margin-top');
+        title.innerText = "Résumé";
+        container.appendChild(title);
+
+        const par = document.createElement('p');
+        par.classList.add('flow-text');
+        par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
+        container.appendChild(par);
     }
 
-    for (const warning of elements_warn) {
-        const li = document.createElement('li');
-        li.classList.add("collection-item");
-
-        li.innerHTML = `
-            <span class="bold">${warning[0]}</span>: 
-            <span>${warning[1]}</span>
-        `;
-        list.appendChild(li);
-    }
-
-    container.appendChild(list);
-
+    // Footer
     const footer = document.createElement('div');
     footer.classList.add('modal-footer');
 
@@ -866,6 +919,7 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
 
     footer.appendChild(cancel_btn);
 
+    // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
     if (elements_failed.length === 0) {
         const save_btn = document.createElement('a');
         save_btn.href = "#!";

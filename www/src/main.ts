@@ -8,10 +8,10 @@ import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
-export const MAX_LIEUX_AFFICHES = 20;
-export const API_URL = "https://projet.alkihis.fr/";
-export const ENABLE_FORM_DOWNLOAD = true;
-export const ID_COMPLEXITY = 20;
+export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
+export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
+export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
+export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
 export const APP_VERSION = 0.4;
 
 export const app = {

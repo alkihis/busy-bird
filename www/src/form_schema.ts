@@ -168,7 +168,7 @@ export const Forms = new class {
         }
 
         // @ts-ignore
-        if (ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && UserManager.logged) {
+        if ((ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && UserManager.logged) {
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes
             return fetch(API_URL + "forms/available.json?access_token=" + UserManager.token, undefined, 20000)

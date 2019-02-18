@@ -3202,10 +3202,10 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
-    exports.MAX_LIEUX_AFFICHES = 20;
-    exports.API_URL = "https://projet.alkihis.fr/";
-    exports.ENABLE_FORM_DOWNLOAD = true;
-    exports.ID_COMPLEXITY = 20;
+    exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
+    exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
+    exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
+    exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
     exports.APP_VERSION = 0.4;
     exports.app = {
         // Application Constructor
@@ -3692,7 +3692,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 init_text.innerText = "Mise à jour des formulaires";
             }
             // @ts-ignore
-            if (main_3.ENABLE_FORM_DOWNLOAD && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
+            if ((main_3.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
                 return fetch_timeout_2.default(main_3.API_URL + "forms/available.json?access_token=" + user_manager_3.UserManager.token, undefined, 20000)
@@ -4295,10 +4295,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 f_input.type = "text";
                 f_input.classList.add('file-path', 'validate');
                 f_input.value = ele.label;
-                if (filled_form && ele.name in filled_form) {
-                    // Afficher un aperçu de l'image
-                    // TODO
-                }
+                // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
+                f_input.dataset.label = ele.label;
+                f_input.dataset.for = input.id;
                 fwrapper.appendChild(f_input);
                 wrapper.appendChild(fwrapper);
                 placeh.appendChild(wrapper);
@@ -4320,6 +4319,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const real_input = document.createElement('input');
                 real_input.type = "hidden";
                 real_input.classList.add('input-audio-element');
+                // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
+                real_input.dataset.label = ele.label;
                 // Création d'un label vide pour l'input
                 const hidden_label = document.createElement('label');
                 fillStandardInputValues(real_input, ele, hidden_label);
@@ -4389,6 +4390,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Recherche des éléments à vérifier
         const elements_failed = [];
         const elements_warn = [];
+        // Input classiques: checkbox/slider, text, textarea, select, number
         for (const e of document.getElementsByClassName('input-form-element')) {
             const element = e;
             const label = document.querySelector(`label[for="${element.id}"]`);
@@ -4396,7 +4398,6 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             if (label) {
                 name = label.textContent;
             }
-            ;
             const contraintes = {};
             if (element.dataset.constraints) {
                 element.dataset.constraints.split(';').map((e) => {
@@ -4423,11 +4424,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         }
                     }
                     else if (element.type === "number") {
-                        if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                        if (typeof contraintes.min !== 'undefined' && Number(element.value) < contraintes.min) {
                             fail = true;
                             str += "Le nombre doit dépasser " + contraintes.min + ". ";
                         }
-                        if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                        if (typeof contraintes.max !== 'undefined' && Number(element.value) > contraintes.max) {
                             fail = true;
                             str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
                         }
@@ -4470,30 +4471,73 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // Si c'est autre chose, l'élément est forcément valide
             }
         }
+        // Éléments FILE (ici, possiblement que des images)
+        for (const e of document.getElementsByClassName('input-image-element')) {
+            const filei = e;
+            if (filei.required) {
+                const label = document.querySelector(`input[data-for="${filei.id}"]`);
+                let name = filei.name;
+                if (label) {
+                    name = label.dataset.label;
+                }
+                elements_failed.push([name, "Fichier requis", filei]);
+            }
+        }
+        // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
+        for (const e of document.getElementsByClassName('input-audio-element')) {
+            const hiddeni = e;
+            if (hiddeni.required) {
+                elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
+            }
+        }
         // Construit les éléments dans le modal
         const container = document.createElement('div');
         container.classList.add('modal-content');
-        const list = document.createElement('ul');
-        list.classList.add('collection');
-        for (const error of elements_failed) {
-            const li = document.createElement('li');
-            li.classList.add("collection-item");
-            li.innerHTML = `
-            <span class="red-text bold">${error[0]}</span>: 
-            <span>${error[1]}</span>
-        `;
-            list.appendChild(li);
+        if (elements_warn.length > 0 || elements_failed.length > 0) {
+            const par = document.createElement('p');
+            par.classList.add('flow-text', 'no-margin-top');
+            par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
+            container.appendChild(par);
+            if (!elements_failed.length) {
+                const tinypar = document.createElement('p');
+                tinypar.style.marginTop = "-15px";
+                tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
+                container.appendChild(tinypar);
+            }
+            const list = document.createElement('ul');
+            list.classList.add('collection');
+            for (const error of elements_failed) {
+                const li = document.createElement('li');
+                li.classList.add("collection-item");
+                li.innerHTML = `
+                <span class="red-text bold">${error[0]}</span>: 
+                <span>${error[1]}</span>
+            `;
+                list.appendChild(li);
+            }
+            for (const warning of elements_warn) {
+                const li = document.createElement('li');
+                li.classList.add("collection-item");
+                li.innerHTML = `
+                <span class="bold">${warning[0]}</span>: 
+                <span>${warning[1]}</span>
+            `;
+                list.appendChild(li);
+            }
+            container.appendChild(list);
         }
-        for (const warning of elements_warn) {
-            const li = document.createElement('li');
-            li.classList.add("collection-item");
-            li.innerHTML = `
-            <span class="bold">${warning[0]}</span>: 
-            <span>${warning[1]}</span>
-        `;
-            list.appendChild(li);
+        else {
+            // On affiche un message de succès
+            const title = document.createElement('h5');
+            title.classList.add('no-margin-top');
+            title.innerText = "Résumé";
+            container.appendChild(title);
+            const par = document.createElement('p');
+            par.classList.add('flow-text');
+            par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
+            container.appendChild(par);
         }
-        container.appendChild(list);
+        // Footer
         const footer = document.createElement('div');
         footer.classList.add('modal-footer');
         const cancel_btn = document.createElement('a');
@@ -4501,6 +4545,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
         cancel_btn.innerText = "Corriger";
         footer.appendChild(cancel_btn);
+        // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
         if (elements_failed.length === 0) {
             const save_btn = document.createElement('a');
             save_btn.href = "#!";
