@@ -5890,12 +5890,14 @@ $jscomp.polyfill = function (e, r, p, m) {
       value: function _preventBodyScrolling() {
         var body = document.body;
         body.style.overflow = 'hidden';
+        body.style.touchAction = 'none';
       }
     }, {
       key: "_enableBodyScrolling",
       value: function _enableBodyScrolling() {
         var body = document.body;
         body.style.overflow = '';
+        body.style.touchAction = '';
       }
     }, {
       key: "open",

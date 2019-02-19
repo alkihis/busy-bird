@@ -197,6 +197,7 @@ export const PageManager = new class {
         // Cela supprime immédiatement le noeud du DOM
         // const save = new DocumentFragment(); // semble être trop récent
         const save = document.createDocumentFragment();
+        actual_base.id = "";
         save.appendChild(actual_base);
         // Insère la sauvegarde dans la pile de page
         this.pages_holder.push({
@@ -231,10 +232,14 @@ export const PageManager = new class {
         const last_page = this.pages_holder.pop();
 
         // Supprime le main actuel
-        getBase().remove();
+        const main = getBase();
+        cleanElement(main);
+        main.parentElement.removeChild(main);
 
+        const new_main = last_page.save.firstElementChild;
+        new_main.id = "main_block";
         // Met le fragment dans le DOM
-        document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
+        document.getElementsByTagName('main')[0].appendChild(new_main);
         // Remet le bon titre
         document.getElementById('nav_title').innerText = last_page.name;
         this.actual_page = last_page.page;
@@ -299,5 +304,12 @@ export const PageManager = new class {
 
     public isPageWaiting() : boolean {
         return this.pages_holder.length > 0;
+    }
+}
+
+function cleanElement(e: HTMLElement) {
+    let n: Node;
+    while (n = e.firstChild) {
+        e.removeChild(n);
     }
 }

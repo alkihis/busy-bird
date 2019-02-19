@@ -3560,7 +3560,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Obtient l'élément HTML du modal
         const modal = helpers_8.getModal();
         const instance = helpers_8.initModal({
-            dismissible: false, preventScrolling: true
+            dismissible: false, preventScrolling: true, inDuration: 100, outDuration: 100
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
@@ -4442,6 +4442,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
             const save = document.createDocumentFragment();
+            actual_base.id = "";
             save.appendChild(actual_base);
             // Insère la sauvegarde dans la pile de page
             this.pages_holder.push({
@@ -4470,9 +4471,13 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            helpers_12.getBase().remove();
+            const main = helpers_12.getBase();
+            cleanElement(main);
+            main.parentElement.removeChild(main);
+            const new_main = last_page.save.firstElementChild;
+            new_main.id = "main_block";
             // Met le fragment dans le DOM
-            document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
+            document.getElementsByTagName('main')[0].appendChild(new_main);
             // Remet le bon titre
             document.getElementById('nav_title').innerText = last_page.name;
             this.actual_page = last_page.page;
@@ -4535,6 +4540,12 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             return this.pages_holder.length > 0;
         }
     };
+    function cleanElement(e) {
+        let n;
+        while (n = e.firstChild) {
+            e.removeChild(n);
+        }
+    }
 });
 // Lance main.ts
 require(['main']);
