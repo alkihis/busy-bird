@@ -16,14 +16,6 @@
     "cordova-plugin-camera": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "cordova-plugin-crosswalk-webview-v2": {
-      "XWALK_VERSION": "23+",
-      "XWALK_LITEVERSION": "xwalk_core_library_canary:17+",
-      "XWALK_COMMANDLINE": "--disable-pull-to-refresh-effect",
-      "XWALK_MODE": "embedded",
-      "XWALK_MULTIPLEAPK": "true",
-      "PACKAGE_NAME": "com.lbbe.busybird"
-    },
     "cordova-plugin-device": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
@@ -45,6 +37,9 @@
     "cordova-plugin-media": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
+    "cordova-plugin-media-capture": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
     "cordova-plugin-network-information": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
@@ -54,13 +49,19 @@
     "cordova-plugin-vibration": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "phonegap-plugin-speech-synthesis": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
-    },
-    "cordova-plugin-media-capture": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
-    },
     "cordova-plugin-whitelist": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "es6-promise-plugin": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-media-recorder": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-media-stream": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-speech-synthesis": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },

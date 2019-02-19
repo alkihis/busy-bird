@@ -142,11 +142,11 @@ export const Forms = new class {
                 })
                 .catch(() => {
                     // Il n'existe pas, on doit le charger depuis les sources de l'application
-                    $.get(toValidUrl() + 'assets/form.json', {}, (json: any) => {
+                    $.get('assets/form.json', {}, (json: any) => {
                         loadJSONInObject(json, true);
                     }, 'json')
                     .fail(function(error) {
-                        // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
+                        // Essaie de lire le fichier sur le périphérique
                         // @ts-ignore
                         readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {

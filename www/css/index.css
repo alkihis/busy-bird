@@ -55,6 +55,53 @@ h1 {
     animation: fade 900ms infinite;
 }
 
+/* PERSONNALISATION DES ELEMENTS MATERIALIZE */
+.file-field .btn, .btn-large, .btn-small {
+    background-color: #6879c1;
+}
+
+.dropdown-content li > a, .dropdown-content li > span {
+    color: #5d6dbf;
+}
+
+.collection a.collection-item {
+    color: #5399ce;
+}
+
+.select-wrapper input.select-dropdown:focus {
+    border-bottom: 1px solid #5466d2;
+}
+
+input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):focus:not([readonly]), input[type=password]:not(.browser-default):focus:not([readonly]), input[type=email]:not(.browser-default):focus:not([readonly]), input[type=url]:not(.browser-default):focus:not([readonly]), input[type=time]:not(.browser-default):focus:not([readonly]), input[type=date]:not(.browser-default):focus:not([readonly]), input[type=datetime]:not(.browser-default):focus:not([readonly]), input[type=datetime-local]:not(.browser-default):focus:not([readonly]), input[type=tel]:not(.browser-default):focus:not([readonly]), input[type=number]:not(.browser-default):focus:not([readonly]), input[type=search]:not(.browser-default):focus:not([readonly]), textarea.materialize-textarea:focus:not([readonly]) {
+    border-bottom: 1px solid #5466d2;
+    -webkit-box-shadow: 0 1px 0 0 #5466d2;
+    box-shadow: 0 1px 0 0 #5466d2;
+}
+
+[type="checkbox"].filled-in:checked + span:not(.lever):after {
+    border: 2px solid #318ede;
+    background-color: #318ede;
+}
+
+.switch label input[type=checkbox]:checked + .lever {
+    background-color: #8ab8e0;
+}
+
+.switch label input[type=checkbox]:checked + .lever:after {
+    background-color: #318ede;
+}
+
+input[type=checkbox]:checked:not(:disabled) ~ .lever:active::before, input[type=checkbox]:checked:not(:disabled).tabbed:focus ~ .lever::before {
+    background-color: rgba(0, 100, 255, 0.15);
+}
+
+[type="checkbox"]:checked + span:not(.lever):before {
+    border-right: 2px solid #428be4;
+    border-bottom: 2px solid #428be4;
+}
+
+/* FIN PERSONNALISATION DES ELEMENTS MATERIALIZE */
+
 nav .return-trigger {
     float: right;
     position: relative;
@@ -215,7 +262,7 @@ p.smiley.big-text {
 }
 
 .home-top-element {
-    background-image: linear-gradient(#93e8ff59, #ffffff00);
+    background: linear-gradient(rgba(147, 232, 255, 0.349), rgba(255, 255, 255, 0));
     margin-bottom: -20px;
 }
 

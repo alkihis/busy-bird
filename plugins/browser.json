@@ -16,9 +16,6 @@
     "cordova-plugin-camera": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "cordova-plugin-crosswalk-webview-v2": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
-    },
     "cordova-plugin-device": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
@@ -46,9 +43,6 @@
     "cordova-plugin-network-information": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "cordova-plugin-speechrecognition": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
-    },
     "cordova-plugin-vibration": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
@@ -65,6 +59,9 @@
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "phonegap-plugin-speech-synthesis": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-speechrecognition": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },

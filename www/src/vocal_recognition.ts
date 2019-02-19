@@ -17,7 +17,44 @@ export const Jarvis = new class {
     }
 };
 
-export function prompt(text: string = "Valeur ?", options: string[] = ["*"]) : Promise<string> {
+// options de la reconnaissance vocale
+const options = {
+    language: "fr-FR",
+    prompt: "Parlez maintenant"
+};
+
+export function prompt(prompt_text = "Parlez maintenant") : Promise<string> {
+    return new Promise(function(resolve, reject) {
+        options.prompt = prompt_text;
+
+        // @ts-ignore
+        if (window.plugins && window.plugins.speechRecognition) {
+            // @ts-ignore
+            window.plugins.speechRecognition.startListening(
+                function(matches: string[]) {
+                    // Le premier match est toujours le meilleur
+                    if (matches.length > 0) {
+                        resolve(matches[0]);
+                    }
+                    else {
+                        // La reconnaissance a échoué
+                        reject();
+                    }
+                }, 
+                function(error) {
+                    // Impossible de reconnaître
+                    reject();
+                }, 
+                options
+            )
+        }
+        else {
+            reject();
+        }
+    });
+}    
+
+export function oldPrompt(text: string = "", options: string[] = ["*"]) : Promise<string> {
     return new Promise(function(resolve, reject) {
         const j = Jarvis.Jarvis;
         j.fatality();

@@ -8,7 +8,7 @@ export const APP_NAME = "Busy Bird";
 export function initHomePage(base: HTMLElement) {
     base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
-        <img src="${toValidUrl()}img/logo.png" class="home-logo">
+        <img src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>
@@ -50,7 +50,7 @@ export function initHomePage(base: HTMLElement) {
                     );
                 }
             }
-            else {
+            else if (count > 0) {
                 home_container.innerHTML = createCardPanel(`
                     <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
                     <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>

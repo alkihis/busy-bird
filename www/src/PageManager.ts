@@ -109,7 +109,7 @@ export const PageManager = new class {
         const base = getBase();
         base.innerHTML = getPreloader("Chargement");
         if (window.history) {
-            window.history.pushState({}, "", "/?" + pagename);
+            window.history.pushState({}, "", "?" + pagename);
         }
 
         // Si on a demandé à fermer le sidenav, on le ferme
@@ -202,6 +202,7 @@ export const PageManager = new class {
         document.getElementById('nav_title').innerText = last_page.name;
         this.actual_page = last_page.page;
         this._should_wait = last_page.ask;
+        this.lock_return_button = false;
 
         if (this.actual_page.reload_on_restore) {
             if (typeof this.actual_page.reload_on_restore === 'boolean') {

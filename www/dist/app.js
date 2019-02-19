@@ -2334,7 +2334,38 @@ define("vocal_recognition", ["require", "exports", "arytom/artyom"], function (r
             this._Jarvis = new artyom_1.default();
         }
     };
-    function prompt(text = "Valeur ?", options = ["*"]) {
+    // options de la reconnaissance vocale
+    const options = {
+        language: "fr-FR",
+        prompt: "Parlez maintenant"
+    };
+    function prompt(prompt_text = "Parlez maintenant") {
+        return new Promise(function (resolve, reject) {
+            options.prompt = prompt_text;
+            // @ts-ignore
+            if (window.plugins && window.plugins.speechRecognition) {
+                // @ts-ignore
+                window.plugins.speechRecognition.startListening(function (matches) {
+                    // Le premier match est toujours le meilleur
+                    if (matches.length > 0) {
+                        resolve(matches[0]);
+                    }
+                    else {
+                        // La reconnaissance a échoué
+                        reject();
+                    }
+                }, function (error) {
+                    // Impossible de reconnaître
+                    reject();
+                }, options);
+            }
+            else {
+                reject();
+            }
+        });
+    }
+    exports.prompt = prompt;
+    function oldPrompt(text = "", options = ["*"]) {
         return new Promise(function (resolve, reject) {
             const j = exports.Jarvis.Jarvis;
             j.fatality();
@@ -2373,7 +2404,7 @@ define("vocal_recognition", ["require", "exports", "arytom/artyom"], function (r
             }
         });
     }
-    exports.prompt = prompt;
+    exports.oldPrompt = oldPrompt;
 });
 define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
     "use strict";
@@ -3700,11 +3731,11 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 })
                     .catch(() => {
                     // Il n'existe pas, on doit le charger depuis les sources de l'application
-                    $.get(helpers_6.toValidUrl() + 'assets/form.json', {}, (json) => {
+                    $.get('assets/form.json', {}, (json) => {
                         loadJSONInObject(json, true);
                     }, 'json')
                         .fail(function (error) {
-                        // Cas sur mobile, où avec whitelist les requêtes GET ne marchent plus (oui c'est la merde)
+                        // Essaie de lire le fichier sur le périphérique
                         // @ts-ignore
                         helpers_6.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {
@@ -3940,6 +3971,14 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         });
         if (filled_form) {
             location.value = location.dataset.reallocation = filled_form.location;
+            // Recherche la vraie localisation (textuelle) dans Form.location
+            const label_location = current_form.locations.find(e => e.name === filled_form.location);
+            if (label_location) {
+                location.value = label_location.label;
+            }
+            else {
+                M.toast({ html: "Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire." });
+            }
         }
         loc_wrapper.appendChild(location);
         const loc_title = document.createElement('h4');
@@ -4173,12 +4212,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     mic_btn.innerHTML = `
                     <i class="material-icons red-text">mic</i>
                 `;
-                    mic_btn.addEventListener('click', function () {
+                    let timer;
+                    const gestion_click = function (erase = true) {
                         vocal_recognition_2.prompt().then(function (value) {
                             if (ele.remove_whitespaces) {
                                 value = value.replace(/ /g, '').replace(/à/iug, 'a');
                             }
-                            htmle.value = value;
+                            if (erase) {
+                                htmle.value = value;
+                            }
+                            else {
+                                htmle.value += value;
+                            }
                             str_verif.call(htmle);
                             M.updateTextFields();
                             try {
@@ -4186,6 +4231,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                             }
                             catch (e) { }
                         });
+                        timer = 0;
+                    };
+                    mic_btn.addEventListener('click', function () {
+                        if (timer) {
+                            clearTimeout(timer);
+                            // On a double cliqué
+                            gestion_click(false);
+                            return;
+                        }
+                        timer = setTimeout(gestion_click, 400);
                     });
                     real_wrapper.appendChild(mic_btn);
                 }
@@ -4585,6 +4640,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
                 modal.classList.remove('modal-fixed-footer');
                 const unique_id = force_name || helpers_7.generateId(main_4.ID_COMPLEXITY);
+                PageManager_3.PageManager.lock_return_button = true;
                 saveForm(type, unique_id, form_save)
                     .then((form_values) => {
                     SyncManager_2.SyncManager.add(unique_id, form_values);
@@ -4593,7 +4649,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         M.toast({ html: "Écriture du formulaire et de ses données réussie." });
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager_3.PageManager.popPage();
-                        // PageManager.reload();
+                        // PageManager.reload(); la page se recharge toute seule au pop
                     }
                     else {
                         // On demande si on veut faire une nouvelle entrée
@@ -4621,9 +4677,21 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     }
                 })
                     .catch((error) => {
-                    instance.close();
-                    console.log(error);
-                    M.toast({ html: "Impossible d'écrire le formulaire." });
+                    modal.innerHTML = `
+                    <div class="modal-content">
+                        <h5 class="no-margin-top red-text">Erreur</h5>
+                        <p class="flow-text">
+                            Impossible d'enregistrer cette entrée.
+                            Veuillez réessayer.
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="btn-flat right red-text modal-close">Fermer</a>
+                        <div class="clearb"></div>
+                    </div>
+                    `;
+                    PageManager_3.PageManager.lock_return_button = false;
+                    logger_4.Logger.error(error, error.message, error.stack);
                 });
             };
             footer.appendChild(save_btn);
@@ -5454,7 +5522,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
     function initHomePage(base) {
         base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
-        <img src="${helpers_10.toValidUrl()}img/logo.png" class="home-logo">
+        <img src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
@@ -5488,7 +5556,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
                         </span>`, "Synchronisation");
                 }
             }
-            else {
+            else if (count > 0) {
                 home_container.innerHTML = createCardPanel(`
                     <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
                     <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
@@ -5715,7 +5783,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const base = helpers_11.getBase();
             base.innerHTML = helpers_11.getPreloader("Chargement");
             if (window.history) {
-                window.history.pushState({}, "", "/?" + pagename);
+                window.history.pushState({}, "", "?" + pagename);
             }
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
@@ -5790,6 +5858,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             document.getElementById('nav_title').innerText = last_page.name;
             this.actual_page = last_page.page;
             this._should_wait = last_page.ask;
+            this.lock_return_button = false;
             if (this.actual_page.reload_on_restore) {
                 if (typeof this.actual_page.reload_on_restore === 'boolean') {
                     this.changePage(this.actual_page, false, undefined, undefined, false);

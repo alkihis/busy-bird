@@ -136,6 +136,14 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
     if (filled_form) {
         location.value = location.dataset.reallocation = filled_form.location;
+        // Recherche la vraie localisation (textuelle) dans Form.location
+        const label_location = current_form.locations.find(e => e.name === filled_form.location);
+        if (label_location) {
+            location.value = label_location.label;
+        }
+        else {
+            M.toast({html: "Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire."});
+        }
     }
 
     loc_wrapper.appendChild(location);
@@ -414,17 +422,35 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                     <i class="material-icons red-text">mic</i>
                 `;
 
-                mic_btn.addEventListener('click', function() {
+                let timer: number;
+                const gestion_click = function(erase = true) {
                     prompt().then(function(value) {
                         if (ele.remove_whitespaces) {
                             value = value.replace(/ /g, '').replace(/à/iug, 'a');
                         }
 
-                        htmle.value = value;
+                        if (erase) {
+                            htmle.value = value;
+                        }
+                        else {
+                            htmle.value += value;
+                        }
+
                         str_verif.call(htmle);
                         M.updateTextFields();
                         try { M.textareaAutoResize(htmle); } catch (e) {}
                     });
+                    timer = 0;
+                }
+
+                mic_btn.addEventListener('click', function() {
+                    if (timer) {
+                        clearTimeout(timer);
+                        // On a double cliqué
+                        gestion_click(false);
+                        return;
+                    }
+                    timer = setTimeout(gestion_click, 400);        
                 });
 
                 real_wrapper.appendChild(mic_btn);
@@ -930,6 +956,7 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
             modal.innerHTML = getModalPreloader("Sauvegarde en cours");
             modal.classList.remove('modal-fixed-footer');
             const unique_id = force_name || generateId(ID_COMPLEXITY);
+            PageManager.lock_return_button = true;
 
             saveForm(type, unique_id, form_save)
                 .then((form_values) => {
@@ -941,7 +968,7 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
 
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager.popPage();
-                        // PageManager.reload();
+                        // PageManager.reload(); la page se recharge toute seule au pop
                     }
                     else {
                         // On demande si on veut faire une nouvelle entrée
@@ -972,10 +999,22 @@ function beginFormSave(type: string, force_name?: string, form_save?: FormSave) 
 
                 })
                 .catch((error) => {
-                    instance.close();
+                    modal.innerHTML = `
+                    <div class="modal-content">
+                        <h5 class="no-margin-top red-text">Erreur</h5>
+                        <p class="flow-text">
+                            Impossible d'enregistrer cette entrée.
+                            Veuillez réessayer.
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="btn-flat right red-text modal-close">Fermer</a>
+                        <div class="clearb"></div>
+                    </div>
+                    `;
 
-                    console.log(error);
-                    M.toast({html: "Impossible d'écrire le formulaire."});
+                    PageManager.lock_return_button = false;
+                    Logger.error(error, error.message, error.stack);
                 })
         };
 
@@ -1068,116 +1107,116 @@ function writeDataThenForm(name: string, form_values: FormSave, older_save?: For
 
     return getDirP('form_data')
         .then(() => {
-        // Crée le dossier form_data si besoin
+            // Crée le dossier form_data si besoin
 
-        // Récupère les images du formulaire
-        const images_from_form = document.getElementsByClassName('input-image-element');
+            // Récupère les images du formulaire
+            const images_from_form = document.getElementsByClassName('input-image-element');
 
-        // Sauvegarde les images !
-        const promises = [];
+            // Sauvegarde les images !
+            const promises = [];
 
-        for (const img of images_from_form) {
-            promises.push(
-                new Promise(function(resolve, reject) {
-                    const file = (img as HTMLInputElement).files[0];
-                    const input_name = (img as HTMLInputElement).name;
+            for (const img of images_from_form) {
+                promises.push(
+                    new Promise(function(resolve, reject) {
+                        const file = (img as HTMLInputElement).files[0];
+                        const input_name = (img as HTMLInputElement).name;
 
-                    if (file) {
-                        const filename = file.name;
+                        if (file) {
+                            const filename = file.name;
 
-                        const r = new FileReader();
+                            const r = new FileReader();
 
-                        r.onload = function() {
-                            saveBlobToFile(resolve, reject, filename, input_name, new Blob([this.result]));
-                        }
-
-                        r.onerror = function(error) {
-                            // Erreur de lecture du fichier => on rejette
-                            reject(error);
-                        }
-
-                        r.readAsArrayBuffer(file);
-                    }
-                    else {
-                        if (older_save && input_name in older_save.fields) {
-                            form_values.fields[input_name] = older_save.fields[input_name];
-
-                            if (typeof older_save.fields[input_name] === 'string') {
-                                const parts = (older_save.fields[input_name] as string).split('/');
-                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            r.onload = function() {
+                                saveBlobToFile(resolve, reject, filename, input_name, new Blob([this.result]));
                             }
-                            else {
-                                form_values.metadata[input_name] = null;
+
+                            r.onerror = function(error) {
+                                // Erreur de lecture du fichier => on rejette
+                                reject(error);
                             }
+
+                            r.readAsArrayBuffer(file);
                         }
                         else {
-                            form_values.fields[input_name] = null;
-                            form_values.metadata[input_name] = null;
-                        }
+                            if (older_save && input_name in older_save.fields) {
+                                form_values.fields[input_name] = older_save.fields[input_name];
 
-                        resolve();
-                    }
-                })
-            );
-        }
-
-        // Récupère les données audio du formulaire
-        const audio_from_form = document.getElementsByClassName('input-audio-element');
-
-        for (const audio of audio_from_form) {
-            promises.push(
-                new Promise(function(resolve, reject) {
-                    const file = (audio as HTMLInputElement).value;
-                    const input_name = (audio as HTMLInputElement).name;
-
-                    if (file) {
-                        const filename = generateId(ID_COMPLEXITY) + '.mp3';
-
-                        urlToBlob(file).then(function(blob) {
-                            saveBlobToFile(resolve, reject, filename, input_name, blob);
-                        });
-                    }
-                    else {
-                        if (older_save && input_name in older_save.fields) {
-                            form_values.fields[input_name] = older_save.fields[input_name];
-
-                            if (typeof older_save.fields[input_name] === 'string') {
-                                const parts = (older_save.fields[input_name] as string).split('/');
-                                form_values.metadata[input_name] = parts[parts.length - 1];
+                                if (typeof older_save.fields[input_name] === 'string') {
+                                    const parts = (older_save.fields[input_name] as string).split('/');
+                                    form_values.metadata[input_name] = parts[parts.length - 1];
+                                }
+                                else {
+                                    form_values.metadata[input_name] = null;
+                                }
                             }
                             else {
+                                form_values.fields[input_name] = null;
                                 form_values.metadata[input_name] = null;
                             }
+
+                            resolve();
+                        }
+                    })
+                );
+            }
+
+            // Récupère les données audio du formulaire
+            const audio_from_form = document.getElementsByClassName('input-audio-element');
+
+            for (const audio of audio_from_form) {
+                promises.push(
+                    new Promise(function(resolve, reject) {
+                        const file = (audio as HTMLInputElement).value;
+                        const input_name = (audio as HTMLInputElement).name;
+
+                        if (file) {
+                            const filename = generateId(ID_COMPLEXITY) + '.mp3';
+
+                            urlToBlob(file).then(function(blob) {
+                                saveBlobToFile(resolve, reject, filename, input_name, blob);
+                            });
                         }
                         else {
-                            form_values.fields[input_name] = null;
-                            form_values.metadata[input_name] = null;
+                            if (older_save && input_name in older_save.fields) {
+                                form_values.fields[input_name] = older_save.fields[input_name];
+
+                                if (typeof older_save.fields[input_name] === 'string') {
+                                    const parts = (older_save.fields[input_name] as string).split('/');
+                                    form_values.metadata[input_name] = parts[parts.length - 1];
+                                }
+                                else {
+                                    form_values.metadata[input_name] = null;
+                                }
+                            }
+                            else {
+                                form_values.fields[input_name] = null;
+                                form_values.metadata[input_name] = null;
+                            }
+
+                            resolve();
                         }
+                    })
+                );
+            }
 
-                        resolve();
+            return Promise.all(promises)
+                .then(function() {
+                    // On supprime les metadonnées vides du form
+                    for (const n in form_values.metadata) {
+                        if (form_values.metadata[n] === null) {
+                            delete form_values.metadata[n];
+                        }
                     }
+
+                    return new Promise((resolve, reject) => {
+                        // On écrit enfin le formulaire !
+                        writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
+                            console.log(form_values);
+                            resolve(form_values);
+                        }, reject);
+                    }) as Promise<FormSave>;
                 })
-            );
-        }
-
-        return Promise.all(promises)
-            .then(function() {
-                // On supprime les metadonnées vides du form
-                for (const n in form_values.metadata) {
-                    if (form_values.metadata[n] === null) {
-                        delete form_values.metadata[n];
-                    }
-                }
-
-                return new Promise((resolve, reject) => {
-                    // On écrit enfin le formulaire !
-                    writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
-                        console.log(form_values);
-                        resolve(form_values);
-                    }, reject);
-                }) as Promise<FormSave>;
-            })
-    });
+        });
 }
 
 /**
