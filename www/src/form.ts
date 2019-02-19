@@ -1,6 +1,6 @@
 import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage, getDirP } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage, getDirP, sleep } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
@@ -742,18 +742,22 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
     }
 }
 
-function beginFormSave(type: string, force_name?: string, form_save?: FormSave) : void {
+async function beginFormSave(type: string, force_name?: string, form_save?: FormSave) : Promise<void> {
     // Ouverture du modal de verification
     const modal = getModal();
-    const instance = initModal({ dismissible: false }, getModalPreloader(
-        "La vérification a probablement planté.<br>Merci de patienter quand même, on sait jamais.",
+    const instance = initModal({ dismissible: false, outDuration: 100 }, getModalPreloader(
+        "Vérification du formulaire en cours",
         `<div class="modal-footer">
-            <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
+            <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
         </div>`
     ));
 
-    modal.classList.add('modal-fixed-footer');
     instance.open();
+
+    // Attend que le modal s'ouvre proprement (ralentissements sinon)
+    await sleep(300);
+
+    modal.classList.add('modal-fixed-footer');
 
     // [name, reason, element]
     type VerifiedElement = [string, string, HTMLInputElement | HTMLSelectElement];

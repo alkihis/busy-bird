@@ -69,6 +69,9 @@
     },
     "phonegap-plugin-mobile-accessibility": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-splashscreen": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {

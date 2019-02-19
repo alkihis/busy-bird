@@ -46,7 +46,13 @@
     "cordova-plugin-speechrecognition": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
+    "cordova-plugin-splashscreen": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
     "cordova-plugin-vibration": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-viewport": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
     "cordova-plugin-whitelist": {
@@ -61,13 +67,10 @@
     "phonegap-plugin-media-stream": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     },
-    "phonegap-plugin-speech-synthesis": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
-    },
-    "cordova-plugin-viewport": {
-      "PACKAGE_NAME": "com.lbbe.busybird"
-    },
     "phonegap-plugin-mobile-accessibility": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-speech-synthesis": {
       "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },

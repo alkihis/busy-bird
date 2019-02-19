@@ -18,7 +18,7 @@
   "cordova-plugin-media-capture": {
     "source": {
       "type": "registry",
-      "id": "cordova-plugin-media-capture@1.4.3"
+      "id": "cordova-plugin-media-capture@^1.4.3"
     },
     "is_top_level": true,
     "variables": {}
@@ -171,6 +171,14 @@
     "source": {
       "type": "registry",
       "id": "https://github.com/phonegap/phonegap-mobile-accessibility.git"
+    },
+    "is_top_level": true,
+    "variables": {}
+  },
+  "cordova-plugin-splashscreen": {
+    "source": {
+      "type": "registry",
+      "id": "cordova-plugin-splashscreen@5.0.2"
     },
     "is_top_level": true,
     "variables": {}

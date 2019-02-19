@@ -36,7 +36,8 @@
     "phonegap-plugin-speech-synthesis": "git+https://github.com/macdonst/SpeechSynthesisPlugin.git",
     "requirejs": "^2.3.6",
     "cordova-plugin-viewport": "1.0.3",
-    "phonegap-plugin-mobile-accessibility": "https://github.com/phonegap/phonegap-mobile-accessibility.git"
+    "phonegap-plugin-mobile-accessibility": "https://github.com/phonegap/phonegap-mobile-accessibility.git",
+    "cordova-plugin-splashscreen": "5.0.2"
   },
   "devDependencies": {},
   "scripts": {
@@ -66,7 +67,8 @@
       "phonegap-plugin-media-stream": {},
       "cordova-plugin-whitelist": {},
       "cordova-plugin-viewport": {},
-      "phonegap-plugin-mobile-accessibility": {}
+      "phonegap-plugin-mobile-accessibility": {},
+      "cordova-plugin-splashscreen": {}
     },
     "platforms": [
       "android",

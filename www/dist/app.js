@@ -411,6 +411,12 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         }, path);
     }
     exports.listDir = listDir;
+    function sleep(ms) {
+        return new Promise((resolve, _) => {
+            setTimeout(resolve, ms);
+        });
+    }
+    exports.sleep = sleep;
     function dirEntries(dirEntry) {
         return new Promise(function (resolve, reject) {
             const reader = dirEntry.createReader();
@@ -1799,7 +1805,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-    exports.APP_VERSION = 0.4;
+    exports.APP_VERSION = 0.5;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -1861,6 +1867,8 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             // Récupère la partie de l'URL après la query string et avant le #
             href = tmp[tmp.length - 1];
         }
+        // @ts-ignore
+        navigator.splashscreen.hide();
         // Quand les forms sont prêts, on affiche l'app !
         form_schema_1.Forms.onReady(function () {
             if (href && PageManager_2.PageManager.pageExists(href)) {
@@ -3035,195 +3043,198 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     }
     exports.constructForm = constructForm;
     function beginFormSave(type, force_name, form_save) {
-        // Ouverture du modal de verification
-        const modal = helpers_7.getModal();
-        const instance = helpers_7.initModal({ dismissible: false }, helpers_7.getModalPreloader("La vérification a probablement planté.<br>Merci de patienter quand même, on sait jamais.", `<div class="modal-footer">
-            <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
+        return __awaiter(this, void 0, void 0, function* () {
+            // Ouverture du modal de verification
+            const modal = helpers_7.getModal();
+            const instance = helpers_7.initModal({ dismissible: false, outDuration: 100 }, helpers_7.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
+            <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
         </div>`));
-        modal.classList.add('modal-fixed-footer');
-        instance.open();
-        // Recherche des éléments à vérifier
-        const elements_failed = [];
-        const elements_warn = [];
-        // Input classiques: checkbox/slider, text, textarea, select, number
-        for (const e of document.getElementsByClassName('input-form-element')) {
-            const element = e;
-            const label = document.querySelector(`label[for="${element.id}"]`);
-            let name = element.name;
-            if (label) {
-                name = label.textContent;
-            }
-            const contraintes = {};
-            if (element.dataset.constraints) {
-                element.dataset.constraints.split(';').map((e) => {
-                    const [name, value] = e.split('=');
-                    contraintes[name] = value;
-                });
-            }
-            if (element.required && !element.value) {
-                elements_failed.push([name, "Champ requis", element]);
-            }
-            else {
-                let fail = false;
-                let str = "";
-                // Si le champ est requis et a une valeur, on recherche ses contraintes
-                if (Object.keys(contraintes).length > 0) {
-                    if (element.type === "text" || element.tagName === "textarea") {
-                        if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
-                            fail = true;
-                            str += "La taille du texte doit dépasser " + contraintes.min + " caractères. ";
+            instance.open();
+            // Attend que le modal s'ouvre proprement (ralentissements sinon)
+            yield helpers_7.sleep(300);
+            modal.classList.add('modal-fixed-footer');
+            // Recherche des éléments à vérifier
+            const elements_failed = [];
+            const elements_warn = [];
+            // Input classiques: checkbox/slider, text, textarea, select, number
+            for (const e of document.getElementsByClassName('input-form-element')) {
+                const element = e;
+                const label = document.querySelector(`label[for="${element.id}"]`);
+                let name = element.name;
+                if (label) {
+                    name = label.textContent;
+                }
+                const contraintes = {};
+                if (element.dataset.constraints) {
+                    element.dataset.constraints.split(';').map((e) => {
+                        const [name, value] = e.split('=');
+                        contraintes[name] = value;
+                    });
+                }
+                if (element.required && !element.value) {
+                    elements_failed.push([name, "Champ requis", element]);
+                }
+                else {
+                    let fail = false;
+                    let str = "";
+                    // Si le champ est requis et a une valeur, on recherche ses contraintes
+                    if (Object.keys(contraintes).length > 0) {
+                        if (element.type === "text" || element.tagName === "textarea") {
+                            if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                                fail = true;
+                                str += "La taille du texte doit dépasser " + contraintes.min + " caractères. ";
+                            }
+                            if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                                fail = true;
+                                str += "La taille du texte doit être inférieure à " + contraintes.max + " caractères. ";
+                            }
                         }
-                        if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
-                            fail = true;
-                            str += "La taille du texte doit être inférieure à " + contraintes.max + " caractères. ";
-                        }
-                    }
-                    else if (element.type === "number") {
-                        if (typeof contraintes.min !== 'undefined' && Number(element.value) < contraintes.min) {
-                            fail = true;
-                            str += "Le nombre doit dépasser " + contraintes.min + ". ";
-                        }
-                        if (typeof contraintes.max !== 'undefined' && Number(element.value) > contraintes.max) {
-                            fail = true;
-                            str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
-                        }
-                        // Vérification de la précision
-                        if (contraintes.precision) {
-                            // Calcul de nombre de décimales requises
-                            // si le nombre demandé est un float
-                            let NB_DECIMALES = 0;
-                            const dec_part = contraintes.precision.toString().split('.');
-                            NB_DECIMALES = dec_part[1].length;
-                            // Si on a demandé à avoir un nombre de flottant précis
-                            const floating_point = element.value.split('.');
-                            if (floating_point.length > 1) {
-                                // Récupération de la partie décimale avec le bon nombre de décimales
-                                // (round obligatoire, à cause de la gestion des float imprécise)
-                                const partie_decimale = Number((Number(element.value) % 1).toFixed(NB_DECIMALES));
-                                // Si le nombre de chiffres après la virgule n'est pas le bon
-                                // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
-                                if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
+                        else if (element.type === "number") {
+                            if (typeof contraintes.min !== 'undefined' && Number(element.value) < contraintes.min) {
+                                fail = true;
+                                str += "Le nombre doit dépasser " + contraintes.min + ". ";
+                            }
+                            if (typeof contraintes.max !== 'undefined' && Number(element.value) > contraintes.max) {
+                                fail = true;
+                                str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
+                            }
+                            // Vérification de la précision
+                            if (contraintes.precision) {
+                                // Calcul de nombre de décimales requises
+                                // si le nombre demandé est un float
+                                let NB_DECIMALES = 0;
+                                const dec_part = contraintes.precision.toString().split('.');
+                                NB_DECIMALES = dec_part[1].length;
+                                // Si on a demandé à avoir un nombre de flottant précis
+                                const floating_point = element.value.split('.');
+                                if (floating_point.length > 1) {
+                                    // Récupération de la partie décimale avec le bon nombre de décimales
+                                    // (round obligatoire, à cause de la gestion des float imprécise)
+                                    const partie_decimale = Number((Number(element.value) % 1).toFixed(NB_DECIMALES));
+                                    // Si le nombre de chiffres après la virgule n'est pas le bon
+                                    // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
+                                    if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
+                                        fail = true;
+                                        str += "Le nombre n'a pas la précision requise (" + contraintes.precision + "). ";
+                                    }
+                                }
+                                else {
+                                    //Il n'y a pas de . dans le nombre
                                     fail = true;
-                                    str += "Le nombre n'a pas la précision requise (" + contraintes.precision + "). ";
+                                    str += "Le nombre n'est pas un flottant. ";
                                 }
                             }
-                            else {
-                                //Il n'y a pas de . dans le nombre
-                                fail = true;
-                                str += "Le nombre n'est pas un flottant. ";
-                            }
                         }
                     }
-                }
-                if (fail) {
-                    if (element.required) {
-                        elements_failed.push([name, str, element]);
+                    if (fail) {
+                        if (element.required) {
+                            elements_failed.push([name, str, element]);
+                        }
+                        else {
+                            elements_warn.push([name, str, element]);
+                        }
                     }
-                    else {
-                        elements_warn.push([name, str, element]);
+                    // Si c'est autre chose, l'élément est forcément valide
+                }
+            }
+            // Éléments FILE (ici, possiblement que des images)
+            for (const e of document.querySelectorAll('.input-image-element[required]')) {
+                const filei = e;
+                if (filei.files.length === 0) {
+                    const label = document.querySelector(`input[data-for="${filei.id}"]`);
+                    let name = filei.name;
+                    if (label) {
+                        name = label.dataset.label;
                     }
+                    elements_failed.push([name, "Fichier requis", filei]);
                 }
-                // Si c'est autre chose, l'élément est forcément valide
             }
-        }
-        // Éléments FILE (ici, possiblement que des images)
-        for (const e of document.querySelectorAll('.input-image-element[required]')) {
-            const filei = e;
-            if (filei.files.length === 0) {
-                const label = document.querySelector(`input[data-for="${filei.id}"]`);
-                let name = filei.name;
-                if (label) {
-                    name = label.dataset.label;
+            // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
+            for (const e of document.querySelectorAll('.input-audio-element[required]')) {
+                const hiddeni = e;
+                if (!hiddeni.value) {
+                    elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
                 }
-                elements_failed.push([name, "Fichier requis", filei]);
             }
-        }
-        // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
-        for (const e of document.querySelectorAll('.input-audio-element[required]')) {
-            const hiddeni = e;
-            if (!hiddeni.value) {
-                elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
-            }
-        }
-        // Construit les éléments dans le modal
-        const container = document.createElement('div');
-        container.classList.add('modal-content');
-        if (elements_warn.length > 0 || elements_failed.length > 0) {
-            const par = document.createElement('p');
-            par.classList.add('flow-text', 'no-margin-top');
-            par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
-            container.appendChild(par);
-            if (!elements_failed.length) {
-                const tinypar = document.createElement('p');
-                tinypar.style.marginTop = "-15px";
-                tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
-                container.appendChild(tinypar);
-            }
-            const list = document.createElement('ul');
-            list.classList.add('collection');
-            for (const error of elements_failed) {
-                const li = document.createElement('li');
-                li.classList.add("collection-item");
-                li.innerHTML = `
+            // Construit les éléments dans le modal
+            const container = document.createElement('div');
+            container.classList.add('modal-content');
+            if (elements_warn.length > 0 || elements_failed.length > 0) {
+                const par = document.createElement('p');
+                par.classList.add('flow-text', 'no-margin-top');
+                par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
+                container.appendChild(par);
+                if (!elements_failed.length) {
+                    const tinypar = document.createElement('p');
+                    tinypar.style.marginTop = "-15px";
+                    tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
+                    container.appendChild(tinypar);
+                }
+                const list = document.createElement('ul');
+                list.classList.add('collection');
+                for (const error of elements_failed) {
+                    const li = document.createElement('li');
+                    li.classList.add("collection-item");
+                    li.innerHTML = `
                 <span class="red-text bold">${error[0]}</span>: 
                 <span>${error[1]}</span>
             `;
-                list.appendChild(li);
-            }
-            for (const warning of elements_warn) {
-                const li = document.createElement('li');
-                li.classList.add("collection-item");
-                li.innerHTML = `
+                    list.appendChild(li);
+                }
+                for (const warning of elements_warn) {
+                    const li = document.createElement('li');
+                    li.classList.add("collection-item");
+                    li.innerHTML = `
                 <span class="bold">${warning[0]}</span>: 
                 <span>${warning[1]}</span>
             `;
-                list.appendChild(li);
+                    list.appendChild(li);
+                }
+                container.appendChild(list);
             }
-            container.appendChild(list);
-        }
-        else {
-            // On affiche un message de succès
-            const title = document.createElement('h5');
-            title.classList.add('no-margin-top');
-            title.innerText = "Résumé";
-            container.appendChild(title);
-            const par = document.createElement('p');
-            par.classList.add('flow-text');
-            par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
-            container.appendChild(par);
-        }
-        // Footer
-        const footer = document.createElement('div');
-        footer.classList.add('modal-footer');
-        const cancel_btn = document.createElement('a');
-        cancel_btn.href = "#!";
-        cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
-        cancel_btn.innerText = "Corriger";
-        footer.appendChild(cancel_btn);
-        // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
-        if (elements_failed.length === 0) {
-            const save_btn = document.createElement('a');
-            save_btn.href = "#!";
-            save_btn.classList.add('btn-flat', 'right', 'green-text');
-            save_btn.innerText = "Sauvegarder";
-            save_btn.onclick = function () {
-                modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
-                modal.classList.remove('modal-fixed-footer');
-                const unique_id = force_name || helpers_7.generateId(main_4.ID_COMPLEXITY);
-                PageManager_3.PageManager.lock_return_button = true;
-                saveForm(type, unique_id, form_save)
-                    .then((form_values) => {
-                    SyncManager_2.SyncManager.add(unique_id, form_values);
-                    if (form_save) {
-                        instance.close();
-                        M.toast({ html: "Écriture du formulaire et de ses données réussie." });
-                        // On vient de la page d'édition de formulaire déjà créés
-                        PageManager_3.PageManager.popPage();
-                        // PageManager.reload(); la page se recharge toute seule au pop
-                    }
-                    else {
-                        // On demande si on veut faire une nouvelle entrée
-                        modal.innerHTML = `
+            else {
+                // On affiche un message de succès
+                const title = document.createElement('h5');
+                title.classList.add('no-margin-top');
+                title.innerText = "Résumé";
+                container.appendChild(title);
+                const par = document.createElement('p');
+                par.classList.add('flow-text');
+                par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
+                container.appendChild(par);
+            }
+            // Footer
+            const footer = document.createElement('div');
+            footer.classList.add('modal-footer');
+            const cancel_btn = document.createElement('a');
+            cancel_btn.href = "#!";
+            cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
+            cancel_btn.innerText = "Corriger";
+            footer.appendChild(cancel_btn);
+            // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
+            if (elements_failed.length === 0) {
+                const save_btn = document.createElement('a');
+                save_btn.href = "#!";
+                save_btn.classList.add('btn-flat', 'right', 'green-text');
+                save_btn.innerText = "Sauvegarder";
+                save_btn.onclick = function () {
+                    modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
+                    modal.classList.remove('modal-fixed-footer');
+                    const unique_id = force_name || helpers_7.generateId(main_4.ID_COMPLEXITY);
+                    PageManager_3.PageManager.lock_return_button = true;
+                    saveForm(type, unique_id, form_save)
+                        .then((form_values) => {
+                        SyncManager_2.SyncManager.add(unique_id, form_values);
+                        if (form_save) {
+                            instance.close();
+                            M.toast({ html: "Écriture du formulaire et de ses données réussie." });
+                            // On vient de la page d'édition de formulaire déjà créés
+                            PageManager_3.PageManager.popPage();
+                            // PageManager.reload(); la page se recharge toute seule au pop
+                        }
+                        else {
+                            // On demande si on veut faire une nouvelle entrée
+                            modal.innerHTML = `
                         <div class="modal-content">
                             <h5 class="no-margin-top">Saisir une nouvelle entrée ?</h5>
                             <p class="flow-text">
@@ -3236,18 +3247,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                             <div class="clearb"></div>
                         </div>
                         `;
-                        document.getElementById('__after_save_entries').onclick = function () {
-                            PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
-                        };
-                        document.getElementById('__after_save_new').onclick = function () {
-                            setTimeout(() => {
-                                PageManager_3.PageManager.reload(undefined, true);
-                            }, 150);
-                        };
-                    }
-                })
-                    .catch((error) => {
-                    modal.innerHTML = `
+                            document.getElementById('__after_save_entries').onclick = function () {
+                                PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
+                            };
+                            document.getElementById('__after_save_new').onclick = function () {
+                                setTimeout(() => {
+                                    PageManager_3.PageManager.reload(undefined, true);
+                                }, 150);
+                            };
+                        }
+                    })
+                        .catch((error) => {
+                        modal.innerHTML = `
                     <div class="modal-content">
                         <h5 class="no-margin-top red-text">Erreur</h5>
                         <p class="flow-text">
@@ -3260,18 +3271,19 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         <div class="clearb"></div>
                     </div>
                     `;
-                    PageManager_3.PageManager.lock_return_button = false;
-                    logger_4.Logger.error(error, error.message, error.stack);
-                });
-            };
-            footer.appendChild(save_btn);
-        }
-        const clearb = document.createElement('div');
-        clearb.classList.add('clearb');
-        footer.appendChild(clearb);
-        modal.innerHTML = "";
-        modal.appendChild(container);
-        modal.appendChild(footer);
+                        PageManager_3.PageManager.lock_return_button = false;
+                        logger_4.Logger.error(error, error.message, error.stack);
+                    });
+                };
+                footer.appendChild(save_btn);
+            }
+            const clearb = document.createElement('div');
+            clearb.classList.add('clearb');
+            footer.appendChild(clearb);
+            modal.innerHTML = "";
+            modal.appendChild(container);
+            modal.appendChild(footer);
+        });
     }
     /**
      * Sauvegarde le formulaire actuel dans un fichier .json
