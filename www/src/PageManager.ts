@@ -44,7 +44,7 @@ export const PageManager = new class {
             reload_on_restore: true
         },
         home: {
-            name: "Accueil",
+            name: "Tableau de bord",
             callback: initHomePage,
             reload_on_restore: false
         }

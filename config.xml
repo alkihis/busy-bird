@@ -53,6 +53,7 @@
     <allow-intent href="sms:*" />
     <allow-intent href="mailto:*" />
     <allow-intent href="geo:*" />
+    <access launch-external="yes" origin="geo:*" />
     <platform name="android">
         <allow-intent href="market:*" />
     </platform>

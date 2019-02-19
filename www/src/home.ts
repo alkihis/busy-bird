@@ -1,11 +1,13 @@
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
-import { hasGoodConnection, toValidUrl } from "./helpers";
+import { hasGoodConnection, toValidUrl, getDirP, dirEntries } from "./helpers";
 import { APP_VERSION } from "./main";
+import { Forms } from "./form_schema";
+import { createLocationInputSelector } from "./location";
 
 export const APP_NAME = "Busy Bird";
 
-export function initHomePage(base: HTMLElement) {
+export async function initHomePage(base: HTMLElement) {
     base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
         <img src="img/logo.png" class="home-logo">
@@ -13,9 +15,8 @@ export function initHomePage(base: HTMLElement) {
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>
         <p class="flow-text center">
-            Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
-            pour les biologistes.<br>
-            Commencez en choisissant "Nouvelle entrée" dans le menu de côté.<br>
+            ${APP_NAME}, l'application facilitant la prise de données de terrain
+            pour les biologistes.
         </p>
         <p class="flow-text red-text">
             ${!UserManager.logged ? `
@@ -31,33 +32,79 @@ export function initHomePage(base: HTMLElement) {
     const home_container = document.getElementById('__home_container');
     
     // Calcul du nombre de formulaires en attente de synchronisation
-    SyncManager.remainingToSync()
-        .then(count => {
-            if (hasGoodConnection()) {
-                if (count > 15) {
-                    home_container.innerHTML = createCardPanel(
-                        `<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${count} entrées).</span><br>
-                        <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`,
-                        "Synchronisation"
-                    );
-                }
-                else if (count > 0) {
-                    home_container.innerHTML = createCardPanel(
-                        `<span class="blue-text text-darken-2">
-                            Vous avez ${count} élément${count > 1 ? 's' : ''} en attente de synchronisation.
-                        </span>`,
-                        "Synchronisation"
-                    );
-                }
-            }
-            else if (count > 0) {
-                home_container.innerHTML = createCardPanel(`
-                    <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
-                    <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
-                    <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`
+    try {
+        const remaining_count = await SyncManager.remainingToSync();
+
+        if (hasGoodConnection()) {
+            if (remaining_count > 15) {
+                home_container.innerHTML = createCardPanel(
+                    `<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
+                    <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`,
+                    "Synchronisation"
                 );
             }
-        });
+            else if (remaining_count > 0) {
+                home_container.innerHTML = createCardPanel(
+                    `<span class="blue-text text-darken-2">
+                        Vous avez ${remaining_count} entrée${remaining_count > 1 ? 's' : ''} en attente de synchronisation.
+                    </span>`
+                );
+            }
+        }
+        else if (remaining_count > 0) {
+            home_container.innerHTML = createCardPanel(`
+                <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
+                <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
+                <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`
+            );
+        }
+    } catch (e) {
+        home_container.innerHTML = createCardPanel(
+            `<span class="red-text text-darken-2">Impossible de relever les entrées disponibles.</span><br>
+            <span class="red-text text-darken-2">Cette erreur est possiblement grave. 
+            Nous vous conseillons de ne pas enregistrer de formulaire.</span>`,
+            "Erreur"
+        );
+    }
+
+    // Montre l'utilisateur connecté
+    if (UserManager.logged) {
+        home_container.insertAdjacentHTML('beforeend', createCardPanel(
+            `<span class="grey-text text-darken-1">${UserManager.username}</span>
+            <span class="blue-text text-darken-2">est connecté-e.</span>`
+        ));
+    }
+
+    // Nombre de formulaires enregistrés sur l'appareil
+    try {
+        const nb_files = (await getDirP('forms').then(dirEntries)).length;
+
+        home_container.insertAdjacentHTML('beforeend', createCardPanel(
+            `<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
+            ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`
+        ));
+    } catch (e) {
+        // Impossible d'obtenir les fichiers
+        home_container.insertAdjacentHTML('beforeend', createCardPanel(
+            `<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span>`
+        ));
+    }
+
+    Forms.onReady(function(available, current) {
+        if (current === null) {
+            return;
+        }
+
+        const locations = current.locations;
+
+        // Navigation vers nichoir
+        home_container.insertAdjacentHTML('beforeend',
+            `<div class="divider divider-margin big"></div>
+            <h5>Naviguer vers un nichoir</h5>`
+        );
+
+        createLocationInputSelector(home_container, document.createElement('input'), locations, true);
+    });
 
     // Initialise les champs materialize et le select
     M.updateTextFields();

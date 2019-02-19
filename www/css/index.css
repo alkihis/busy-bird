@@ -243,6 +243,10 @@ p.smiley.big-text {
     margin: 10px 0;
 }
 
+.divider-margin.big {
+    margin: 20px 0;
+}
+
 .img-form-element {
     width: 100%;
     border-radius: 5px;
@@ -345,4 +349,5 @@ label, .form-audio-label {
 
 .card-perso {
     border-radius: 8px;    
+    padding: 20px;
 }

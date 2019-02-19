@@ -423,7 +423,7 @@ export function listDir(path: string = "") : void {
     }, path);
 }
 
-export function dirEntries(dirEntry) : Promise<any> {
+export function dirEntries(dirEntry) : Promise<any[]> {
     return new Promise(function(resolve, reject) {
         const reader = dirEntry.createReader();
         reader.readEntries(

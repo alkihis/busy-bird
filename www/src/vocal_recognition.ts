@@ -4,6 +4,11 @@ const options = {
     prompt: "Parlez maintenant"
 };
 
+/**
+ * Récupère le texte dicté par l'utilisateur
+ * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire
+ * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
+ */
 export function prompt(prompt_text = "Parlez maintenant") : Promise<string> {
     return new Promise(function(resolve, reject) {
         options.prompt = prompt_text;
@@ -23,8 +28,31 @@ export function prompt(prompt_text = "Parlez maintenant") : Promise<string> {
                     }
                 }, 
                 function(error) {
-                    // Impossible de reconnaître
-                    reject();
+                    // @ts-ignore Polyfill pour le navigateur web
+                    if (device.platform === "browser") {
+                        // @ts-ignore
+                        const speech_reco = window.webkitSpeechRecognition || window.SpeechRecognition;
+
+                        const recognition = new speech_reco();
+                        recognition.onresult = (event) => {
+                            if (event.results && event.results.length > 0) {
+                                const speechToText = event.results[0][0].transcript;
+                            
+                                recognition.stop();
+                                resolve(speechToText);
+                            }
+                            else {
+                                reject();
+                            }
+                        }
+                        recognition.onerror = reject;
+
+                        recognition.start();
+                        M.toast({html: prompt_text});
+                    }
+                    else {
+                        reject();
+                    }
                 }, 
                 options
             )

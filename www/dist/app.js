@@ -853,6 +853,11 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
         language: "fr-FR",
         prompt: "Parlez maintenant"
     };
+    /**
+     * Récupère le texte dicté par l'utilisateur
+     * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire
+     * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
+     */
     function prompt(prompt_text = "Parlez maintenant") {
         return new Promise(function (resolve, reject) {
             options.prompt = prompt_text;
@@ -869,8 +874,28 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
                         reject();
                     }
                 }, function (error) {
-                    // Impossible de reconnaître
-                    reject();
+                    // @ts-ignore Polyfill pour le navigateur web
+                    if (device.platform === "browser") {
+                        // @ts-ignore
+                        const speech_reco = window.webkitSpeechRecognition || window.SpeechRecognition;
+                        const recognition = new speech_reco();
+                        recognition.onresult = (event) => {
+                            if (event.results && event.results.length > 0) {
+                                const speechToText = event.results[0][0].transcript;
+                                recognition.stop();
+                                resolve(speechToText);
+                            }
+                            else {
+                                reject();
+                            }
+                        };
+                        recognition.onerror = reject;
+                        recognition.start();
+                        M.toast({ html: prompt_text });
+                    }
+                    else {
+                        reject();
+                    }
                 }, options);
             }
             else {
@@ -2372,7 +2397,60 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_7, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2) {
+define("location", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function createLocationInputSelector(container, input, locations, open_on_complete = false) {
+        const row = document.createElement('div');
+        row.classList.add('row');
+        container.appendChild(row);
+        input.autocomplete = "off";
+        const input_f = document.createElement('div');
+        input_f.classList.add('input-field', 'col', 's12');
+        row.appendChild(input_f);
+        // Champ input réel et son label
+        const label = document.createElement('label');
+        input.type = "text";
+        input.id = "autocomplete_field_id";
+        label.htmlFor = "autocomplete_field_id";
+        label.textContent = "Lieu";
+        input.classList.add('autocomplete');
+        input_f.appendChild(input);
+        input_f.appendChild(label);
+        // Initialisation de l'autocomplétion
+        const auto_complete_data = {};
+        for (const lieu of locations) {
+            auto_complete_data[lieu.label] = null;
+        }
+        // Création d'un objet label => value
+        const labels_to_name = {};
+        for (const lieu of locations) {
+            labels_to_name[lieu.label] = [lieu.name, String(lieu.latitude) + "," + String(lieu.longitude)];
+        }
+        // Lance l'autocomplétion materialize
+        M.Autocomplete.init(input, {
+            data: auto_complete_data,
+            limit: 5,
+            onAutocomplete: function () {
+                // Remplacement du label par le nom réel
+                const location = input.value;
+                // Recherche le label sélectionné dans l'objet les contenants
+                if (location in labels_to_name) {
+                    if (open_on_complete) {
+                        window.open("geo:" + labels_to_name[location][1] +
+                            "?q=" + labels_to_name[location][1] + "&z=zoom&mode=w", '_system');
+                    }
+                }
+                else {
+                    M.toast({ html: "Ce lieu n'existe pas." });
+                }
+            }
+        });
+        return labels_to_name;
+    }
+    exports.createLocationInputSelector = createLocationInputSelector;
+});
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_7, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3516,55 +3594,14 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         footer.classList.add('modal-footer');
         // Création de l'input qui va contenir le lieu
         const input = document.createElement('input');
-        input.autocomplete = "off";
         // Sélection manuelle
         const title = document.createElement('h5');
         title.innerText = "Sélection manuelle";
         content.appendChild(title);
-        // Création du champ à autocompléter
-        // Conteneur
-        const row = document.createElement('div');
-        row.classList.add('row');
-        content.appendChild(row);
-        // Input field
-        const input_f = document.createElement('div');
-        input_f.classList.add('input-field', 'col', 's12');
-        row.appendChild(input_f);
-        // Champ input réel et son label
-        const label = document.createElement('label');
-        input.type = "text";
-        input.id = "autocomplete_field_id";
-        label.htmlFor = "autocomplete_field_id";
-        label.textContent = "Lieu";
-        input.classList.add('autocomplete');
-        input_f.appendChild(input);
-        input_f.appendChild(label);
-        // Initialisation de l'autocomplétion
-        const auto_complete_data = {};
-        for (const lieu of locations) {
-            auto_complete_data[lieu.label] = null;
-        }
         // Vide le modal actuel et le remplace par le contenu et footer créés
         modal.innerHTML = "";
         modal.appendChild(content);
-        // Création d'un objet label => value
-        const labels_to_name = {};
-        for (const lieu of locations) {
-            labels_to_name[lieu.label] = lieu.name;
-        }
-        // Lance l'autocomplétion materialize
-        M.Autocomplete.init(input, {
-            data: auto_complete_data,
-            limit: 5,
-            onAutocomplete: function () {
-                // Remplacement du label par le nom réel
-                const location = input.value;
-                // Recherche le label sélectionné dans l'objet les contenants
-                if (location in labels_to_name) {
-                    input.value = location;
-                }
-            }
-        });
+        const labels_to_name = location_1.createLocationInputSelector(content, input, locations);
         // Construction de la liste de lieux si la location est trouvée
         if (current_location) {
             // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
@@ -3631,7 +3668,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             else if (input.value in labels_to_name) {
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
-                loc_input.dataset.reallocation = labels_to_name[input.value];
+                loc_input.dataset.reallocation = labels_to_name[input.value][0];
                 helpers_7.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
@@ -4028,21 +4065,21 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main"], function (require, exports, user_manager_6, SyncManager_5, helpers_10, main_5) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location"], function (require, exports, user_manager_6, SyncManager_5, helpers_10, main_5, form_schema_5, location_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
     function initHomePage(base) {
-        base.innerHTML = `
+        return __awaiter(this, void 0, void 0, function* () {
+            base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
         <img src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
         <p class="flow-text center">
-            Bienvenue dans Busy Bird, l'application qui facilite la prise de données de terrain
-            pour les biologistes.<br>
-            Commencez en choisissant "Nouvelle entrée" dans le menu de côté.<br>
+            ${exports.APP_NAME}, l'application facilitant la prise de données de terrain
+            pour les biologistes.
         </p>
         <p class="flow-text red-text">
             ${!user_manager_6.UserManager.logged ? `
@@ -4054,31 +4091,62 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <div id="__home_container"></div>
     </div>
     `;
-        const home_container = document.getElementById('__home_container');
-        // Calcul du nombre de formulaires en attente de synchronisation
-        SyncManager_5.SyncManager.remainingToSync()
-            .then(count => {
-            if (helpers_10.hasGoodConnection()) {
-                if (count > 15) {
-                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${count} entrées).</span><br>
-                        <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`, "Synchronisation");
+            const home_container = document.getElementById('__home_container');
+            // Calcul du nombre de formulaires en attente de synchronisation
+            try {
+                const remaining_count = yield SyncManager_5.SyncManager.remainingToSync();
+                if (helpers_10.hasGoodConnection()) {
+                    if (remaining_count > 15) {
+                        home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
+                    <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`, "Synchronisation");
+                    }
+                    else if (remaining_count > 0) {
+                        home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">
+                        Vous avez ${remaining_count} entrée${remaining_count > 1 ? 's' : ''} en attente de synchronisation.
+                    </span>`);
+                    }
                 }
-                else if (count > 0) {
-                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">
-                            Vous avez ${count} élément${count > 1 ? 's' : ''} en attente de synchronisation.
-                        </span>`, "Synchronisation");
+                else if (remaining_count > 0) {
+                    home_container.innerHTML = createCardPanel(`
+                <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
+                <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
+                <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`);
                 }
             }
-            else if (count > 0) {
-                home_container.innerHTML = createCardPanel(`
-                    <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
-                    <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
-                    <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`);
+            catch (e) {
+                home_container.innerHTML = createCardPanel(`<span class="red-text text-darken-2">Impossible de relever les entrées disponibles.</span><br>
+            <span class="red-text text-darken-2">Cette erreur est possiblement grave. 
+            Nous vous conseillons de ne pas enregistrer de formulaire.</span>`, "Erreur");
             }
+            // Montre l'utilisateur connecté
+            if (user_manager_6.UserManager.logged) {
+                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="grey-text text-darken-1">${user_manager_6.UserManager.username}</span>
+            <span class="blue-text text-darken-2">est connecté-e.</span>`));
+            }
+            // Nombre de formulaires enregistrés sur l'appareil
+            try {
+                const nb_files = (yield helpers_10.getDirP('forms').then(helpers_10.dirEntries)).length;
+                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
+            ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
+            }
+            catch (e) {
+                // Impossible d'obtenir les fichiers
+                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span>`));
+            }
+            form_schema_5.Forms.onReady(function (available, current) {
+                if (current === null) {
+                    return;
+                }
+                const locations = current.locations;
+                // Navigation vers nichoir
+                home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
+            <h5>Naviguer vers un nichoir</h5>`);
+                location_2.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
+            });
+            // Initialise les champs materialize et le select
+            M.updateTextFields();
+            $('select').formSelect();
         });
-        // Initialise les champs materialize et le select
-        M.updateTextFields();
-        $('select').formSelect();
     }
     exports.initHomePage = initHomePage;
     function createCardPanel(html_text, title) {
@@ -4239,7 +4307,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                     reload_on_restore: true
                 },
                 home: {
-                    name: "Accueil",
+                    name: "Tableau de bord",
                     callback: home_1.initHomePage,
                     reload_on_restore: false
                 }

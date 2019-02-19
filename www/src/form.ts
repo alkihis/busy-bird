@@ -7,6 +7,7 @@ import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
+import { createLocationInputSelector } from "./location";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -1386,65 +1387,17 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
 
     // Création de l'input qui va contenir le lieu
     const input = document.createElement('input');
-    input.autocomplete = "off";
 
     // Sélection manuelle
     const title = document.createElement('h5');
     title.innerText = "Sélection manuelle";
     content.appendChild(title);
 
-    // Création du champ à autocompléter
-    // Conteneur
-    const row = document.createElement('div');
-    row.classList.add('row');
-    content.appendChild(row);
-
-    // Input field
-    const input_f = document.createElement('div');
-    input_f.classList.add('input-field', 'col', 's12');
-    row.appendChild(input_f);
-
-    // Champ input réel et son label
-    const label = document.createElement('label');
-    input.type = "text";
-    input.id = "autocomplete_field_id";
-    label.htmlFor = "autocomplete_field_id";
-    label.textContent = "Lieu";
-    input.classList.add('autocomplete');
-
-    input_f.appendChild(input);
-    input_f.appendChild(label);
-
-    // Initialisation de l'autocomplétion
-    const auto_complete_data: any = {};
-    for (const lieu of locations) {
-        auto_complete_data[lieu.label] = null;
-    }
-
     // Vide le modal actuel et le remplace par le contenu et footer créés
     modal.innerHTML = "";
     modal.appendChild(content);
 
-    // Création d'un objet label => value
-    const labels_to_name = {};
-    for (const lieu of locations) {
-        labels_to_name[lieu.label] = lieu.name;
-    }
-
-    // Lance l'autocomplétion materialize
-    M.Autocomplete.init(input, {
-        data: auto_complete_data,
-        limit: 5,
-        onAutocomplete: function() {
-            // Remplacement du label par le nom réel
-            const location = input.value;
-
-            // Recherche le label sélectionné dans l'objet les contenants
-            if (location in labels_to_name) {
-                input.value = location;
-            }
-        }
-    });
+    const labels_to_name = createLocationInputSelector(content, input, locations);
 
     // Construction de la liste de lieux si la location est trouvée
     if (current_location) {
@@ -1522,7 +1475,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
         else if (input.value in labels_to_name) {
             const loc_input = document.getElementById('__location__id') as HTMLInputElement;
             loc_input.value = input.value;
-            loc_input.dataset.reallocation = labels_to_name[input.value];
+            loc_input.dataset.reallocation = labels_to_name[input.value][0];
 
             getModalInstance().close();
             modal.classList.remove('modal-fixed-footer');
