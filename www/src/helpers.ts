@@ -898,3 +898,14 @@ export function convertHTMLToElement(htmlString: string) : HTMLElement {
     tempDiv.innerHTML = htmlString;
     return tempDiv.firstElementChild as HTMLElement;
 }
+
+export function showToast(message: string, duration: number = 4000) : void {
+    // @ts-ignore
+    if (device.platform === "browser") {
+        M.toast({html: message, displayLength: duration});
+    }
+    else {
+        // @ts-ignore
+        window.plugins.toast.show(message, duration, 'bottom');
+    }
+}

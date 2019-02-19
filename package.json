@@ -37,7 +37,9 @@
     "requirejs": "^2.3.6",
     "cordova-plugin-viewport": "1.0.3",
     "phonegap-plugin-mobile-accessibility": "https://github.com/phonegap/phonegap-mobile-accessibility.git",
-    "cordova-plugin-splashscreen": "5.0.2"
+    "cordova-plugin-splashscreen": "5.0.2",
+    "cordova-plugin-multi-window": "0.0.3",
+    "cordova-plugin-x-toast": "2.7.2"
   },
   "devDependencies": {},
   "scripts": {
@@ -68,7 +70,9 @@
       "cordova-plugin-whitelist": {},
       "cordova-plugin-viewport": {},
       "phonegap-plugin-mobile-accessibility": {},
-      "cordova-plugin-splashscreen": {}
+      "cordova-plugin-splashscreen": {},
+      "cordova-plugin-multi-window": {},
+      "cordova-plugin-x-toast": {}
     },
     "platforms": [
       "android",

@@ -1,12 +1,12 @@
 import { UserManager, loginUser } from "./user_manager";
 import { Forms } from "./form_schema";
-import { askModal, initModal, getModalPreloader, informalBottomModal } from "./helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast } from "./helpers";
 import { SyncManager } from "./SyncManager";
 import { PageManager } from "./PageManager";
 
 function headerText() : string {
     return `${UserManager.logged ? 
-        "Vous êtes connecté-e en tant que <span class='underline'>" + UserManager.username + "</span>" 
+        "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + UserManager.username + "</span>" 
         : "Vous n'êtes pas connecté-e"}.`;
 }
 
@@ -16,12 +16,12 @@ function formActualisationModal() : void {
 
     Forms.init(true)
         .then(() => {
-            M.toast({html: "Actualisation terminée."});
+            showToast("Actualisation terminée.");
             instance.close();
             PageManager.reload();
         })
         .catch((error) => {
-            M.toast({html: "Impossible d'actualiser les schémas."});
+            showToast("Impossible d'actualiser les schémas.");
             instance.close();
         })
 }
@@ -32,7 +32,7 @@ export function initSettingsPage(base: HTMLElement) {
     base.innerHTML = `
     <div class="container row" id="main_settings_container">
         <h4>Utilisateur</h4>
-        <h5 id="settings_main_text">${headerText()}</h5>
+        <p id="settings_main_text" class="flow-text no-margin-bottom">${headerText()}</p>
     </div>
     `;
 

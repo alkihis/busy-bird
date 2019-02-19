@@ -83,11 +83,11 @@ function initApp() {
         href = tmp[tmp.length - 1];
     }
 
-    // @ts-ignore
-    navigator.splashscreen.hide();
-
     // Quand les forms sont prêts, on affiche l'app !
     Forms.onReady(function() {
+        // @ts-ignore
+        navigator.splashscreen.hide();
+
         if (href && PageManager.pageExists(href)) {
             PageManager.changePage(href as AppPageName);
         }

@@ -1,6 +1,6 @@
 import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage, getDirP, sleep } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
@@ -142,7 +142,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             location.value = label_location.label;
         }
         else {
-            M.toast({html: "Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire."});
+            showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
         }
     }
 
@@ -321,7 +321,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                             M.updateTextFields();
                         }
                         else {
-                            M.toast({html: "Nombre incorrect reconnu."});
+                            showToast("Nombre incorrect reconnu.");
                         }
                     });
                 });
@@ -968,7 +968,7 @@ async function beginFormSave(type: string, force_name?: string, form_save?: Form
 
                     if (form_save) {
                         instance.close();
-                        M.toast({html: "Écriture du formulaire et de ses données réussie."});
+                        showToast("Écriture du formulaire et de ses données réussie.");
 
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager.popPage();
@@ -1104,7 +1104,7 @@ function writeDataThenForm(name: string, form_values: FormSave, older_save?: For
             resolve();
         }, function(error) {
             // Erreur d'écriture du fichier => on rejette
-            M.toast({html: "Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage."});
+            showToast("Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage.");
             reject(error);
         });
     }
@@ -1474,7 +1474,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
     ok.classList.add("btn-flat", "green-text", "right");
     ok.addEventListener('click', function() {
         if (input.value.trim() === "") {
-            M.toast({html: "Vous devez préciser un lieu."});
+            showToast("Vous devez préciser un lieu.");
         }
         else if (input.value in labels_to_name) {
             const loc_input = document.getElementById('__location__id') as HTMLInputElement;
@@ -1485,7 +1485,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
             modal.classList.remove('modal-fixed-footer');
         }
         else {
-            M.toast({html: "Le lieu entré n'a aucune correspondance dans la base de données."});
+            showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
         }
     });
     footer.appendChild(ok);

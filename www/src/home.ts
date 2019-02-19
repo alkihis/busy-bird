@@ -85,7 +85,9 @@ export async function initHomePage(base: HTMLElement) {
     } catch (e) {
         // Impossible d'obtenir les fichiers
         home_container.insertAdjacentHTML('beforeend', createCardPanel(
-            `<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span>`
+            `<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span><br>
+            <span class="red-text text-darken-2">Cette erreur est probablement grave. 
+            Nous vous conseillons de ne pas tenter d'enregistrer un formulaire et de vérifier votre stockage interne.</span>`
         ));
     }
 

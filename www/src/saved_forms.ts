@@ -1,4 +1,4 @@
-import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement } from "./helpers";
+import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
@@ -7,7 +7,7 @@ import { Logger } from "./logger";
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
     if (form.type === null || !Forms.formExists(form.type)) {
-        M.toast({html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible."});
+        showToast("Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible.");
         return;
     }
 
@@ -37,7 +37,7 @@ function deleteAll() : Promise<any> {
             return SyncManager.clear();
         })
         .then(() => {
-            M.toast({html: "Fichiers supprimés avec succès"});
+            showToast("Fichiers supprimés avec succès");
             PageManager.reload();
         })
 }
@@ -155,11 +155,11 @@ function modalDeleteForm(id: string) {
             // L'utilisateur demande la suppression
             deleteForm(id)
                 .then(function() {
-                    M.toast({html: "Entrée supprimée."});
+                    showToast("Entrée supprimée.");
                     PageManager.reload();
                 })
                 .catch(function(err) {
-                    M.toast({html: "Impossible de supprimer: " + err});
+                    showToast("Impossible de supprimer: " + err);
                 });
         })
         .catch(() => {

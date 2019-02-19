@@ -1,4 +1,4 @@
-import { readFile, writeFile, toValidUrl } from "./helpers";
+import { readFile, writeFile, toValidUrl, showToast } from "./helpers";
 import { Logger } from "./logger";
 import { UserManager } from "./user_manager";
 import { API_URL, ENABLE_FORM_DOWNLOAD } from "./main";
@@ -154,7 +154,7 @@ export const Forms = new class {
                             })
                             .catch((err) => {
                                 // @ts-ignore
-                                M.toast({html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json'});
+                                showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                             })
                     });
                 });

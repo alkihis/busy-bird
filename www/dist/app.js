@@ -850,6 +850,17 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         return tempDiv.firstElementChild;
     }
     exports.convertHTMLToElement = convertHTMLToElement;
+    function showToast(message, duration = 4000) {
+        // @ts-ignore
+        if (device.platform === "browser") {
+            M.toast({ html: message, displayLength: duration });
+        }
+        else {
+            // @ts-ignore
+            window.plugins.toast.show(message, duration, 'bottom');
+        }
+    }
+    exports.showToast = showToast;
 });
 define("vocal_recognition", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -1482,7 +1493,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                                         res(json);
                                     })
                                         .catch(error => {
-                                        M.toast({ html: "Impossible d'envoyer " + basename + "." });
+                                        helpers_3.showToast("Impossible d'envoyer " + basename + ".");
                                         rej({ code: "metadata_send", error });
                                     });
                                 })
@@ -1583,7 +1594,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             };
             return this.sync(force_all, clear_cache, text)
                 .then(data => {
-                M.toast({ html: "Synchronisation réussie" });
+                helpers_3.showToast("Synchronisation réussie");
                 instance.close();
                 return data;
             })
@@ -1867,10 +1878,10 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             // Récupère la partie de l'URL après la query string et avant le #
             href = tmp[tmp.length - 1];
         }
-        // @ts-ignore
-        navigator.splashscreen.hide();
         // Quand les forms sont prêts, on affiche l'app !
         form_schema_1.Forms.onReady(function () {
+            // @ts-ignore
+            navigator.splashscreen.hide();
             if (href && PageManager_2.PageManager.pageExists(href)) {
                 PageManager_2.PageManager.changePage(href);
             }
@@ -2034,19 +2045,20 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
             const psw_r = form.user_psw_r.value.trim();
             const psw_a = form.user_psw_a.value.trim();
             if (!name) {
-                M.toast({ html: "Le nom ne peut pas être vide." });
+                helpers_5.showToast("Le nom ne peut pas être vide.");
+                helpers_5.showToast("Le nom ne peut pas être vide.");
                 return;
             }
             if (!psw) {
-                M.toast({ html: "Le mot de passe ne peut pas être vide." });
+                helpers_5.showToast("Le mot de passe ne peut pas être vide.");
                 return;
             }
             if (psw !== psw_r) {
-                M.toast({ html: "Mot de passe et confirmation doivent correspondre." });
+                helpers_5.showToast("Mot de passe et confirmation doivent correspondre.");
                 return;
             }
             if (!psw_a) {
-                M.toast({ html: "Le mot de passe administrateur est nécessaire." });
+                helpers_5.showToast("Le mot de passe administrateur est nécessaire.");
                 return;
             }
             modal_save = document.createDocumentFragment();
@@ -2057,19 +2069,19 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
             modal.innerHTML = helpers_5.getModalPreloader("Création de l'utilisateur...");
             exports.UserManager.createUser(name, psw, psw_a)
                 .then(function () {
-                M.toast({ html: "Utilisateur créé avec succès." });
+                helpers_5.showToast("Utilisateur créé avec succès.");
                 instance.close();
             }).catch(function (error) {
                 console.log(error);
                 if (typeof error === 'number') {
                     if (error === 6) {
-                        M.toast({ html: "Le mot de passe administrateur est invalide." });
+                        helpers_5.showToast("Le mot de passe administrateur est invalide.");
                     }
                     else if (error === 12) {
-                        M.toast({ html: "Cet utilisateur existe déjà." });
+                        helpers_5.showToast("Cet utilisateur existe déjà.");
                     }
                     else {
-                        M.toast({ html: "Une erreur inconnue est survenue." });
+                        helpers_5.showToast("Une erreur inconnue est survenue.");
                     }
                 }
                 modal.innerHTML = "";
@@ -2116,11 +2128,11 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
                 const name = form.user_new.value.trim();
                 const psw = form.user_psw.value.trim();
                 if (!name) {
-                    M.toast({ html: "Le nom ne peut pas être vide." });
+                    helpers_5.showToast("Le nom ne peut pas être vide.");
                     return;
                 }
                 if (!psw) {
-                    M.toast({ html: "Le mot de passe ne peut pas être vide." });
+                    helpers_5.showToast("Le mot de passe ne peut pas être vide.");
                     return;
                 }
                 modal_save = document.createDocumentFragment();
@@ -2131,24 +2143,24 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
                 modal.innerHTML = helpers_5.getModalPreloader("Connexion");
                 exports.UserManager.login(name, psw)
                     .then(function () {
-                    M.toast({ html: "Vous avez été connecté-e avec succès." });
+                    helpers_5.showToast("Vous avez été connecté-e avec succès.");
                     instance.close();
                     // RESOLUTION DE LA PROMESSE
                     resolve();
                 }).catch(function (error) {
                     if (typeof error === 'number') {
                         if (error === 10) {
-                            M.toast({ html: "Cet utilisateur n'existe pas." });
+                            helpers_5.showToast("Cet utilisateur n'existe pas.");
                         }
                         else if (error === 11) {
-                            M.toast({ html: "Votre mot de passe est invalide." });
+                            helpers_5.showToast("Votre mot de passe est invalide.");
                         }
                         else {
-                            M.toast({ html: "Une erreur inconnue est survenue." });
+                            helpers_5.showToast("Une erreur inconnue est survenue.");
                         }
                     }
                     else {
-                        M.toast({ html: error.message || JSON.stringify(error) });
+                        helpers_5.showToast(error.message || JSON.stringify(error));
                     }
                     modal.innerHTML = "";
                     let e;
@@ -2268,7 +2280,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                         })
                             .catch((err) => {
                             // @ts-ignore
-                            M.toast({ html: "Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json' });
+                            helpers_6.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                         });
                     });
                 });
@@ -2384,7 +2396,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
-define("location", ["require", "exports"], function (require, exports) {
+define("location", ["require", "exports", "helpers"], function (require, exports, helpers_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createLocationInputSelector(container, input, locations, open_on_complete = false) {
@@ -2429,7 +2441,7 @@ define("location", ["require", "exports"], function (require, exports) {
                     }
                 }
                 else {
-                    M.toast({ html: "Ce lieu n'existe pas." });
+                    helpers_7.showToast("Ce lieu n'existe pas.");
                 }
             }
         });
@@ -2437,7 +2449,7 @@ define("location", ["require", "exports"], function (require, exports) {
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_7, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_8, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2555,7 +2567,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 location.value = label_location.label;
             }
             else {
-                M.toast({ html: "Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire." });
+                helpers_8.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
             }
         }
         loc_wrapper.appendChild(location);
@@ -2708,7 +2720,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                                 M.updateTextFields();
                             }
                             else {
-                                M.toast({ html: "Nombre incorrect reconnu." });
+                                helpers_8.showToast("Nombre incorrect reconnu.");
                             }
                         });
                     });
@@ -2931,7 +2943,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_7.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_8.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -2991,7 +3003,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    helpers_7.readFromFile(filled_form.fields[ele.name], function (base64) {
+                    helpers_8.readFromFile(filled_form.fields[ele.name], function (base64) {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
@@ -3045,13 +3057,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     function beginFormSave(type, force_name, form_save) {
         return __awaiter(this, void 0, void 0, function* () {
             // Ouverture du modal de verification
-            const modal = helpers_7.getModal();
-            const instance = helpers_7.initModal({ dismissible: false, outDuration: 100 }, helpers_7.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
+            const modal = helpers_8.getModal();
+            const instance = helpers_8.initModal({ dismissible: false, outDuration: 100 }, helpers_8.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
             <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
         </div>`));
             instance.open();
             // Attend que le modal s'ouvre proprement (ralentissements sinon)
-            yield helpers_7.sleep(300);
+            yield helpers_8.sleep(300);
             modal.classList.add('modal-fixed-footer');
             // Recherche des éléments à vérifier
             const elements_failed = [];
@@ -3218,16 +3230,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 save_btn.classList.add('btn-flat', 'right', 'green-text');
                 save_btn.innerText = "Sauvegarder";
                 save_btn.onclick = function () {
-                    modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
+                    modal.innerHTML = helpers_8.getModalPreloader("Sauvegarde en cours");
                     modal.classList.remove('modal-fixed-footer');
-                    const unique_id = force_name || helpers_7.generateId(main_4.ID_COMPLEXITY);
+                    const unique_id = force_name || helpers_8.generateId(main_4.ID_COMPLEXITY);
                     PageManager_3.PageManager.lock_return_button = true;
                     saveForm(type, unique_id, form_save)
                         .then((form_values) => {
                         SyncManager_2.SyncManager.add(unique_id, form_values);
                         if (form_save) {
                             instance.close();
-                            M.toast({ html: "Écriture du formulaire et de ses données réussie." });
+                            helpers_8.showToast("Écriture du formulaire et de ses données réussie.");
                             // On vient de la page d'édition de formulaire déjà créés
                             PageManager_3.PageManager.popPage();
                             // PageManager.reload(); la page se recharge toute seule au pop
@@ -3331,7 +3343,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function writeDataThenForm(name, form_values, older_save) {
         function saveBlobToFile(resolve, reject, filename, input_name, blob) {
-            helpers_7.writeFile('form_data/' + name, filename, blob, function () {
+            helpers_8.writeFile('form_data/' + name, filename, blob, function () {
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
                 form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
@@ -3344,18 +3356,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         const parts = older_save.fields[input_name].split('/');
                         const file_name = parts.pop();
                         const dir_name = parts.join('/');
-                        helpers_7.removeFileByName(dir_name, file_name);
+                        helpers_8.removeFileByName(dir_name, file_name);
                     }
                 }
                 // Résout la promise
                 resolve();
             }, function (error) {
                 // Erreur d'écriture du fichier => on rejette
-                M.toast({ html: "Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage." });
+                helpers_8.showToast("Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage.");
                 reject(error);
             });
         }
-        return helpers_7.getDirP('form_data')
+        return helpers_8.getDirP('form_data')
             .then(() => {
             // Crée le dossier form_data si besoin
             // Récupère les images du formulaire
@@ -3404,8 +3416,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const file = audio.value;
                     const input_name = audio.name;
                     if (file) {
-                        const filename = helpers_7.generateId(main_4.ID_COMPLEXITY) + '.mp3';
-                        helpers_7.urlToBlob(file).then(function (blob) {
+                        const filename = helpers_8.generateId(main_4.ID_COMPLEXITY) + '.mp3';
+                        helpers_8.urlToBlob(file).then(function (blob) {
                             saveBlobToFile(resolve, reject, filename, input_name, blob);
                         });
                     }
@@ -3438,7 +3450,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 return new Promise((resolve, reject) => {
                     // On écrit enfin le formulaire !
-                    helpers_7.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
+                    helpers_8.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
                         console.log(form_values);
                         resolve(form_values);
                     }, reject);
@@ -3459,7 +3471,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             form_schema_2.Forms.onReady(function (available, current) {
                 if (form_schema_2.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_7.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
+                    base.innerHTML = helpers_8.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
                 }
                 else {
@@ -3477,7 +3489,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base.innerHTML = "";
         if (!edition_mode && !user_manager_4.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = base.innerHTML = helpers_7.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
+            base.innerHTML = base.innerHTML = helpers_8.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
             PageManager_3.PageManager.should_wait = false;
             return;
         }
@@ -3536,18 +3548,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Sinon, on ramène à la page précédente
             PageManager_3.PageManager.popPage();
         }
-        helpers_7.getModalInstance().close();
-        helpers_7.getModal().classList.remove('modal-fixed-footer');
+        helpers_8.getModalInstance().close();
+        helpers_8.getModal().classList.remove('modal-fixed-footer');
     }
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_7.getModal();
-        const instance = helpers_7.initModal({
+        const modal = helpers_8.getModal();
+        const instance = helpers_8.initModal({
             dismissible: false
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
-        modal.innerHTML = helpers_7.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        modal.innerHTML = helpers_8.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -3562,7 +3574,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             locationSelector(modal, current_form.locations, false);
         };
         // Cherche la localisation et remplit le modal
-        helpers_7.getLocation(function (coords) {
+        helpers_8.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords);
         }, function () {
@@ -3606,7 +3618,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 lieux_dispo.push({
                     name: lieu.name,
                     label: lieu.label,
-                    distance: helpers_7.calculateDistance(current_location.coords, lieu)
+                    distance: helpers_8.calculateDistance(current_location.coords, lieu)
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -3654,17 +3666,17 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         ok.classList.add("btn-flat", "green-text", "right");
         ok.addEventListener('click', function () {
             if (input.value.trim() === "") {
-                M.toast({ html: "Vous devez préciser un lieu." });
+                helpers_8.showToast("Vous devez préciser un lieu.");
             }
             else if (input.value in labels_to_name) {
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 loc_input.dataset.reallocation = labels_to_name[input.value][0];
-                helpers_7.getModalInstance().close();
+                helpers_8.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
-                M.toast({ html: "Le lieu entré n'a aucune correspondance dans la base de données." });
+                helpers_8.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
             }
         });
         footer.appendChild(ok);
@@ -3678,25 +3690,25 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager"], function (require, exports, user_manager_5, form_schema_3, helpers_8, SyncManager_3, PageManager_4) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager"], function (require, exports, user_manager_5, form_schema_3, helpers_9, SyncManager_3, PageManager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function headerText() {
         return `${user_manager_5.UserManager.logged ?
-            "Vous êtes connecté-e en tant que <span class='underline'>" + user_manager_5.UserManager.username + "</span>"
+            "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + user_manager_5.UserManager.username + "</span>"
             : "Vous n'êtes pas connecté-e"}.`;
     }
     function formActualisationModal() {
-        const instance = helpers_8.initModal({ dismissible: false }, helpers_8.getModalPreloader("Actualisation..."));
+        const instance = helpers_9.initModal({ dismissible: false }, helpers_9.getModalPreloader("Actualisation..."));
         instance.open();
         form_schema_3.Forms.init(true)
             .then(() => {
-            M.toast({ html: "Actualisation terminée." });
+            helpers_9.showToast("Actualisation terminée.");
             instance.close();
             PageManager_4.PageManager.reload();
         })
             .catch((error) => {
-            M.toast({ html: "Impossible d'actualiser les schémas." });
+            helpers_9.showToast("Impossible d'actualiser les schémas.");
             instance.close();
         });
     }
@@ -3705,7 +3717,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         base.innerHTML = `
     <div class="container row" id="main_settings_container">
         <h4>Utilisateur</h4>
-        <h5 id="settings_main_text">${headerText()}</h5>
+        <p id="settings_main_text" class="flow-text no-margin-bottom">${headerText()}</p>
     </div>
     `;
         ////// DEFINITION DU BOUTON DE CONNEXION
@@ -3731,7 +3743,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.remove('blue');
             button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
             button.onclick = function () {
-                helpers_8.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+                helpers_9.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
                     .then(function () {
                     // L'utilisateur veut se déconnecter
                     user_manager_5.UserManager.unlog();
@@ -3799,7 +3811,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn2.innerHTML = "Tout resynchroniser";
         syncbtn2.onclick = function () {
-            helpers_8.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+            helpers_9.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
                 // L'utilisateur a dit oui
                 SyncManager_3.SyncManager.graphicalSync(true);
             });
@@ -3809,7 +3821,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn3.innerHTML = "Vider cache et synchroniser";
         syncbtn3.onclick = function () {
-            helpers_8.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
+            helpers_9.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
             N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
             Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
                 // L'utilisateur a dit oui
@@ -3827,26 +3839,26 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         formbtn.innerHTML = "Actualiser schémas formulaire";
         formbtn.onclick = function () {
             if (user_manager_5.UserManager.logged) {
-                helpers_8.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
+                helpers_9.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
                     // L'utilisateur a dit oui
                     formActualisationModal();
                 });
             }
             else {
-                helpers_8.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+                helpers_9.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
             }
         };
         container.appendChild(formbtn);
     }
     exports.initSettingsPage = initSettingsPage;
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_9, form_schema_4, PageManager_5, SyncManager_4, logger_5) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_10, form_schema_4, PageManager_5, SyncManager_4, logger_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
         if (form.type === null || !form_schema_4.Forms.formExists(form.type)) {
-            M.toast({ html: "Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible." });
+            helpers_10.showToast("Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible.");
             return;
         }
         const current_form = form_schema_4.Forms.getForm(form.type);
@@ -3855,9 +3867,9 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     function deleteAll() {
         // On veut supprimer tous les fichiers
         // Récupération de tous les fichiers de forms
-        return helpers_9.getDirP('forms')
+        return helpers_10.getDirP('forms')
             // Récupère les entries du répertoire
-            .then(helpers_9.dirEntries)
+            .then(helpers_10.dirEntries)
             .then(entries => {
             const promises = [];
             for (const e of entries) {
@@ -3871,7 +3883,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             return SyncManager_4.SyncManager.clear();
         })
             .then(() => {
-            M.toast({ html: "Fichiers supprimés avec succès" });
+            helpers_10.showToast("Fichiers supprimés avec succès");
             PageManager_5.PageManager.reload();
         });
     }
@@ -3892,7 +3904,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         container.innerHTML = `
         <div class="left">
             ${id} <br> 
-            Modifié le ${helpers_9.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_10.formatDate(new Date(json[0].lastModified), true)}
         </div>`;
         // Ajoute le bouton de suppression
         const delete_btn = document.createElement('a');
@@ -3921,7 +3933,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     function readAllFilesOfDirectory(dirName) {
         const dirreader = new Promise(function (resolve, reject) {
-            helpers_9.getDir(function (dirEntry) {
+            helpers_10.getDir(function (dirEntry) {
                 // Lecture de tous les fichiers du répertoire
                 const reader = dirEntry.createReader();
                 reader.readEntries(function (entries) {
@@ -3963,16 +3975,16 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return dirreader;
     }
     function modalDeleteForm(id) {
-        helpers_9.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+        helpers_10.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
             .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
                 .then(function () {
-                M.toast({ html: "Entrée supprimée." });
+                helpers_10.showToast("Entrée supprimée.");
                 PageManager_5.PageManager.reload();
             })
                 .catch(function (err) {
-                M.toast({ html: "Impossible de supprimer: " + err });
+                helpers_10.showToast("Impossible de supprimer: " + err);
             });
         })
             .catch(() => {
@@ -3987,10 +3999,10 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
-                helpers_9.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
-                    helpers_9.getDir(function (dirEntry) {
+                helpers_10.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_10.getDir(function (dirEntry) {
                         dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                            helpers_9.removeFilePromise(fileEntry).then(function () {
+                            helpers_10.removeFilePromise(fileEntry).then(function () {
                                 resolve();
                             }).catch(reject);
                         }, function () {
@@ -4018,22 +4030,22 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 base.innerHTML = "";
                 base.appendChild(placeholder);
                 if (files.length === 0) {
-                    base.innerHTML = helpers_9.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                    base.innerHTML = helpers_10.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
                 }
                 else {
                     // Bouton de suppression globale
-                    const delete_btn = helpers_9.convertHTMLToElement(`
+                    const delete_btn = helpers_10.convertHTMLToElement(`
                         <div class="fixed-action-btn">
                             <a class="btn-floating btn-large waves-effect waves-light red">
                                 <i class="material-icons">delete_sweep</i>
                             </a>
                         </div>`);
                     delete_btn.addEventListener('click', () => {
-                        helpers_9.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
+                        helpers_10.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
                             .then(() => {
                             setTimeout(function () {
                                 // Attend que le modal précédent se ferme
-                                helpers_9.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
+                                helpers_10.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
                                     .then(() => {
                                     // Annulation
                                 })
@@ -4050,13 +4062,13 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 throw err;
             })).catch(function (err) {
                 logger_5.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
-                base.innerHTML = helpers_9.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+                base.innerHTML = helpers_10.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             });
         });
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location"], function (require, exports, user_manager_6, SyncManager_5, helpers_10, main_5, form_schema_5, location_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_5, form_schema_5, location_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4085,7 +4097,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             // Calcul du nombre de formulaires en attente de synchronisation
             try {
                 const remaining_count = yield SyncManager_5.SyncManager.remainingToSync();
-                if (helpers_10.hasGoodConnection()) {
+                if (helpers_11.hasGoodConnection()) {
                     if (remaining_count > 15) {
                         home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
                     <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`, "Synchronisation");
@@ -4115,13 +4127,15 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             }
             // Nombre de formulaires enregistrés sur l'appareil
             try {
-                const nb_files = (yield helpers_10.getDirP('forms').then(helpers_10.dirEntries)).length;
+                const nb_files = (yield helpers_11.getDirP('forms').then(helpers_11.dirEntries)).length;
                 home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
             }
             catch (e) {
                 // Impossible d'obtenir les fichiers
-                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span>`));
+                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span><br>
+            <span class="red-text text-darken-2">Cette erreur est probablement grave. 
+            Nous vous conseillons de ne pas tenter d'enregistrer un formulaire et de vérifier votre stockage interne.</span>`));
             }
             form_schema_5.Forms.onReady(function (available, current) {
                 if (form_schema_5.Forms.current_key === null) {
@@ -4262,7 +4276,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, home_1) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -4380,8 +4394,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 this.pages_holder = [];
             }
             // On écrit le preloader dans la base et on change l'historique
-            const base = helpers_11.getBase();
-            base.innerHTML = helpers_11.getPreloader("Chargement");
+            const base = helpers_12.getBase();
+            base.innerHTML = helpers_12.getPreloader("Chargement");
             if (window.history) {
                 window.history.pushState({}, "", "?" + pagename);
             }
@@ -4418,7 +4432,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_11.getBase();
+            const actual_base = helpers_12.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -4451,7 +4465,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            helpers_11.getBase().remove();
+            helpers_12.getBase().remove();
             // Met le fragment dans le DOM
             document.getElementsByTagName('main')[0].appendChild(last_page.save.firstElementChild);
             // Remet le bon titre
@@ -4479,11 +4493,11 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
-                    helpers_11.getModalInstance().close();
+                    helpers_12.getModalInstance().close();
                 }
                 catch (e) { }
                 try {
-                    helpers_11.getBottomModalInstance().close();
+                    helpers_12.getBottomModalInstance().close();
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
@@ -4495,7 +4509,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             };
             if (this.should_wait || force_asking) {
-                helpers_11.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
+                helpers_12.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
                     .then(stepBack)
                     .catch(() => { });
             }

@@ -1,5 +1,5 @@
 import { API_URL } from "./main";
-import { getModal, initModal, getModalPreloader } from "./helpers";
+import { getModal, initModal, getModalPreloader, showToast } from "./helpers";
 import { Logger } from "./logger";
 
 export const UserManager = new class {
@@ -145,19 +145,20 @@ export function createNewUser() : void {
         const psw_a = form.user_psw_a.value.trim();
 
         if (!name) {
-            M.toast({html: "Le nom ne peut pas être vide."});
+            showToast("Le nom ne peut pas être vide.");
+            showToast("Le nom ne peut pas être vide.");
             return;
         }
         if (!psw) {
-            M.toast({html: "Le mot de passe ne peut pas être vide."});
+            showToast("Le mot de passe ne peut pas être vide.");
             return;
         }
         if (psw !== psw_r) {
-            M.toast({html: "Mot de passe et confirmation doivent correspondre."});
+            showToast("Mot de passe et confirmation doivent correspondre.");
             return;
         }
         if (!psw_a) {
-            M.toast({html: "Le mot de passe administrateur est nécessaire."});
+            showToast("Le mot de passe administrateur est nécessaire.");
             return;
         }
 
@@ -170,19 +171,19 @@ export function createNewUser() : void {
         modal.innerHTML = getModalPreloader("Création de l'utilisateur...");
         UserManager.createUser(name, psw, psw_a)
             .then(function() {
-                M.toast({html: "Utilisateur créé avec succès."});
+                showToast("Utilisateur créé avec succès.");
                 instance.close();
             }).catch(function(error) {
                 console.log(error);
                 if (typeof error === 'number') {
                     if (error === 6) {
-                        M.toast({html: "Le mot de passe administrateur est invalide."});
+                        showToast("Le mot de passe administrateur est invalide.");
                     }
                     else if (error === 12) {
-                        M.toast({html: "Cet utilisateur existe déjà."});
+                        showToast("Cet utilisateur existe déjà.");
                     }
                     else {
-                        M.toast({html: "Une erreur inconnue est survenue."});
+                        showToast("Une erreur inconnue est survenue.");
                     }
                 }
 
@@ -237,11 +238,11 @@ export function loginUser() : Promise<void> {
             const psw = form.user_psw.value.trim();
     
             if (!name) {
-                M.toast({html: "Le nom ne peut pas être vide."});
+                showToast("Le nom ne peut pas être vide.");
                 return;
             }
             if (!psw) {
-                M.toast({html: "Le mot de passe ne peut pas être vide."});
+                showToast("Le mot de passe ne peut pas être vide.");
                 return;
             }
     
@@ -254,7 +255,7 @@ export function loginUser() : Promise<void> {
             modal.innerHTML = getModalPreloader("Connexion");
             UserManager.login(name, psw)
                 .then(function() {
-                    M.toast({html: "Vous avez été connecté-e avec succès."});
+                    showToast("Vous avez été connecté-e avec succès.");
                     instance.close();
 
                     // RESOLUTION DE LA PROMESSE
@@ -262,17 +263,17 @@ export function loginUser() : Promise<void> {
                 }).catch(function(error) {
                     if (typeof error === 'number') {
                         if (error === 10) {
-                            M.toast({html: "Cet utilisateur n'existe pas."});
+                            showToast("Cet utilisateur n'existe pas.");
                         }
                         else if (error === 11) {
-                            M.toast({html: "Votre mot de passe est invalide."});
+                            showToast("Votre mot de passe est invalide.");
                         }
                         else {
-                            M.toast({html: "Une erreur inconnue est survenue."});
+                            showToast("Une erreur inconnue est survenue.");
                         }
                     }
                     else {
-                        M.toast({html: error.message || JSON.stringify(error)});
+                        showToast(error.message || JSON.stringify(error));
                     }
     
                     modal.innerHTML = "";

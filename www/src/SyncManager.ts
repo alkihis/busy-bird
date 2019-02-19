@@ -2,7 +2,7 @@ import { FormSave } from "./form_schema";
 import { Logger } from "./logger";
 import localforage from 'localforage';
 import { API_URL } from "./main";
-import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection } from "./helpers";
+import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
 import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
 
@@ -178,7 +178,7 @@ export const SyncManager = new class {
                                             res(json);
                                         })
                                         .catch(error => {
-                                            M.toast({html: "Impossible d'envoyer " + basename + "."});
+                                            showToast("Impossible d'envoyer " + basename + ".");
                                             rej({code: "metadata_send", error});
                                         })
                                     })
@@ -301,7 +301,7 @@ export const SyncManager = new class {
 
         return this.sync(force_all, clear_cache, text)
             .then(data => {
-                M.toast({html: "Synchronisation réussie"});
+                showToast("Synchronisation réussie");
 
                 instance.close();
 

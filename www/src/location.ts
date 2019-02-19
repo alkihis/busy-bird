@@ -1,4 +1,5 @@
 import { FormLocation } from "./form_schema";
+import { showToast } from "./helpers";
 
 export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocation[], open_on_complete = false) {
     const row = document.createElement('div');
@@ -48,7 +49,7 @@ export function createLocationInputSelector(container: HTMLElement, input: HTMLI
                 }
             }
             else {
-                M.toast({html: "Ce lieu n'existe pas."});
+                showToast("Ce lieu n'existe pas.");
             }
         }
     });
