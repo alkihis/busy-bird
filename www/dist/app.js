@@ -857,7 +857,12 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         }
         else {
             // @ts-ignore
-            window.plugins.toast.show(message, duration, 'bottom');
+            window.plugins.toast.showWithOptions({
+                message,
+                duration,
+                position: "bottom",
+                addPixelsY: -250 // (optional) added a negative value to move it up a bit (default 0)
+            });
         }
     }
     exports.showToast = showToast;
@@ -3555,7 +3560,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Obtient l'élément HTML du modal
         const modal = helpers_8.getModal();
         const instance = helpers_8.initModal({
-            dismissible: false
+            dismissible: false, preventScrolling: true
         });
         // Ouvre le modal et insère un chargeur
         instance.open();

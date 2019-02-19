@@ -3193,6 +3193,7 @@ $jscomp.polyfill = function (e, r, p, m) {
 
         if (this.options.preventScrolling) {
           document.body.style.overflow = 'hidden';
+          document.body.style.touchAction = 'none';
         }
 
         this.el.classList.add('open');
@@ -3240,6 +3241,7 @@ $jscomp.polyfill = function (e, r, p, m) {
         // Enable body scrolling only if there are no more modals open.
         if (Modal._modalsOpen === 0) {
           document.body.style.overflow = '';
+          document.body.style.touchAction = '';
         }
 
         if (this.options.dismissible) {

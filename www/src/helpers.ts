@@ -906,6 +906,11 @@ export function showToast(message: string, duration: number = 4000) : void {
     }
     else {
         // @ts-ignore
-        window.plugins.toast.show(message, duration, 'bottom');
+        window.plugins.toast.showWithOptions({
+            message,
+            duration, // ms
+            position: "bottom",
+            addPixelsY: -250  // (optional) added a negative value to move it up a bit (default 0)
+        });
     }
 }
