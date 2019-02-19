@@ -15,8 +15,7 @@ export async function initHomePage(base: HTMLElement) {
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>
         <p class="flow-text center">
-            ${APP_NAME}, l'application facilitant la prise de données de terrain
-            pour les biologistes.
+            Bienvenue dans ${APP_NAME}, l'application qui facilite le suivi d'espèces sur le terrain !
         </p>
         <p class="flow-text red-text">
             ${!UserManager.logged ? `
@@ -91,7 +90,7 @@ export async function initHomePage(base: HTMLElement) {
     }
 
     Forms.onReady(function(available, current) {
-        if (current === null) {
+        if (Forms.current_key === null) {
             return;
         }
 
@@ -100,7 +99,7 @@ export async function initHomePage(base: HTMLElement) {
         // Navigation vers nichoir
         home_container.insertAdjacentHTML('beforeend',
             `<div class="divider divider-margin big"></div>
-            <h5>Naviguer vers un nichoir</h5>`
+            <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${current.name.toLowerCase()}</h6>`
         );
 
         createLocationInputSelector(home_container, document.createElement('input'), locations, true);

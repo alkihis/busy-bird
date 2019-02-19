@@ -1,9 +1,10 @@
-import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance } from "./helpers";
+import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance, convertHTMLToElement } from "./helpers";
 import { initFormPage } from "./form";
 import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
-import { SIDENAV_OBJ } from "./main";
-import { initHomePage } from "./home";
+import { initHomePage, APP_NAME } from "./home";
+
+export let SIDENAV_OBJ: M.Sidenav = null;
 
 interface AppPageObj {
     not_sidenav_close?: boolean;
@@ -27,15 +28,15 @@ export const PageManager = new class {
      * Chaque clé de AppPages doit être une possibilité de AppPageName
      */
     protected AppPages: {[pageName: string]: AppPageObj} = {
+        home: {
+            name: "Tableau de bord",
+            callback: initHomePage,
+            reload_on_restore: true
+        },
         form: {
             name: "Nouvelle entrée",
             callback: initFormPage,
             ask_change: true,
-            reload_on_restore: false
-        },
-        settings: {
-            name: "Paramètres",
-            callback: initSettingsPage,
             reload_on_restore: false
         },
         saved: {
@@ -43,15 +44,51 @@ export const PageManager = new class {
             callback: initSavedForm,
             reload_on_restore: true
         },
-        home: {
-            name: "Tableau de bord",
-            callback: initHomePage,
+        settings: {
+            name: "Paramètres",
+            callback: initSettingsPage,
             reload_on_restore: false
         }
     };
 
     protected pages_holder: {save: DocumentFragment, name: string, page: AppPageObj, ask: boolean}[] = [];
 
+    constructor() {
+        // Génération du sidenav
+        const sidenav = document.getElementById('__sidenav_base_menu');
+
+        // Ajout de la bannière
+        sidenav.insertAdjacentHTML('beforeend', `<li>
+            <div class="user-view">
+                <div class="background">
+                <img src="img/sidenav_background.jpg">
+                </div>
+                <a href="#!"><img class="circle" src="img/logo.png"></a>
+                <a href="#!"><span class="white-text email">${APP_NAME}</span></a>
+            </div>
+        </li>`);
+
+        // Ajoute chaque page au menu
+        for (const page in this.AppPages) {
+            const li = document.createElement('li');
+            li.id = "__sidenav_base_element_" + page;
+            li.onclick = () => {
+                PageManager.pushPage(this.AppPages[page]);
+            };
+
+            const link = document.createElement('a');
+            link.href = "#!";
+            link.innerText = this.AppPages[page].name;
+            li.appendChild(link);
+
+            sidenav.appendChild(li);
+        }
+        
+        // Initialise le sidenav
+        const elem = document.querySelector('.sidenav');
+        SIDENAV_OBJ = M.Sidenav.init(elem, {});
+    }
+    
     protected updateReturnBtn() : void {
         // @ts-ignore
         if (device.platform === "browser") {
@@ -145,8 +182,8 @@ export const PageManager = new class {
      * Pousse une nouvelle page dans la pile de page
      * @param page 
      */
-    public pushPage(page: AppPageName, force_name?: string | null, additionnals?: any) : void {
-        if (!this.pageExists(page)) {
+    public pushPage(page: AppPageName | AppPageObj, force_name?: string | null, additionnals?: any) : void {
+        if (typeof page === 'string' && !this.pageExists(page)) {
             throw new ReferenceError("Page does not exists");
         }
 

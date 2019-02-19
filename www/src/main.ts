@@ -7,7 +7,6 @@ import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
 
-export let SIDENAV_OBJ: M.Sidenav = null;
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
 export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
@@ -49,7 +48,7 @@ function initApp() {
     // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
     // Sinon, si mobile, on passe sur dataDirectory
     changeDir();
-    
+
     Logger.init();
     Forms.init(); 
     SyncManager.init();
@@ -70,28 +69,6 @@ function initApp() {
     document.addEventListener("backbutton", function() {
         PageManager.goBack();
     }, false);
-
-    // Initialise le sidenav
-    const elem = document.querySelector('.sidenav');
-    SIDENAV_OBJ = M.Sidenav.init(elem, {});
-
-    // Bind des éléments du sidenav
-    // Home
-    document.getElementById('nav_home').onclick = function() {
-        PageManager.pushPage(AppPageName.home);
-    };
-    // Form
-    document.getElementById('nav_form_new').onclick = function() {
-        PageManager.pushPage(AppPageName.form);
-    };
-    // Saved
-    document.getElementById('nav_form_saved').onclick = function() {
-        PageManager.pushPage(AppPageName.saved);
-    };
-    // Settigns
-    document.getElementById('nav_settings').onclick = function() {
-        PageManager.pushPage(AppPageName.settings);
-    };
 
     app.initialize();
     initDebug();

@@ -1795,7 +1795,6 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
 define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager"], function (require, exports, PageManager_2, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_2, SyncManager_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.SIDENAV_OBJ = null;
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
     exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
@@ -1852,26 +1851,6 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         document.addEventListener("backbutton", function () {
             PageManager_2.PageManager.goBack();
         }, false);
-        // Initialise le sidenav
-        const elem = document.querySelector('.sidenav');
-        exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
-        // Bind des éléments du sidenav
-        // Home
-        document.getElementById('nav_home').onclick = function () {
-            PageManager_2.PageManager.pushPage(PageManager_2.AppPageName.home);
-        };
-        // Form
-        document.getElementById('nav_form_new').onclick = function () {
-            PageManager_2.PageManager.pushPage(PageManager_2.AppPageName.form);
-        };
-        // Saved
-        document.getElementById('nav_form_saved').onclick = function () {
-            PageManager_2.PageManager.pushPage(PageManager_2.AppPageName.saved);
-        };
-        // Settigns
-        document.getElementById('nav_settings').onclick = function () {
-            PageManager_2.PageManager.pushPage(PageManager_2.AppPageName.settings);
-        };
         exports.app.initialize();
         initDebug();
         helpers_4.initModal();
@@ -4078,8 +4057,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
         <p class="flow-text center">
-            ${exports.APP_NAME}, l'application facilitant la prise de données de terrain
-            pour les biologistes.
+            Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces sur le terrain !
         </p>
         <p class="flow-text red-text">
             ${!user_manager_6.UserManager.logged ? `
@@ -4134,13 +4112,13 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
                 home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span>`));
             }
             form_schema_5.Forms.onReady(function (available, current) {
-                if (current === null) {
+                if (form_schema_5.Forms.current_key === null) {
                     return;
                 }
                 const locations = current.locations;
                 // Navigation vers nichoir
                 home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
-            <h5>Naviguer vers un nichoir</h5>`);
+            <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${current.name.toLowerCase()}</h6>`);
                 location_2.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
             });
             // Initialise les champs materialize et le select
@@ -4272,9 +4250,10 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "main", "home"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, main_6, home_1) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, home_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.SIDENAV_OBJ = null;
     var AppPageName;
     (function (AppPageName) {
         AppPageName["form"] = "form";
@@ -4290,15 +4269,15 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
              * Chaque clé de AppPages doit être une possibilité de AppPageName
              */
             this.AppPages = {
+                home: {
+                    name: "Tableau de bord",
+                    callback: home_1.initHomePage,
+                    reload_on_restore: true
+                },
                 form: {
                     name: "Nouvelle entrée",
                     callback: form_1.initFormPage,
                     ask_change: true,
-                    reload_on_restore: false
-                },
-                settings: {
-                    name: "Paramètres",
-                    callback: settings_page_1.initSettingsPage,
                     reload_on_restore: false
                 },
                 saved: {
@@ -4306,13 +4285,41 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                     callback: saved_forms_1.initSavedForm,
                     reload_on_restore: true
                 },
-                home: {
-                    name: "Tableau de bord",
-                    callback: home_1.initHomePage,
+                settings: {
+                    name: "Paramètres",
+                    callback: settings_page_1.initSettingsPage,
                     reload_on_restore: false
                 }
             };
             this.pages_holder = [];
+            // Génération du sidenav
+            const sidenav = document.getElementById('__sidenav_base_menu');
+            // Ajout de la bannière
+            sidenav.insertAdjacentHTML('beforeend', `<li>
+            <div class="user-view">
+                <div class="background">
+                <img src="img/sidenav_background.jpg">
+                </div>
+                <a href="#!"><img class="circle" src="img/logo.png"></a>
+                <a href="#!"><span class="white-text email">${home_1.APP_NAME}</span></a>
+            </div>
+        </li>`);
+            // Ajoute chaque page au menu
+            for (const page in this.AppPages) {
+                const li = document.createElement('li');
+                li.id = "__sidenav_base_element_" + page;
+                li.onclick = () => {
+                    exports.PageManager.pushPage(this.AppPages[page]);
+                };
+                const link = document.createElement('a');
+                link.href = "#!";
+                link.innerText = this.AppPages[page].name;
+                li.appendChild(link);
+                sidenav.appendChild(li);
+            }
+            // Initialise le sidenav
+            const elem = document.querySelector('.sidenav');
+            exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
         }
         updateReturnBtn() {
             // @ts-ignore
@@ -4368,7 +4375,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             }
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
-                main_6.SIDENAV_OBJ.close();
+                exports.SIDENAV_OBJ.close();
             }
             this.actual_page = page;
             this._should_wait = page.ask_change;
@@ -4393,7 +4400,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
          * @param page
          */
         pushPage(page, force_name, additionnals) {
-            if (!this.pageExists(page)) {
+            if (typeof page === 'string' && !this.pageExists(page)) {
                 throw new ReferenceError("Page does not exists");
             }
             // Si il y a plus de 10 pages dans la pile, clean
