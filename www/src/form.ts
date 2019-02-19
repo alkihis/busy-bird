@@ -1,6 +1,5 @@
 import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
-import Artyom from "./arytom/artyom";
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, getDir, removeFileByName, createImgSrc, readFromFile, blobToBase64, urlToBlob, displayErrorMessage, getDirP } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
