@@ -63,6 +63,12 @@
     },
     "cordova-plugin-speechrecognition": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-viewport": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "phonegap-plugin-mobile-accessibility": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {

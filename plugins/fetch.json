@@ -158,5 +158,21 @@
     },
     "is_top_level": true,
     "variables": {}
+  },
+  "cordova-plugin-viewport": {
+    "source": {
+      "type": "registry",
+      "id": "cordova-plugin-viewport@1.0.3"
+    },
+    "is_top_level": true,
+    "variables": {}
+  },
+  "phonegap-plugin-mobile-accessibility": {
+    "source": {
+      "type": "registry",
+      "id": "https://github.com/phonegap/phonegap-mobile-accessibility.git"
+    },
+    "is_top_level": true,
+    "variables": {}
   }
 }

@@ -412,44 +412,37 @@ export const SyncManager = new class {
 
     /**
      * Divise le nombre d'éléments à envoyer par requête.
-     * Attention, augmente drastiquement le nombre d'appels de fonctions; et donc l'empreinte mémoire.
      * @param id_getter Fonction pour récupérer un ID depuis la BDD
      * @param entries Tableau des IDs à envoyer
      * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
      * @param position Position actuelle dans le tableau d'entrées (utilisation interne)
      */
-    protected subSyncDivider(id_getter: Function, entries: string[], text_element?: HTMLElement, position = 0) : Promise<any> {
-        const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
-        const promises: Promise<any>[] = [];
-
-        // Cas d'arrêt
-        if (subset.length === 0) {
-            return Promise.resolve();
+    protected async subSyncDivider(id_getter: Function, entries: string[], text_element?: HTMLElement) : Promise<void> {    
+        for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
+            const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
+            const promises: Promise<any>[] = [];
+    
+            let i = 1;
+            for (const id of subset) {
+                // Pour chaque clé disponible
+                promises.push(
+                    id_getter(id)
+                        .catch(error => {
+                            return Promise.reject({code: "id_getter", error});
+                        })
+                        .then(value => {
+                            if (text_element) {
+                                text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i+position}/${entries.length})`;
+                            }
+                            i++;
+    
+                            return this.sendForm(id, value);
+                        })
+                );
+            }
+    
+            await Promise.all(promises);
         }
-
-        let i = 1;
-        for (const id of subset) {
-            // Pour chaque clé disponible
-            promises.push(
-                id_getter(id)
-                    .catch(error => {
-                        return Promise.reject({code: "id_getter", error});
-                    })
-                    .then(value => {
-                        if (text_element) {
-                            text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i+position}/${entries.length})`;
-                        }
-                        i++;
-
-                        return this.sendForm(id, value);
-                    })
-            );
-        }
-
-        return Promise.all(promises)
-            .then(() => {
-                return this.subSyncDivider(id_getter, entries, text_element, position + PROMISE_BY_SYNC_STEP);
-            })
     }
 
     /**

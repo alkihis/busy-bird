@@ -81,4 +81,6 @@
     <plugin name="es6-promise-plugin" spec="4.2.2" />
     <plugin name="phonegap-plugin-media-stream" spec="1.2.1" />
     <plugin name="cordova-plugin-whitelist" spec="git+https://github.com/apache/cordova-plugin-whitelist.git" />
+    <plugin name="cordova-plugin-viewport" spec="1.0.3" />
+    <plugin name="phonegap-plugin-mobile-accessibility" spec="https://github.com/phonegap/phonegap-mobile-accessibility.git" />
 </widget>

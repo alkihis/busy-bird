@@ -233,7 +233,8 @@ export const PageManager = new class {
                 this.popPage();
             }
             else {
-                this.changePage(AppPageName.home);
+                // @ts-ignore this.changePage(AppPageName.home);
+                navigator.app.exitApp();
             }
         };
     

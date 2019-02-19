@@ -22,7 +22,7 @@
 
 body {
     -webkit-touch-callout: none;                /* prevent callout to copy image, etc when tap to hold */
-    -webkit-text-size-adjust: none;             /* prevent webkit from resizing text to fit */
+    -webkit-text-size-adjust: none !important;             /* prevent webkit from resizing text to fit */
     -webkit-user-select: none;                  /* prevent copy paste, to allow, change 'none' to 'text' */
     font-family:'HelveticaNeue-Light', 'HelveticaNeue', Helvetica, Arial, sans-serif;
     font-size: 12px;
@@ -30,6 +30,11 @@ body {
     margin: 0px;
     padding: 0px;
     width: 100%;
+}
+
+nav .sidenav-trigger {
+    margin: 0;
+    padding: 0 18px;
 }
 
 h1 {

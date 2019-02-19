@@ -49,10 +49,16 @@ function initApp() {
     // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
     // Sinon, si mobile, on passe sur dataDirectory
     changeDir();
-
+    
     Logger.init();
     Forms.init(); 
     SyncManager.init();
+
+    // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
+    if (window.MobileAccessibility) {
+        // @ts-ignore
+        window.MobileAccessibility.usePreferredTextZoom(false);
+    }
 
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;

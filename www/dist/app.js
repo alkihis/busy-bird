@@ -1,4 +1,12 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -1644,37 +1652,33 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         }
         /**
          * Divise le nombre d'éléments à envoyer par requête.
-         * Attention, augmente drastiquement le nombre d'appels de fonctions; et donc l'empreinte mémoire.
          * @param id_getter Fonction pour récupérer un ID depuis la BDD
          * @param entries Tableau des IDs à envoyer
          * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
          * @param position Position actuelle dans le tableau d'entrées (utilisation interne)
          */
-        subSyncDivider(id_getter, entries, text_element, position = 0) {
-            const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
-            const promises = [];
-            // Cas d'arrêt
-            if (subset.length === 0) {
-                return Promise.resolve();
-            }
-            let i = 1;
-            for (const id of subset) {
-                // Pour chaque clé disponible
-                promises.push(id_getter(id)
-                    .catch(error => {
-                    return Promise.reject({ code: "id_getter", error });
-                })
-                    .then(value => {
-                    if (text_element) {
-                        text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i + position}/${entries.length})`;
+        subSyncDivider(id_getter, entries, text_element) {
+            return __awaiter(this, void 0, void 0, function* () {
+                for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
+                    const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
+                    const promises = [];
+                    let i = 1;
+                    for (const id of subset) {
+                        // Pour chaque clé disponible
+                        promises.push(id_getter(id)
+                            .catch(error => {
+                            return Promise.reject({ code: "id_getter", error });
+                        })
+                            .then(value => {
+                            if (text_element) {
+                                text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i + position}/${entries.length})`;
+                            }
+                            i++;
+                            return this.sendForm(id, value);
+                        }));
                     }
-                    i++;
-                    return this.sendForm(id, value);
-                }));
-            }
-            return Promise.all(promises)
-                .then(() => {
-                return this.subSyncDivider(id_getter, entries, text_element, position + PROMISE_BY_SYNC_STEP);
+                    yield Promise.all(promises);
+                }
             });
         }
         /**
@@ -1809,6 +1813,11 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         logger_3.Logger.init();
         form_schema_1.Forms.init();
         SyncManager_1.SyncManager.init();
+        // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
+        if (window.MobileAccessibility) {
+            // @ts-ignore
+            window.MobileAccessibility.usePreferredTextZoom(false);
+        }
         // @ts-ignore Force à demander la permission pour enregistrer du son
         const permissions = cordova.plugins.permissions;
         permissions.requestPermission(permissions.RECORD_AUDIO, status => {
@@ -4394,7 +4403,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                     this.popPage();
                 }
                 else {
-                    this.changePage(AppPageName.home);
+                    // @ts-ignore this.changePage(AppPageName.home);
+                    navigator.app.exitApp();
                 }
             };
             if (this.should_wait || force_asking) {
