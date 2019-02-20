@@ -125,53 +125,51 @@ export function initSettingsPage(base: HTMLElement) {
     });
 
     //// SYNCHRONISATION
-    if (!PRESENTATION) {
-        container.insertAdjacentHTML('beforeend', `
-        <div class="clearb"></div>
-        <div class="divider divider-margin"></div>
-        <h4>Synchronisation</h4>
-        <p class="flow-text">
-            Synchronisez vos entrées de formulaire avec un serveur distant.
-        </p>
-        `);
-        const syncbtn = document.createElement('button');
-        syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
-        syncbtn.innerHTML = "Synchroniser";
-        syncbtn.onclick = function() {
-            SyncManager.graphicalSync();
-        }
-        container.appendChild(syncbtn);
-    
-        const syncbtn2 = document.createElement('button');
-        syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
-        syncbtn2.innerHTML = "Tout resynchroniser";
-        syncbtn2.onclick = function() {
-            askModal(
-                "Tout synchroniser ?", 
-                "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
-            ).then(() => {
-                // L'utilisateur a dit oui
-                SyncManager.graphicalSync(true);
-            });
-        }
-        container.appendChild(syncbtn2);
-    
-        const syncbtn3 = document.createElement('button');
-        syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
-        syncbtn3.innerHTML = "Vider cache et synchroniser";
-        syncbtn3.onclick = function() {
-            askModal(
-                "Vider cache et tout resynchroniser ?", 
-                "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
-                N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
-                Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
-            ).then(() => {
-                // L'utilisateur a dit oui
-                SyncManager.graphicalSync(true, true);
-            });
-        }
-        container.appendChild(syncbtn3);
+    container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>Synchronisation</h4>
+    <p class="flow-text">
+        Synchronisez vos entrées de formulaire avec un serveur distant.
+    </p>
+    `);
+    const syncbtn = document.createElement('button');
+    syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
+    syncbtn.innerHTML = "Synchroniser";
+    syncbtn.onclick = function() {
+        SyncManager.graphicalSync();
     }
+    container.appendChild(syncbtn);
+
+    const syncbtn2 = document.createElement('button');
+    syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
+    syncbtn2.innerHTML = "Tout resynchroniser";
+    syncbtn2.onclick = function() {
+        askModal(
+            "Tout synchroniser ?", 
+            "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
+        ).then(() => {
+            // L'utilisateur a dit oui
+            SyncManager.graphicalSync(true);
+        });
+    }
+    container.appendChild(syncbtn2);
+
+    const syncbtn3 = document.createElement('button');
+    syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
+    syncbtn3.innerHTML = "Vider cache et synchroniser";
+    syncbtn3.onclick = function() {
+        askModal(
+            "Vider cache et tout resynchroniser ?", 
+            "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
+            N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
+            Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
+        ).then(() => {
+            // L'utilisateur a dit oui
+            SyncManager.graphicalSync(true, true);
+        });
+    }
+    container.appendChild(syncbtn3);
     
 
     /// BOUTON POUR FORCER ACTUALISATION DES FORMULAIRES

@@ -206,10 +206,6 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
     for (const ele of current_form.fields) {
         let element_to_add: HTMLElement = null;
 
-        /// DISALLOW VOICE CONTROL
-        if (PRESENTATION)
-            ele.allow_voice_control = undefined;
-
         if (ele.type === FormEntityType.divider) {
             // C'est un titre
             // On divide

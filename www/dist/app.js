@@ -2790,9 +2790,6 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Fin champ de lieu, itération sur champs
         for (const ele of current_form.fields) {
             let element_to_add = null;
-            /// DISALLOW VOICE CONTROL
-            if (main_4.PRESENTATION)
-                ele.allow_voice_control = undefined;
             if (ele.type === form_schema_2.FormEntityType.divider) {
                 // C'est un titre
                 // On divide
@@ -3946,7 +3943,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "main"], function (require, exports, user_manager_5, form_schema_3, helpers_9, SyncManager_3, PageManager_4, main_5) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager"], function (require, exports, user_manager_5, form_schema_3, helpers_9, SyncManager_3, PageManager_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function headerText() {
@@ -4049,45 +4046,43 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             }
         });
         //// SYNCHRONISATION
-        if (!main_5.PRESENTATION) {
-            container.insertAdjacentHTML('beforeend', `
-        <div class="clearb"></div>
-        <div class="divider divider-margin"></div>
-        <h4>Synchronisation</h4>
-        <p class="flow-text">
-            Synchronisez vos entrées de formulaire avec un serveur distant.
-        </p>
-        `);
-            const syncbtn = document.createElement('button');
-            syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
-            syncbtn.innerHTML = "Synchroniser";
-            syncbtn.onclick = function () {
-                SyncManager_3.SyncManager.graphicalSync();
-            };
-            container.appendChild(syncbtn);
-            const syncbtn2 = document.createElement('button');
-            syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
-            syncbtn2.innerHTML = "Tout resynchroniser";
-            syncbtn2.onclick = function () {
-                helpers_9.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
-                    // L'utilisateur a dit oui
-                    SyncManager_3.SyncManager.graphicalSync(true);
-                });
-            };
-            container.appendChild(syncbtn2);
-            const syncbtn3 = document.createElement('button');
-            syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
-            syncbtn3.innerHTML = "Vider cache et synchroniser";
-            syncbtn3.onclick = function () {
-                helpers_9.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
-                N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
-                Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
-                    // L'utilisateur a dit oui
-                    SyncManager_3.SyncManager.graphicalSync(true, true);
-                });
-            };
-            container.appendChild(syncbtn3);
-        }
+        container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>Synchronisation</h4>
+    <p class="flow-text">
+        Synchronisez vos entrées de formulaire avec un serveur distant.
+    </p>
+    `);
+        const syncbtn = document.createElement('button');
+        syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
+        syncbtn.innerHTML = "Synchroniser";
+        syncbtn.onclick = function () {
+            SyncManager_3.SyncManager.graphicalSync();
+        };
+        container.appendChild(syncbtn);
+        const syncbtn2 = document.createElement('button');
+        syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
+        syncbtn2.innerHTML = "Tout resynchroniser";
+        syncbtn2.onclick = function () {
+            helpers_9.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+                // L'utilisateur a dit oui
+                SyncManager_3.SyncManager.graphicalSync(true);
+            });
+        };
+        container.appendChild(syncbtn2);
+        const syncbtn3 = document.createElement('button');
+        syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
+        syncbtn3.innerHTML = "Vider cache et synchroniser";
+        syncbtn3.onclick = function () {
+            helpers_9.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
+            N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
+            Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+                // L'utilisateur a dit oui
+                SyncManager_3.SyncManager.graphicalSync(true, true);
+            });
+        };
+        container.appendChild(syncbtn3);
         /// BOUTON POUR FORCER ACTUALISATION DES FORMULAIRES
         container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
@@ -4327,7 +4322,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_6, form_schema_5, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_5, form_schema_5, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4338,7 +4333,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_6.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
             sur le terrain !
