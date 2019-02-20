@@ -13,6 +13,7 @@ export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLAS
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
 export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
 export const APP_VERSION = 0.5;
+export const PRESENTATION = true;
 
 export const app = {
     // Application Constructor

@@ -1850,7 +1850,7 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
         ];
         const list_question_rep = {
             "Combien font 4 x 8 ?": "32",
-            "Qui est l'actuel premier ministre?": "Edouard Philippe",
+            "Qui est l'actuel premier ministre?": "édouard Philippe",
             "Quel pays a remporté la coupe du monde de football en 2014?": "Allemagne",
             "Dans quelle ville italienne se situe l'action de Roméo et Juliette?": "Vérone",
             "Comment désigne-t-on une belle-mère cruelle?": "Marâtre",
@@ -1982,6 +1982,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
     exports.APP_VERSION = 0.5;
+    exports.PRESENTATION = true;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -2789,6 +2790,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Fin champ de lieu, itération sur champs
         for (const ele of current_form.fields) {
             let element_to_add = null;
+            /// DISALLOW VOICE CONTROL
+            if (main_4.PRESENTATION)
+                ele.allow_voice_control = undefined;
             if (ele.type === form_schema_2.FormEntityType.divider) {
                 // C'est un titre
                 // On divide
@@ -3942,7 +3946,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager"], function (require, exports, user_manager_5, form_schema_3, helpers_9, SyncManager_3, PageManager_4) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "main"], function (require, exports, user_manager_5, form_schema_3, helpers_9, SyncManager_3, PageManager_4, main_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function headerText() {
@@ -4044,43 +4048,46 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 form_schema_3.Forms.changeForm(value, true);
             }
         });
-        container.insertAdjacentHTML('beforeend', `
-    <div class="clearb"></div>
-    <div class="divider divider-margin"></div>
-    <h4>Synchronisation</h4>
-    <p class="flow-text">
-        Synchronisez vos entrées de formulaire avec un serveur distant.
-    </p>
-    `);
-        const syncbtn = document.createElement('button');
-        syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
-        syncbtn.innerHTML = "Synchroniser";
-        syncbtn.onclick = function () {
-            SyncManager_3.SyncManager.graphicalSync();
-        };
-        container.appendChild(syncbtn);
-        const syncbtn2 = document.createElement('button');
-        syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
-        syncbtn2.innerHTML = "Tout resynchroniser";
-        syncbtn2.onclick = function () {
-            helpers_9.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
-                // L'utilisateur a dit oui
-                SyncManager_3.SyncManager.graphicalSync(true);
-            });
-        };
-        container.appendChild(syncbtn2);
-        const syncbtn3 = document.createElement('button');
-        syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
-        syncbtn3.innerHTML = "Vider cache et synchroniser";
-        syncbtn3.onclick = function () {
-            helpers_9.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
-            N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
-            Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
-                // L'utilisateur a dit oui
-                SyncManager_3.SyncManager.graphicalSync(true, true);
-            });
-        };
-        container.appendChild(syncbtn3);
+        //// SYNCHRONISATION
+        if (!main_5.PRESENTATION) {
+            container.insertAdjacentHTML('beforeend', `
+        <div class="clearb"></div>
+        <div class="divider divider-margin"></div>
+        <h4>Synchronisation</h4>
+        <p class="flow-text">
+            Synchronisez vos entrées de formulaire avec un serveur distant.
+        </p>
+        `);
+            const syncbtn = document.createElement('button');
+            syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
+            syncbtn.innerHTML = "Synchroniser";
+            syncbtn.onclick = function () {
+                SyncManager_3.SyncManager.graphicalSync();
+            };
+            container.appendChild(syncbtn);
+            const syncbtn2 = document.createElement('button');
+            syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
+            syncbtn2.innerHTML = "Tout resynchroniser";
+            syncbtn2.onclick = function () {
+                helpers_9.askModal("Tout synchroniser ?", "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+                    // L'utilisateur a dit oui
+                    SyncManager_3.SyncManager.graphicalSync(true);
+                });
+            };
+            container.appendChild(syncbtn2);
+            const syncbtn3 = document.createElement('button');
+            syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
+            syncbtn3.innerHTML = "Vider cache et synchroniser";
+            syncbtn3.onclick = function () {
+                helpers_9.askModal("Vider cache et tout resynchroniser ?", "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
+                N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
+                Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet.").then(() => {
+                    // L'utilisateur a dit oui
+                    SyncManager_3.SyncManager.graphicalSync(true, true);
+                });
+            };
+            container.appendChild(syncbtn3);
+        }
         /// BOUTON POUR FORCER ACTUALISATION DES FORMULAIRES
         container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
@@ -4320,7 +4327,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_5, form_schema_5, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_6, form_schema_5, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4331,10 +4338,10 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_6.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
-            sur le <span id="__quizz_allower">terrain</span> !
+            sur le terrain !
         </p>
         <p class="flow-text red-text">
             ${!user_manager_6.UserManager.logged ? `
@@ -4440,7 +4447,8 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
                 }, 400);
             }
         };
-        document.getElementById('__quizz_allower').onclick = function () {
+        const version_t = document.querySelector('.relative-container span.version-text');
+        version_t.onclick = function () {
             if (allow_to_click_to_terrain) {
                 test_vocal_reco_2.launchQuizz(helpers_11.getBase());
             }
