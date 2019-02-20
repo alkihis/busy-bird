@@ -1,21 +1,23 @@
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
-import { hasGoodConnection, toValidUrl, getDirP, dirEntries } from "./helpers";
+import { hasGoodConnection, toValidUrl, getDirP, dirEntries, getBase } from "./helpers";
 import { APP_VERSION } from "./main";
 import { Forms } from "./form_schema";
 import { createLocationInputSelector } from "./location";
+import { launchQuizz } from "./test_vocal_reco";
 
 export const APP_NAME = "Busy Bird";
 
 export async function initHomePage(base: HTMLElement) {
     base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
-        <img src="img/logo.png" class="home-logo">
+        <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>
         <p class="flow-text center">
-            Bienvenue dans ${APP_NAME}, l'application qui facilite le suivi d'espèces sur le terrain !
+            Bienvenue dans ${APP_NAME}, l'application qui facilite le suivi d'espèces 
+            sur le terrain !
         </p>
         <p class="flow-text red-text">
             ${!UserManager.logged ? `
@@ -27,6 +29,10 @@ export async function initHomePage(base: HTMLElement) {
         <div id="__home_container"></div>
     </div>
     `;
+
+    //////// TEST ////////
+    createTestHome();
+    //////// ENDTEST ////////
 
     const home_container = document.getElementById('__home_container');
     
@@ -119,6 +125,41 @@ function createCardPanel(html_text: string, title?: string) : string {
             <p class="flow-text no-margin-top no-margin-bottom">${html_text}</p>
         </div>
     `;
+}
+
+function createTestHome() : void {
+    let click_count = 0;
+    let timeout_click: number;
+    let allow_to_click_to_terrain = false;
+
+    document.getElementById('__home_logo_clicker').onclick = function() {
+        if (timeout_click) clearTimeout(timeout_click);
+        timeout_click = 0;
+        click_count++;
+
+        if (click_count === 5) {
+            timeout_click = setTimeout(function() {
+                allow_to_click_to_terrain = true;
+
+                setTimeout(function() {
+                    allow_to_click_to_terrain = false;
+                }, 20000);
+            }, 1500); 
+        }
+        else {
+            timeout_click = setTimeout(function() {
+                click_count = 0;
+            }, 400);
+        }
+    }
+
+    const version_t = document.querySelector('.relative-container span.version-text') as HTMLElement;
+    
+    version_t.onclick = function() {
+        if (allow_to_click_to_terrain) {
+            launchQuizz(getBase());
+        }
+    }
 }
 
 

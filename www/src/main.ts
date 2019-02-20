@@ -6,6 +6,7 @@ import { FormEntityType, Forms } from "./form_schema";
 import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
+import { launchQuizz } from './test_vocal_reco';
 
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
 export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
@@ -73,7 +74,7 @@ function initApp() {
     app.initialize();
     initDebug();
     initModal();
-
+    
     // Check si on est à une page spéciale
     let href: string = "";
 
@@ -100,6 +101,7 @@ function initApp() {
 function initDebug() {
 
     window["DEBUG"] = {
+        launchQuizz,
         PageManager,
         readFromFile,
         listDir,

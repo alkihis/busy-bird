@@ -880,7 +880,7 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
      * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire
      * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
      */
-    function prompt(prompt_text = "Parlez maintenant") {
+    function prompt(prompt_text = "Parlez maintenant", as_array = false) {
         return new Promise(function (resolve, reject) {
             options.prompt = prompt_text;
             // @ts-ignore
@@ -889,6 +889,10 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
                 window.plugins.speechRecognition.startListening(function (matches) {
                     // Le premier match est toujours le meilleur
                     if (matches.length > 0) {
+                        if (as_array) {
+                            resolve(matches);
+                            return;
+                        }
                         resolve(matches[0]);
                     }
                     else {
@@ -903,6 +907,16 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
                         const recognition = new speech_reco();
                         recognition.onresult = (event) => {
                             if (event.results && event.results.length > 0) {
+                                if (as_array) {
+                                    const array = [];
+                                    for (const r of event.results) {
+                                        for (const e of r) {
+                                            array.push(e.transcript);
+                                        }
+                                    }
+                                    resolve(array);
+                                    return;
+                                }
                                 const speechToText = event.results[0][0].transcript;
                                 recognition.stop();
                                 resolve(speechToText);
@@ -1814,7 +1828,153 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         }
     };
 });
-define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager"], function (require, exports, PageManager_2, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_1, user_manager_2, SyncManager_1) {
+define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function (require, exports, vocal_recognition_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /// FICHIER DE TEST DE LA RECONNAISSANCE VOCALE
+    function talk(sentence) {
+        const u = new SpeechSynthesisUtterance();
+        u.text = sentence;
+        u.lang = 'fr-FR';
+        speechSynthesis.speak(u);
+    }
+    exports.talk = talk;
+    function launchQuizz(base) {
+        const if_bad_answer = [
+            "Oups, mauvaise réponse",
+            "Vous vous êtes planté !"
+        ];
+        const if_good_answer = [
+            "Bravo, vous avez trouvé la bonne réponse !",
+            "Excellent, vous avez trouvé !"
+        ];
+        const list_question_rep = {
+            "Combien font 4 x 8 ?": "32",
+            "Qui est l'actuel premier ministre?": "Edouard Philippe",
+            "Quel pays a remporté la coupe du monde de football en 2014?": "Allemagne",
+            "Dans quelle ville italienne se situe l'action de Roméo et Juliette?": "Vérone",
+            "Comment désigne-t-on une belle-mère cruelle?": "Marâtre",
+            "Qui était le dieu de la guerre dans la mythologie grecque?": "Arès",
+            "Quel est le plus long fleuve de France?": "Loire",
+            "Quel animal est Pan-pan dans Bambi?": "Lapin",
+            "Avec la laine de quel animal fait-on du cachemire?": "Chèvre",
+            "Quelle est la première ville du monde à s'être dotée d'un métro?": "Londres",
+            "Dans quel état des Etats-Unis le Grand Canyon se trouve-t-il?": "Arizona",
+            "Combien de paires de côtes possède-t-on?": "Douze",
+            "Quel os du squelette humain est le plus long et le plus solide?": "Fémur",
+            "Quel arbre est connu pour être le plus grand au monde?": "Séquoia",
+            "Quelle est l'unité de la tension électrique?": "Volt",
+            "De quel animal le Sphinx de Gizeh a-t-il le corps?": "Lion",
+            "Quel est le premier long métrage d'animation de Disney?": "Blanche-neige",
+            "Quelle partie de l'oeil est colorée?": "Iris",
+            "Quel pays a décidé de quitter l'Union Européenne en 2016?": ["Angleterre", "Royaume-Uni"],
+            "Quelle est la plus grande planète du système solaire?": "Jupiter",
+            "Quelle est la plus grande artère du corps?": "Aorte",
+            "Quelle est la capitale de l’Inde?": "New Delhi",
+            "Quel est le nom du principal indice boursier de la place de Paris ?": "CAC 40",
+            "Qu’est-ce qu’un ouistiti ?": "singe",
+            "Qui etait le président français en 1995 ?": ["Jacques Chirac", "Chirac"],
+            "Quel légume entre dans la composition du tzatziki ?": "concombre",
+            "De quel pays, les Beatles sont-ils originaires ?": ["Angleterre", "Royaume-Uni"],
+            "Quel acteur français a été l’image de la marque de pâtes Barilla dans les années 90 ?": "Depardieu",
+            "Quel animal est l'emblème de la marque automobile Ferrari ?": "cheval",
+            "Dans la mythologie grecque qui est le maitre des dieux ?": "Zeus",
+            "De quel pays la pizza est elle originaire ?": "Italie",
+            "Quel est le dessert préféré d’Homer Simpson ?": "donuts",
+            "Que trouve-t-on généralement au fond d'un verre de Martini ?": "Olive",
+        };
+        base.innerHTML = `
+    <div class="container">
+    <h4 class="center">RomuQuizz</h4>
+    <div class="divider divider-margin"></div>
+
+    <div class="card-panel card-perso flow-text">
+        <span class="blue-text text-darken-2">Question:</span>
+        <span class="orange-text text-darken-3" id="__question_visual"></span>
+    </div>
+
+    <p class="flow-text center" id="__question_tip"></p>
+
+    <div class="center center-block">
+        <div class="btn red" id="__question_speak"><i class="material-icons left">mic</i>Parler</div>
+    </div>
+
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+
+    <div class="center center-block">
+        <div class="btn green" id="__question_other">Autre question !</div>
+    </div>
+    </div>
+    `;
+        const question_text = document.getElementById('__question_visual');
+        const answer_btn = document.getElementById('__question_speak');
+        const message_block = document.getElementById('__question_tip');
+        const new_question = document.getElementById('__question_other');
+        let actual_question = "";
+        answer_btn.onclick = function () {
+            vocal_recognition_1.prompt(actual_question, true)
+                .then(values => {
+                message_block.classList.remove('blue-text', 'red-text');
+                if (parseAnswer(values)) {
+                    // Trouvé !
+                    talk(if_good_answer[Math.floor(Math.random() * if_good_answer.length)]);
+                    message_block.classList.add('blue-text');
+                    message_block.innerText = "Bravo, vous avez trouvé la bonne réponse : " +
+                        (typeof list_question_rep[actual_question] === 'string' ? list_question_rep[actual_question] :
+                            list_question_rep[actual_question].join('/'))
+                        + " !";
+                }
+                else {
+                    talk(if_bad_answer[Math.floor(Math.random() * if_bad_answer.length)]);
+                    message_block.classList.add('red-text');
+                    message_block.innerText = "Mauvaise réponse !";
+                }
+            })
+                .catch(() => {
+                talk("Veuillez répéter");
+                message_block.classList.remove('blue-text');
+                message_block.classList.add('red-text');
+                message_block.innerText = "J'ai eu du mal à vous entendre...";
+            });
+        };
+        new_question.onclick = newQuestion;
+        function parseAnswer(possible_responses) {
+            console.log(possible_responses);
+            if (typeof list_question_rep[actual_question] === 'string') {
+                for (const rep of possible_responses) {
+                    if (rep.toLowerCase() === list_question_rep[actual_question].toLowerCase()) {
+                        return true;
+                    }
+                }
+            }
+            else {
+                for (const rep of possible_responses) {
+                    for (const answ of list_question_rep[actual_question]) {
+                        if (rep.toLowerCase() === answ.toLowerCase()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        function newQuestion() {
+            const keys = Object.keys(list_question_rep);
+            let position;
+            do {
+                position = Math.floor(Math.random() * ((keys.length - 1) + 1));
+            } while (actual_question === keys[position]);
+            actual_question = keys[position];
+            question_text.innerText = actual_question;
+            message_block.innerText = "";
+            talk(actual_question);
+        }
+        newQuestion();
+    }
+    exports.launchQuizz = launchQuizz;
+});
+define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco"], function (require, exports, PageManager_2, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
@@ -1897,6 +2057,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     }
     function initDebug() {
         window["DEBUG"] = {
+            launchQuizz: test_vocal_reco_1.launchQuizz,
             PageManager: PageManager_2.PageManager,
             readFromFile: helpers_4.readFromFile,
             listDir: helpers_4.listDir,
@@ -1915,7 +2076,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
                 });
             },
             dateFormatter: helpers_4.dateFormatter,
-            prompt: vocal_recognition_1.prompt,
+            prompt: vocal_recognition_2.prompt,
             createNewUser: user_manager_2.createNewUser,
             UserManager: user_manager_2.UserManager,
             SyncManager: SyncManager_1.SyncManager
@@ -2454,7 +2615,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_2, form_schema_2, helpers_8, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_2, helpers_8, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2481,21 +2642,66 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 $(current.nextElementSibling).slideUp(200);
         }
     }
+    function validConstraints(constraints, e) {
+        const cons = constraints.split(';');
+        const form = document.getElementById('__main_form__id');
+        for (const c of cons) {
+            const actual = c.split('=');
+            // Supprime le possible ! à la fin de actual[0]
+            const name = actual[0].replace(/!$/, '');
+            const champ = form.elements[name];
+            if (!champ) { // Le champ n'existe pas
+                console.log('field does not exists');
+                continue;
+            }
+            if (actual[0][actual[0].length - 1] === '!') {
+                // Différent de
+                if (actual[1] === '*' && champ.value) {
+                    // On veut que champ n'ait aucune valeur
+                    return false;
+                }
+                else if (actual[1] === '^' && champ.value === e.value) {
+                    // On veut que champ ait une valeur différente de e
+                    return false;
+                }
+                else if (champ.value === actual[1]) {
+                    // On veut que champ ait une valeur différente de actual[1]
+                    return false;
+                }
+            }
+            else {
+                // Champ name égal à
+                if (actual[1] === '*' && !champ.value) {
+                    // On veut que champ ait une valeur
+                    return false;
+                }
+                else if (actual[1] === '^' && champ.value !== e.value) {
+                    // On veut que champ ait une valeur identique à e
+                    return false;
+                }
+                else if (champ.value !== actual[1]) {
+                    // On veut que champ ait une valeur identique à actual[1]
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
     /**
      * Classe le champ comme valide.
      * @param e Element input
      */
-    function setValid(e) {
+    function setValid(e, force_element) {
         e.classList.add('valid');
         e.classList.remove('invalid');
         e.dataset.valid = "1";
-        showHideTip(e, false);
+        showHideTip(force_element || e, false);
     }
     /**
      * Classe le champ comme invalide.
      * @param e Element input
      */
-    function setInvalid(e) {
+    function setInvalid(e, force_element) {
         if (e.value === "" && !e.required) {
             setValid(e);
             return;
@@ -2503,7 +2709,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         e.classList.add('invalid');
         e.classList.remove('valid');
         e.dataset.valid = "0";
-        showHideTip(e, true);
+        showHideTip(force_element || e, true);
     }
     /**
      * Remplit les champs standards de l'input (id, name, required)...
@@ -2717,8 +2923,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     <i class="material-icons red-text">mic</i>
                 `;
                     mic_btn.addEventListener('click', function () {
-                        vocal_recognition_2.prompt().then(function (value) {
-                            value = value.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
+                        vocal_recognition_3.prompt().then(function (value) {
+                            const val = value;
+                            value = val.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
                             if (!isNaN(Number(value))) {
                                 htmle.value = value;
                                 num_verif.call(htmle);
@@ -2809,15 +3016,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 `;
                     let timer;
                     const gestion_click = function (erase = true) {
-                        vocal_recognition_2.prompt().then(function (value) {
+                        vocal_recognition_3.prompt().then(function (value) {
+                            let val = value;
                             if (ele.remove_whitespaces) {
-                                value = value.replace(/ /g, '').replace(/à/iug, 'a');
+                                val = val.replace(/ /g, '').replace(/à/iug, 'a');
                             }
                             if (erase) {
-                                htmle.value = value;
+                                htmle.value = val;
                             }
                             else {
-                                htmle.value += value;
+                                htmle.value += val;
                             }
                             str_verif.call(htmle);
                             M.updateTextFields();
@@ -2891,8 +3099,28 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 wrapper.appendChild(htmle);
                 wrapper.appendChild(label);
-                // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
-                // Il faudra par contrer créer (plus tard les input vocaux)
+                htmle.dataset.e_constraints = ele.external_constraints || "";
+                htmle.dataset.invalid_tip = ele.tip_on_invalid || "";
+                // Évènement pour le select: contraintes externes ou si select multiple.required
+                if (htmle.multiple || ele.external_constraints) {
+                    // Création du tip
+                    createTip(wrapper, ele);
+                    htmle.addEventListener('change', function (e) {
+                        let valid = true;
+                        if (this.multiple && this.required && $(this).val().length === 0) {
+                            valid = false;
+                        }
+                        else if (this.value && ele.external_constraints) {
+                            valid = validConstraints(ele.external_constraints, this);
+                        }
+                        if (valid) {
+                            setValid(this, label);
+                        }
+                        else {
+                            setInvalid(this, label);
+                        }
+                    });
+                }
                 element_to_add = wrapper;
             }
             else if (ele.type === form_schema_2.FormEntityType.checkbox) {
@@ -3059,6 +3287,12 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
     }
     exports.constructForm = constructForm;
+    /**
+     * Lance la vérification des champs pour ensuite sauvegarder le formulaire
+     * @param type Type de formulaire (ex: cincle_plongeur)
+     * @param force_name? Force un identifiant pour le form à enregistrer
+     * @param form_save? Précédente sauvegarde du formulaire
+     */
     function beginFormSave(type, force_name, form_save) {
         return __awaiter(this, void 0, void 0, function* () {
             // Ouverture du modal de verification
@@ -3088,8 +3322,20 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         contraintes[name] = value;
                     });
                 }
-                if (element.required && !element.value) {
-                    elements_failed.push([name, "Champ requis", element]);
+                // Valide des contraintes externes si jamais l'élément a une valeur
+                if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
+                    const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
+                    if (element.required) {
+                        elements_failed.push([name, str, element]);
+                    }
+                    else {
+                        elements_warn.push([name, str, element]);
+                    }
+                }
+                else if (element.required && !element.value) {
+                    if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
+                        elements_failed.push([name, "Champ requis", element]);
+                    }
                 }
                 else {
                     let fail = false;
@@ -3132,13 +3378,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                                     // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
                                     if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
                                         fail = true;
-                                        str += "Le nombre n'a pas la précision requise (" + contraintes.precision + "). ";
+                                        str += "Le nombre doit avoir une précision de " + contraintes.precision + ". ";
                                     }
                                 }
                                 else {
                                     //Il n'y a pas de . dans le nombre
                                     fail = true;
-                                    str += "Le nombre n'est pas un flottant. ";
+                                    str += "Le nombre doit être à virgule. ";
                                 }
                             }
                         }
@@ -3502,6 +3748,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base_block.classList.add('row', 'container');
         const placeh = document.createElement('form');
         placeh.classList.add('col', 's12');
+        placeh.id = "__main_form__id";
         base_block.appendChild(placeh);
         // Appelle la fonction pour construire
         if (edition_mode) {
@@ -4073,7 +4320,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_5, form_schema_5, location_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_5, form_schema_5, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4081,12 +4328,13 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         return __awaiter(this, void 0, void 0, function* () {
             base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
-        <img src="img/logo.png" class="home-logo">
+        <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
         <p class="flow-text center">
-            Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces sur le terrain !
+            Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
+            sur le <span id="__quizz_allower">terrain</span> !
         </p>
         <p class="flow-text red-text">
             ${!user_manager_6.UserManager.logged ? `
@@ -4098,6 +4346,9 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <div id="__home_container"></div>
     </div>
     `;
+            //////// TEST ////////
+            createTestHome();
+            //////// ENDTEST ////////
             const home_container = document.getElementById('__home_container');
             // Calcul du nombre de formulaires en attente de synchronisation
             try {
@@ -4165,6 +4416,35 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             <p class="flow-text no-margin-top no-margin-bottom">${html_text}</p>
         </div>
     `;
+    }
+    function createTestHome() {
+        let click_count = 0;
+        let timeout_click;
+        let allow_to_click_to_terrain = false;
+        document.getElementById('__home_logo_clicker').onclick = function () {
+            if (timeout_click)
+                clearTimeout(timeout_click);
+            timeout_click = 0;
+            click_count++;
+            if (click_count === 5) {
+                timeout_click = setTimeout(function () {
+                    allow_to_click_to_terrain = true;
+                    setTimeout(function () {
+                        allow_to_click_to_terrain = false;
+                    }, 20000);
+                }, 1500);
+            }
+            else {
+                timeout_click = setTimeout(function () {
+                    click_count = 0;
+                }, 400);
+            }
+        };
+        document.getElementById('__quizz_allower').onclick = function () {
+            if (allow_to_click_to_terrain) {
+                test_vocal_reco_2.launchQuizz(helpers_11.getBase());
+            }
+        };
     }
 });
 // ////// DEPRECATED

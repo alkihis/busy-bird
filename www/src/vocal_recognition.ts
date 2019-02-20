@@ -9,7 +9,7 @@ const options = {
  * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire
  * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
  */
-export function prompt(prompt_text = "Parlez maintenant") : Promise<string> {
+export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Promise<string | string[]> {
     return new Promise(function(resolve, reject) {
         options.prompt = prompt_text;
 
@@ -20,6 +20,10 @@ export function prompt(prompt_text = "Parlez maintenant") : Promise<string> {
                 function(matches: string[]) {
                     // Le premier match est toujours le meilleur
                     if (matches.length > 0) {
+                        if (as_array) {
+                            resolve(matches);
+                            return;
+                        }
                         resolve(matches[0]);
                     }
                     else {
@@ -36,6 +40,18 @@ export function prompt(prompt_text = "Parlez maintenant") : Promise<string> {
                         const recognition = new speech_reco();
                         recognition.onresult = (event) => {
                             if (event.results && event.results.length > 0) {
+                                if (as_array) {
+                                    const array = [];
+                                    for (const r of event.results) {
+                                        for (const e of r) {
+                                            array.push(e.transcript);
+                                        }
+                                    }
+
+                                    resolve(array);
+                                    return;
+                                }
+
                                 const speechToText = event.results[0][0].transcript;
                             
                                 recognition.stop();

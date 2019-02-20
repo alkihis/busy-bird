@@ -39,22 +39,72 @@ function showHideTip(current: HTMLElement, show: boolean) : void {
     }
 }
 
+function validConstraints(constraints: string, e: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) : boolean {
+    const cons = constraints.split(';');
+    const form = document.getElementById('__main_form__id') as HTMLFormElement;
+
+    for (const c of cons) {
+        const actual = c.split('=');
+        // Supprime le possible ! à la fin de actual[0]
+        const name = actual[0].replace(/!$/, '');
+        const champ = form.elements[name] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+        if (!champ) { // Le champ n'existe pas
+            console.log('field does not exists');
+            continue;
+        }
+
+        if (actual[0][actual[0].length - 1] === '!') {
+            // Différent de
+            if (actual[1] === '*' && champ.value) {
+                // On veut que champ n'ait aucune valeur
+                return false;
+            }
+            else if (actual[1] === '^' && champ.value === e.value) {
+                // On veut que champ ait une valeur différente de e
+                return false;
+            }
+            else if (champ.value === actual[1]) {
+                // On veut que champ ait une valeur différente de actual[1]
+                return false;
+            }
+        }
+        else {
+            // Champ name égal à
+            if (actual[1] === '*' && !champ.value) {
+                // On veut que champ ait une valeur
+                return false;
+            }
+            else if (actual[1] === '^' && champ.value !== e.value) {
+                // On veut que champ ait une valeur identique à e
+                return false;
+            }
+            else if (champ.value !== actual[1]) {
+                // On veut que champ ait une valeur identique à actual[1]
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 /**
  * Classe le champ comme valide.
  * @param e Element input
  */
-function setValid(e: HTMLElement) : void {
+function setValid(e: HTMLElement, force_element?: HTMLElement) : void {
     e.classList.add('valid');
     e.classList.remove('invalid');
     e.dataset.valid = "1";
-    showHideTip(e, false);
+    showHideTip(force_element || e, false);
 }
 
 /**
  * Classe le champ comme invalide.
  * @param e Element input
  */
-function setInvalid(e: HTMLElement) : void {
+function setInvalid(e: HTMLElement, force_element?: HTMLElement) : void {
     if ((e as HTMLInputElement).value === "" && !(e as HTMLInputElement).required) {
         setValid(e);
         return;
@@ -63,7 +113,7 @@ function setInvalid(e: HTMLElement) : void {
     e.classList.add('invalid');
     e.classList.remove('valid');
     e.dataset.valid = "0";
-    showHideTip(e, true);
+    showHideTip(force_element || e, true);
 }
 
 /**
@@ -313,7 +363,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
                 mic_btn.addEventListener('click', function() {
                     prompt().then(function(value) {
-                        value = value.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
+                        const val = value as string;
+
+                        value = val.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
 
                         if (!isNaN(Number(value))) {
                             htmle.value = value;
@@ -425,15 +477,17 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 let timer: number;
                 const gestion_click = function(erase = true) {
                     prompt().then(function(value) {
+                        let val = value as string;
+
                         if (ele.remove_whitespaces) {
-                            value = value.replace(/ /g, '').replace(/à/iug, 'a');
+                            val = val.replace(/ /g, '').replace(/à/iug, 'a');
                         }
 
                         if (erase) {
-                            htmle.value = value;
+                            htmle.value = val;
                         }
                         else {
-                            htmle.value += value;
+                            htmle.value += val;
                         }
 
                         str_verif.call(htmle);
@@ -521,8 +575,30 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             wrapper.appendChild(htmle);
             wrapper.appendChild(label);
 
-            // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
-            // Il faudra par contrer créer (plus tard les input vocaux)
+            htmle.dataset.e_constraints = ele.external_constraints || "";
+            htmle.dataset.invalid_tip = ele.tip_on_invalid || "";
+
+            // Évènement pour le select: contraintes externes ou si select multiple.required
+            if (htmle.multiple || ele.external_constraints) {
+                // Création du tip
+                createTip(wrapper, ele);
+                htmle.addEventListener('change', function(this: HTMLSelectElement, e: Event) {
+                    let valid = true;
+                    if (this.multiple && this.required && ($(this).val() as string[]).length === 0) {
+                        valid = false;
+                    }
+                    else if (this.value && ele.external_constraints) {
+                        valid = validConstraints(ele.external_constraints, this);
+                    }
+
+                    if (valid) {
+                        setValid(this, label);
+                    }
+                    else {
+                        setInvalid(this, label);
+                    }
+                });
+            }
 
             element_to_add = wrapper;
         }
@@ -742,6 +818,12 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
     }
 }
 
+/**
+ * Lance la vérification des champs pour ensuite sauvegarder le formulaire
+ * @param type Type de formulaire (ex: cincle_plongeur)
+ * @param force_name? Force un identifiant pour le form à enregistrer
+ * @param form_save? Précédente sauvegarde du formulaire
+ */
 async function beginFormSave(type: string, force_name?: string, form_save?: FormSave) : Promise<void> {
     // Ouverture du modal de verification
     const modal = getModal();
@@ -783,8 +865,20 @@ async function beginFormSave(type: string, force_name?: string, form_save?: Form
             });
         }
 
-        if (element.required && !element.value) {
-            elements_failed.push([name, "Champ requis", element]);
+        // Valide des contraintes externes si jamais l'élément a une valeur
+        if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
+            const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
+            if (element.required) {
+                elements_failed.push([name, str, element]);
+            }
+            else {
+                elements_warn.push([name, str, element]);
+            }
+        }
+        else if (element.required && !element.value) {
+            if (element.tagName !== "SELECT" || (element.multiple && ($(element).val() as string[]).length === 0)) {
+                elements_failed.push([name, "Champ requis", element]);
+            }
         }
         else {
             let fail = false;
@@ -832,13 +926,13 @@ async function beginFormSave(type: string, force_name?: string, form_save?: Form
                             // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
                             if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
                                 fail = true;
-                                str += "Le nombre n'a pas la précision requise (" + contraintes.precision + "). ";
+                                str += "Le nombre doit avoir une précision de " + contraintes.precision + ". ";
                             }
                         }
                         else {
                             //Il n'y a pas de . dans le nombre
                             fail = true;
-                            str += "Le nombre n'est pas un flottant. ";
+                            str += "Le nombre doit être à virgule. ";
                         }
                     }
                 }
@@ -1271,6 +1365,7 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
 
     const placeh = document.createElement('form');
     placeh.classList.add('col', 's12');
+    placeh.id = "__main_form__id";
 
     base_block.appendChild(placeh);
 

@@ -58,8 +58,15 @@ export interface FormEntity {
     tip_on_invalid?: string;
     vocal_access_words?: string[];
     allow_voice_control?: boolean;
-    remove_whitespaces?: boolean;
+    remove_whitespaces?: boolean; /* for type.string / type.bigstring; during vocal reco */
+    external_constraints?: string; /* for type.select only; Définit des contraintes externes de façon simpliste */
 }
+
+//// Guide pour external_constraints
+//// format: nom_du_champ=*;nom_du_champ_2=green;nom_du_champ_3!=*;champ_4!=^
+//// Lire > Le champ actuel est valide si: nom_du_champ a une valeur, nom_du_champ_2 vaut "green",
+//// nom_champ_3 n'a aucune valeur et enfin que champ_4 ait une valeur différente du champ actuel
+//// Attention: le champ actuel est forcément valide si il n'a aucune valeur.
 
 interface SelectOption {
     label: string;
