@@ -1986,7 +1986,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-    exports.APP_VERSION = 0.5;
+    exports.APP_VERSION = 0.55;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -2414,7 +2414,9 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             /** call init() after constructor() ! */
         }
         saveForms() {
-            helpers_6.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+            if (this.available_forms) {
+                helpers_6.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+            }
         }
         // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
         // La clé du formulaire par défaut est contenu dans "default_form_name"
@@ -3917,7 +3919,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
             // Titre
             const title = document.createElement('h5');
-            title.innerText = "Lieux disponibles";
+            title.innerText = "Lieux proches";
             content.appendChild(title);
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');

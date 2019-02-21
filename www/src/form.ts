@@ -1527,7 +1527,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
 
         // Titre
         const title = document.createElement('h5');
-        title.innerText = "Lieux disponibles";
+        title.innerText = "Lieux proches";
         content.appendChild(title);
 
         // Construction de la liste des lieux proches

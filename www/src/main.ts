@@ -12,7 +12,7 @@ export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le mod
 export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
 export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-export const APP_VERSION = 0.5;
+export const APP_VERSION = 0.55;
 
 export const app = {
     // Application Constructor

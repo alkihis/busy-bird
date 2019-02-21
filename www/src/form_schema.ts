@@ -115,7 +115,9 @@ export const Forms = new class {
     }
 
     public saveForms() {
-        writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+        if (this.available_forms) {
+            writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+        }
     }
 
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
