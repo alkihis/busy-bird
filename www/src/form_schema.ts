@@ -86,14 +86,16 @@ export enum FormEntityType {
     audio = "audio"
 }
 
+export type FormSchema = {[formName: string] : Form};
+
 // Type de fonction à passer en paramètre à onReady(callback)
-type FormCallback = (available?: {[formName: string] : Form}, current?: Form) => any;
+type FormCallback = (available?: FormSchema, current?: Form) => any;
 
 // Classe contenant le formulaire JSON chargé et parsé
 export const Forms = new class {
     protected form_ready: boolean = false;
     protected waiting_callee: FormCallback[] = [];
-    protected available_forms: {[formName: string] : Form};
+    protected available_forms: FormSchema;
     protected current: Form = null;
     protected _current_key: string = null;
     protected _default_form_key: string = null;
@@ -110,6 +112,10 @@ export const Forms = new class {
         this.default_form_key = this._default_form_key;
 
         /** call init() after constructor() ! */ 
+    }
+
+    public saveForms() {
+        writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
     }
 
     // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
@@ -132,7 +138,7 @@ export const Forms = new class {
             // On sauvegarde les formulaires dans loaded_forms.json
             // uniquement si demandé
             if (save) {
-                writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+                this.saveForms();
             }
     
             // On exécute les fonctions en attente
@@ -179,7 +185,10 @@ export const Forms = new class {
         if ((ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && UserManager.logged) {
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes
-            return fetch(API_URL + "forms/available.json?access_token=" + UserManager.token, undefined, 20000)
+            return fetch(API_URL + "schemas/subscribed.json", {
+                headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
+                method: "GET"
+            }, 20000)
                 .then(response => response.json())
                 .then(json => {
                     if (json.error_code) throw json.error_code;
@@ -260,6 +269,16 @@ export const Forms = new class {
         }
     }
 
+    public deleteForm(name: string) : void {
+        if (this.formExists(name) && name !== null) {
+            delete this.available_forms[name];
+
+            if (this._current_key === name) {
+                this._current_key = null;
+            }
+        }
+    }
+
     /**
      * Retourne un tableau de tuples contenant en
      * première position la clé d'accès au formulaire,
@@ -294,6 +313,16 @@ export const Forms = new class {
         else {
             localStorage.setItem('default_form_key', v);
         }
+    }
+
+    public set schemas(schema: FormSchema) {
+        this.available_forms = schema;
+
+        if (!(this._current_key in this.available_forms)) {
+            this._current_key = null;
+        }
+
+        this.saveForms();
     }
 };
 

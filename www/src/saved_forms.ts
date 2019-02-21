@@ -7,7 +7,7 @@ import { Logger } from "./logger";
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
     if (form.type === null || !Forms.formExists(form.type)) {
-        showToast("Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible.");
+        showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type+ "'.", 10000);
         return;
     }
 
@@ -16,30 +16,25 @@ function editAForm(form: FormSave, name: string) {
     PageManager.pushPage(AppPageName.form, "Modifier", {form: current_form, name, save: form});
 }
 
-function deleteAll() : Promise<any> {
+async function deleteAll() : Promise<any> {
     // On veut supprimer tous les fichiers
     // Récupération de tous les fichiers de forms
-    return getDirP('forms')
-        // Récupère les entries du répertoire
-        .then(dirEntries)
-        .then(entries => {
-            const promises: Promise<any>[] = [];
+    let dirEntries = await getDirP('forms');
+    const entries = await dirEntries(dirEntries);
+    const promises: Promise<any>[] = [];
 
-            for (const e of entries) {
-                if (e.isFile) {
-                    promises.push(deleteForm(e.name));
-                }
-            }
+    for (const e of entries) {
+        if (e.isFile) {
+            promises.push(deleteForm(e.name));
+        }
+    }
 
-            return Promise.all(promises);
-        })
-        .then(() => {
-            return SyncManager.clear();
-        })
-        .then(() => {
-            showToast("Fichiers supprimés avec succès");
-            PageManager.reload();
-        })
+    await Promise.all(promises);
+
+    await SyncManager.clear();
+
+    showToast("Fichiers supprimés avec succès");
+    PageManager.reload();
 }
 
 function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
@@ -48,20 +43,24 @@ function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     selector.classList.add('collection-item');
 
     const container = document.createElement('div');
+    container.classList.add('saved-form-item');
     let id = json[0].name;
+    let type = "Type inconnu";
 
     if (save.type !== null && Forms.formExists(save.type)) {
-        const id_f = Forms.getForm(save.type).id_field;
-        if (id_f) {
+        const form = Forms.getForm(save.type);
+        type = form.name;
+
+        if (form.id_field) {
             // Si un champ existe pour ce formulaire
-            id = (save.fields[id_f] as string) || json[0].name;
+            id = (save.fields[form.id_field] as string) || json[0].name;
         }
     }
 
     // Ajoute le texte de l'élément
     container.innerHTML = `
         <div class="left">
-            ${id} <br> 
+            [${type}] ${id} <br> 
             Modifié le ${formatDate(new Date(json[0].lastModified), true)}
         </div>`;
 

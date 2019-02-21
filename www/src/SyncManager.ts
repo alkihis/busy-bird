@@ -111,11 +111,11 @@ export const SyncManager = new class {
                     const d = new FormData();
                     d.append("id", id);
                     d.append("form", content);
-                    d.append("access_token", UserManager.token);
 
                     return fetch(API_URL + "forms/send.json", {
                         method: "POST",
-                        body: d
+                        body: d,
+                        headers: new Headers({"Authorization": "Bearer " + UserManager.token})
                     }, MAX_TIMEOUT_FOR_FORM)
                     .catch((error): never => {
                         reject({code: "json_send", error});
@@ -163,11 +163,11 @@ export const SyncManager = new class {
                                         d.append("type", data.type);
                                         d.append("filename", basename);
                                         d.append("data", base64);
-                                        d.append("access_token", UserManager.token);
                                         
                                         return fetch(API_URL + "forms/metadata_send.json", {
                                             method: "POST",
-                                            body: d
+                                            body: d,
+                                            headers: new Headers({"Authorization": "Bearer " + UserManager.token})
                                         }, MAX_TIMEOUT_FOR_METADATA)
                                         .then((response) => {
                                             return response.json();

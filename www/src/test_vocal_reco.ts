@@ -20,13 +20,14 @@ export function launchQuizz(base: HTMLElement) : void {
     ];
     
     const if_good_answer = [
+        "Oui, la bonne réponse était bien * !",
         "Bravo, vous avez trouvé la bonne réponse !",
         "Excellent, vous avez trouvé !"
     ];
     
-    const list_question_rep = {
+    const list_question_rep: {[question: string]: string | string[]} = {
         "Combien font 4 x 8 ?": "32",
-        "Qui est l'actuel premier ministre?": "édouard Philippe",
+        "Qui est l'actuel premier ministre?": "Édouard Philippe",
         "Quel pays a remporté la coupe du monde de football en 2014?": "Allemagne",
         "Dans quelle ville italienne se situe l'action de Roméo et Juliette?": "Vérone",
         "Comment désigne-t-on une belle-mère cruelle?": "Marâtre",
@@ -99,12 +100,14 @@ export function launchQuizz(base: HTMLElement) : void {
 
                 if (parseAnswer(values as string[])) {
                     // Trouvé !
-                    talk(if_good_answer[Math.floor(Math.random() * if_good_answer.length)]);
+                    const response = list_question_rep[actual_question];
+                    const rep = (typeof response === 'string' ? response : response.join('/'));
+
+                    const spoken = if_good_answer[Math.floor(Math.random() * if_good_answer.length)];
+
+                    talk(spoken.replace('*', rep));
                     message_block.classList.add('blue-text');
-                    message_block.innerText = "Bravo, vous avez trouvé la bonne réponse : " +
-                    (typeof list_question_rep[actual_question] === 'string' ? list_question_rep[actual_question] :
-                     list_question_rep[actual_question].join('/'))
-                    + " !";
+                    message_block.innerText = "Bravo, vous avez trouvé la bonne réponse : " + rep + " !";
                 }
                 else {
                     talk(if_bad_answer[Math.floor(Math.random() * if_bad_answer.length)]);
@@ -124,18 +127,19 @@ export function launchQuizz(base: HTMLElement) : void {
 
     function parseAnswer(possible_responses: string[]) : boolean {
         console.log(possible_responses);
+        const p_r = list_question_rep[actual_question];
 
-        if (typeof list_question_rep[actual_question] === 'string') {
+        if (typeof p_r === 'string') {
             for (const rep of possible_responses) {
-                if (rep.toLowerCase() === list_question_rep[actual_question].toLowerCase()) {
+                if (rep.toLowerCase().includes(p_r.toLowerCase())) {
                     return true;
                 }
             }
         }
         else {
             for (const rep of possible_responses) {
-                for (const answ of list_question_rep[actual_question]) {
-                    if (rep.toLowerCase() === answ.toLowerCase()) {
+                for (const answ of p_r) {
+                    if (rep.toLowerCase().includes(answ.toLowerCase())) {
                         return true;
                     }
                 }

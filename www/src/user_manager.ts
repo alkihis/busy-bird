@@ -1,6 +1,7 @@
 import { API_URL } from "./main";
 import { getModal, initModal, getModalPreloader, showToast } from "./helpers";
 import { Logger } from "./logger";
+import { Forms } from "./form_schema";
 
 export const UserManager = new class {
     protected _username = null;
@@ -26,7 +27,11 @@ export const UserManager = new class {
 
     public login(username: string, password: string) : Promise<void> {
         return new Promise((resolve, reject) => {
-            fetch(API_URL + "users/login.json?username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password))
+            let data = new FormData();
+            data.append("username", username);
+            data.append('password', password);
+
+            fetch(API_URL + "users/login.json", {body: data, method: 'POST'})
                 .then((response) => {
                     return response.json();
                 })
@@ -34,6 +39,13 @@ export const UserManager = new class {
                     if (json.error_code) throw json.error_code;
 
                     this.logSomeone(username, json.access_token);
+                    // On sauvegarde les schémas envoyés
+                    if (Array.isArray(json.subscriptions)) {
+                        json.subscriptions = {};
+                    }
+
+                    Forms.schemas = json.subscriptions;
+                    
                     resolve();
                 })
                 .catch((error) => {

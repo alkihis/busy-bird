@@ -377,7 +377,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                             M.updateTextFields();
                         }
                         else {
-                            showToast("Nombre incorrect reconnu.");
+                            // Affichage forcé en toast Materialize:
+                            // La reconnaissance vocale ouvre un toast natif qui masquerait celui-ci
+                            M.toast({html: "Nombre incorrect reconnu."});
                         }
                     });
                 });

@@ -1,0 +1,16 @@
+# DirectoryIndex /api/main.php
+# FallbackResource /api/main.php
+RewriteEngine On
+RewriteBase /
+RewriteRule ^ index.php [QSA,L]
+
+<ifModule mod_headers.c>
+Header set Access-Control-Allow-Origin "*"
+
+### This reads the value of Access-Control-Request-Headers into TempValue
+SetEnvIf Access-Control-Request-Headers ".+" TempValue=$0
+
+#### Set allow headers en fonction de request headers
+Header set Access-Control-Allow-Headers  %{TempValue}e env=TempValue
+Header set Access-Control-Allow-Methods "POST, GET, OPTIONS, DELETE, PUT"
+</ifModule>

@@ -1453,10 +1453,10 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     const d = new FormData();
                     d.append("id", id);
                     d.append("form", content);
-                    d.append("access_token", user_manager_1.UserManager.token);
                     return fetch_timeout_1.default(main_1.API_URL + "forms/send.json", {
                         method: "POST",
-                        body: d
+                        body: d,
+                        headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
                     }, MAX_TIMEOUT_FOR_FORM)
                         .catch((error) => {
                         reject({ code: "json_send", error });
@@ -1498,10 +1498,10 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                                     d.append("type", data.type);
                                     d.append("filename", basename);
                                     d.append("data", base64);
-                                    d.append("access_token", user_manager_1.UserManager.token);
                                     return fetch_timeout_1.default(main_1.API_URL + "forms/metadata_send.json", {
                                         method: "POST",
-                                        body: d
+                                        body: d,
+                                        headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
                                     }, MAX_TIMEOUT_FOR_METADATA)
                                         .then((response) => {
                                         return response.json();
@@ -1848,12 +1848,13 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
             "Vous vous êtes planté !"
         ];
         const if_good_answer = [
+            "Oui, la bonne réponse était bien * !",
             "Bravo, vous avez trouvé la bonne réponse !",
             "Excellent, vous avez trouvé !"
         ];
         const list_question_rep = {
             "Combien font 4 x 8 ?": "32",
-            "Qui est l'actuel premier ministre?": "édouard Philippe",
+            "Qui est l'actuel premier ministre?": "Édouard Philippe",
             "Quel pays a remporté la coupe du monde de football en 2014?": "Allemagne",
             "Dans quelle ville italienne se situe l'action de Roméo et Juliette?": "Vérone",
             "Comment désigne-t-on une belle-mère cruelle?": "Marâtre",
@@ -1921,12 +1922,12 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
                 message_block.classList.remove('blue-text', 'red-text');
                 if (parseAnswer(values)) {
                     // Trouvé !
-                    talk(if_good_answer[Math.floor(Math.random() * if_good_answer.length)]);
+                    const response = list_question_rep[actual_question];
+                    const rep = (typeof response === 'string' ? response : response.join('/'));
+                    const spoken = if_good_answer[Math.floor(Math.random() * if_good_answer.length)];
+                    talk(spoken.replace('*', rep));
                     message_block.classList.add('blue-text');
-                    message_block.innerText = "Bravo, vous avez trouvé la bonne réponse : " +
-                        (typeof list_question_rep[actual_question] === 'string' ? list_question_rep[actual_question] :
-                            list_question_rep[actual_question].join('/'))
-                        + " !";
+                    message_block.innerText = "Bravo, vous avez trouvé la bonne réponse : " + rep + " !";
                 }
                 else {
                     talk(if_bad_answer[Math.floor(Math.random() * if_bad_answer.length)]);
@@ -1944,17 +1945,18 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
         new_question.onclick = newQuestion;
         function parseAnswer(possible_responses) {
             console.log(possible_responses);
-            if (typeof list_question_rep[actual_question] === 'string') {
+            const p_r = list_question_rep[actual_question];
+            if (typeof p_r === 'string') {
                 for (const rep of possible_responses) {
-                    if (rep.toLowerCase() === list_question_rep[actual_question].toLowerCase()) {
+                    if (rep.toLowerCase().includes(p_r.toLowerCase())) {
                         return true;
                     }
                 }
             }
             else {
                 for (const rep of possible_responses) {
-                    for (const answ of list_question_rep[actual_question]) {
-                        if (rep.toLowerCase() === answ.toLowerCase()) {
+                    for (const answ of p_r) {
+                        if (rep.toLowerCase().includes(answ.toLowerCase())) {
                             return true;
                         }
                     }
@@ -2088,7 +2090,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("user_manager", ["require", "exports", "main", "helpers"], function (require, exports, main_2, helpers_5) {
+define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_2, helpers_5, form_schema_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.UserManager = new class {
@@ -2110,7 +2112,10 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
         }
         login(username, password) {
             return new Promise((resolve, reject) => {
-                fetch(main_2.API_URL + "users/login.json?username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password))
+                let data = new FormData();
+                data.append("username", username);
+                data.append('password', password);
+                fetch(main_2.API_URL + "users/login.json", { body: data, method: 'POST' })
                     .then((response) => {
                     return response.json();
                 })
@@ -2118,6 +2123,11 @@ define("user_manager", ["require", "exports", "main", "helpers"], function (requ
                     if (json.error_code)
                         throw json.error_code;
                     this.logSomeone(username, json.access_token);
+                    // On sauvegarde les schémas envoyés
+                    if (Array.isArray(json.subscriptions)) {
+                        json.subscriptions = {};
+                    }
+                    form_schema_2.Forms.schemas = json.subscriptions;
                     resolve();
                 })
                     .catch((error) => {
@@ -2403,6 +2413,9 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             this.default_form_key = this._default_form_key;
             /** call init() after constructor() ! */
         }
+        saveForms() {
+            helpers_6.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+        }
         // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
         // La clé du formulaire par défaut est contenu dans "default_form_name"
         init(crash_if_not_form_download = false) {
@@ -2422,7 +2435,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 // On sauvegarde les formulaires dans loaded_forms.json
                 // uniquement si demandé
                 if (save) {
-                    helpers_6.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+                    this.saveForms();
                 }
                 // On exécute les fonctions en attente
                 let func;
@@ -2463,7 +2476,10 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             if ((main_3.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
-                return fetch_timeout_2.default(main_3.API_URL + "forms/available.json?access_token=" + user_manager_3.UserManager.token, undefined, 20000)
+                return fetch_timeout_2.default(main_3.API_URL + "schemas/subscribed.json", {
+                    headers: new Headers({ "Authorization": "Bearer " + user_manager_3.UserManager.token }),
+                    method: "GET"
+                }, 20000)
                     .then(response => response.json())
                     .then(json => {
                     if (json.error_code)
@@ -2535,6 +2551,14 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 throw new Error("Form does not exists");
             }
         }
+        deleteForm(name) {
+            if (this.formExists(name) && name !== null) {
+                delete this.available_forms[name];
+                if (this._current_key === name) {
+                    this._current_key = null;
+                }
+            }
+        }
         /**
          * Retourne un tableau de tuples contenant en
          * première position la clé d'accès au formulaire,
@@ -2563,6 +2587,13 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             else {
                 localStorage.setItem('default_form_key', v);
             }
+        }
+        set schemas(schema) {
+            this.available_forms = schema;
+            if (!(this._current_key in this.available_forms)) {
+                this._current_key = null;
+            }
+            this.saveForms();
         }
     };
 });
@@ -2621,7 +2652,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_2, helpers_8, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_3, helpers_8, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2797,7 +2828,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Fin champ de lieu, itération sur champs
         for (const ele of current_form.fields) {
             let element_to_add = null;
-            if (ele.type === form_schema_2.FormEntityType.divider) {
+            if (ele.type === form_schema_3.FormEntityType.divider) {
                 // C'est un titre
                 // On divide
                 const clearer = document.createElement('div');
@@ -2809,7 +2840,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 placeh.appendChild(htmle);
                 continue;
             }
-            else if (ele.type === form_schema_2.FormEntityType.integer || ele.type === form_schema_2.FormEntityType.float) {
+            else if (ele.type === form_schema_3.FormEntityType.integer || ele.type === form_schema_3.FormEntityType.float) {
                 const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
                 if (ele.allow_voice_control) {
@@ -2839,7 +2870,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // Calcul de nombre de décimales requises
                 // si le nombre demandé est un float
                 let NB_DECIMALES = 0;
-                if (ele.type === form_schema_2.FormEntityType.float && ele.float_precision) {
+                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
                     // Récupération de la partie décimale sous forme de string
                     const dec_part = ele.float_precision.toString().split('.');
                     // Calcul du nombre de décimales
@@ -2860,10 +2891,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         contraintes.push(["max", ele.range.max]);
                     }
                 }
-                if (ele.type === form_schema_2.FormEntityType.float && ele.float_precision) {
+                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
                     contraintes.push(["precision", ele.float_precision]);
                 }
-                contraintes.push(['type', ele.type === form_schema_2.FormEntityType.float ? 'float' : 'int']);
+                contraintes.push(['type', ele.type === form_schema_3.FormEntityType.float ? 'float' : 'int']);
                 htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
                 const num_verif = function () {
@@ -2884,7 +2915,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         }
                         // if différent, il est juste en else if pour éviter de faire les
                         // calculs si le valid est déjà à false
-                        else if (ele.type === form_schema_2.FormEntityType.float) {
+                        else if (ele.type === form_schema_3.FormEntityType.float) {
                             if (ele.float_precision) {
                                 // Si on a demandé à avoir un nombre de flottant précis
                                 const floating_point = this.value.split('.');
@@ -2940,7 +2971,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                                 M.updateTextFields();
                             }
                             else {
-                                helpers_8.showToast("Nombre incorrect reconnu.");
+                                // Affichage forcé en toast Materialize:
+                                // La reconnaissance vocale ouvre un toast natif qui masquerait celui-ci
+                                M.toast({ html: "Nombre incorrect reconnu." });
                             }
                         });
                     });
@@ -2948,11 +2981,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 element_to_add = real_wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.string || ele.type === form_schema_2.FormEntityType.bigstring) {
+            else if (ele.type === form_schema_3.FormEntityType.string || ele.type === form_schema_3.FormEntityType.bigstring) {
                 const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
                 let htmle;
-                if (ele.type === form_schema_2.FormEntityType.string) {
+                if (ele.type === form_schema_3.FormEntityType.string) {
                     htmle = document.createElement('input');
                     htmle.type = "text";
                     htmle.autocomplete = "off";
@@ -3057,7 +3090,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 element_to_add = real_wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.select) {
+            else if (ele.type === form_schema_3.FormEntityType.select) {
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
@@ -3131,7 +3164,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.checkbox) {
+            else if (ele.type === form_schema_3.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3150,7 +3183,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.datetime) {
+            else if (ele.type === form_schema_3.FormEntityType.datetime) {
                 const wrapper = createInputWrapper();
                 const input = document.createElement('input');
                 const label = document.createElement('label');
@@ -3176,7 +3209,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.file) {
+            else if (ele.type === form_schema_3.FormEntityType.file) {
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                     // L'input file est déjà présent dans le formulaire
                     // on affiche une miniature
@@ -3220,7 +3253,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
             }
-            else if (ele.type === form_schema_2.FormEntityType.audio) {
+            else if (ele.type === form_schema_3.FormEntityType.audio) {
                 // Création d'un bouton pour enregistrer du son
                 const wrapper = document.createElement('div');
                 wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
@@ -3263,7 +3296,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(real_input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_2.FormEntityType.slider) {
+            else if (ele.type === form_schema_3.FormEntityType.slider) {
                 const wrapper = document.createElement('div');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3727,8 +3760,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             loadFormPage(base, edition_mode.form, edition_mode);
         }
         else {
-            form_schema_2.Forms.onReady(function (available, current) {
-                if (form_schema_2.Forms.current_key === null) {
+            form_schema_3.Forms.onReady(function (available, current) {
+                if (form_schema_3.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
                     base.innerHTML = helpers_8.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
@@ -3781,7 +3814,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const btn = document.createElement('div');
         btn.classList.add('btn-flat', 'right', 'red-text');
         btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_2.Forms.current_key;
+        const current_form_key = form_schema_3.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
                 beginFormSave(edition_mode.save.type, edition_mode.name, edition_mode.save);
@@ -3951,9 +3984,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager"], function (require, exports, user_manager_5, form_schema_3, helpers_9, SyncManager_3, PageManager_4) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main"], function (require, exports, user_manager_5, form_schema_4, helpers_9, SyncManager_3, PageManager_4, fetch_timeout_3, main_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    fetch_timeout_3 = __importDefault(fetch_timeout_3);
     function headerText() {
         return `${user_manager_5.UserManager.logged ?
             "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + user_manager_5.UserManager.username + "</span>"
@@ -3962,7 +3996,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     function formActualisationModal() {
         const instance = helpers_9.initModal({ dismissible: false }, helpers_9.getModalPreloader("Actualisation..."));
         instance.open();
-        form_schema_3.Forms.init(true)
+        form_schema_4.Forms.init(true)
             .then(() => {
             helpers_9.showToast("Actualisation terminée.");
             instance.close();
@@ -3993,8 +4027,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
             button.onclick = function () {
                 user_manager_5.loginUser().then(function () {
-                    unlogUserButton();
-                    header.innerHTML = headerText();
+                    PageManager_4.PageManager.reload();
                 });
             };
         }
@@ -4034,13 +4067,13 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         const select = document.createElement('select');
         select.classList.add('material-select');
         container.appendChild(select);
-        form_schema_3.Forms.onReady(function () {
-            const available = [["", "Aucun"], ...form_schema_3.Forms.getAvailableForms()];
+        form_schema_4.Forms.onReady(function () {
+            const available = [["", "Aucun"], ...form_schema_4.Forms.getAvailableForms()];
             for (const option of available) {
                 const o = document.createElement('option');
                 o.value = option[0];
                 o.innerText = option[1];
-                if (option[0] === form_schema_3.Forms.current_key || (option[0] === "" && form_schema_3.Forms.current_key === null)) {
+                if (option[0] === form_schema_4.Forms.current_key || (option[0] === "" && form_schema_4.Forms.current_key === null)) {
                     o.selected = true;
                 }
                 select.appendChild(o);
@@ -4049,8 +4082,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         });
         select.addEventListener('change', function () {
             const value = select.value || null;
-            if (form_schema_3.Forms.formExists(value)) {
-                form_schema_3.Forms.changeForm(value, true);
+            if (form_schema_4.Forms.formExists(value)) {
+                form_schema_4.Forms.changeForm(value, true);
             }
         });
         //// SYNCHRONISATION
@@ -4091,6 +4124,23 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             });
         };
         container.appendChild(syncbtn3);
+        /// BOUTON POUR AFFICHER LE MODAL DE SOUSCRIPTIONS
+        container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    `);
+        const subs_btn = document.createElement('button');
+        subs_btn.classList.add('col', 's12', 'purple', 'btn', 'btn-perso', 'btn-small-margins');
+        subs_btn.innerHTML = "Gérer souscriptions schémas";
+        subs_btn.onclick = function () {
+            if (user_manager_5.UserManager.logged) {
+                subscriptionsModal();
+            }
+            else {
+                helpers_9.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
+            }
+        };
+        container.appendChild(subs_btn);
         /// BOUTON POUR FORCER ACTUALISATION DES FORMULAIRES
         container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
@@ -4113,38 +4163,195 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         container.appendChild(formbtn);
     }
     exports.initSettingsPage = initSettingsPage;
+    function getSubscriptions() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return fetch_timeout_3.default(main_5.API_URL + "schemas/available.json", {
+                headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
+                method: "GET",
+                mode: "cors"
+            }, 30000)
+                .then(response => response.json());
+        });
+    }
+    function subscribe(ids, fetch_subs) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const form_data = new FormData();
+            form_data.append('ids', ids.join(','));
+            if (!fetch_subs) {
+                form_data.append('trim_subs', 'true');
+            }
+            return fetch_timeout_3.default(main_5.API_URL + "schemas/subscribe.json", {
+                headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
+                method: "POST",
+                mode: "cors",
+                body: form_data
+            }, 60000)
+                .then(response => response.json());
+        });
+    }
+    function unsubscribe(ids, fetch_subs) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const form_data = new FormData();
+            form_data.append('ids', ids.join(','));
+            if (!fetch_subs) {
+                form_data.append('trim_subs', 'true');
+            }
+            return fetch_timeout_3.default(main_5.API_URL + "schemas/unsubscribe.json", {
+                headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
+                method: "POST",
+                mode: "cors",
+                body: form_data
+            }, 60000)
+                .then(response => response.json());
+        });
+    }
+    function subscriptionsModal() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const modal = helpers_9.getModal();
+            const instance = helpers_9.initModal({ outDuration: 100, inDuration: 100 }, helpers_9.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+            instance.open();
+            const content = document.createElement('div');
+            content.classList.add('modal-content');
+            let subscriptions;
+            try {
+                subscriptions = yield getSubscriptions();
+            }
+            catch (e) {
+                modal.innerHTML = `
+        <div class="modal-content">
+            <h5 class="red-text no-margin-top">Erreur</h5>
+            <p class="flow-text">Impossible d'obtenir les souscriptions.</p>
+        </div>
+        <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Fermer</a></div>
+        `;
+                return;
+            }
+            // Construction du contenu du modal
+            // <p>
+            //   <label>
+            //     <input type="checkbox" />
+            //     <span>LABEL</span>
+            //   </label>
+            // </p>
+            content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Souscriptions</h5>`);
+            content.insertAdjacentHTML('beforeend', `
+        <p class="flow-text">
+            Gérez vos souscriptions et abonnez-vous à des nouveaux schémas de formulaire ici.
+        </p>
+    `);
+            const row = document.createElement('div');
+            row.classList.add('row');
+            content.appendChild(row);
+            const first_checked = {};
+            for (const form_id in subscriptions) {
+                const p = document.createElement('p');
+                const label = document.createElement('label');
+                p.appendChild(label);
+                const checkbox = document.createElement('input');
+                checkbox.type = "checkbox";
+                checkbox.checked = subscriptions[form_id][1];
+                checkbox.classList.add('input-subscription-element');
+                checkbox.dataset.id = form_id;
+                if (checkbox.checked) {
+                    first_checked[form_id] = true;
+                }
+                const span = document.createElement('span');
+                span.innerText = subscriptions[form_id][0];
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                row.appendChild(p);
+            }
+            const footer = document.createElement('div');
+            footer.classList.add('modal-footer');
+            footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Annuler</a>`);
+            const valid_btn = document.createElement('a');
+            valid_btn.classList.add('btn-flat', 'right', 'green-text');
+            valid_btn.href = "#!";
+            valid_btn.innerText = "Enregistrer";
+            // Si demande d'enregistrement > lance la procédure
+            valid_btn.onclick = function () {
+                return __awaiter(this, void 0, void 0, function* () {
+                    // Récupération des checkbox; cochées et non cochées
+                    const checkboxes = document.getElementsByClassName('input-subscription-element');
+                    const to_check = [];
+                    const to_uncheck = [];
+                    for (const c of checkboxes) {
+                        const ch = c;
+                        // Si l'élément est coché et il n'est pas présent dans la liste originale d'éléments cochés
+                        if (ch.checked && !(ch.dataset.id in first_checked)) {
+                            to_check.push(ch.dataset.id);
+                        }
+                        // Si l'élément est décoché mais il est présent dans la liste originale d'éléments cochés
+                        else if (!ch.checked && ch.dataset.id in first_checked) {
+                            to_uncheck.push(ch.dataset.id);
+                        }
+                    }
+                    modal.innerHTML = helpers_9.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
+                    modal.classList.remove('modal-fixed-footer');
+                    try {
+                        // Appel à unsubscribe
+                        if (to_uncheck.length > 0) {
+                            yield unsubscribe(to_uncheck, false);
+                            // Suppression des formulaires demandés à être unsub
+                            for (const f of to_uncheck) {
+                                form_schema_4.Forms.deleteForm(f);
+                            }
+                            form_schema_4.Forms.saveForms();
+                        }
+                        let subs = undefined;
+                        // Appel à subscribe
+                        if (to_check.length > 0) {
+                            subs = (yield subscribe(to_check, true));
+                        }
+                        helpers_9.showToast("Mise à jour des souscriptions réussie");
+                        instance.close();
+                        // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
+                        if (subs) {
+                            form_schema_4.Forms.schemas = subs;
+                        }
+                    }
+                    catch (e) {
+                        helpers_9.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
+                        instance.close();
+                    }
+                    PageManager_4.PageManager.reload();
+                });
+            };
+            footer.appendChild(valid_btn);
+            footer.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
+            modal.classList.add('modal-fixed-footer');
+            modal.innerHTML = "";
+            modal.appendChild(content);
+            modal.appendChild(footer);
+        });
+    }
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_10, form_schema_4, PageManager_5, SyncManager_4, logger_5) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_10, form_schema_5, PageManager_5, SyncManager_4, logger_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
-        if (form.type === null || !form_schema_4.Forms.formExists(form.type)) {
-            helpers_10.showToast("Impossible de charger ce fichier: Le type de formulaire enregistré est indisponible.");
+        if (form.type === null || !form_schema_5.Forms.formExists(form.type)) {
+            helpers_10.showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type + "'.", 10000);
             return;
         }
-        const current_form = form_schema_4.Forms.getForm(form.type);
+        const current_form = form_schema_5.Forms.getForm(form.type);
         PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     function deleteAll() {
-        // On veut supprimer tous les fichiers
-        // Récupération de tous les fichiers de forms
-        return helpers_10.getDirP('forms')
-            // Récupère les entries du répertoire
-            .then(helpers_10.dirEntries)
-            .then(entries => {
+        return __awaiter(this, void 0, void 0, function* () {
+            // On veut supprimer tous les fichiers
+            // Récupération de tous les fichiers de forms
+            let dirEntries = yield helpers_10.getDirP('forms');
+            const entries = yield dirEntries(dirEntries);
             const promises = [];
             for (const e of entries) {
                 if (e.isFile) {
                     promises.push(deleteForm(e.name));
                 }
             }
-            return Promise.all(promises);
-        })
-            .then(() => {
-            return SyncManager_4.SyncManager.clear();
-        })
-            .then(() => {
+            yield Promise.all(promises);
+            yield SyncManager_4.SyncManager.clear();
             helpers_10.showToast("Fichiers supprimés avec succès");
             PageManager_5.PageManager.reload();
         });
@@ -4154,18 +4361,21 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         const selector = document.createElement('li');
         selector.classList.add('collection-item');
         const container = document.createElement('div');
+        container.classList.add('saved-form-item');
         let id = json[0].name;
-        if (save.type !== null && form_schema_4.Forms.formExists(save.type)) {
-            const id_f = form_schema_4.Forms.getForm(save.type).id_field;
-            if (id_f) {
+        let type = "Type inconnu";
+        if (save.type !== null && form_schema_5.Forms.formExists(save.type)) {
+            const form = form_schema_5.Forms.getForm(save.type);
+            type = form.name;
+            if (form.id_field) {
                 // Si un champ existe pour ce formulaire
-                id = save.fields[id_f] || json[0].name;
+                id = save.fields[form.id_field] || json[0].name;
             }
         }
         // Ajoute le texte de l'élément
         container.innerHTML = `
         <div class="left">
-            ${id} <br> 
+            [${type}] ${id} <br> 
             Modifié le ${helpers_10.formatDate(new Date(json[0].lastModified), true)}
         </div>`;
         // Ajoute le bouton de suppression
@@ -4282,7 +4492,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     function initSavedForm(base) {
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
-        form_schema_4.Forms.onReady(function () {
+        form_schema_5.Forms.onReady(function () {
             readAllFilesOfDirectory('forms').then(all_promises => Promise.all(all_promises).then(function (files) {
                 // Tri des fichiers; le plus récent en premier
                 files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
@@ -4330,7 +4540,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_5, form_schema_5, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_6, form_schema_6, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4341,7 +4551,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_5.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_6.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
             sur le terrain !
@@ -4403,8 +4613,8 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             <span class="red-text text-darken-2">Cette erreur est probablement grave. 
             Nous vous conseillons de ne pas tenter d'enregistrer un formulaire et de vérifier votre stockage interne.</span>`));
             }
-            form_schema_5.Forms.onReady(function (available, current) {
-                if (form_schema_5.Forms.current_key === null) {
+            form_schema_6.Forms.onReady(function (available, current) {
+                if (form_schema_6.Forms.current_key === null) {
                     return;
                 }
                 const locations = current.locations;

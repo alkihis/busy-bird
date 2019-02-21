@@ -247,6 +247,10 @@ p.smiley.big-text {
     margin: 20px 0;
 }
 
+.saved-form-item {
+    font-size: 1rem;
+}
+
 .img-form-element {
     width: 100%;
     border-radius: 5px;
