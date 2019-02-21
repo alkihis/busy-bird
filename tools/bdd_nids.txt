@@ -1,0 +1,1093 @@
+Code_terrain	Secteur	Code_secteur	Type	Numero_unique	Code_unique	Nom_nid_nichoir	Localisation	Position	Orientation	Materiel	Installation - Remarques	INSEE_COM	NOM_COMM	CODE_DEPT	NOM_DEPT	NOM_REGION	LATITUDE	LONGITUDE	ALTITUDE
+1	Ainan	A	B	B01a	AB01a	Touvat	Descente RD amont ou aval	RD	Donne vers l'aval	RAS		38105	CHIRENS	38	ISERE	RHONE-ALPES	45,4295940	5,5698490	458
+3	Ainan	A	B	B02a	AB02a	Rebatiere	Descente en amont RG	Milieu pont	Donne vers l'amont	RAS		38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4336487	5,5917541	446
+4	Ainan	A	B	B03a	AB03a	Gontarie	Sous passerelle qui relie deux champs, pas de chemin, traverser champs	Milieu pont	Donne vers RG	RAS		38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4344034	5,5967939	442
+6	Ainan	A	B	B04a	AB04a	Toudiere	Descente en aval RG	Milieu pont	donne vers RD	RAS		38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4366469	5,6014395	440
+7	Ainan	A	B	B05a	AB05a	Daviere	A COMPLETER			RAS	Pose en juillet 2016	38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4402511	5,6141102	439
+9	Ainan	A	B	B06a	AB06a	Merie	Descente RG amont ou aval	RD	Donne vers l'aval	RAS		38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4426279	5,6185815	434
+11	Ainan	A	B	B07a	AB07a	Biaux_legumes	Sous pont, passer voir les agriculteurs pour signaler votre presence	A COMPLETER		RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4437815	5,6215212	429
+13	Ainan	A	B	B08a	AB08a	Cormerieu	Sous pont vers etang de peche, au bout d'un chemin carrossable. Descente en amont RG	RG	Donne vers amont/RD	RAS	2015 ? Novembre 2017 : nichoir place sous le nouveau pont vers l'etang de peche	38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4466738	5,6340538	413
+14	Ainan	A	B	B09a	AB09a	Lambertiere	Sous passerelle en bois au dessus bras eau stagnante. Acces par chemin qui passe a droite du cimetiere a cote de Pre_Cure ou bien se garer vers biscuiterie (batiment jaune) et traverser foret (plus court)	RD	Donne vers RG	RAS	Pose le 09/01/17	38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4512501	5,6365657	407
+15	Ainan	A	B	B10a	AB10a	Pre_cure	Acces en aval RD (petit passage entre haie et maison)	Milieu	Donne vers l'aval	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4538053	5,6394946	404
+25	Ainan	A	B	B11a	AB11a	Choche_cascade	Sur ancien barrage. Se glisser entre vanne et petite passerelle pour atteindre le nichoir	RD	Donne vers RG	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4583104	5,6426597	398
+24	Ainan	A	B	B12a	AB12a	Gaiete	St Geoire centre, sur route principale, acces par chemin en aval RD	Aval	Donne vers l'aval	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4579483	5,6404710	403
+27	Ainan	A	B	B13a	AB13a	Martinette	Sous pont menant a la brasserie. Descente en aval RD	RD	Donne vers l'aval	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4597449	5,6423928	395
+29	Ainan	A	B	B14a	AB14a	Champet	Descente en aval RD	Milieu	Donne vers l'aval	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4644528	5,6528199	380
+30	Ainan	A	B	B15a	AB15a	Pale	Descente en aval RG	A COMPLETER		Escabeau de 3m		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4671052	5,6608611	370
+32	Ainan	A	B	B16a	AB16a	Pale_cascade	Sur mur du barrage	RD	Donne vers l'aval	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4697922	5,6640100	362
+34	Ainan	A	B	B17a	AB17a	Pivonnieres	Descente en amont RD. Nichoir pas au-dessus de l'eau	RG	Donne vers RD	Echelle ?	Pas au-dessus de l'eau	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4674287	5,6676430	377
+35	Ainan	A	B	B18a	AB18a	Moulin_berthier	Sous pont juste avant ancien barrage. Descente en amont RD	RD	Donne vers RG	RAS		38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4734037	5,6739450	350
+37	Ainan	A	B	B19a	AB19a	Roche	Descente en aval RD. Attention acces difficile si trop d'eau	RG	Donne vers l'aval	Petite echelle	Repose en 2018	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4736160	5,6817770	340
+38	Ainan	A	B	B20a	AB20a	Roche_aval	Sous petite passerelle en bois passant au-dessus de l'affluent	RAS	RAS	RAS	Pose en 2018	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4716883	5,6836652	358
+39	Ainan	A	B	B21a	AB21a	Perrier	Descente en amont RD. Tres bas	A COMPLETER		RAS		38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4672980	5,6797225	404
+44	Ainan	A	B	B22a	AB22a	Bueil_passerelle	Descente en aval RG. Acces depuis le parking sur St Bueil par le petit chemin ou par renardiere sur le chemin qui longe	RD	Donne vers RG	Echelle 3 pans ou telescopique	Novembre 2017	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4761158	5,6914973	305
+46	Ainan	A	B	B23a	AB23a	Renardiere	Sous la passerelle (un peu en aval de l'ancienne usine), ancienne canalisation qui passe au-dessus de la riviere. Descente en amont RG.	RD	Donne vers RG	RAS		38564	VOISSANT	38	ISERE	RHONE-ALPES	45,4771351	5,6930958	303
+47	Ainan	A	B	B24a	AB24a	Chaneaz	Descente en amont RD	RD	Donne vers l'aval	Petit escabeau		38564	VOISSANT	38	ISERE	RHONE-ALPES	45,4821711	5,6974799	291
+49	Ainan	A	B	B25a	AB25a	Grand_crolaz	Pont tres haut, rebords en grosses pierres et nichoir dessus - Nichoir du Pic Vert sous le pont aussi, en bois, plac? vers milieu du pont - ?chelle 3 pans	Milieu	Donne vers l'aval	Echelle 3 pans	Novembre 2017	38564	VOISSANT	38	ISERE	RHONE-ALPES	45,4886949	5,7043920	280
+48	Ainan	A	B	B26a	AB26a	Buquiniere	Sous route principale. Descente en amont RD	RD	Donne vers RG			38354	SAINT-ALBIN-DE-VAULSERRE	38	ISERE	RHONE-ALPES	45,4910134	5,7044685	302
+22	Ainan	A	B	B27a	AB27a	Merlas	A COMPLETER			RAS		38228	MERLAS	38	ISERE	RHONE-ALPES	45,4458007	5,6540108	545
+21	Ainan	A	B	B28a	AB28a	Gorges	Descente en amont RG. Attention tres encaisse, etre a deux. Restes vieux nid naturel. Riviere semble ressortir bcp plus bas (resurgence)	RG	Donne vers RD	Corde et lampe		38228	MERLAS	38	ISERE	RHONE-ALPES	45,4451985	5,6558561	532
+20	Ainan	A	B	B29a	AB29a	Dolmen	Descente en amont	A COMPLETER		RAS		38228	MERLAS	38	ISERE	RHONE-ALPES	45,4449652	5,6687093	614
+16	Ainan	A	B	B30a	AB30a	Ailloudieres	Descente en amont RG	RAS	A COMPLETER	RAS		38228	MERLAS	38	ISERE	RHONE-ALPES	45,4415853	5,6490755	623
+19	Ainan	A	B	B31a	AB31a	Papon	Descente en aval RG (attention forte pente)	Aval	Donne vers l'aval	RAS		38228	MERLAS	38	ISERE	RHONE-ALPES	45,4345568	5,6591291	665
+17	Ainan	A	B	B32a	AB32a	Garliere	Descente en amont	RAS	A COMPLETER	RAS		38228	MERLAS	38	ISERE	RHONE-ALPES	45,4294643	5,6519186	682
+2	Ainan	A	N	N01a	AN01a	Vieux_moulin	Sur petit barrage (vanne) apres la partie canalisee en aval de Touvat, vers l'ancien moulin (batiment isole et vieux bus)	RD	Donne vers RG	RAS	2016	38105	CHIRENS	38	ISERE	RHONE-ALPES	45,4322276	5,5724609	452
+5	Ainan	A	N	N02a	AN02a	Gontarie_2	Sous passerelle du nichoir			RAS		38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4343281	5,5968475	442
+8	Ainan	A	N	N03a	AN03a	Daviere_2	Sous pont du nichoir. Attention, bien verifier toutes les cavites RD	RAS	RAS	RAS	2014 - 2015 - 2016	38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4402586	5,6141075	439
+10	Ainan	A	N	N04a	AN04a	Merie_2	Creux du pont, proche du nichoir : acces un peu tordu, trou assez cache	RAS	RAS	RAS	2014 et 2015	38222	MASSIEU	38	ISERE	RHONE-ALPES	45,4426336	5,6187209	434
+12	Ainan	A	N	N05a	AN05a	Biaux_legumes_2	Bien verifier sous pont	RAS	RAS	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4437815	5,6215212	429
+23	Ainan	A	N	N06a	AN06a	Choche	Sous pont en train de s'ecrouler	RAS	RAS	RAS	2014 et 2015	38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4561760	5,6412274	401
+26	Ainan	A	N	N07a	AN07a	Choche_cascade_2	Sur la rive droite de la cascade artificielle	RD	RAS	RAS	2015	38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4583246	5,6426597	398
+28	Ainan	A	N	N08a	AN08a	Martinettes_aval	Au niveau du seuil de l'ancien barrage - En 2014, nid RG le long du mur, en 2018 nid RD juste a cote de la cascade un peu en haut (difficile a voir et acces complique)	RG (2014) et RD (2018)	RAS	RAS	2014 et 2018	38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4600403	5,6447840	393
+31	Ainan	A	N	N09a	AN09a	Pale_2	Sous pont du nichoir	RAS	RAS	Escabeau de 3m	2014	38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4671052	5,6608611	370
+33	Ainan	A	N	N10a	AN10a	Pale_cascade_2	Au niveau du barrage, sur gros tronc, rive droite	RAS	RAS	RAS		38386	SAINT-GEOIRE-EN-VALDAINE	38	ISERE	RHONE-ALPES	45,4697922	5,6640100	362
+36	Ainan	A	N	N11a	AN11a	Roche_amont	Environ 50m en amont du pont. Sous racines, la ou le courant est fort. Attention invisible depuis la riviere, il faut vraiment regarder sous les racines	RD	Donne vers berge	RAS	2015 et 2016	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4737330	5,6810020	340
+40	Ainan	A	N	N12a	AN12a	Perrier_cascade	Juste en aval nichoir dans la cascade, dans le renfoncement/fente rive gauche de la cascade. Attention on se mouille. Acces en aval RD	RG	Donne vers l'aval	Echelle 3 pans ou telescopique. Veste impermeable	2015	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4677156	5,6798029	400
+41	Ainan	A	N	N13a	AN13a	Pont_musy_barrage	Sur le mur rive gauche juste apres le barrage, au-dessus de la petite piscine - acces en longeant rive gauche et en passant sous les tuyaux souples sur le muret en beton	RG	Donne vers RD	Echelle 3 pans	2018	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4726620	5,6878120	332
+42	Ainan	A	N	N14a	AN14a	Pont_musy_cascade	Dans gorges, juste en contrebas de la cascade, rive gauche, vers 6 m de haut, sur le cote d'une excroissance calcaire	RG	RAS	Non atteignable sauf avec tres grande echelle ?	2017	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4734590	5,6896900	331
+43	Ainan	A	N	N15e	AN15e	Bueil_passerelle_amont	"Juste au niveau de la cascade, sur mur, a la fin de la partie ""gorges"", 100 m en amont de la passerelle"	RD	RAS	RAS	2015	38372	SAINT-BUEIL	38	ISERE	RHONE-ALPES	45,4756305	5,6908482	305
+45	Ainan	A	N	N16a	AN16a	Renardiere_amont	Au niveau de la cascade en amont du nichoir (pas de ponte mais nid frais)	RG	RAS	RAS	2016	38564	VOISSANT	38	ISERE	RHONE-ALPES	45,4768192	5,6924844	302
+51	Ainan	A	N	N17a	AN17a	Grand_crolaz_amont	"Dans une cavite (en haut a gauche) au niveau suintement / arrivee du petit affluent en amont des ""rapides"""	RG	RAS	RAS	2015	38564	VOISSANT	38	ISERE	RHONE-ALPES	45,4879739	5,7029369	283
+50	Ainan	A	N	N18a	AN18a	Grand_crolaz_2	Sous pont du nichoir, a cote du nichoir en bois de l'asso Pic vert, entre poutres metal	Milieu	Donne vers l'aval	Echelle 3 pans	2017	38564	VOISSANT	38	ISERE	RHONE-ALPES	45,4886949	5,7043920	280
+18	Ainan	A	N	N19a	AN19a	Garliere_cascade	Environ 50 en aval du nichoir sous une petite cascade formee par un tuyau	RAS	RAS	RAS	2016	38228	MERLAS	38	ISERE	RHONE-ALPES	45,4300970	5,6517880	678
+52	Centre	C	B	B01a	CB01a	Grepy	Chemin carrossable sur la fin, mais aller doucement	A COMPLETER		RAS	Nichoir raccroche (equerre changee) decembre 2015	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3249658	5,6800175	785
+53	Centre	C	B	B02a	CB02a	Beguetiere	Chemin carrossable (en allant doucement) jusqu'aux installations d'eau, se garer puis finir a pied	A COMPLETER		RAS	Nichoir raccroche (equerre changee) decembre 2016	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3352162	5,6652546	594
+54	Centre	C	B	B03a	CB03a	Martinets	Descente en amont RG	Milieu	Donne vers l'aval	RAS	Raccroche novembre 2014	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3387758	5,6634414	544
+55	Centre	C	B	B04a	CB04a	Scierie	Passerelle en contrebas, prendre le chemin en amont du batiment qui descend	A COMPLETER		RAS		38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3415134	5,6651473	528
+56	Centre	C	B	B05a	CB05a	Jallas	A COMPLETER			RAS	Raccroche en novembre 2014	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3505468	5,6712842	484
+57	Centre	C	B	B06a	CB06a	Grollets	A COMPLETER			RAS	Raccroche en novembre 2014	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3546333	5,6746960	468
+58	Centre	C	B	B07a	CB07a	Forent	A COMPLETER			RAS	Raccroche en novembre 2014	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3598201	5,6765574	449
+59	Centre	C	B	B08a	CB08a	Demay	Descente en aval RD	RD	Donne vers RG	RAS		38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3628817	5,6794717	437
+61	Centre	C	B	B09a	CB09a	Sirandiere	A COMPLETER			RAS	Raccroche en janvier 2015	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3664989	5,6823778	427
+63	Centre	C	B	B10a	CB10a	Stade	A COMPLETER			RAS	Raccroche le 22 janvier 2015	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3727474	5,6872487	410
+65	Centre	C	B	B11a	CB11a	Nesmes	A COMPLETER			RAS	Raccroch? janvier 2014	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3758939	5,7007939	422
+67	Centre	C	B	B12a	CB12a	Riviere_satre	A COMPLETER			RAS	Raccroche le 22 janvier 2015	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3809545	5,6907892	398
+68	Centre	C	B	B13a	CB13a	Lards	A COMPLETER			RAS	Raccroche en janvier 2014	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3827781	5,6971622	398
+69	Centre	C	B	B14a	CB14a	Terpends	A COMPLETER			RAS		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,3933571	5,7104015	397
+75	Centre	C	B	B15a	CB15a	Villette	A COMPLETER			RAS	Installe en juillet 2016	38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,4036177	5,7210875	396
+77	Centre	C	B	B16a	CB16a	Grand_villette	Descente en aval RD	RD	Donne vers RG	RAS		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,4081146	5,7279217	395
+78	Centre	C	B	B17a	CB17a	Grenats	Descente en aval RG ou en amont RD	Milieu/RG	Donne vers RD	Escabeau		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,4136157	5,7380095	389
+82	Centre	C	B	B18a	CB18a	Bauches	Sous poutrelle en fer, acces en se garant au debut du chemin au milieu des champs, puis longer le bord du canal de l'Herretang RG vers l'aval, vers la confluence avec le Guiers Mort.	Milieu/RG	Donne vers RD	Echelle ?		38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4192913	5,7481134	385
+72	Centre	C	B	B19a	CB19a	Laurent_centre	Se garer sur le parking du laboratoire d'analyses medicales. Acces RG en amont du pont	Milieu	Donne vers l'aval	Echelle 3 pans		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,3872692	5,7370412	411
+74	Centre	C	B	B20a	CB20a	Laurent_passerelle	Passerelle vers terrains de tennis	RD	Donne vers RD	Echelle 3 pans		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,3901851	5,7346272	408
+86	Centre	C	B	B21a	CB21a	Chenevarie	Acces par zone industrielle (multibase) ou chemin depuis Grenats - sous passerelle, descendre en amont RD	Milieu	Donne vers l'amont	Echelle 3 pans		38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4133116	5,7427811	390
+83	Centre	C	B	B22a	CB22a	Jean_lioud	Descente en amont RD	Milieu	Donne vers l'amont	Echelle 3 pans		38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4297279	5,7464719	382
+88	Centre	C	B	B23a	CB23a	Burdin	"Direction ""le Bois du Blanc"""	A COMPLETER		RAS	Refixe en janvier 2015	38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,4018852	5,7586169	443
+87	Centre	C	B	B24a	CB24a	Aiguenoire	Descente en aval RG	Milieu	Donne vers l'aval / RD	RAS		38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4131384	5,7543468	386
+84	Centre	C	B	B25a	CB25a	Rosette	Sous pont route principale	A COMPLETER		RAS	Refixe en janvier 2015	38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4171412	5,7513160	385
+85	Centre	C	B	B26a	CB26a	Bois_chene	Sous passerelle beton du chemin. Prendre le chemin carrossable qui longe multibase (se garer au debut si boueux). Descente en amont RD	Milieu	Donne vers l'aval / RD	RAS		38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4187096	5,7501948	383
+105	Centre	C	B	B27a	CB27a	Ferrailliere	Nichoir cote aval, sur le cote du pont (en train de s'ecrouler)	RAS	Donne vers l'aval	Lampe		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4127995	5,7086367	474
+108	Centre	C	B	B28a	CB28a	Fontanil	Descente en aval RD. Attention de ne pas se garer chez les gens	Milieu	Donne vers l'aval	RAS	Mis au plafond en janvier 2015	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4175479	5,7050854	496
+110	Centre	C	B	B29a	CB29a	Bourgeat	RAS	Milieu / aval	Donne vers l'aval	RAS	Nichoir raccroche correctement en novembre 2014	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4208388	5,7142585	432
+99	Centre	C	B	B30a	CB30a	Essartiere	Descente en amont RD	Milieu	Donne vers l'amont	RAS		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4338877	5,7284850	394
+98	Centre	C	B	B31a	CB31a	Ruisseau_morge	"Descendre par l'amont RG et longer le bord (peu profond sous le pont mais ""piscines"" juste avant et apres)"	RG	Donne vers RD	RAS		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4373019	5,7351637	385
+100	Centre	C	B	B32a	CB32a	Chemin_billard	Descente en aval RD	Milieu	Donne vers l'aval	RAS	Mis au plafond en janvier 2015	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4393627	5,7380216	377
+112	Centre	C	B	B33a	CB33a	Grepon	Descente en aval RG	Milieu / aval	Donne vers l'aval	RAS	Refixe en janvier 2015	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4261664	5,7332433	469
+104	Centre	C	B	B34a	CB34a	Chenavas	Descente en aval RG	A COMPLETER		RAS		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4434371	5,7090712	633
+103	Centre	C	B	B35a	CB35a	Chemin_mas	A COMPLETER			RAS		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4429554	5,7155943	536
+101	Centre	C	B	B36a	CB36a	Billard	Descente en aval RG	RD	Donne vers RG	RAS		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4450480	5,7343644	377
+93	Centre	C	B	B37a	CB37a	Chemin_casernes	Chemin carrossable pour une voiture pas trop basse (aller doucement). Descente en amont RD.	Milieu	Donne vers l'aval	RAS	Installe le 22 janvier 2015	73229	SAINT-CHRISTOPHE	73	SAVOIE	RHONE-ALPES	45,4414009	5,7698125	396
+92	Centre	C	B	B38a	CB38a	Pre_chaboud	Descente en aval	A COMPLETER		RAS	Remplace le Maupas, situ? sous pont juste ? l'Est, et qui n'existe plus en janvier 2015 (emport? par crue de juillet)	73229	SAINT-CHRISTOPHE	73	SAVOIE	RHONE-ALPES	45,4454957	5,7706761	403
+91	Centre	C	B	B39a	CB39a	Villard	Descente en aval RD	Milieu	Donne vers l'aval	RAS	Disparu en janvier 2014 mais refixe en decembre 2015	73229	SAINT-CHRISTOPHE	73	SAVOIE	RHONE-ALPES	45,4512426	5,7730526	414
+89	Centre	C	B	B40a	CB40a	Perchet	Direction pisciculture. 	A COMPLETER		RAS		38376	SAINT-CHRISTOPHE-SUR-GUIERS	38	ISERE	RHONE-ALPES	45,4400817	5,7730553	399
+95	Centre	C	B	B41a	CB41a	Marais	Petit pont vers ferme. Descente en aval RG.	Milieu	Donne vers l'aval	RAS	Refixe en janvier 2015	73105	LES ECHELLES	73	SAVOIE	RHONE-ALPES	45,4447168	5,7470942	396
+94	Centre	C	B	B42a	CB42a	Argenette	Acces juste apres le lavoir avoir le panneau impasse. Passer entre les barreaux pour descendre a la riviere et se diriger en amont	A COMPLETER		RAS		73105	LES ECHELLES	73	SAVOIE	RHONE-ALPES	45,4381526	5,7574099	387
+96	Centre	C	B	B43a	CB43a	Maillet	Direction le Transfo. Descente en amont RD.	Milieu	Donne vers l'aval	RAS		73105	LES ECHELLES	73	SAVOIE	RHONE-ALPES	45,4417811	5,7400292	372
+116	Centre	C	B	B44a	CB44a	Mollard_favier	Descente en aval RD	RAS	Donne vers l'aval	RAS	Refixe en janvier 2015	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,5014894	5,7689166	560
+115	Centre	C	B	B45a	CB45a	Grand_chemin	A COMPLETER			RAS	Refixe en janvier 2015	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,4978948	5,7699895	571
+118	Centre	C	B	B46a	CB46a	Attignat	A COMPLETER			RAS	Pose le 4 mai 2015	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,4953943	5,7598561	489
+120	Centre	C	B	B47a	CB47a	Michaliere	A COMPLETER			RAS	Refixe en janvier 2015	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4887194	5,7660198	517
+122	Centre	C	B	B48a	CB48a	Vittaz_est	Descente en amont RG	RG	Donne vers RD	RAS	Emporte par crue 2018	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4840190	5,7574040	449
+125	Centre	C	B	B49a	CB49a	Vittaz_ouest	Descente en amont RD	RD	Donne vers RG	RAS	Refixe en janvier 2015. Emporte par crue 2018	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4853710	5,7562460	446
+114	Centre	C	B	B50a	CB50a	Guillot	Descente en aval	RAS	Donne vers l'aval	RAS	Emporte par crue en juillet 2014 - Reinstalle le 22 janvier 2015	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4811899	5,7652795	541
+113	Centre	C	B	B51a	CB51a	Sous_marianne	Descente en aval	RD / aval	Donne vers l'aval	RAS	Refixe en janvier 2015. AV: refixe le 2015/03/19 car depuis debut saison une seule vis qui bouge.	73275	SAINT-PIERRE-DE-GENEBROZ	73	SAVOIE	RHONE-ALPES	45,4694612	5,7580376	524
+127	Centre	C	B	B52a	CB52a	Bellet	Sous passerelle etroite - acces soit par route rive droite (s'arreter pres maison apres croisement, et descendre a travers la pature) soit rive gauche par petit chemin qui descend aux batiments puis continuer sur la gauche.	RAS	RAS	RAS	Emporte par crue 2018	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4751792	5,7468045	400
+130	Centre	C	B	B53a	CB53a	Auberge_morge_amont	Sous grand pont route principale. Descente en amont RD	RD	Donne vers l'aval	RAS	Emporte par crue 2018	73233	SAINT-FRANC	73	SAVOIE	RHONE-ALPES	45,4721171	5,7389563	371
+132	Centre	C	B	B54e	CB54e	Auberge_morge	Descendre par escaliers au niveau des jardins a l'aval du pont, rive droite (le proprio est OK)	RD / amont	Donne vers l'amont	RAS	Refixe en janvier 2015 sur le rebord courbe. Emporte par crue 2018	73233	SAINT-FRANC	73	SAVOIE	RHONE-ALPES	45,4718613	5,7378781	370
+117	Centre	C	N	N01a	CN01a	Mollard_favier_aval	Sur racines d'un arbre ecroule			RAS	4/4F le 24 mars 2015	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,4969660	5,7604623	499
+119	Centre	C	N	N02a	CN02a	Attignat_aval	Juste a cote d'une petite cascade apres virage vers la gauche	RD	RAS	RAS	2017	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,4947362	5,7590461	487
+121	Centre	C	N	N03a	CN03a	Michaliere_2	Nid dans meurtriere sous pont du nichoir			RAS		73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4887194	5,7660198	517
+123	Centre	C	N	N04a	CN04a	Vittaz_est_2	Nid a l'aval du pont puis demenager dans nichoir	RAS	RAS	RAS	2014	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4839957	5,7573455	449
+124	Centre	C	N	N05a	CN05a	Vittaz_est_aval	Au bord d'un petite chute d'eau				2015	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4824809	5,7550960	438
+126	Centre	C	N	N06a	CN06a	Chailles_amont	Juste a la jonction du petit affluent - descendre par le chemin puis au travers du bois	RAS	RAS	RAS	2014 et 2015	73033	LA BAUCHE	73	SAVOIE	RHONE-ALPES	45,4758864	5,7484031	394
+128	Centre	C	N	N07a	CN07a	Chailles_aval	Nid tres probable vers grande cascade avec piscine devant (pas accessible?)	RAS	RAS	RAS		73275	SAINT-PIERRE-DE-GENEBROZ	73	SAVOIE	RHONE-ALPES	45,4733886	5,7449806	396
+129	Centre	C	N	N08a	CN08a	Arenier	"Nid dans petite ""falaise"" de concretions calcaires a environ 2-3 m de hauteur"	RG	RAS	Petite echelle	2018	73233	SAINT-FRANC	73	SAVOIE	RHONE-ALPES	45,4718400	5,7404400	380
+131	Centre	C	N	N09a	CN09a	Auberge_morge_amont_2	"Pont sous la route principale, dans 4e ""meurtriere"" rive droite en partant de l'aval, tout au fond (il faut mettre le bras entier!)"	RD	Donne vers RG	RAS	2015 (et surement 2014)	73233	SAINT-FRANC	73	SAVOIE	RHONE-ALPES	45,4721171	5,7389563	371
+70	Centre	C	N	N10a	CN10a	Fourvoirie	Deux nids sur rocher en surplomb juste en aval de l'usine. Descente en aval RG.	RD	RAS	Petite echelle	2014 et 2015	38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,3799296	5,7455063	436
+71	Centre	C	N	N11a	CN11a	Laurent_amont	Nid dans rochers rive droite juste au moment de la mini-cascade (limite de la reserve de peche)	RD	RAS	RAS	2015 : nid pret mais inactif	38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,3854306	5,7360113	412
+73	Centre	C	N	N12a	CN12a	Laurent_centre_2	Vieux nids sous pont central	RAS	RAS	Echelle 3 pans		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,3872692	5,7370412	411
+60	Centre	C	N	N13a	CN13a	Demay_2	Entre poutrelles au-dessus du nichoir	RD	RAS	RAS	Juste sous poutre, en aval du nichoir, rive droite - utilis? en 2014 et 2015	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3628817	5,6794717	437
+62	Centre	C	N	N14a	CN14a	Sirandiere_aval	Sur racines en surplomb apres le tournant vers la droite, environ 80 m en aval du nichoir	RD	Donne vers l'amont	RAS	2014	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3678180	5,6822705	424
+64	Centre	C	N	N15a	CN15a	Joseph_centre	Vieux nids en a chaque entree du tunnel (amont et aval) sous route centrale centre ville. Descente en amont RG par escaliers. Attention aux chevrons en beton dans tunnel.	RG (aval)	RAS	Lampe	2014 et 2015	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3758996	5,6972600	413
+66	Centre	C	N	N16a	CN16a	Nesmes_amont	Debut de nid RD sous pont	RD	RAS	RAS	2018	38405	SAINT-JOSEPH-DE-RIVIERE	38	ISERE	RHONE-ALPES	45,3750530	5,7024820	445
+106	Centre	C	N	N17a	CN17a	Ferraillere_2	Sous le pont qui s'ecroule	RAS	RAS	Lampe	2015	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4128070	5,7085669	474
+107	Centre	C	N	N17a	CN17a	Ferraillere_3	Sous le pont qui s'ecroule	RAS	RAS	Lampe	2015	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4128070	5,7085669	474
+109	Centre	C	N	N18a	CN18a	Allegrets	Sous pont en amont de Bourgeat, affluent qui arrive rive droite	RAS	RAS	RAS	2014	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4201272	5,7137704	433
+111	Centre	C	N	N19a	CN19a	Bourgeat_aval	Sous racines en aval d'une petite cascade, rive gauche. Acces soit en suivant la route puis en traversant le champs soit par Bourgeat en longeant la riviere	RG	RAS	RAS		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4236664	5,7179117	428
+76	Centre	C	N	N20a	CN20a	Villette_2	Sous pont du nichoir	RAS	RAS	RAS		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,4037533	5,7209587	396
+79	Centre	C	N	N21a	CN21a	Grenats_aval	"En aval du nichoir, dans petit tunnel sous la route ""chemin des pecheurs"""	RD	RAS	Lampe		38412	SAINT-LAURENT-DU-PONT	38	ISERE	RHONE-ALPES	45,4137748	5,7383126	389
+80	Centre	C	N	N22a	CN22a	Bauches_amont_1	Site de capture					38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4172900	5,7429360	386
+81	Centre	C	N	N23a	CN23a	Bauches_amont_2	Site de capture					38155	ENTRE-DEUX-GUIERS	38	ISERE	RHONE-ALPES	45,4185440	5,7453870	386
+90	Centre	C	N	N24a	CN24a	Perchet_amont	Dans tunnel sous la maison, en amont du pont du nichoir. Descente en aval RD. Petit renfoncement carre, bien regarder au fond en haut a gauche.	RD	Donne vers RG	Lampe		38376	SAINT-CHRISTOPHE-SUR-GUIERS	38	ISERE	RHONE-ALPES	45,4402416	5,7737607	400
+102	Centre	C	N	N25a	CN25a	Billard_aval	Dans cavite (assez profond donc bien regarder) au niveau des rochers de la mini-cascade, a 20 m en aval du pont vers le milieu de la riviere	Milieu	Donne vers l'aval	Veste impermeable		38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4456954	5,7361186	375
+97	Centre	C	N	N26a	CN26a	Maillet_aval	Nid dans les trous du mur rive gauche a environ 50 m en aval du pont	RG	RAS	RAS		73105	LES ECHELLES	73	SAVOIE	RHONE-ALPES	45,4422177	5,7399487	372
+165	SPEntremont	E	B	B01a	EB01a	Pisse_guiers	Sous passerelle en bois	RD	Donne vers RG	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,3951879	5,8915043	881
+164	SPEntremont	E	B	B02a	EB02a	Drugey	Sous petit pont	RG	Donne vers l'aval		Raccroche en septembre 2014	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,3998738	5,8909893	856
+161	SPEntremont	E	B	B03a	EB03a	Curiaz	Descente en aval RD, attention profond si bcp d'eau	RD	Donne vers l'aval	Echelle ?		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4029473	5,8856463	811
+159	SPEntremont	E	B	B04a	EB04a	Meme_bas	RAS	RG	Donne vers RD	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4071128	5,8792842	757
+157	SPEntremont	E	B	B05a	EB05a	Bournant	Sous petit pont, attention tres profond	A COMPLETER		RAS	Non remis	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4076780	5,8757560	746
+153	SPEntremont	E	B	B06a	EB06a	SPE_bourg	Acces derriere maison, petit chemin qui descend (vers borne incendie numero 37)	RG	Donne vers l'amont	Escabeau		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,4143642	5,8549565	643
+154	SPEntremont	E	B	B07a	EB07a	SPE_centre	Nid sous pont central. Descente en aval RG. Regarder poutrelles, possibilite de nid naturel	RG	Donne vers RD	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4165576	5,8543611	639
+167	SPEntremont	E	B	B08a	EB08a	SPE_aval	Acces en traversant la cour (ouverte) de la scierie (pont menant a propriete privee, acces via rive droite seulement). Descente en aval RG.	RG / Milieu	Donne vers RG	Echelle telescopique	Arrache par crue du 29 mars, replace le 02 avril, meme cote en amont.	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4167891	5,8520383	635
+196	SPEntremont	E	B	B09a	EB09a	Plan_martin	Descente en aval RD	RD	Donne vers RG	RAS	Emporte par crue 2018	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4603865	5,8904207	880
+195	SPEntremont	E	B	B10a	EB10a	Doet	Descente en amont RD	RD	Donne vers RG	RAS	Pose le 10 mars 2017	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4619066	5,8891225	890
+191	SPEntremont	E	B	B11a	EB11a	Ourson	Sous grand pont vers camping	A COMPLETER				73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4528156	5,8822989	828
+192	SPEntremont	E	B	B12a	EB12a	Bessons	A COMPLETER				Disparu debut mars 2015, remplace le 13 mars 2015	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4517770	5,8777928	869
+188	SPEntremont	E	B	B13a	EB13a	Epernay_sud	A COMPLETER				Remplace le precedent nichoir situe sur ruisseau de la Gliere, sous le long tunnel, acces par l'aval (en amont du nid naturel 2015)	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4503498	5,8817585	820
+185	SPEntremont	E	B	B14a	EB14a	Derbetemps	A COMPLETER			Echelle		73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4469524	5,8781469	807
+183	SPEntremont	E	B	B15a	EB15a	Boucherin	Descente en aval RD. Piscine mais pas de courant et pas trop d'eau	RG	Donne vers RD	Echelle 2m	Disparu debut mars 2015 (emporte par l'eau?) - Remplace plus haut	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4368276	5,8771920	760
+180	SPEntremont	E	B	B16a	EB16a	Pont_lac	Descente en amont RD (passer au dessus petit portail et longer la maison)	RD	Donne vers RG	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4321711	5,8718008	721
+179	SPEntremont	E	B	B17a	EB17a	Joubert	Descente en amont RG	RD	Donne vers RG	RAS	Disparu debut mars 2015, remplace le 13 mars 2015	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4296150	5,8695745	692
+178	SPEntremont	E	B	B18a	EB18a	Cret	Sous pont en pierres route principale. Descente en amont RD	RD	Donne vers l'aval	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4280488	5,8676863	680
+174	SPEntremont	E	B	B19a	EB19a	SPE_Amblard	Sous petit pont affluent RG juste en amont de Moulins. Descente en amont	A COMPLETER		Petite echelle	2018	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4251880	5,8663170	669
+172	SPEntremont	E	B	B20a	EB20a	Moulins	Descente en aval RG (attention petit passage escalade)	RG	Donne vers l'aval	Echelle telescopique ou 3 pans	"Detruit pendant l'ete / automne 2014. Remplace le 13 mars 2015 - disparu en 2016-2017; replace novembre 2017"	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4252817	5,8656371	663
+175	SPEntremont	E	B	B21a	EB21a	Fracette	Descente en amont RG	RD	Donne vers RG	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4261589	5,8636308	684
+169	SPEntremont	E	B	B22a	EB22a	SPE_cozon	Pont vers Eglise. Descente en amont RD (petits escaliers)	Milieu	Donne vers l'aval	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4181391	5,8550423	637
+139	SPEntremont	E	B	B23a	EB23a	Planolet	Sous pont petit affluent. Descente en aval RG	Milieu	Donne vers l'aval	RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3700868	5,8392334	1052
+140	SPEntremont	E	B	B24a	EB24a	Sarra	Chemin carrossable. Descente en aval RD.	A COMPLETER		RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3727097	5,8421302	1001
+142	SPEntremont	E	B	B25a	EB25a	Philibert_amont	Sous petit pont assez bas	A COMPLETER		RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3786334	5,8467221	930
+143	SPEntremont	E	B	B26a	EB26a	Philibert_eglise	Sous pont vers Eglise	A COMPLETER	Donne vers l'aval	RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3800738	5,8487620	918
+147	SPEntremont	E	B	B27a	EB27a	Malissard	Sous pont route principale. Descente en amont RG.	RG	Donne vers RD	RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3787163	5,8558846	908
+138	SPEntremont	E	B	B28a	EB28a	Reys_grenaz	Descente en amont RG	A COMPLETER		RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3857396	5,8426988	964
+137	SPEntremont	E	B	B29a	EB29a	Reys_nant	Descente en amont RG	A COMPLETER		RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3920009	5,8431387	924
+146	SPEntremont	E	B	B30a	EB30a	Cloitres	Acces en suivant la riviere depuis Philibert_cascade ou depuis hammeau des Cloitres. Sous passerelle penchee	Milieu	Donne vers l'amont	RAS	Pose le 07/12/2017 mais a raccrocher avec une chambre a air	38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3844209	5,8506918	841
+148	SPEntremont	E	B	B31a	EB31a	Vassaux	Emprunter chemin qui descend vers le garage Bondat. En bas de ce chemin, prendre a droite et continuer jusqu'au pont	RG	Donne vers RD	RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3888816	5,8500695	811
+150	SPEntremont	E	B	B32a	EB32a	Chatelard	Descendre par chemin juste au niveau de la sortie du Grd Chenevey, rester sur le chemin qui part a droite en descendant. Nichoir sous pont en rondins de bois	RD	Donne vers RD	RAS	Pose le 07/12/2017	38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3985479	5,8541572	740
+136	SPEntremont	E	B	B33a	EB33a	Combes	Descente en aval RD	Milieu / aval	Donne vers l'aval	RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,4055762	5,8476019	763
+133	SPEntremont	E	B	B34a	EB34a	Preversin	A COMPLETER			RAS	Non remis	38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,4097280	5,8524680	665
+152	SPEntremont	E	B	B35a	EB35a	Guiguets	Pont vers le restaurant l'Herbe tendre. Acces en amont RD.	RG	Donne vers l'aval	RAS	Disparu au printemps 2015, non refixe en 2015 car pont en renovation - refixe novembre 2015	38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,4132061	5,8540499	649
+198	SPEntremont	E	B	B36a	EB36a	Gringalet	A COMPLETER				Pose le 10 mars 2017	73092	CORBEL	73	SAVOIE	RHONE-ALPES	45,4276573	5,8303714	668
+199	SPEntremont	E	B	B37a	EB37a	Riou_brigoud	Decsendre en aval RD	A COMPLETER			Pose le 10 mars 2017	38376	SAINT-CHRISTOPHE-SUR-GUIERS	38	ISERE	RHONE-ALPES	45,4188169	5,8163595	626
+197	SPEntremont	E	N	N01a	EN01a	Plan_martin_aval	Sur les couches de rochers a l'aplomb de la riviere - vieux nid a cote. Acces par chemin qui passe entre les maison puis descendre dans champs, on retrouve un petit sentier qui mene a la riviere	RG	RAS	RAS		73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4594910	5,8887899	872
+193	SPEntremont	E	N	N02a	EN02a	Bessons_2	Dans trou tres haut au niveau de la jonction entre les deux parties differentes du pont. Bien regarder.	RD	Donne vers l'aval	"Echelle telescopique ou 3 pans ; Lampe"	2018	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4517770	5,8777928	869
+194	SPEntremont	E	N	N03a	EN03a	Bessons_cascade	Sur falaise au niveau de la grande cascade en aval de Besson. Descente par petit chemin de pecheur en aval RG.	RD	Donne vers l'aval	RAS	2018	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4525898	5,8796275	860
+189	SPEntremont	E	N	N04a	EN04a	Epernay_sud_2	Dans fente barre de fer du pont	RD /aval	Donne vers l'amont	Echelle telescopique		73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4503649	5,8816298	820
+190	SPEntremont	E	N	N05a	EN05a	Epernay_sud_affluent	Nid dans tunnel petit affluent. Sur rocher	RG	RAS	Lampe		73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4503883	5,8831036	833
+187	SPEntremont	E	N	N06a	EN06a	Derbetemps_cascade	Acces depuis champs RG	RG		En rappel		73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4477126	5,8786726	812
+186	SPEntremont	E	N	N07a	EN07a	Derbetemps_gorges	A COMPLETER					73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4450781	5,8785653	798
+184	SPEntremont	E	N	N08a	EN08a	Chivolande	Dans falaise juste en aval de la passerelle Chivolande	RG	RAS	En rappel	2018	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4431586	5,8788443	778
+182	SPEntremont	E	N	N09a	EN09a	Pont_lac_amont	Au niveau du barrage en amont du site de peche a la truite. Sur rocher RG, bien chercher car peu visible. Acces en aval RD et travaerser la riviere	RG	Donne vers l'aval	RAS	2018	73107	ENTREMONT-LE-VIEUX	73	SAVOIE	RHONE-ALPES	45,4336656	5,8739520	752
+181	SPEntremont	E	N	N10a	EN10a	Pont_lac_2	Sous passerelle, tres haut			Echelle 3 pans	Appele Joubert amont en 2017	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4321015	5,8717149	721
+177	SPEntremont	E	N	N11a	EN11a	Fracette_cascade	A la fin de la grande cascade, cote jardin, rive droite	RD	RAS	RAS	2014	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4260535	5,8662808	668
+176	SPEntremont	E	N	N12a	EN12a	Fracette_2	Dans cascade juste a cote du nichoir	A COMPLETER		RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4260685	5,8637220	684
+173	SPEntremont	E	N	N13a	EN13a	Moulins_2	Sur le bord du pont, cote amont, rive gauche	RG / amont	RAS	Echelle telescopique ou 3 pans	2015	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4252516	5,8655513	663
+171	SPEntremont	E	N	N14a	EN14a	Fracette_sud	Sur rocher juste en contrebas de la route. Acces en amont depuis la petite aire de repos, longer RG entre la riviere et la route	RG	Donne vers l'amont / RD	Echelle	2014 et 2015 (2015: Echelle - sur mEme mur que nid 2014)	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4233389	5,8621019	658
+170	SPEntremont	E	N	N15a	EN15a	SPE_cozon_cascade	Dans trou sous la cascade artificielle	RD		Escabeau	2017	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4191671	5,8565229	641
+166	SPEntremont	E	N	N16a	EN16a	Guiers_cascade	Nid dans rocher/cascade (observations) en aval de la grande cascade. Inaccessible	RAS	RAS	Inaccessible		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,3942612	5,8917189	912
+163	SPEntremont	E	N	N17a	EN17a	Drugey_aval	Sur rocher au juste avant le tournant, rive gauche	RG	RAS	RAS	2016	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4001375	5,8907104	855
+162	SPEntremont	E	N	N18a	EN18a	Cirque_aval	Localisation incertaine, suivre petit chemin et passer 1ers barbeles, le nid est rive gauche sur gros rochers au niveau 2nd barbele	RG	RAS	RAS		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4012900	5,8897930	849
+160	SPEntremont	E	N	N19a	EN19a	Salamandre_verte	Site de capture - nid non trouve				2018	73275	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4059970	5,8816590	773
+158	SPEntremont	E	N	N20a	EN20a	Bournant_cascade	Dans cascade juste apres le barrage, rive gauche - innaccessible! piscine profonde devant et pas de rappel possible (en devers) - a surveiller de loin. Acces depuis la route, descendre dans foret (passer au dessus gros tuyau) ou acces depuis pont, suivre le chemin RG qui longe la riviere	RG	RAS	Jumelles		73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4076777	5,8755344	746
+156	SPEntremont	E	N	N21a	EN21a	Freney_cascade	Au niveau petite cascade au dessus de la gde cascade en amont de l'usine hydroelectrique (Le Foulon). Acces plus court depuis la route en descendant dans la foret.	RD	RAS	En rappel	Trouve en 2018	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4091955	5,8666456	697
+155	SPEntremont	E	N	N22a	EN22a	SPE_amont	Nid au niveau du barrage, rive droite 	RD	RAS	RAS	2016 mais barrage refait entirement en 2017 donc plus de mur favorable	38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,4123777	5,8567321	652
+141	SPEntremont	E	N	N23a	EN23a	Sarra_2	Sous meme pont que nichoir	A COMPLETER		RAS		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3727097	5,8421302	1001
+144	SPEntremont	E	N	N24a	EN24a	Philibert_eglise_2	Sous meme pont que nichoir	RAS	RAS	Lampe		38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3800201	5,8486962	918
+145	SPEntremont	E	N	N25a	EN25a	Philibert_cascade	"Acces en contournant maison a cote Eglise puis continuer jusqu'au chemin qui longe la riviere. Le nid est plutot au milieu/bas de la serie de ""cascades"" (au niveau de 3 arbres tombes enchevetres, juste avant un goulet de gros rochers"	RD	RAS	RAS	2017	38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3823260	5,8488679	908
+149	SPEntremont	E	N	N26a	EN26a	Reys	A COMPLETER					38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3944797	5,8519793	765
+151	SPEntremont	E	N	N27a	EN27a	Chatelard_aval	Nid sur gros rocher (avec 2 troncs tombes dessus) recouvert de mousse donc bien regarder car nid non visible ! Acces en longeant la riviere depuis pont au nichoir ou bien descente a partir de la sorte de plateforme	RG	Donne vers RD / aval	RAS	2018 (predation)	38447	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,3994934	5,8539507	730
+135	SPEntremont	E	N	N28a	EN28a	Preversin_amont	Nid sur falaise a environ 1 m de hauteur	RD	RAS	RAS	2018	38448	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,4067249	5,8522743	685
+134	SPEntremont	E	N	N29a	EN29a	Preversin_2	A COMPLETER			RAS	2014 - 2015: nid emporte par crue	38446	SAINT-PIERRE-D'ENTREMONT	38	ISERE	RHONE-ALPES	45,4096250	5,8524410	665
+168	SPEntremont	E	N	N30a	EN30a	SPE_aval_2	Sous passerelle, rive droite (attention trou profond juste devant)	RD	RAS	Echelle telescopique	2015 et 2016	73274	SAINT-PIERRE-D'ENTREMONT	73	SAVOIE	RHONE-ALPES	45,4167778	5,8519954	635
+200	Fure	F	B	B01a	FB01a	Grand_clos	Sur le cote du pont RG car passage de l'eau etroit et donc tres profond sous le pont	RG		RAS		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4290992	5,5165503	490
+201	Fure	F	B	B02a	FB02a	Caserne	Sur le cote du pont RG car passage de l'eau etroit et donc tres profond sous le pont	RG		RAS		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4263246	5,5194014	490
+203	Fure	F	B	B03a	FB03a	Bosquet_plan	Acces par l'ecalier qui descend a l'eau	A COMPLETER		RAS		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4206393	5,5197179	484
+205	Fure	F	B	B04a	FB04a	Cote_furens	Sous pont vers maison. Acces facile en aval RD.	RG	Donne vers l'amont	Petite echelle		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4177023	5,5256510	478
+206	Fure	F	B	B05a	FB05a	Guillermet	2eme pont, voute, a cote de l'arret de bus (le plus loin de la route, le 1er pont etant plus bas)	A COMPLETER				38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4135555	5,5310493	470
+207	Fure	F	B	B06a	FB06a	Guillermet_aval	A l'entree amont du tunnel. Acces par usine RD (echelle de service jaune) et longer le mur RG (attention irregulier)	RG	Donne vers RD	Petite echelle		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4128804	5,5311521	470
+211	Fure	F	B	B07a	FB07a	Papeterie	Pont en aval de la papeterie principale, en aval de la station d'epuration	A COMPLETER		RAS		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4092821	5,5324101	458
+214	Fure	F	B	B08a	FB08a	Fontenettes	Pas sous un pont, mais sur une structure ancienne d'irrigation (sorte de vanne). Acces depuis chemin Papeterie puis traverser champs	RG	Donne vers RD	RAS		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4046874	5,5331826	449
+215	Fure	F	B	B09a	FB09a	Planes	Acces en amont RG, chemin de descente facile	Milieu / amont	Donne vers l'amont	RAS		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,3982541	5,5339766	442
+218	Fure	F	B	B10a	FB10a	Bonpertuis	Descente par petit chemin en amont du pont, rive gauche 	A COMPLETER		RAS		38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3951803	5,5291647	435
+219	Fure	F	B	B11a	FB11a	Bonpertuis_passerelle	Sous passerelle qui mene aux jardins potagers, derriere usine, descendre en aval rive droite et remonter qq m au niveau du seuil (attention courant)	A COMPLETER		RAS		38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3929954	5,5274534	430
+221	Fure	F	B	B12a	FB12a	Ravignhouse	Descente en aval RG	RG	Donne vers RD	RAS		38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3930708	5,5207372	423
+223	Fure	F	B	B13a	FB13a	Brosses	Sous passerelle entre deux champs. Acces par chemin qui descend apres les maisons. Se garer dans l'herbe au bord de la route principale	Milieu	Donne vers l'aval	RAS		38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3917975	5,5126692	413
+224	Fure	F	B	B14a	FB14a	Planche_cattin	Nichoir sous pont bas sous maison! Descente en aval RG	A COMPLETER		RAS		38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3905939	5,5048049	407
+226	Fure	F	B	B15a	FB15a	Billionnieres_amont	Au fond du tunnel qui passe sous entrepot. Verifier aussi trous dans parpaings au-dessus de la retenue d'eau vers le fond et plus vers l'entree du tunnel	A COMPLETER			A poser ?	38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3896144	5,5015366	406
+228	Fure	F	B	B16a	FB16a	"Billionnieres_""amont"""	Sous 1er pont (rive droite, par rapport au pont suivant)	RD	RAS	RAS		38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3887837	5,5005133	405
+229	Fure	F	B	B17a	FB17a	Billonnieres	2eme pont, a cote de la rue de la Fure (la Fure se separe en deux a cet endroit, verifier le 2e pont aussi!)	A COMPLETER				38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3883024	5,4996536	405
+231	Fure	F	B	B18a	FB18a	Rivier_cascade	Sous pont au-dessus de la chute d'eau. En haut de la grande cascade a la fin du canal (en aval de Billonnieres)	A COMPLETER				38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3838557	5,4987001	401
+230	Fure	F	B	B19a	FB19a	Rivier	Sur bras presque mort a 3 m du cours principal. Possibilite nichoir sous passerelle suivante, au-dessus du cours principal, mais avec chambre a air (poutrelles metal). Descendre a pied le long du chemin	A COMPLETER				38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3830306	5,4992150	394
+233	Fure	F	B	B20a	FB20a	Cote_manin	"Sous le pont sur le bras ""mort"", car l'autre bras a trop de courant pour etre a l'aise (et pont trop bas) - descente par le chemin entre les deux bras, ne pas aller trop loin car vase"	A COMPLETER				38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3790430	5,4962250	383
+234	Fure	F	B	B21a	FB21a	Cote_manin_aval	Pas sous un pont, mais sur structure d'ancien barrage	A COMPLETER			Installe en novembre 2015 - sur montant de l'ancien barrage - Enleve par pecheurs en mars 2016	38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3779551	5,4947733	377
+235	Fure	F	B	B22a	FB22a	Prairies	"Sous passerelle en bois, au-dessus bras ""mort"" (boueux mais courant et tres proche du cours principal). Pas d'equerre ni trou (visser dans le bois). Descendre vers les batiments et se garder sur petit parking au fond"	A COMPLETER				38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3731449	5,4898623	371
+236	Fure	F	B	B23a	FB23a	Grand_voye	Pas sous un pont, mais sur structure d'ancien barrage	A COMPLETER			Installe en janvier 2016 - sur montant ancien barrage (pas sous un pont) - acces a pied depuis Pastieres - Enleve par pecheurs en mars 2016	38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3722198	5,4943657	367
+237	Fure	F	B	B24a	FB24a	Pastieres	Sous pont de la riviere principale, en face restes de nid	A COMPLETER				38337	RIVES	38	ISERE	RHONE-ALPES	45,3692125	5,4957176	363
+240	Fure	F	B	B25a	FB25a	Grande_maison	Sous passerelle en bois, juste avant la separation en deux bras. Aller a pied le long du chemin depuis Pastieres, longer la retenue d'eau	A COMPLETER			Installe en janvier 2016	38337	RIVES	38	ISERE	RHONE-ALPES	45,3628958	5,4971123	354
+241	Fure	F	B	B26a	FB26a	Levatel	Sous passerelle en bois en aval de Grande_maison	A COMPLETER			Pose le 21/02/2017	38337	RIVES	38	ISERE	RHONE-ALPES	45,3622400	5,5013931	347
+243	Fure	F	B	B27a	FB27a	Rentiere_cascade	Mur rive droite de la cascade, acces a pied depuis Poype	A COMPLETER				38337	RIVES	38	ISERE	RHONE-ALPES	45,3592924	5,5052340	342
+245	Fure	F	B	B28a	FB28a	Rentiere	Sous passerelle menant a transformateur (usine electrique), au debut de la zone stagnante - acces a pied depuis Poype				Installe en janvier 2016	38337	RIVES	38	ISERE	RHONE-ALPES	45,3600840	5,5073208	341
+246	Fure	F	B	B29a	FB29a	Poype	Sous le pont pres des maisons, descente cote rive droite, assez profond, rester sur le bord - verifier aussi l'ancien barrage en aval - se garer dans la descente assez haut (parking prives en bas pres de la riviere)	A COMPLETER				38337	RIVES	38	ISERE	RHONE-ALPES	45,3566236	5,5065751	335
+247	Fure	F	B	B30a	FB30a	Chutes_poype	Sous l'ancienne usine, dans tunnel, cote vieux tuyau en beton, peu de courant  - verifier aussi la chute d'eau en aval, trou dans mur rive gauche (attention on se mouille, prendre impermeable)	RG	Donne vers l'aval	Lampe		38337	RIVES	38	ISERE	RHONE-ALPES	45,3539774	5,5070472	330
+249	Fure	F	B	B31a	FB31a	Bruyeres	Sous petit pont etroit sur affluent, cote aval (mais descente par l'amont - attention assez profond surtout au debut du tunnel	Mileu / aval	Donne vers l'aval	Lampe		38337	RIVES	38	ISERE	RHONE-ALPES	45,3542865	5,5170250	335
+251	Fure	F	B	B32a	FB32a	Rives_centre_chana	Descendre en amont RG	A COMPLETER		RAS		38337	RIVES	38	ISERE	RHONE-ALPES	45,3496646	5,5100620	320
+252	Fure	F	B	B33a	FB33a	Liampre_amont	Cote amont du tunnel. Descente en aval RD	RG	Donne vers RD	Lampe	Pose le 27/09/18	38337	RIVES	38	ISERE	RHONE-ALPES	45,3487670	5,5095780	319
+254	Fure	F	B	B34a	FB34a	Liampre	Descendre par parking le long de la riviere	A COMPLETER				38337	RIVES	38	ISERE	RHONE-ALPES	45,3486769	5,5077553	318
+255	Fure	F	B	B35a	FB35a	Gua	Sous pont ou la riviere passe sous l'usine. Descente en amont rive gauche en face des tuyaux, juste en entrant dans l'eau attention un peu profond	Milieu / amont	Donne vers l'amont	Lampe		38337	RIVES	38	ISERE	RHONE-ALPES	45,3441818	5,5023573	311
+258	Fure	F	B	B36a	FB36a	Gua_aval	A COMPLETER				A poser ?	38332	RENAGE	38	ISERE	RHONE-ALPES	45,3426671	5,5015862	307
+259	Fure	F	B	B37a	FB37a	Garin	A COMPLETER			Petite echelle( pour faciliter descente)		38332	RENAGE	38	ISERE	RHONE-ALPES	45,3384516	5,4962540	300
+261	Fure	F	B	B38a	FB38a	Allivet_cascade	Se garer au niveau de l'usine, remonter le long des vieux batiments, descendre au dernier avec petite echelle (murs), nichoir sous la premiere ancienne sortie d'eau rive droite (dans renfoncement sous batiment presque en face de la cascade)	RD		Petite echelle( pour descente)		38332	RENAGE	38	ISERE	RHONE-ALPES	45,3386741	5,4944301	281
+262	Fure	F	B	B39a	FB39a	Allivet	Sous pont devant batiment administratif des usines	A COMPLETER				38332	RENAGE	38	ISERE	RHONE-ALPES	45,3379670	5,4924184	280
+263	Fure	F	B	B40a	FB40a	Allivet_usine	Sous batiment usine, descendre cote aval	A COMPLETER				38332	RENAGE	38	ISERE	RHONE-ALPES	45,3369960	5,4922092	278
+265	Fure	F	B	B41a	FB41a	Charriere	2e pont, assez stagnant	A COMPLETER				38332	RENAGE	38	ISERE	RHONE-ALPES	45,3332929	5,4912222	276
+266	Fure	F	B	B42a	FB42a	Guillionniere_amont	Descendre en amont et longer rive droite	A COMPLETER		Petite echelle		38332	RENAGE	38	ISERE	RHONE-ALPES	45,3325331	5,4913536	272
+268	Fure	F	B	B43a	FB43a	Guillionniere	Sous chapelle renovee, descendre en amont parmi les bambous et longer la rive	A COMPLETER				38332	RENAGE	38	ISERE	RHONE-ALPES	45,3311170	5,4916889	270
+270	Fure	F	B	B44a	FB44a	Bourretiere_amont	Sous tunnel de l'usine en amont du nichoir, sur pilier. Attention fond pas regulier. Venir de l'aval par le chemin en se garant comme pour Bourretiere	Milieu	Donne vers l'amont	Lampe		38332	RENAGE	38	ISERE	RHONE-ALPES	45,3237023	5,4913429	258
+272	Fure	F	B	B45a	FB45a	Bourretiere	Au bout du chemin (carrossable), venir par le sud	A COMPLETER				38332	RENAGE	38	ISERE	RHONE-ALPES	45,3221181	5,4929762	255
+273	Fure	F	B	B46a	FB46a	Bergere	Passerelle herbeuse a cote du chateau d'eau	A COMPLETER				38332	RENAGE	38	ISERE	RHONE-ALPES	45,3177011	5,4917746	245
+275	Fure	F	B	B47a	FB47a	Hurtieres	"Sous pont du 1er bras ""mort"" / canal vers nord, descendre par les arbres en amont, rive droite"	A COMPLETER				38517	TULLINS	38	ISERE	RHONE-ALPES	45,3130650	5,4863941	236
+279	Fure	F	B	B48a	FB48a	Hurtieres_aval	Sous passerelle en aval du 1er nichoir et du pont suivant, se garer a cote poubelles et descendre rive gauche	A COMPLETER		Corde		38517	TULLINS	38	ISERE	RHONE-ALPES	45,3127311	5,4864478	235
+280	Fure	F	B	B49a	FB49a	Balmes	Dans l'enceinte de l'usine, passerelle dans la cour entre maison et entrepot	A COMPLETER				38517	TULLINS	38	ISERE	RHONE-ALPES	45,3097414	5,4923058	213
+281	Fure	F	B	B50a	FB50a	Fures_centre	Sous pont de la N92, entre deux sous-terrains sous les batiments, descendre par la barriere verte, le long du mur, puis longer sur le rebord car trop profond au milieu (nichoir rive gauche)	RG	A COMPLETER			38517	TULLINS	38	ISERE	RHONE-ALPES	45,3091076	5,4964256	208
+283	Fure	F	B	B51a	FB51a	Grange_pres	Sous passerelle qui mene vers le champ, 1er bras de la Fure dedoublee (se rejoint juste apres). Un peu profond mais peu de courant	A COMPLETER				38517	TULLINS	38	ISERE	RHONE-ALPES	45,3065723	5,5062640	194
+284	Fure	F	B	B52a	FB52a	Jean_chepy	Sous pont rive droite (deux ponts) ou courant le plus fort mais moins profond	RD	A COMPLETER			38517	TULLINS	38	ISERE	RHONE-ALPES	45,3036217	5,5103195	190
+285	Fure	F	B	B53a	FB53a	Vernet	RAS 	A COMPLETER				38517	TULLINS	38	ISERE	RHONE-ALPES	45,2935015	5,5219388	185
+202	Fure	F	N	N01a	FN01a	Caserne_aval	Juste au niveau du mini-barrage, cote aval, rive droite du cours principal	RD		RAS		38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4244873	5,5185592	487
+204	Fure	F	N	N02a	FN02a	Bosquet_plan_amont	Sous l'aval du tunnel en amont du pont au nichoir. Acces en remontant RD le long de la riviere (ouvrir petit portail)	RD	Donne vers RG / aval		2018	38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4212229	5,5190018	484
+208	Fure	F	N	N03a	FN03a	Guillermet_aval_2	A l'entree amont du tunnel, dans trou au dessus du nichoir	RG	Donne vers RD	Petite echelle	2015 - 2016	38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4130216	5,5311441	470
+209	Fure	F	N	N04a	FN04a	Guillermet_tunnel	A l'amont du 1er tunnel. Acces soit par l'aval et remonter tout le tunnel soit en passant sous la grille de l'usine (plus rapide!)	RG	Donne vers RD	Echelle telescopique	2017 - 2018	38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4108939	5,5314445	465
+210	Fure	F	N	N05a	FN05a	Papeterie_mur	En amont du nichoir, rive droite, sur le mur apres canalisation, 4eme meurtriere, ras de l'eau	RD	RAS	Fontale	2015	38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4095081	5,5320239	460
+212	Fure	F	N	N06a	FN06a	Fontenettes_amont	Au niveau de la cascade, dans le tuyau qui debouche rive gauche - attention, courant fort au pied de la cascade	RG	Donne vers l'aval	RAS	2017	38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4078359	5,5326247	456
+213	Fure	F	N	N07a	FN07a	Fontenettes_souche	Vieux nid sur une branche d'arbre / souche en surplomb de la riviere, localisation non connue precisement	RAS	RAS	RAS	2016	38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,4052146	5,5330968	450
+216	Fure	F	N	N08a	FN08a	Planes_2	Dans trous sur le mur au-dessus du nichoir			Echelle	2015	38082	CHARAVINES	38	ISERE	RHONE-ALPES	45,3984650	5,5339765	442
+217	Fure	F	N	N09a	FN09a	Bonpertuis_amont	Sous pont en pierre, bien visible de la route en allant vers le sud				2015: , nid 4.4 (F) le 23 mars.	38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3965515	5,5319595	436
+220	Fure	F	N	N10a	FN10a	Ravignhouse_est	Sous pont en amont de ravignhouse. Descente en aval RD par petit chemin			Petite echelle	2015	38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3918079	5,5228373	432
+222	Fure	F	N	N11a	FN11a	Ravignhouse_2	Environ 15 m en amont du pont, sous arche ancienne arrivee de canalisation	RG	Donne vers l'amont	Petite echelle	2015	38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3930859	5,5212736	423
+225	Fure	F	N	N12a	FN12a	Planche_cattin_2	Descendre en amont RG et passer les poutres basses, le nid est rive gauche au-dessus du gros tuyau	RG	RAS	Lampe	2016	38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3906353	5,5048505	407
+227	Fure	F	N	N13a	FN13a	Billionnieres_amont_2	Nid naturel sous tunnel stagnant et profond: accessibilite rive droite, acces en remontant de Billionniere - 2016: dans meme tunnel, mais pas au fond, et accessible, plus devant	A COMPLETER			2015 et 2016	38368	SAINT-BLAISE-DU-BUIS	38	ISERE	RHONE-ALPES	45,3896144	5,5015366	406
+232	Fure	F	N	N14a	FN14a	Rivier_cascade_2	Le long de la cascade, vers le bas	A COMPLETER				38013	APPRIEU	38	ISERE	RHONE-ALPES	45,3844661	5,4989147	402
+238	Fure	F	N	N15a	FN15a	Pastieres_2	Sous 2e pont, bras plus stagnant (2 vieux nids)	A COMPLETER				38337	RIVES	38	ISERE	RHONE-ALPES	45,3692200	5,4960394	363
+239	Fure	F	N	N16a	FN16a	Pastieres_aval	Aller a pied en suivant le chemin qui longe le canal (rive droite de la riviere principale). Nid sur le mur cote rive droite de la sortie du canal, dans la mini-cascade. Traverser sur le montant en fer et descendre par la rive gauche	A COMPLETER			2014 et 2015: nid sur mur le long de l'ancienne porte du canal, juste a cote de la maison abandonnee juste apres le pont de chemin de fer	38337	RIVES	38	ISERE	RHONE-ALPES	45,3660881	5,4972893	358
+242	Fure	F	N	N17a	FN17a	Levatel_2	Sous racines a environ 50 m en aval du nichoir, rive gauche, proche tournant de la riviere	RG	RAS			38337	RIVES	38	ISERE	RHONE-ALPES	45,3621570	5,5024338	347
+244	Fure	F	N	N18a	FN18a	Rentiere_amont	Sous cascade, juste sous rebord vers le haut du mur (un reste en haut pour ecarter eau, verifier toute la largeur de la cascade)	Milieu	Donne vers l'aval	RAS	2016	38337	RIVES	38	ISERE	RHONE-ALPES	45,3593037	5,5052394	342
+248	Fure	F	N	N19a	FN19a	Chutes_poype_2	Nid sous passerelle en amont du tunnel au nichoir	RD	RAS	Echelle telescopique ; Impermeable	2015 ; 2018	38337	RIVES	38	ISERE	RHONE-ALPES	45,3540584	5,5070043	330
+250	Fure	F	N	N20a	FN20a	Bruyeres_2	Nid cote aval du pont	RAS	RAS	Lampe		38337	RIVES	38	ISERE	RHONE-ALPES	45,3542488	5,5170035	335
+253	Fure	F	N	N21a	FN21a	Liampre_amont_2	Sous tunnel en amont du nichoir, plusieurs trous			Lampe	"Rives centre chana 2 - Dans tunnel en contrebas du parking, rive gauche dans une ""meurtriere"""	38337	RIVES	38	ISERE	RHONE-ALPES	45,3486355	5,5093753	319
+256	Fure	F	N	N22a	FN22a	Gua_2	Sous meme pont que nichoir, plus loin a l'interieur du tunnel, rive droite	RD	RAS	Lampe	2015	38337	RIVES	38	ISERE	RHONE-ALPES	45,3441545	5,5023225	311
+257	Fure	F	N	N23a	FN23a	Gua_3	A 8m en amont de Gua 2 sur rive droite, c'est un vieux nid seul reactive	A COMPLETER		Lampe	2015	38337	RIVES	38	ISERE	RHONE-ALPES	45,3441653	5,5023331	311
+260	Fure	F	N	N24a	FN24a	Garin_2	Descente en aval RG	RD		Petite echelle( pour faciliter descente)		38332	RENAGE	38	ISERE	RHONE-ALPES	45,3384516	5,4962540	300
+264	Fure	F	N	N25a	FN25a	Allivet_usine_2	Sous tunnel du nichoir	RG	RAS	RAS	Anciennement appele Allivet aval	38332	RENAGE	38	ISERE	RHONE-ALPES	45,3369960	5,4922092	278
+267	Fure	F	N	N26a	FN26a	Guillionniere_amont_2	Deux nids, un dans cavite du mur rive gauche et un sur l'arche, vers le milieu du pont	RG et Milieu		Petite echelle	2016	38332	RENAGE	38	ISERE	RHONE-ALPES	45,3325463	5,4913777	272
+269	Fure	F	N	N27a	FN27a	SPA	Sous tunnel en aval de l'eglise renovee // RD au niveau de la petite cascade (acces difficile car profond)	A COMPLETER			2016	38332	RENAGE	38	ISERE	RHONE-ALPES	45,3290918	5,4914045	268
+271	Fure	F	N	N28a	FN28a	Bourretiere_amont_2	Dans tunnel sous usine (idem nichoir). Juste un peu plus en amont que le nichoir (jonction entre le mur et le plafond)	RD		Echelle telescopique ou 3 pans	2015	38332	RENAGE	38	ISERE	RHONE-ALPES	45,3238268	5,4913079	258
+274	Fure	F	N	N29a	FN29a	Bergere_aval	Sous usine, dans canal : pas d'acces! Vieux nid - sur le canal a cote de la riviere, sous le batiment, c'est trop juste en wadders (1.30m) et le nid est au fond du tunnel a 3m au dessus de l'eau. Prevoir echasses? (pas de courant)	A COMPLETER			2015	38332	RENAGE	38	ISERE	RHONE-ALPES	45,3166393	5,4909432	242
+276	Fure	F	N	N30a	FN30a	Hurtieres_2	Sous passerelle aval des deux grands ponts, rive gauche. Assez profond, attention!	RG	A COMPLETER		2015	38517	TULLINS	38	ISERE	RHONE-ALPES	45,3127557	5,4864424	235
+277	Fure	F	N	N31a	FN31a	Hurtieres_3						38517	TULLINS	38	ISERE	RHONE-ALPES	45,3127311	5,4864478	235
+278	Fure	F	N	N32a	FN32a	Hurtieres_4	Dans cavite mur	RD	A COMPLETER		2018	38517	TULLINS	38	ISERE	RHONE-ALPES	45,3128930	5,4863660	235
+282	Fure	F	N	N33a	FN33a	Fures_centre_2	Nid probable dans tunnel sous route	A COMPLETER				38517	TULLINS	38	ISERE	RHONE-ALPES	45,3091076	5,4964256	208
+287	Hyeres	H	B	B01a	HB01a	Jubin	Descente en aval	RD / aval	Donne vers l'aval	RAS		73246	SAINT-JEAN-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,4640737	5,8251679	767
+286	Hyeres	H	B	B02a	HB02a	Jean_couz	Sous petit pont dans village	RD	Donne vers RG	RAS		73246	SAINT-JEAN-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,4678472	5,8185375	635
+288	Hyeres	H	B	B03a	HB03a	Heritiers	Sortie aval du pont	RD	Donne vers RG	RAS		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,4739077	5,8236337	621
+289	Hyeres	H	B	B04a	HB04a	Pont_manque	Descente en amont RD	RD	Donne vers RG	RAS		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,4759240	5,8257902	598
+290	Hyeres	H	B	B05a	HB05a	Gros_louis	Descente en aval RG ou RD	RG	Donne vers RD	RAS		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,4868691	5,8336222	543
+291	Hyeres	H	B	B06a	HB06a	Simon	Descente en amont RG (petit portail)	RG	Donne vers RD / amont	RAS		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,4973384	5,8386058	507
+292	Hyeres	H	B	B07a	HB07a	Pollets	Descente en amont RD	Milieu	Donne vers l'aval	RAS		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,4975789	5,8379888	507
+293	Hyeres	H	B	B08a	HB08a	Thibaud_couz_centre	Descente en amont RD	RD	Donne vers RG	RAS		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,5013371	5,8424976	491
+294	Hyeres	H	B	B09a	HB09a	Thibaud_couz_nord	Dans tunnel affluent. Descente en aval RD	Milieu	Donne vers l'aval / RG	Echelle telescopique	Deplace le 24 janvier 2017	73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,5026173	5,8450269	495
+295	Hyeres	H	B	B10a	HB10a	Jacquet	Dans petit tunnel. Descente en amont RG (petit portail)	A COMPLETER		Lampe		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,5048581	5,8407784	500
+296	Hyeres	H	B	B11a	HB11a	Quillere	Descente en aval RG. Profond (entrejambe) mais peu de courant et plat (betonne)	RG	Donne vers RD	RAS		73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,5136325	5,8511960	474
+297	Hyeres	H	B	B12a	HB12a	Praire	Descente en aval RG	RG	Donne vers l'aval	RAS	Vieux nid present a l'automne 2014!	73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,5203870	5,8539909	470
+299	Hyeres	H	B	B13a	HB13a	Quidoz	Descente en amont RG (portail champs)	RD	Donne vers l'aval	Echelle telescopique		73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5320789	5,8460288	557
+304	Hyeres	H	B	B14a	HB14a	Creux_amont						73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5286666	5,8601654	427
+308	Hyeres	H	B	B15a	HB15a	Jouan	Dans tunnel voie ferree	A COMPLETER			Pose le 23/02/2017 (reposer plus loin dans le tunnel en 2018� a voir si les oiseaux s'installent!)	73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5313386	5,8598864	406
+306	Hyeres	H	B	B16a	HB16a	Creux	Descente en amont RG	RG	Donne vers RD	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5308576	5,8619785	410
+309	Hyeres	H	B	B17a	HB17a	Cascade_fer	Sous tunnel route et voie ferree affluent. Descente en aval RG	RD	Donne vers l'aval	Lampe	Pose le 24 janvier 2017	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5338375	5,8649504	395
+312	Hyeres	H	B	B18a	HB18a	Cascade	Descente en amont RD ou RG	RG	Donne vers RD	RAS		73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5357689	5,8660126	379
+313	Hyeres	H	B	B19a	HB19a	Cascade_aval	"Sous rebord du canal qui part depuis la cascade RD ; derriere rideau d'eau lorsque le niveau est haut ; attention descente RG et acces en contournant (zone profonde en aval de la cascade, rester bien au bord)"	RD	Donne vers l'aval	Impermeable	Pose le 24 sept 2018	73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5365470	5,8667530	374
+316	Hyeres	H	B	B20a	HB20a	Plantees	A COMPLETER				2018	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5398269	5,8716131	362
+319	Hyeres	H	B	B21a	HB21a	Brilles	Descente en aval RD	Milieu	Donne vers l'aval	Echelle 3 pans ou telescopique?	Pose le 24 sept 2018. Ancien nichoir RG mais trop au soleil.	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5436368	5,8787370	346
+321	Hyeres	H	B	B22a	HB22a	Brilles_aval	RAS	RD	Donne vers RG	Echelle ?		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5450945	5,8820844	340
+322	Hyeres	H	B	B23a	HB23a	Tiolliere	A COMPLETER				Non remis	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5461614	5,8848310	334
+323	Hyeres	H	B	B24a	HB24a	Tiolliere_fer	Dans tunnel. Descente en aval RG (attention c'est raide et ca glisse)	RG	Donne vers RD	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5457818	5,8852858	337
+341	Hyeres	H	B	B25a	HB25a	Beauregard	Descente en amont RG	RG	Donne vers RD	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5509231	5,8912602	308
+343	Hyeres	H	B	B26a	HB26a	Culees	Descente en aval RG	RG	Donne vers RD	Echelle	Pose le 24/01/2017	73087	COGNIN	73	SAVOIE	RHONE-ALPES	45,5507597	5,8935964	319
+326	Hyeres	H	B	B27a	HB27a	Alberges	Descente en amont RG	Milieu / amont	Donne vers l'amont	RAS	Ruisseau petit au 22/10/2014, mais plein de crottes et vu un individu	73160	MONTAGNOLE	73	SAVOIE	RHONE-ALPES	45,5443055	5,8988160	370
+327	Hyeres	H	B	B28a	HB28a	Cesolet	Dans buse ronde. Descente en amont RD	Milieu / aval	Donne vers l'aval	RAS	Petit ruisseau, gros tuyau, mais crottes	73160	MONTAGNOLE	73	SAVOIE	RHONE-ALPES	45,5396844	5,9017341	413
+334	Hyeres	H	B	B29a	HB29a	Bois_collat	A COMPLETER			RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5297114	5,9009027	562
+328	Hyeres	H	B	B30a	HB30a	Grigon	Descente en amont RG	RG	Donne vers RD	Echelle		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5333566	5,8916438	492
+330	Hyeres	H	B	B31a	HB31a	Couvent	Descente en amont ou aval RD	RD	Donne vers RG	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5291778	5,8939183	549
+335	Hyeres	H	B	B32a	HB32a	Brujat	Chemin carrossable mais ne pas descendre jusqu'au bout si boueux. Descente en aval RD	Milieu	Donne vers l'aval	RAS		73160	MONTAGNOLE	73	SAVOIE	RHONE-ALPES	45,5210036	5,8968902	690
+331	Hyeres	H	B	B33a	HB33a	Chantres	Descente en amont RD	RG	Donne vers RD	RAS	Peu d'eau sur mur de cote, eventuellement a reinstaller au plafond, mais avec escabeau de 3 m dans ce cas car haut!!	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5185754	5,8899432	663
+332	Hyeres	H	B	B34a	HB34a	Rave	Descente en aval RD	Milieu	Donne vers l'aval	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5156322	5,8852279	722
+333	Hyeres	H	B	B35a	HB35a	Rave_sud	Descente en amont RD	A COMPLETER		RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5124220	5,8831251	770
+340	Hyeres	H	B	B36a	HB36a	Pont_neuf	Descente en amont RG	RD			A installer en automne 2018	73087	COGNIN	73	SAVOIE	RHONE-ALPES	45,5618830	5,9006180	283
+339	Hyeres	H	B	B37a	HB37a	Salins	Descente en aval	Milieu	Donne vers l'aval	Echelle	Pose le 24 janvier 2017	73087	COGNIN	73	SAVOIE	RHONE-ALPES	45,5567173	5,9031236	295
+338	Hyeres	H	B	B38a	HB38a	Peisse	Descente en amont RG	RG	Donne vers l'aval	RAS	Pose le 24 janvier 2017	73137	JACOB-BELLECOMBETTE	73	SAVOIE	RHONE-ALPES	45,5534118	5,9113097	362
+337	Hyeres	H	B	B39a	HB39a	Bellecombette	Descente en amont RD	Milieu	Donne vers RG	RAS	Pose le 24 janvier 2017	73137	JACOB-BELLECOMBETTE	73	SAVOIE	RHONE-ALPES	45,5473411	5,9188414	420
+336	Hyeres	H	B	B40a	HB40a	Pontet	Sous petit pont, a la fin du ruisseau car canalise sous terre ensuite	Milieu	Donne vers l'aval	RAS	Enleve en 2018 par agriculteur?	73160	MONTAGNOLE	73	SAVOIE	RHONE-ALPES	45,5414820	5,9166170	481
+298	Hyeres	H	N	N01a	HN01a	Praire_aval	Dans rochers au milieu riviere, a 40m en aval du pont 	Milieu	RAS	RAS	2014 puis couple a demanage dans nichoir	73282	SAINT-THIBAUD-DE-COUZ	73	SAVOIE	RHONE-ALPES	45,5208869	5,8543289	466
+300	Hyeres	H	N	N02a	HN02a	Quidoz_2	Au plafond, sous le meme pont que le nichoir			Echelle telescopique		73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5320789	5,8460288	557
+301	Hyeres	H	N	N03a	HN03a	Tipi	Nid sur gros rocher rive droite	RD	Donne vers RG	RAS	2018	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5241320	5,8548130	445
+302	Hyeres	H	N	N04a	HN04a	Tipi_aval	Debut de nid sur falaise RG, env 50 m en aval de tipi	RG	Donne vers RD	RAS	2018	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5248080	5,8550490	444
+303	Hyeres	H	N	N05a	HN05a	Creux_amont_barrage	Au niveau ancien seuil de barrage, rive droite, le long du mur	RD	RAS	RAS	trouve en 2016 mais pas actif	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5281200	5,8591020	426
+305	Hyeres	H	N	N06a	HN06a	Creux_amont_2	Nid naturel place entre les deux buses qui relarguent de l'eau, un peu en aval de la maison a facade rose cote Chambery	RD	RAS	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5286666	5,8601654	425
+307	Hyeres	H	N	N07a	HN07a	Creux_aval	Nid dans 1ere cascade en aval du nichoir - attention pas stable et profond en dessous	RAS	RAS	Echelle telescopique		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5310567	5,8619356	406
+310	Hyeres	H	N	N08a	HN08a	Cascade_fer_amont	En amont du tunnel, proche de l'eau, sur gros rocher	A COMPLETER				73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5337924	5,8655190	387
+311	Hyeres	H	N	N09a	HN09a	Cascade_amont	Nid naturel sur gros rocher en amont nichoir, piscine profonde devant. Descente en amont RG	RD	Donne vers RG / amont	En rappel		73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5353406	5,8656693	380
+314	Hyeres	H	N	N10a	HN10a	Cascade_aval_2	Dans cascade a l'aval du nichoir cascade - acces par chez les gens (OK) - en aval RG puis traverser et remonter en longeant la cascade artificielle RD (attention trous profond)	RD	Donne vers l'aval	Impermeable		73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5362274	5,8665275	374
+315	Hyeres	H	N	N11a	HN11a	Plantees_amont	Sur berge rive gauche, remonter environ 200-300 m depuis le pont	RG	RAS	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5391056	5,8701324	364
+317	Hyeres	H	N	N12a	HN12a	Plantees_2	Sous meme pont que nichoir, dans cavite	RD	RAS	Echelle ?	2014 et 2015	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5398269	5,8716131	362
+318	Hyeres	H	N	N13a	HN13a	Plantees_aval	Sur gros rocher juste un peu en aval de la maison RD. Acces depuis Plantee en longeant la riviere RG	RG	Donne vers l'aval	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5406235	5,8732009	361
+320	Hyeres	H	N	N14a	HN14a	Amont_brilles_aval	En amont du pont, dans cascade. Cette derniere se compose de 2 parties dont une partie un peu plus reculee RG. Moins d'eau passe dessus (coin le plus tranquille de la cascade). Le nid est situe cote RD de cette partie. Bien regarder car il est assez dur a trouver	RG	Donne vers l'aval	Impermeable		73326	VIMINES	73	SAVOIE	RHONE-ALPES	45,5449123	5,8812556	341
+324	Hyeres	H	N	N15a	HN15a	Tiolliere_fer_2	Dans meurtriere vers nichoir	RG	Donne vers RD	"Echelle ; Lampe"		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5457818	5,8852858	337
+325	Hyeres	H	N	N16a	HN16a	Tiolliere_fer_3	Meurtriere a l'entree amont du tunnel, rive droite	RD	Donne vers RG	"Echelle telescopique ; Lampe"	2016	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5456317	5,8854800	340
+342	Hyeres	H	N	N17a	HN17a	Beauregard_2	Plusieurs cavites favorables. Descente en amont RD	RD	RAS	RAS	2014: vieux nids, 2016: en face nichoir	73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5509456	5,8914828	308
+329	Hyeres	H	N	N18a	HN18a	Grignon_cascade	A cote de la cascade juste en aval du pont au nichoir	RG	RAS	RAS		73228	SAINT-CASSIN	73	SAVOIE	RHONE-ALPES	45,5333566	5,8916438	492
+345	Morge	M	B	B01a	MB01a	Ture	Descente en aval RD	Milieu	Donne vers l'aval	RAS	N'esxiste plus (pas) janvier 2015 - Reinstalle le 22 janvier 2015 - Crottes sous le pont	38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,4138012	5,6711233	551
+346	Morge	M	B	B02a	MB02a	Chemin_vernay	Descente en aval	A COMPLETER		RAS	Refixe au plafond en janvier 2015	38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,4111124	5,6745565	511
+347	Morge	M	B	B03a	MB03a	Champallier	Sous pont vers ferme.	A COMPLETER		RAS	En amont nid naturel 2014	38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,4064801	5,6717348	486
+349	Morge	M	B	B04a	MB04a	Champtoraz	Descente en aval RG	RG	Donne vers RD	RAS		38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,4034520	5,6683016	474
+350	Morge	M	B	B05a	MB05a	Rossetiere	Descente en amont RD	Milieu	Donne vers l'amont	RAS	OK au plafond en janvier 2015	38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,3923890	5,6512427	462
+351	Morge	M	N	B06a	MB06a	Belier	A COMPLETER				Non remis	38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,3979303	5,6513071	507
+353	Morge	M	B	B07a	MB07a	Vials	Descente en amont RG	RG	Donne vers RD	Echelle ?	Refixe en janvier 2015	38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,4047175	5,6542253	538
+354	Morge	M	B	B08a	MB08a	Delphin	Passerelle pour chemin. Continuer route qui monte jusqu'au bout puis chemin sur 100 m environ. Descente en amont RD	RD	Donne vers RG	RAS		38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,4126036	5,6549550	664
+355	Morge	M	B	B09a	MB09a	Vachonnes	Sous pont route principale. Descente en aval RD	RD	Donne vers RG	RAS	Raccroche en novembre 2014	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3854306	5,6460112	438
+356	Morge	M	B	B10a	MB10a	Reynauds	Sous pont route princiaple. Descente en amont RD (entre pont et passerelle). Inspecter aussi trous cote aval du pont.	Milieu / amont	Donne vers l'amont	RAS	Refixe en janvier 2015	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3845000	5,6354069	426
+357	Morge	M	B	B11a	MB11a	Gatteliere	Sous passerelle beton	A COMPLETER		RAS		38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3910780	5,6199654	450
+358	Morge	M	B	B12a	MB12a	Bourdis	Sous pont route principale (vers arret de bus). Descente en aval RG	RG	Donne vers RD	RAS		38432	SAINT-NICOLAS-DE-MACHERIN	38	ISERE	RHONE-ALPES	45,3963198	5,6127879	476
+359	Morge	M	B	B13a	MB13a	Faverge	RAS	Milieu	Donne vers l'amont	RAS	Present janvier 2015 - Refixe en novembre 2015	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3813313	5,6312978	419
+360	Morge	M	B	B14a	MB14a	Grotte_ours	Dans structure carree d'arrivee du canal de derivation RG qui ressemble a une grotte. Acces par chemin carrossable RG, traverser petite passerelle au dessus du canal, descendre et passer entre mur et barbeles, acces par l'amont de la grotte (ailleurs trop profond)	RG		"Lampe ; Impermeable"	Installe le 3 fevrier 2016	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3782566	5,6313944	415
+362	Morge	M	B	B15a	MB15a	Aval_grotte_ours	Sous le pont-passerelle vers maison. Descendre rive droite, par muret qui longe.	RD	A COMPLETER	RAS		38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3770433	5,6315768	410
+364	Morge	M	B	B16a	MB16a	Etang_dauphin	Descente en aval RG (passer sous berbeles)	Milieu / aval	Donne vers l'aval	RAS		38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3649009	5,6335831	400
+365	Morge	M	B	B17a	MB17a	Moulins_crossey	RAS	RD	Donne vers RG		Anciennement appele Taillandiere	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3678105	5,6286693	393
+367	Morge	M	B	B18a	MB18a	Croix_bayard	Descendre par l'amont RG	Milieu / aval	Donne vers l'amont	Lampe		38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3669691	5,6257362	396
+368	Morge	M	B	B19a	MB19a	Impasse_morge	Descente en aval RD	RD	Donne vers RG			38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3689140	5,6227570	385
+370	Morge	M	B	B20a	MB20a	Taillanderie	Pont qui mene a ATF - Pause Deco. Descente pas l'aval RG ou si portail ouvert : par l'amont RG (echelle pour descendre)	Milieu	Donne vers RD	RAS		38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3711722	5,6161809	376
+374	Morge	M	B	B21a	MB21a	Camet_bas	Descendre par l'aval, en faisant attention	RD	Donne vers RG	RAS		38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3698833	5,6101727	364
+377	Morge	M	B	B22a	MB22a	Carrosserie	Descendre par route goudronnee (garage-carrosserie). Descente en aval RD (apres le tournant de la route, prendre sorte de petit chemin et remonter environ 50 m jusqu'au pont)	RD	Donne vers RG	RAS		38563	VOIRON	38	ISERE	RHONE-ALPES	45,3695721	5,6011579	332
+381	Morge	M	B	B23a	MB23a	Usine	Sur mur usine en hauteur (vers piliers beton)	RD	Donne vers l'aval	Echelle telescopique ou 3 pans	Pose en 2018	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3705051	5,5966651	312
+383	Morge	M	B	B24a	MB24a	Hopital	Descendre par l'amont RD, le long du mur	RD	Donne vers RG	Echelle ?	Descendre par l'amont rive droite, le long du pont	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3702281	5,5928242	308
+386	Morge	M	B	B25a	MB25a	Hopital_tunnel	A l'entree de la cave rive droite, arrivee d'une ancienne derivation - descendre en aval RG (du pont Hopital) et traverser	RD			2017 : vieux nids	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3693481	5,5919766	295
+388	Morge	M	B	B26a	MB26a	Parc_mairie	Sous grand pont central dans Parc (vers enclos daims) Descendre par barreaux (echelle de sevice) en aval RG.	RD / Milieu	Donne vers RD	Lampe		38563	VOIRON	38	ISERE	RHONE-ALPES	45,3614032	5,5925024	278
+390	Morge	M	B	B27a	MB27a	Cigogne	Descendre en amont RD et longer le mur. Mettre escabeau sur plaque en dessous du nichoir, sinon trop profond et irregulier ailleurs	Milieu	Donne vers l'aval	Escabeau		38563	VOIRON	38	ISERE	RHONE-ALPES	45,3551460	5,5941224	267
+391	Morge	M	B	B28a	MB28a	Wesseling	Descente en aval RG	RG	Donne vers l'aval			38563	VOIRON	38	ISERE	RHONE-ALPES	45,3528238	5,5928135	265
+392	Morge	M	B	B29a	MB29a	Paviot	Tourner au feu, pont juste au niveau de la zone d'activites (sur la gauche). Descendre par barreaux en aval du pont RD (trou dans grillage)	RD	Donne vers l'aval			38563	VOIRON	38	ISERE	RHONE-ALPES	45,3510444	5,5907106	261
+394	Morge	M	B	B30a	MB30a	Trincon	"Dans tunnel sous ancienne usine, a la sortie. Acces : vers ""Castel Anne"", tourner vers batiments, entrer dans la cour et se garer, passer sous le porche en direction de la voie ferree, longer le cote arriere du batiment."	Milieu	Donne vers l'aval	"Escabeau ; Lampe"		38563	VOIRON	38	ISERE	RHONE-ALPES	45,3477721	5,5852711	253
+398	Morge	M	B	B31a	MB31a	Clos_morge	Sous passerelle entre ebenisterie et usine en face. Acces en prenant la petite impasse qui longe la voie ferree a partir de Patiniere, se garer au bout sans gener (juste avant les maisons) puis descendre par petit portillon + barreaux (aval RG de la passerelle)	RG	Donne vers RD	RAS		38563	VOIRON	38	ISERE	RHONE-ALPES	45,3464902	5,5774069	242
+399	Morge	M	B	B32a	MB32a	Patiniere	Descendre rive gauche et traverser sous le pont	RD	Donne vers RG	Echelle		38400	SAINT-JEAN-DE-MOIRANS	38	ISERE	RHONE-ALPES	45,3452008	5,5729973	236
+401	Morge	M	B	B33a	MB33a	Saix	Descendre par l'aval du pont RG	RG	Donne vers RD	RAS		38400	SAINT-JEAN-DE-MOIRANS	38	ISERE	RHONE-ALPES	45,3419507	5,5664420	230
+404	Morge	M	B	B34a	MB34a	Scey	Sous passerelle privee - descendre en amont RG au niveau du petit pont chemin carrossable, puis descendre vers l'aval sur 20-30 m environ	RD	Donne vers RG	Echelle ?		38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3370413	5,5606484	215
+406	Morge	M	B	B35a	MB35a	Barjon	A COMPLETER			Echelle pour descendre : telescopique (le long du mur juste en aval du tunnel) ou petite echelle (longer RG, passer grillage attention, descendre en aval et remonter)	Installe decembre 2015	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3350408	5,5604754	220
+409	Morge	M	B	B36a	MB36a	Manoir_chancoy	Descente en aval RG	RD / amont	Donne vers l'amont	RAS		38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3309247	5,5611956	205
+411	Morge	M	B	B37a	MB37a	Jacques	Descente cote parking (en amont RD du tunnel puis traverser car moins profond RG)	RD / amont	Donne vers l'aval	Lampe	Deplace a l'automne 2015 vers l'entree du tunnel en amont	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3272664	5,5610776	200
+413	Morge	M	B	B38a	MB38a	Champ_long	A l'entree aval du tunnel. Descendre soit par jardin potagers en aval rive gauche et traverser la riviere soit par chez les gens (tres gentils) 	RD	Donne vers l'aval	Lampe	Installe juillet 2016	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3255532	5,5606082	196
+415	Morge	M	B	B39a	MB39a	Rosey	Sous le pont de la voie de chemin de fer, au plafond	RG	Donne vers RD	Escabeau	Bouge en novembre 2017	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3234383	5,5591195	195
+416	Morge	M	B	B40a	MB40a	Petites_iles	Sous petit pont	RD	Donne vers RG	RAS		38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3108590	5,5682270	186
+344	Morge	M	N	N01a	MN01a	Tourniquet_aval	Sous gros rocher en surplomb. Descente en amont RD (passage dans grillage puis traverser la passerelle en contrebas maison et continuer RG)	RD	RAS	RAS	2014 (vieux nid)	38236	MIRIBEL-LES-ECHELLES	38	ISERE	RHONE-ALPES	45,4130932	5,6800174	537
+348	Morge	M	N	N02a	MN02a	Champallier_mur	Sur mur en aval du pont, le long de la ferme	RD	RAS	RAS	2014 (appele Champtoraz a l'epoque) et 2015: sur mur	38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,4058624	5,6701684	481
+352	Morge	M	N	N03a	MN03a	Belier_2	Dans falaise cascade	RD	RAS	Echelle telescopique ou 3 pans		38362	SAINT-AUPRE	38	ISERE	RHONE-ALPES	45,3979303	5,6513071	507
+361	Morge	M	N	N04a	MN04a	Grotte_ours_2	Dans Grotte du nichoir. Le nid se trouve en haut a gauche de la grotte quand on regarde vers l'exterieur.	RG		"Lampe ; Impermeable"	2014 et 2015	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3782566	5,6313944	415
+363	Morge	M	N	N05a	MN05a	Aval_grotte_ours_aval	Au niveau toute petite cascade, dans berge/racines	RG	RAS	RAS	2015	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3750763	5,6307615	406
+366	Morge	M	N	N06a	MN06a	Moulins_crossey_2	Sur poutres metalliques pont cote amont, au dessus du nichoir	RD	RAS	Echelle telescopique	2014 et 2017 : Nid naturel present au-dessus du nichoir	38383	SAINT-ETIENNE-DE-CROSSEY	38	ISERE	RHONE-ALPES	45,3678105	5,6286693	393
+369	Morge	M	N	N07a	MN07a	Taramont	Au niveau de la cascade	RG	RAS	RAS	2016	38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3706521	5,6183481	380
+371	Morge	M	N	N08a	MN08a	Taillanderie_2	Sous meme pont que nichoir. Descente pas l'aval RG ou si portail ouvert : par l'amont RG (echelle pour descendre)				2014	38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3711722	5,6161809	376
+372	Morge	M	N	N09a	MN09a	Taillanderie_aval	Sur mur en ruines de l'ancienne usine dans le debut des gorges	RG	RAS	RAS	2016	38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3714510	5,6142926	370
+373	Morge	M	N	N10a	MN10a	Camet_cascade	Sous cascade, cote RG (descendre en amont RG par le coin)	RG		Impermeable	2016	38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3700359	5,6103364	364
+375	Morge	M	N	N11a	MN11a	Camet_2	Dans trous du mur sous pont, au dessus du nichoir. Descendre par l'aval, en faisant attention	RD	RAS	Petite echelle	2014 et 2015	38133	COUBLEVIE	38	ISERE	RHONE-ALPES	45,3698833	5,6101727	364
+376	Morge	M	N	N12a	MN12a	Stand_tir	Site de capture, pas de nid trouve					38563	VOIRON	38	ISERE	RHONE-ALPES	45,3679500	5,6042200	340
+378	Morge	M	N	N13a	MN13a	Carrosserie_2	Juste a cote du nichoir, en hauteur	RD	RAS	Petite echelle	2018	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3695668	5,6011768	332
+379	Morge	M	N	N13a	MN13a	Carrosserie_3	Cote amont du pont dans trou	RD	RAS	Petite echelle	2018	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3695668	5,6011768	332
+380	Morge	M	N	N14a	MN14a	Usine_amont	Dans meurtriere le long de l'usine (derriere le gros tuyau) plutot cote amont du mur de l'usine. Verifier les autres meurtrieres	RD	RAS		2018	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3702903	5,5978131	315
+382	Morge	M	N	N15a	MN15a	Hopital_amont	Dans cascade environ 200m en amont du pont Hopital				2017	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3702149	5,5955815	310
+384	Morge	M	N	N16a	MN16a	Hopital_2	En face du nichoir, inspecter tous les trous sous pont	RG		"Echelle telescopique ; Jumelles"	2015 : vieux nid	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3702074	5,5928457	308
+385	Morge	M	N	N17a	MN17a	Hopital_aval	Dans grand creux a mis hauteur, juste en aval de la grande cascade - acces en rappel uniquement, pour qqn d'assez grand (trou tres profond)	A COMPLETER		En rappel		38563	VOIRON	38	ISERE	RHONE-ALPES	45,3702149	5,5927223	305
+387	Morge	M	N	N18a	MN18a	Hopital_tunnel_2	Dans tunnel, vieux nids RD	RD				38563	VOIRON	38	ISERE	RHONE-ALPES	45,3693783	5,5919015	295
+389	Morge	M	N	N19a	MN19a	Parc_mairie_2	Serie de vieux nid au milieu du pont, avec planchette qui sert de support	A COMPLETER		Lampe	2015 : vieux nids	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3614032	5,5925024	278
+393	Morge	M	N	N20a	MN20a	Paviot_cascade	Plusieurs nids, a l'abord direct de la cascade, rive droite et rive gauche (traverser eventuellement en haut de la cascade). Verifier aussi dans dans mini-tunnel juste au pied de la cascade et mur affluent en aval RG	RD et RG	RAS	Lampe		38563	VOIRON	38	ISERE	RHONE-ALPES	45,3516994	5,5928416	262
+395	Morge	M	N	N21a	MN21a	Trincon_2	Vieux nids dans tunnel, a peu pres au milieu du tunnel, rive gauche	RG	RAS	"Escabeau ; Lampe"	2015	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3477721	5,5852711	253
+396	Morge	M	N	N22a	MN22a	Trincon_3	Vieux nids dans tunnel, a peu pres au milieu du tunnel, rive gauche	RG	RAS	"Escabeau ; Lampe"	2015	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3477721	5,5852711	253
+397	Morge	M	N	N23a	MN23a	Trincon_aval	Debut de nid RD dans trou mur	RD	RAS	RAS	2018	38563	VOIRON	38	ISERE	RHONE-ALPES	45,3474450	5,5835940	249
+400	Morge	M	N	N24a	MN24a	Patiniere_cascade	Surement au niveau de la cascade a environ 150 m en amont du nichoir	RAS	RAS	RAS	2016	38400	SAINT-JEAN-DE-MOIRANS	38	ISERE	RHONE-ALPES	45,3452762	5,5743599	238
+402	Morge	M	N	N25a	MN25a	Saix_cascade	Sur mur juste en aval de la cascade	RD	RAS	Impermeable	2016 et 2018	38400	SAINT-JEAN-DE-MOIRANS	38	ISERE	RHONE-ALPES	45,3416641	5,5660343	228
+403	Morge	M	N	N26a	MN26a	Scey_cascade	Sur mur juste en aval de la cascade (bien en amont de la passerelle au nichoir). Acces en traversant champs puis traverser au-dessus cascade, descendre en aval RG et remonter	RG	RAS			38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3390549	5,5642748	221
+405	Morge	M	N	N27a	MN27a	Scey_aval	Sous un petit tunnel RD juste en aval de la passerelle au nichoir (au debut du tunnel)	RD	RAS	Lampe		38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3369697	5,5603910	215
+407	Morge	M	N	N28a	MN28a	Barjon_2	Pose sur gros tuyau noir sous tunnel, rive gauche, au milieu du tunnel environ - prendre lampe	RG		Echelle pour descendre : telescopique (le long du mur juste en aval du tunnel) ou petite echelle (longer RG, passer grillage attention, descendre en aval et remonter)		38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3350370	5,5604942	220
+408	Morge	M	N	N29a	MN29a	Barjon_aval	Nid dans la buse rive gauche a la sortie du tunnel (en haut a droite quand on est face a la buse)	RG		Echelle pour descendre et verif nid : telescopique (le long du mur juste en aval du tunnel) ou petite echelle (longer RG, passer grillage attention, descendre en aval et remonter)	2016	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3348522	5,5603882	220
+410	Morge	M	N	N30a	MN30a	Manoir_chancoy_2	Sous meme pont que nichoir	RAS	RAS	RAS		38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3309247	5,5611956	205
+412	Morge	M	N	N31a	MN31a	Jacques_2	Sous le tunnel (au debut) cote rive gauche	RG / amont	RAS	Lampe	2015	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3271929	5,5610320	200
+414	Morge	M	N	N32a	MN32a	Champ_long_2	Nid dans creux entre poutres a l'entree aval du tunnel, rive droite	RD	RAS	Lampe	2016	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3255655	5,5606056	196
+417	Olon	O	B	B01a	OB01a	Fange	Nichoir sous pont route principale. Se garer au debut du chemin. Acces en aval RD	RD	Donne vers RG	Lampe	Installe decembre 2015. Premiere occupation en 2018.	38239	MOIRANS	38	ISERE	RHONE-ALPES	45,3372147	5,5383110	298
+418	Olon	O	B	B02a	OB02a	Carabiliat_bas	Se garer au debut du chemin (depuis l'aval) et aller a pied - sous passerelle	A COMPLETER		RAS	Installe decembre 2015 - passerelle	38566	VOUREY	38	ISERE	RHONE-ALPES	45,3321616	5,5301571	260
+419	Olon	O	B	B03a	OB03a	Sabot	Descente en aval RD	A COMPLETER		RAS	Installe decembre 2015	38566	VOUREY	38	ISERE	RHONE-ALPES	45,3253128	5,5261016	230
+421	Olon	O	B	B04a	OB04a	Vourey	Attention, sonner chez le proprio pour l'avertir (ou appeler le 06 22 35 52 42) avant de descendre au nichoir	A COMPLETER		RAS	Installe decembre 2015	38566	VOUREY	38	ISERE	RHONE-ALPES	45,3180255	5,5211663	196
+422	Olon	O	B	B05a	OB05a	Goureux	RAS	A COMPLETER		RAS	Installe decembre 2016	38566	VOUREY	38	ISERE	RHONE-ALPES	45,3081719	5,5277967	186
+420	Olon	O	N	N01a	ON01a	Sabot_2	Sous meme pont que nichoir			RAS		38566	VOUREY	38	ISERE	RHONE-ALPES	45,3253128	5,5261016	230
+437	SPChartreuse	P	B	B01a	PB01a	Rajas	Sous pont presque au bout de la route	A COMPLETER		RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3314451	5,8456922	970
+436	SPChartreuse	P	B	B02a	PB02a	Perquelin	A COMPLETER			RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3328329	5,8421516	958
+435	SPChartreuse	P	B	B03a	PB03a	Bussiere	Sous passerelle	A COMPLETER		RAS	Anciennement appele Perquelin_aval	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3350427	5,8371198	945
+433	SPChartreuse	P	B	B04a	PB04a	Frechette	Sous pont large ou la route passe de l'autre cote du Guiers	RD	Donne vers l'aval	Lampe	Installe juillet 2016. Anciennement appele buissiere	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3374862	5,8283758	915
+432	SPChartreuse	P	B	B05a	PB05a	Antonins	Pont non indique sur la carte					38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3382404	5,8234298	885
+429	SPChartreuse	P	B	B06a	PB06a	Pre_barrey	Acces par piste qui mene a maison abandonnee, se garer devant la maison					38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3398297	5,8162254	830
+430	SPChartreuse	P	B	B07a	PB07a	Pre_barrey_cascade	Dans cavite sur mur de la cascade				Installe juillet 2016 	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3398090	5,8169603	832
+427	SPChartreuse	P	B	B08a	PB08a	Diat_centre	A COMPLETER					38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3396280	5,8076584	794
+425	SPChartreuse	P	B	B09a	PB09a	Pont_dame	Acces par le pont, descendre par l'amont, rive droite	A COMPLETER			Disparu novembre 2015: demander autorisation pour le remettre?	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3403143	5,8055663	792
+423	SPChartreuse	P	B	B10a	PB10a	Grand_logis	Plateau rocheux juste au pied du nichoir, sinon assez profond	RD	A COMPLETER	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3439528	5,8008081	779
+445	SPChartreuse	P	B	B11a	PB11a	Coche	A COMPLETER			RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3521905	5,8210802	948
+443	SPChartreuse	P	B	B12a	PB12a	Baffardiere	A COMPLETER			RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3509539	5,8192563	935
+442	SPChartreuse	P	B	B13a	PB13a	Patassiere	Descente en amont RD	A COMPLETER		RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3481038	5,8168960	903
+439	SPChartreuse	P	B	B14a	PB14a	Carliniere	Sous passerelle chemin	A COMPLETER		RAS	Pose le 08/02/2017	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3452912	5,8152223	874
+428	SPChartreuse	P	B	B15a	PB15a	Diat_couzon	A COMPLETER				Deplace novembre 2015 depuis le pont en aval	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3404915	5,8093053	804
+470	SPChartreuse	P	B	B15a	PB15a	Pra_tete	A COMPLETER			RAS	Arrache par crue 2018 - Installe novembre 2015	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2942714	5,8094501	1111
+469	SPChartreuse	P	B	B17a	PB17a	Pont_soler	A COMPLETER			RAS	Arrache par crue 2018 	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3040557	5,8108933	1010
+468	SPChartreuse	P	B	B18a	PB18a	Perelle	Acces par chemin, descente en amont ou aval RD	Milieu	Donne vers l'aval	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3114655	5,8094555	951
+465	SPChartreuse	P	B	B19a	PB19a	Brevardiere	Acces par chemin derriere Gite de Louise	RG	Donne vers RD	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3151738	5,8081627	913
+464	SPChartreuse	P	B	B20a	PB20a	Michons	A COMPLETER			RAS	A sec en novembre 2015: a retirer a terme?	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3136459	5,8063387	928
+463	SPChartreuse	P	B	B21a	PB21a	Gerentiere	Descente en amont RD	RD	Donne vers RG	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3188360	5,8077540	884
+448	SPChartreuse	P	B	B22a	PB22a	Petit_bargettes	Chemin carrossable mais pas jusqu'au bout (boueux). Descente en aval RD	RG	Donne vers l'aval	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3324746	5,8081976	820
+450	SPChartreuse	P	B	B23a	PB23a	Grand_bargettes	A COMPLETER			RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3333005	5,8067250	811
+446	SPChartreuse	P	B	B24a	PB24a	Passerelle_herbetan	Descente en aval RD	A COMPLETER		RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3368754	5,8065319	796
+457	SPChartreuse	P	B	B25a	PB25a	Cottaves	Descente en amont ou aval	RD	Donne vers RG	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3094961	5,7696622	1111
+460	SPChartreuse	P	B	B26a	PB26a	Cherlieu	A COMPLETER			RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3128612	5,7859862	955
+458	SPChartreuse	P	B	B27a	PB27a	Chevaliere	A COMPLETER			Petite echelle (acces) mais on peut voir de loin	Anciennement Cherlieu_ouest (Guillets)	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3135894	5,7830358	956
+459	SPChartreuse	P	B	B28a	PB28a	Chevaliere_passerelle	A COMPLETER				2018	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3148070	5,7859910	930
+461	SPChartreuse	P	B	B29a	PB29a	Cherlieu_est	A COMPLETER			RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3147362	5,7900310	946
+453	SPChartreuse	P	B	B30a	PB30a	Michallets	Se garer vers batiments (ferme, scierie). Descente en amont du pont RD	Milieu	Donne vers l'aval	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3169392	5,7893658	896
+455	SPChartreuse	P	B	B31a	PB31a	Michallets_aval	Sous passerelle au niveau de la maison	A COMPLETER		RAS	Installe juillet 2016	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3190345	5,7948214	876
+462	SPChartreuse	P	B	B32a	PB32a	Route_cherlieu	Ancienne route de Cherlieu (chemin)	A COMPLETER		RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3200473	5,7998371	896
+451	SPChartreuse	P	B	B33a	PB33a	Ravelle	Prendre le chemin qui descend (DR), le pont est en bas de cette derniere	RG	Donne vers RD	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3256635	5,8006016	843
+444	SPChartreuse	P	N	N01a	PN01a	Baffardiere_2	Dans trou sous pont, a cote nichoir	RG	RAS	RAS	2014 et 2015	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3509539	5,8192563	935
+440	SPChartreuse	P	N	N02a	PN02a	Manissola	A COMPLETER			RAS	2014: predate	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3461735	5,8155012	879
+441	SPChartreuse	P	N	N03a	PN03a	Carliniere_amont	Dans petit surplomb rocheux	RD	RAS	RAS	2018: vieux nid tombe	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3466410	5,8156300	882
+438	SPChartreuse	P	N	N04a	PN04a	Carliniere_cascade	En aval du nichoir, dans une concretion au milieu de la cascade	Milieu	RAS	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3443789	5,8139670	858
+434	SPChartreuse	P	N	N05a	PN05a	Frechette_2	Vers l'aval du pont dans meurtriere - bcp de cavites possibles, bien inspecter	RG et RD			"2014 et 2016: RG ; 2015: RD - Anciennement appele Buissiere"	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3374862	5,8283758	915
+431	SPChartreuse	P	N	N06a	PN06a	Pre_barrey_cascade_2	Dans cavite sur mur de la cascade				2016	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3398090	5,8169603	832
+467	SPChartreuse	P	N	N07a	PN07a	Brevardiere_amont	Nid dans les racines rive droite, dans un tournant	RD	RAS	RAS		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3140270	5,8089352	920
+466	SPChartreuse	P	N	N08a	PN08a	Brevardiere_2	Sous meme pont que nichoir	RG	RAS	RAS	2014 et 2015 : a cote nichoir	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3151624	5,8081627	913
+452	SPChartreuse	P	N	N09a	PN09a	Michallets_amont	Sur rocher plein de mousse en surplomb riviere (environ 150-200 m en amont du pont au nichoir)	A COMPLETER		RAS	2014	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3161281	5,7879496	914
+454	SPChartreuse	P	N	N10a	PN10a	Michallets_2	Sous pont en face du nichoir	RD	RAS	RAS	2015	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3168990	5,7893810	896
+456	SPChartreuse	P	N	N11a	PN11a	Michallets_aval_2	Sous passerelle au niveau de la maison	A COMPLETER		RAS	2016	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3190279	5,7948361	876
+449	SPChartreuse	P	N	N12a	PN12a	Petit_bargettes_2	En face du nichoir	RD	RAS	RAS	2014 et 2015	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3324859	5,8081802	820
+447	SPChartreuse	P	N	N13a	PN13a	Passerelle_herbetan_2	Sous meme passerelle que nichoir				Trouve le 8 fevrier 2017, vieux nid	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3368754	5,8065319	796
+426	SPChartreuse	P	N	N14a	PN14a	Pont_dame_2	Nid dans cavite vers mi-hauteur du pont	RD	RAS	Echelle		38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3403143	5,8055663	792
+424	SPChartreuse	P	N	N15a	PN15a	Grand_logis_aval	Dans tunnel accessible depuis pont (en descendant vers la droite), rive gauche dans tunnel juste avant la sortie - eau seulement lors de pluies	RG	RAS	RAS	Nid 4/4 en hiver 2016 mais pas actif ensuite	38442	SAINT-PIERRE-DE-CHARTREUSE	38	ISERE	RHONE-ALPES	45,3439370	5,8000320	775
+482	Roize	R	B	B01a	RB01a	Herme	Dans buse affluent RG. Acces en aval	Milieu / aval	Donne vers l'aval	RAS	Installe novembre 2015	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3260822	5,6579751	550
+479	Roize	R	B	B02a	RB02a	Pommiers	Descente en aval RD	A COMPLETER		RAS	Installe novembre 2015	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3191572	5,6540108	495
+480	Roize	R	N	B03a	RB03a	Pierrefit	Descente en aval RD (petit chemin)	RD	Donne vers l'aval	RAS		38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3177097	5,6580997	529
+478	Roize	R	B	B04a	RB04a	Barniers	Se garer sur la grande route et descendre par petit chemin qui long le champ (passer clotures), on arrive a un ancien pont, le nichoir est dans la cavite sur la rive droite (par rapport a l'arche restante du pont), c'est un peu cache, il faut bien chercher...	RD / Milieu	Donne vers l'aval	Lampe	Pose le 20 / 01 / 2017 - dans partie couverte rive droite par rapport a l'arche restante du pont	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3166977	5,6530881	476
+477	Roize	R	B	B05a	RB05a	Cote_alleyron	"Attention en remontant  sur route du gigot au dos d'ane tres marque! Rouler au pas! ; Descente en amont RG"	RG / Milieu	Donne vers RD	RAS	Installe en decembre 2015	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3093792	5,6510496	392
+471	Roize	R	B	B06a	RB06a	Chalais	Descente en amont RD	A COMPLETER		RAS	Installe decembre 2015	38565	VOREPPE	38	ISERE	RHONE-ALPES	45,3030709	5,6489897	407
+474	Roize	R	B	B07a	RB07a	Gigot	Descente en amont RD	A COMPLETER		Echelle telescopique ou 3 pans	Installe novembre 2015	38565	VOREPPE	38	ISERE	RHONE-ALPES	45,3028483	5,6389207	289
+472	Roize	R	B	B08a	RB08a	Voreppe	Descente en amont	Milieu	Donne vers l'aval	Echelle telescopique ou 3 pans	Installe decembre 2015 - remonte nvovembre 2017	38565	VOREPPE	38	ISERE	RHONE-ALPES	45,2979506	5,6364477	250
+481	Roize	R	B	N01a	RN01a	Pierrefit_aval	Sous petits ponts en aval du nichoir	A COMPLETER		RAS	Installe novembre 2015	38407	LA SURE EN CHARTREUSE	38	ISERE	RHONE-ALPES	45,3175276	5,6568003	514
+476	Roize	R	N	N02a	RN02a	Malossane	Dans grotte derriere 2e cascade en aval du vieux barrage (environ 20m)			"Echelle ; Impermeable"	2014 et 2015	38565	VOREPPE	38	ISERE	RHONE-ALPES	45,3078173	5,6453794	350
+475	Roize	R	N	N03a	RN03a	Dos_d_ane	A COMPLETER					38565	VOREPPE	38	ISERE	RHONE-ALPES	45,3039614	5,6417370	306
+473	Roize	R	N	N04a	RN04a	Voreppe_2	Sous pont au nichoir en hauteur	Milieu	Donne vers l'aval	Echelle 3 pans	2016	38565	VOREPPE	38	ISERE	RHONE-ALPES	45,2979543	5,6364638	250
+514	Tier	T	B	B01a	TB01a	Maunard	A COMPLETER			RAS		73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5584601	5,7575440	457
+512	Tier	T	B	B02a	TB02a	Fleury	Descendre en amont du pont rive gauche	Milieu	Donne vers l'aval	RAS		73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5535169	5,7552266	442
+508	Tier	T	B	B03a	TB03a	Thiez	A COMPLETER			RAS		73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5414802	5,7479954	390
+506	Tier	T	B	B04a	TB04a	Envers_amont	A COMPLETER			Echelle ?		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5339202	5,7490468	335
+504	Tier	T	B	B05a	TB05a	Envers	Acces difficile, profond juste sous le pont, il faut longer rive gauche puis traverser sur fond peu profond, attention, un peu acrobatique!	A COMPLETER		RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5324772	5,7461178	320
+502	Tier	T	B	B06a	TB06a	Rochassieux	A COMPLETER			RAS	Pose le 17/11/2016	73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5324622	5,7417727	300
+500	Tier	T	B	B07a	TB07a	Agrati	Acces dans l'enceinte de l'usine (portail) - descente en amont RG	Milieu	Donne vers l'aval	RAS	Pose le 20/02/2017	73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5287906	5,7411129	289
+497	Tier	T	B	B08a	TB08a	Rameaux	A COMPLETER			Petite echelle (plus facile pour descendre)		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5257579	5,7412791	266
+490	Tier	T	B	B09a	TB09a	Cretet	Descente en amont RD	Milieu	Donne vers RG	RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5276670	5,7388651	261
+489	Tier	T	B	B10a	TB10a	Moines	A COMPLETER			RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5314739	5,7329321	256
+488	Tier	T	B	B11a	TB11a	Vavre	A COMPLETER			RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5348070	5,7328677	254
+487	Tier	T	B	B12a	TB12a	Pont_francais	Descente en aval RD. Attention variations de niveau possibles a cause de l'usine hydroelectrique (si trop haut ne pas traverser!)	RD	Donne vers RG	RAS		73309	VEREL-DE-MONTBEL	73	SAVOIE	RHONE-ALPES	45,5493697	5,7146931	251
+484	Tier	T	B	B13a	TB13a	Belle_etoile	Sous grand pont	A COMPLETER			Pose le 17/11/2016	73039	BELMONT-TRAMONET	73	SAVOIE	RHONE-ALPES	45,5561275	5,6886918	239
+485	Tier	T	B	B14a	TB14a	Belle_etoile_aval	Dans tunnel du petit affleunt a l'aval du grand pont	RD	Donne vers l'aval	Lampe		73038	BELMONT-TRAMONET	72	SAVOIE	RHONE-ALPES	45,5565821	5,6886864	238
+483	Tier	T	B	B15a	TB15a	Route_domessin	Sous passerelle, rive gauche	A COMPLETER		RAS	Pose le 17/11/2016	73039	BELMONT-TRAMONET	73	SAVOIE	RHONE-ALPES	45,5568938	5,6849367	238
+518	Tier	T	B	B16a	TB16a	Rue	A COMPLETER			RAS	Pose le 18/11/2016	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,5215184	5,7808042	495
+517	Tier	T	B	B17a	TB17a	Grand_rieu	Pont dans parc chevaux	Milieu	Donne vers l'aval	RAS		73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,5231721	5,7690454	460
+516	Tier	T	B	B18a	TB18a	Cietaz	Descente en amont RG	Milieu	Donne vers RG	RAS	Pose le 18/11/2016	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,5199962	5,7628226	465
+515	Tier	T	B	B19a	TB19a	Tannerie	"Descente en amont RD. Route interdite aux non-riverains ; se garer au debut de la route et aller a pied"	A COMPLETER		RAS	Attention Leptospirose en 2018 (ruisseau du Grenant)	73022	ATTIGNAT-ONCIN	73	SAVOIE	RHONE-ALPES	45,5233074	5,7606983	446
+495	Tier	T	B	B20a	TB20a	Resistance	Sous passerelle. Acces derriere Eglise	A COMPLETER		RAS	Attention Leptospirose en 2018 (ruisseau du Grenant)	73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5247807	5,7419443	272
+494	Tier	T	B	B21a	TB21a	Bert	A COMPLETER			RAS	Pose le 17/11/2016	73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5249611	5,7400990	264
+493	Tier	T	B	B22a	TB22a	Bataillard	Descente en amont ou aval RG	Milieu	Donne vers l'aval	RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5195263	5,7392406	278
+492	Tier	T	B	B23a	TB23a	Sarrazin	A COMPLETER			RAS	Pose le 20/02/2017	73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5226685	5,7391119	268
+491	Tier	T	B	B24a	TB24a	Biclou	A COMPLETER			RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5250306	5,7370627	263
+513	Tier	T	N	N01a	TN01a	Fleury_2	Sous pont du nichoir	A COMPLETER		RAS		73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5535169	5,7552266	442
+511	Tier	T	N	N02a	TN02a	Thillerey_cascade	Grande cascade a proximite des tables en pierre (zone pique nique). Acces en remontant par chemin a partir du pont du Thiez ou bien en se garant au bord de la route plus haut et descendre en longeant le champs (plus rapide)	Milieu	Donne vers l'aval	Impermeable		73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5460788	5,7499266	428
+510	Tier	T	N	N03a	TN03a	Thillerey_aval	Dans 3e? petite cascade a l'aval de la grande cascade	A COMPLETER		RAS		73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5449667	5,7491755	425
+509	Tier	T	N	N04a	TN04a	Thiez_2	Sous le meme pont que le nichoir	A COMPLETER		RAS	Occupe en 2017	73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5414802	5,7479954	390
+507	Tier	T	N	N05a	TN05a	Pataliode	Au niveau de la cascade - remonter le cours d'eau depuis Envers amont sur environ 250 m, acces au nid par rive droite (grande piscine devant la cascade), longer et se retourner au niveau d'un decrochement de la roche	RD	RAS	Echelle		73104	DULLIN	73	SAVOIE	RHONE-ALPES	45,5356637	5,7507956	347
+505	Tier	T	N	N06a	TN06a	Envers_2	Sous cascade vegetale (avance de concretion calcaire) rive gauche, a environ 20 m en amont du pont au nichoir	RG	RAS	RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5326087	5,7462305	320
+503	Tier	T	N	N07a	TN07a	Rochassieux_amont	Nid dans cascade en amont du pont qu nichoir	A COMPLETER		RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5328079	5,7431674	305
+501	Tier	T	N	N08a	TN08a	Agrati_cascade	Dans petite cascade amenagee venant du canal, dans jardin des gens (tres gentils), a hauteur de poitrine, vers le milieu de la cascade	Milieu	RAS	RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5297715	5,7413006	293
+498	Tier	T	N	N09a	TN09a	Rameaux_cascade	"Dans grande cascade juste avant les maisons; acces en remontant l'impasse puis le cours de la riviere jusqu'a la cascade; nid sur le mur juste a gauche de la cascade, tres humide!"	RAS	RAS	RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5267500	5,7412148	268
+499	Tier	T	N	N09a	TN09a	Rameaux_cascade_2	2e nid dans meme cascade	RAS	RAS	RAS		73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5267500	5,7412148	268
+486	Tier	T	N	N10a	TN10a	Belle_etoile_aval_2	Dans tunnel du petit affleunt a l'aval du grand pont. Meurtriere cote amont. Inspecter aussi autres meurtireres RD et RG (vieux nids)	RG	RAS	Lampe	2018	73039	BELMONT-TRAMONET	73	SAVOIE	RHONE-ALPES	45,5565821	5,6886864	238
+496	Tier	T	N	N11a	TN11a	Resistance_cascade	Nid dans grande cascade (observations mais non trouve, inaccessibe)	RAS	RAS	RAS	Attention Leptospirose en 2018 (ruisseau du Grenant)	73058	LA BRIDOIRE	73	SAVOIE	RHONE-ALPES	45,5252680	5,7434320	300
+557	Vence	V	B	B01a	VB01a	Combe_soleil	Continuer sur le chemin de ski de fond situe sur la RD. Nichoir sous buse rectangulaire RD.	RD	A COMPLETER	RAS	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2661655	5,7944406	1059
+556	Vence	V	B	B02a	VB02a	Combe_noire	Prendre le chemin de la station de ski de fond. Descendre en amont (15 a 20 mn de marche pour faire Combe_noire et Combe_soleil)	A COMPLETER		RAS	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2609928	5,7879496	1019
+558	Vence	V	B	B03a	VB03a	Mollard_giroud	Descendre en aval	Milieu	Donne vers l'aval	RAS	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2563898	5,7772583	975
+559	Vence	V	B	B04a	VB04a	Gouillat	Descendre en amont RG	A COMPLETER		RAS	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2546188	5,7712126	956
+553	Vence	V	B	B05a	VB05a	Churut	Nichoir en aval du petit pont/buse	A COMPLETER		RAS	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2664299	5,7834220	1084
+554	Vence	V	B	B06a	VB06a	Praillieres	Descendre en amont	RG	Donne vers l'amont	Corde ou echelle	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2622464	5,7785296	1026
+555	Vence	V	B	B07a	VB07a	Beauches	Descendre par le chemin a la fin de la route (nichoir en amont de la buse)	Amont	Donne vers l'amont	RAS	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2606152	5,7679939	995
+561	Vence	V	B	B08a	VB08a	Pillonnieres	Sous pont route principale. Descendre en aval RG	RG	Donne vers l'aval	RAS	Pose le 24/11/2016	38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2491051	5,7652581	924
+563	Vence	V	B	B09a	VB09a	Vence_village	Aller jusqu'au bout de la voie sans issue puis descendre par le chemin carrossable jusqu'au pont.	RD	Donne vers l'aval	RAS	Pose le 24/11/2016	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2435606	5,7528877	740
+564	Vence	V	B	B10a	VB10a	Frette_bas	Se garer en haut du chemin (boite aux lettres), continuer a pied sur le chemin puis descendre a droite dans le champs avant la derniere maison (1ere passerelle)	RG	RAS	RAS	Plus de nichoir en 2018 - Pose le 25/11/2016	38126	CORENC	38	ISERE	RHONE-ALPES	45,2456606	5,7470834	701
+545	Vence	V	B	B11a	VB11a	Pont_vence	Descendre en amont RD	A COMPLETER		RAS	Pose le 22/11/2016	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2481760	5,7418478	608
+540	Vence	V	B	B12a	VB12a	Rivoire	Descendre grace a la corde en amont RG	RD	Donne vers RG	Petite echelle		38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2522925	5,7304859	468
+542	Vence	V	B	B13a	VB13a	Pont_dormie	Depuis Rivoire, suivre le chemin a gauche de la maison aux volets rouges, traverser le jardin (tirolienne) jusqu'a la passerelle en bois	Milieu / RD	Donne vers l'amont	Echelle telescopique	Pose le 06/12/2017 	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2521188	5,7320953	478
+543	Vence	V	B	B14a	VB14a	Chateau	Descendre en aval RG	RG	Donne vers RD	RAS	Pose le 22/02/2017	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2495280	5,7257652	446
+544	Vence	V	B	B15a	VB15a	Groule	Descente en aval (petit tunnel)	Aval	Donne vers l'aval	RAS	Pose le 22/02/2017	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2475188	5,7225680	465
+538	Vence	V	B	B16a	VB16a	Jars	Descendre en aval RG	Milieu	Donne vers l'aval	RAS	Pose le 22/11/2016	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2593918	5,7195854	667
+539	Vence	V	B	B17a	VB17a	Quaix	Petit pont sur route en sens unique. Descendre en aval RG	RG	Donne vers RD	RAS	Pose le 22/11/2016	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2528892	5,7202184	513
+525	Vence	V	B	B18a	VB18a	Pont_oulle	Possibilite de nid naturel rive gauche	RG	A COMPLETER		Plus de nichoir	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2471878	5,6988741	273
+523	Vence	V	B	B19a	VB19a	Monta	Sous pont/passerelle blanche. Descendre par la RG en amont de la petite passerelle aux barreaux verts	RG	Donne vers RD	Echelle ?	Pose le 22/11/2016	38382	SAINT-EGREVE	38	ISERE	RHONE-ALPES	45,2365651	5,6893301	225
+521	Vence	V	B	B20a	VB20a	Visancourt	Descendre en aval RG (mais si bcp d'eau descendre en aval RD pour eviter de traverser le vence)	Milieu	Donne vers RD	Echelle		38382	SAINT-EGREVE	38	ISERE	RHONE-ALPES	45,2326684	5,6857949	217
+519	Vence	V	B	B21a	VB21a	Egreve_centre	Sous pont route principale et tram'. Descente en amont RD.	Milieu	Donne vers l'amont / RG	Echelle 3 pans	Pose le 22/11/2016 - remonte le 06/12/2017	38382	SAINT-EGREVE	38	ISERE	RHONE-ALPES	45,2295233	5,6831450	214
+552	Vence	V	B	B22a	VB22a	Fontfroide	Descendre en amont	A COMPLETER		RAS	Pose le 25/11/2016	38472	SARCENAS	38	ISERE	RHONE-ALPES	45,2768192	5,7583594	1051
+550	Vence	V	B	B23a	VB23a	Pissou	Descendre en aval RD	RD	Donne vers RG	RAS	Pose le 25/11/2016	38472	SARCENAS	38	ISERE	RHONE-ALPES	45,2767211	5,7576942	1051
+549	Vence	V	B	B24a	VB24a	Cotes	Descendre par le chemin jusqu'au pont (boite aux lettres verte au debut du chemin carrossable). Descente en amont	A COMPLETER		RAS	Pose le 22/11/2016	38472	SARCENAS	38	ISERE	RHONE-ALPES	45,2710320	5,7540840	980
+548	Vence	V	B	B25a	VB25a	Palaquit	Se garer au niveau du reservoir tague et descendre en amont du pont RG	A COMPLETER		RAS	Pose le 22/11/2016	38472	SARCENAS	38	ISERE	RHONE-ALPES	45,2689850	5,7541890	957
+546	Vence	V	B	B26a	VB26a	Fontvieille	Se garer au bout de la route derriere la maison/ferme (avertir proprio). Desendre par le chemin, passer les deux virages puis descendre par le champs (en longeant la cloture de droite) jusqu'au petit chemin qui longe la riviere jusqu'a la passerelle en bois	Milieu / RD	Donne vers RG	RAS	Pose le 22/11/2016	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2651210	5,7441350	685
+537	Vence	V	B	B27a	VB27a	Fourneaux	Descendre en amont RG	RD	Donne vers RG	RAS	Pose le 25/11/2016	38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2970789	5,7238984	946
+536	Vence	V	B	B28a	VB28a	Pierre_arche	"Descendre par le chemin (maison aux volets bleus en contre bas) jusqu'a la maison (notee ""1990""). Fine passerelle au niveau de cette maison, acces en amont RG"	Milieu / RG	Donne vers RG	Echelle 3 pans ou telescopique	Pose le 06/12/2017	38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2874482	5,7138777	785
+534	Vence	V	B	B29a	VB29a	Pomarey_passerelle	Passerelle en beton. Acces par le chemin qui descend entre les deux maisons en pierres	RG	Donne vers RD	RAS	Pose le 06/12/2017	38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2846175	5,7124937	760
+533	Vence	V	B	B30a	VB30a	Pomarey	Sous le pont de la route principale, descendre en amont RG	A COMPLETER		RAS	Pose le 25/11/2016	38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2836588	5,7126975	768
+530	Vence	V	B	B31a	VB31a	Gua_tenaison	Sous ancien pont juste en aval du pont de la route	A COMPLETER			Pose le 25/11/2016	38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2765474	5,7055521	642
+528	Vence	V	B	B32a	VB32a	Moulin_brieux	Se garer sur la route principale au niveau de l'Eglise et descendre par la route en contre-bas puis par le chemin. Nichoir sur mur RD presque sous la passerelle en bois avec barreaux verts.	RD	Donne vers RG	Echelle ?	Pose le 20 / 01 / 2017 	38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2644061	5,7029450	426
+560	Vence	V	N	N01a	VN01a	Gouillat_2	Sous pont du nichoir	A COMPLETER		RAS		38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2545583	5,7712984	956
+562	Vence	V	N	N02a	VN02a	Pillonnieres_aval	Dans tunnel sous la maison, cote amont. Verifier aussi vieux nid en aval	Amont	RAS	Lampe		38471	LE SAPPEY-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2485234	5,7647002	921
+565	Vence	V	N	N03a	VN03a	Frette_bas_2	Sous pont du nichoir mais certains ne sont pas de cincle (troglodyte)	Milieu	RAS	RAS		38126	CORENC	38	ISERE	RHONE-ALPES	45,2456606	5,7470834	701
+526	Vence	V	N	N04a	VN04a	Oulle_amont	Sur sorte de petite falaise rive droite, facile a trouver	RD	RAS	RAS	Trouve vers fin juillet 2018	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2488180	5,6987607	295
+527	Vence	V	N	N05a	VN05a	Oulle_amont_2	Sur un gros caillou plein de mousse rive gauche, entree un peu abimee, nid completement sec plus trop de notion de distance mais pas tres loin en amont du bien vert sur sorte de petite falaise	RG	RAS	RAS	Trouve vers fin juillet 2018	38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2488747	5,6989002	295
+524	Vence	V	N	N06a	VN06a	Champy_barrage	Cascade au niveau d'un ancien barrage - a surveiller pour nids naturels (mais difficile de poser un nichoir)	RD	RAS	RAS		38382	SAINT-EGREVE	38	ISERE	RHONE-ALPES	45,2454944	5,6960249	263
+522	Vence	V	N	N07a	VN07a	Visancourt_2	2 vieux nids sous le pont rive droite	RD	RAS	RAS	Novembre 2017 : Vieux nid RD	38382	SAINT-EGREVE	38	ISERE	RHONE-ALPES	45,2327024	5,6857172	217
+520	Vence	V	N	N08a	VN08a	Egreve_centre_2	Au milieu du pont, sur tuyaux rouges au milieu de la riviere - au moins un autre vieux nid rive gauche	Milieu et RG	RAS	Echelle 3 pans		38382	SAINT-EGREVE	38	ISERE	RHONE-ALPES	45,2294931	5,6831959	214
+535	Vence	V	N	N09a	VN09a	Pomarey_aval	Sur gros rocher cote RG (mais toute la zone en aval de le confluence entre les 2 rivieres est favorable a ces nids naturels donc a prospecter)	RG	RAS	RAS		38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2840060	5,7111526	750
+531	Vence	V	N	N10a	VN10a	Gua_tenaison_2	Sous le meme pont que le nichoir	RG	RAS	Petite echelle		38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2765474	5,7055521	642
+532	Vence	V	N	N11a	VN11a	Gua_tenaison_amont	Nid dans berge au dessus de l'eau - racines	RD	RAS	RAS	2018	38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2773740	5,7060570	653
+529	Vence	V	N	N12a	VN12a	Moulin_brieux_aval	"Dans ""grotte"" a hauteur d'homme, au milieu, en bordure (pas au fond de la grotte), dans 2 derniers virages avant grande falaise RG. Descendre dans chemin terre a droite et longer la bordure du champ/for�t"	RG	RAS	RAS		38325	PROVEYSIEUX	38	ISERE	RHONE-ALPES	45,2618462	5,7034332	410
+551	Vence	V	N	N13a	VN13a	Pissou_2	Descendre en aval RD. Nids dans trous en hauteur sous pont au nichoir	Milieu	RAS	RAS		38472	SARCENAS	38	ISERE	RHONE-ALPES	45,2767211	5,7576942	1051
+547	Vence	V	N	N14a	VN14a	Fontvieille_cascade	3e cascade en aval du nichoir, sous le gros rocher du milieu de la cascade (l'eau passe a droite et a gauche, nid du cote rive droite du rocher central)	Milieu	Donne vers l'aval	Impermeable		38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2628958	5,7412255	630
+541	Vence	V	N	N15a	VN15a	Rivoire_2	Descendre grace a la corde en amont RG. Nid nat juste a gauche du nichoir	RD	RAS	Petite echelle		38328	QUAIX-EN-CHARTREUSE	38	ISERE	RHONE-ALPES	45,2522925	5,7304859	468
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			

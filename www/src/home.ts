@@ -155,7 +155,10 @@ function createTestHome() : void {
 
     const version_t = document.querySelector('.relative-container span.version-text') as HTMLElement;
     
-    version_t.onclick = function() {
+    version_t.onclick = function(event: MouseEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+
         if (allow_to_click_to_terrain) {
             launchQuizz(getBase());
         }

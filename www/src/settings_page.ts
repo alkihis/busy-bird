@@ -3,7 +3,6 @@ import { Forms } from "./form_schema";
 import { askModal, initModal, getModalPreloader, informalBottomModal, showToast } from "./helpers";
 import { SyncManager } from "./SyncManager";
 import { PageManager } from "./PageManager";
-import { PRESENTATION } from "./main";
 
 function headerText() : string {
     return `${UserManager.logged ? 

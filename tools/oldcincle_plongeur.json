@@ -1,0 +1,647 @@
+{
+    "name": "Cincle plongeur",
+    "id_field": "ringnb",
+    "fields": [ {
+        "name": "title_general",
+        "label": "Général",
+        "type": "divider"
+    }, {
+        "name": "__date__",
+        "label": "Date",
+        "type": "datetime",
+        "required": true
+    }, {
+        "name": "name",
+        "label": "Observateur",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Blandine Deligez",
+                "value": "bd"
+            }, {
+                "label": "Sylvia Pardonnet",
+                "value": "sp"
+            }, {
+                "label": "Jeanne Duhayer",
+                "value": "jd"
+            } ]
+        }
+    }, {
+        "name": "ringnb",
+        "label": "Numéro de bague",
+        "type": "string",
+        "placeholder": "Composé de chiffres et de lettres",
+        "required": true,
+        "remove_whitespaces": true,
+        "allow_voice_control": true
+    }, {
+        "name": "new",
+        "label": "Individu nouveau",
+        "type": "checkbox"
+    }, {
+        "name": "amont_aval",
+        "label": null,
+        "type": "slider",
+        "slider_options": [ {
+            "name": "amont",
+            "label": "Amont"
+        }, {
+            "name": "aval",
+            "label": "Aval"
+        } ]
+    }, {
+        "name": "age",
+        "label": "Âge",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "1A",
+                "value": "1a"
+            }, {
+                "label": "+1A",
+                "value": "p1a"
+            }, {
+                "label": "1A?",
+                "value": "1aq"
+            }, {
+                "label": "2A",
+                "value": "2a"
+            }, {
+                "label": "+2A",
+                "value": "p2a"
+            }, {
+                "label": "2A?",
+                "value": "2aq"
+            } ]
+        }
+    }, {
+        "name": "sex",
+        "label": "Sexe",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "?",
+                "value": "q"
+            }, {
+                "label": "M",
+                "value": "m"
+            }, {
+                "label": "M?",
+                "value": "mq"
+            }, {
+                "label": "F",
+                "value": "f"
+            }, {
+                "label": "F?",
+                "value": "fq"
+            } ]
+        }
+    }, {
+        "name": "bagues_couleur_gauche",
+        "label": "Bagues gauche",
+        "type": "divider"
+    }, {
+        "name": "bague_metal_gauche",
+        "label": "Métal",
+        "type": "select",
+        "external_constraints": "bague_metal_droite!=*",
+        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague gauche si il a une bague métal droite.",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Aucune",
+                "value": ""
+            }, {
+                "label": "Dark blue",
+                "value": "db"
+            }, {
+                "label": "Light blue",
+                "value": "lb"
+            }, {
+                "label": "Green",
+                "value": "g"
+            }, {
+                "label": "Yellow",
+                "value": "y"
+            }, {
+                "label": "White",
+                "value": "w"
+            }, {
+                "label": "Red",
+                "value": "r"
+            }, {
+                "label": "Grey",
+                "value": "gy"
+            }, {
+                "label": "Pink",
+                "value": "p"
+            }, {
+                "label": "Black",
+                "value": "b"
+            }, {
+                "label": "Orange",
+                "value": "o"
+            } ]
+        }
+    }, {
+        "name": "bague_plastique_gauche",
+        "label": "Plastique",
+        "type": "select",
+        "select_options": {
+            "multiple": true,
+            "options": [ {
+                "label": "Dark blue",
+                "value": "db"
+            }, {
+                "label": "Light blue",
+                "value": "lb"
+            }, {
+                "label": "Green",
+                "value": "g"
+            }, {
+                "label": "Yellow",
+                "value": "y"
+            }, {
+                "label": "White",
+                "value": "w"
+            }, {
+                "label": "Red",
+                "value": "r"
+            }, {
+                "label": "Grey",
+                "value": "gy"
+            }, {
+                "label": "Pink",
+                "value": "p"
+            }, {
+                "label": "Black",
+                "value": "b"
+            }, {
+                "label": "Orange",
+                "value": "o"
+            } ]
+        }
+    }, {
+        "name": "bagues_couleur_droite",
+        "label": "Bagues droite",
+        "type": "divider"
+    }, {
+        "name": "bague_metal_droite",
+        "label": "Métal",
+        "type": "select",
+        "external_constraints": "bague_metal_gauche!=*",
+        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague droite si il a une bague métal gauche.",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Aucune",
+                "value": ""
+            }, {
+                "label": "Dark blue",
+                "value": "db"
+            }, {
+                "label": "Light blue",
+                "value": "lb"
+            }, {
+                "label": "Green",
+                "value": "g"
+            }, {
+                "label": "Yellow",
+                "value": "y"
+            }, {
+                "label": "White",
+                "value": "w"
+            }, {
+                "label": "Red",
+                "value": "r"
+            }, {
+                "label": "Grey",
+                "value": "gy"
+            }, {
+                "label": "Pink",
+                "value": "p"
+            }, {
+                "label": "Black",
+                "value": "b"
+            }, {
+                "label": "Orange",
+                "value": "o"
+            } ]
+        }
+    }, {
+        "name": "bague_plastique_droite",
+        "label": "Plastique",
+        "type": "select",
+        "select_options": {
+            "multiple": true,
+            "options": [ {
+                "label": "Dark blue",
+                "value": "db"
+            }, {
+                "label": "Light blue",
+                "value": "lb"
+            }, {
+                "label": "Green",
+                "value": "g"
+            }, {
+                "label": "Yellow",
+                "value": "y"
+            }, {
+                "label": "White",
+                "value": "w"
+            }, {
+                "label": "Red",
+                "value": "r"
+            }, {
+                "label": "Grey",
+                "value": "gy"
+            }, {
+                "label": "Pink",
+                "value": "p"
+            }, {
+                "label": "Black",
+                "value": "b"
+            }, {
+                "label": "Orange",
+                "value": "o"
+            } ]
+        }
+    }, {
+        "name": "additionnal_info",
+        "label": "Relevés",
+        "type": "divider"
+    }, {
+        "name": "transpond",
+        "label": "Transpondeur",
+        "type": "string",
+        "range": {"min": 10, "max": 10},
+        "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
+        "placeholder": "Composé de 10 chiffres et de lettres",
+        "required": true,
+        "remove_whitespaces": true,
+        "allow_voice_control": true
+    }, {
+        "name": "mass",
+        "label": "Poids",
+        "type": "float",
+        "range": {"min": 30, "max": 100},
+        "placeholder": "Entre 30g et 100g ±0.1g",
+        "float_precision": 0.1,
+        "tip_on_invalid": "Unité gramme. 30g min, 100 max, précision 0.1.",
+        "allow_voice_control": true
+    }, {
+        "name": "tarsus",
+        "label": "Tarse",
+        "type": "float",
+        "range": {"min": 20, "max": 40},
+        "placeholder": "Entre 20mm et 40mm ±0.1mm",
+        "float_precision": 0.1,
+        "tip_on_invalid": "Unité mm. 20mm min, 40 max, précision 0.1",
+        "allow_voice_control": true
+    }, {
+        "name": "wing",
+        "label": "Aile",
+        "type": "float",
+        "range": {"min": 60, "max": 120},
+        "placeholder": "Entre 60mm et 120mm ±0.5mm",
+        "float_precision": 0.5,
+        "tip_on_invalid": "Unité mm. 60mm min, 120 max, précision 0.5",
+        "allow_voice_control": true
+    }, {
+        "name": "abraded",
+        "label": "État des plumes",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Pas du tout",
+                "value": "0"
+            }, {
+                "label": "Un peu",
+                "value": "p"
+            }, {
+                "label": "Beaucoup",
+                "value": "pp"
+            } ]
+        }
+    }, {
+        "name": "tail",
+        "label": "Longueur queue",
+        "type": "float",
+        "range": {"min": 30, "max": 80},
+        "placeholder": "Entre 30mm et 80mm ±0.5mm",
+        "float_precision": 0.5,
+        "tip_on_invalid": "Unité mm. 30mm min, 80 max, précision 0.5",
+        "allow_voice_control": true
+    }, {
+        "name": "third_prim",
+        "label": "Longueur 3ème primaire",
+        "type": "float",
+        "range": {"min": 40, "max": 90},
+        "placeholder": "Entre 40mm et 90mm ±0.5mm",
+        "float_precision": 0.5,
+        "tip_on_invalid": "Unité mm. 40mm min, 90 max, précision 0.5",
+        "allow_voice_control": true
+    }, {
+        "name": "sk_bl_lght",
+        "label": "Longueur tête plus bec",
+        "type": "float",
+        "range": {"min": 30, "max": 70},
+        "placeholder": "Entre 30mm et 70mm ±0.1mm",
+        "float_precision": 0.1,
+        "tip_on_invalid": "Unité mm. 30mm min, 70 max, précision 0.1",
+        "allow_voice_control": true
+    }, {
+        "name": "bl_lght",
+        "label": "Longueur bec seul",
+        "type": "float",
+        "range": {"min": 10, "max": 30},
+        "placeholder": "Entre 10mm et 30mm ±0.1mm",
+        "float_precision": 0.1,
+        "tip_on_invalid": "Unité mm. 10mm min, 30 max, précision 0.1",
+        "allow_voice_control": true
+    }, {
+        "name": "blood_patch",
+        "label": "Présence plaque incubatrice",
+        "type": "checkbox"
+    }, {
+        "name": "molt",
+        "label": "Animal en mue",
+        "type": "checkbox"
+    }, {
+        "name": "breath",
+        "label": "Mouvements respiratoires / 30s",
+        "type": "integer",
+        "placeholder": "Compris entre 10 et 200",
+        "range": {"min": 10, "max": 200},
+        "tip_on_invalid": "Doit être compris entre 10 et 200.",
+        "allow_voice_control": true
+    }, {
+        "name": "card_rythm",
+        "label": "Rythme cardiaque",
+        "type": "audio"
+    }, {
+        "name": "feathers",
+        "label": "Prises de plumes",
+        "type": "select",
+        "select_options": {
+            "multiple": true,
+            "options": [ {
+                "label": "White",
+                "value": "w"
+            }, {
+                "label": "Brown",
+                "value": "b"
+            }, {
+                "label": "Cort",
+                "value": "c"
+            }, {
+                "label": "Polluants",
+                "value": "p"
+            } ]
+        }
+    }, {
+        "name": "blood_tubes_alc",
+        "label": "Tubes de sang alcool",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Non",
+                "value": "n"
+            }, {
+                "label": "Low",
+                "value": "l"
+            }, {
+                "label": "Middle",
+                "value": "m"
+            }, {
+                "label": "High",
+                "value": "h"
+            } ]
+        }
+    }, {
+        "name": "blood_tubes_microm",
+        "label": "Tubes de sang micro-",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Non",
+                "value": "n"
+            }, {
+                "label": "Low",
+                "value": "l"
+            }, {
+                "label": "Middle",
+                "value": "m"
+            }, {
+                "label": "High",
+                "value": "h"
+            } ]
+        }
+    }, {
+        "name": "blood_tubes_microp",
+        "label": "Tubes de sang micro+",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Non",
+                "value": "n"
+            }, {
+                "label": "Low",
+                "value": "l"
+            }, {
+                "label": "Middle",
+                "value": "m"
+            }, {
+                "label": "High",
+                "value": "h"
+            } ]
+        }
+    }, {
+        "name": "blood_tubes_smear",
+        "label": "Tubes de sang smear",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Non",
+                "value": "n"
+            }, {
+                "label": "Low",
+                "value": "l"
+            }, {
+                "label": "Middle",
+                "value": "m"
+            }, {
+                "label": "High",
+                "value": "h"
+            } ]
+        }
+    }, {
+        "name": "blood_tubes_mito",
+        "label": "Tubes de sang mito",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "Non",
+                "value": "n"
+            }, {
+                "label": "Low",
+                "value": "l"
+            }, {
+                "label": "Middle",
+                "value": "m"
+            }, {
+                "label": "High",
+                "value": "h"
+            } ]
+        }
+    }, {
+        "name": "pict_divider",
+        "label": "Photos",
+        "type": "divider"
+    }, {
+        "name": "pic_belly_white",
+        "label": "Photo ventre blanc",
+        "type": "file",
+        "file_type": "image/*"
+    }, {
+        "name": "pic_belly_brown",
+        "label": "Photo ventre marron",
+        "type": "file",
+        "file_type": "image/*"
+    }, {
+        "name": "pic_eye",
+        "label": "Photo oeil",
+        "type": "file",
+        "file_type": "image/*"
+    }, {
+        "name": "pic_coverts",
+        "label": "Photo coverts",
+        "type": "file",
+        "file_type": "image/*"
+    }, {
+        "name": "complement_info",
+        "label": "Complément d'information",
+        "type": "divider"
+    }, {
+        "name": "struggle",
+        "label": "Comportement",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [ {
+                "label": "0",
+                "value": "0"
+            }, {
+                "label": "1",
+                "value": "1"
+            }, {
+                "label": "2",
+                "value": "2"
+            }, {
+                "label": "3",
+                "value": "3"
+            } ]
+        }
+    }, {
+        "name": "distress",
+        "label": "Stress",
+        "type": "checkbox"
+    }, {
+        "name": "wounds",
+        "label": "Blessure",
+        "type": "select",
+        "select_options": {
+            "multiple": true,
+            "options": [ {
+                "label": "Old",
+                "value": "old"
+            }, {
+                "label": "Capt",
+                "value": "capt"
+            }, {
+                "label": "Nail",
+                "value": "nail"
+            } ]
+        }
+    }, {
+        "name": "comments",
+        "label": "Commentaires",
+        "type": "textarea",
+        "allow_voice_control": true
+    } ],
+    "locations": [ {
+        "name": "ruisseau_nid_ouest_aval",
+        "label": "Ruisseau nid ouest aval",
+        "latitude": 45.319466,
+        "longitude": 5.809790
+    }, {
+        "name": "ruisseau_nid_est_aval",
+        "label": "Ruisseau nid est aval",
+        "latitude": 45.325562,
+        "longitude": 5.796895
+    }, {
+        "name": "ruisseau_nid_ouest_amont",
+        "label": "Ruisseau nid ouest amont",
+        "latitude": 45.332116,
+        "longitude": 5.820513
+    }, {
+        "name": "ruisseau_nid_ouest_amont",
+        "label": "Ruisseau nid est amont",
+        "latitude": 45.338869,
+        "longitude": 5.822489
+    }, {
+        "name": "chene_rive_aval",
+        "label": "Chêne de la rive aval",
+        "latitude": 45.344347,
+        "longitude": 5.828112
+    }, {
+        "name": "chene_rive_amont",
+        "label": "Chêne de la rive amont",
+        "latitude": 45.345398,
+        "longitude": 5.822643
+    }, {
+        "name": "hdv",
+        "label": "Hôtel de Ville - Louis Pradel",
+        "latitude": 45.767236,
+        "longitude": 4.836093
+    }, {
+        "name": "cordeliers",
+        "label": "Cordeliers",
+        "latitude": 45.763277,
+        "longitude": 4.835794
+    }, {
+        "name": "saintpaul",
+        "label": "Gare Saint-Paul",
+        "latitude": 45.765994,
+        "longitude": 4.826986
+    }, {
+        "name": "foch",
+        "label": "Foch",
+        "latitude": 45.768780,
+        "longitude": 4.844406
+    }, {
+        "name": "terr_feuill",
+        "label": "Terreaux - La feuillée",
+        "latitude": 45.767306,
+        "longitude": 4.831260
+    }, {
+        "name": "croixpaquet",
+        "label": "Croix-Paquet",
+        "latitude": 45.770806,
+        "longitude": 4.836442
+    }, {
+        "name": "croixrousse",
+        "label": "Croix-Rousse",
+        "latitude": 45.774364,
+        "longitude": 4.831939
+    } ]
+}

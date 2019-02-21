@@ -1,7 +1,7 @@
 import { prompt } from "./vocal_recognition";
-import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave } from './form_schema';
+import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave, FormLocations } from './form_schema';
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast } from "./helpers";
-import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, PRESENTATION } from "./main";
+import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
@@ -185,9 +185,13 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
     });
 
     if (filled_form) {
-        location.value = location.dataset.reallocation = filled_form.location;
+        location.dataset.reallocation = filled_form.location;
         // Recherche la vraie localisation (textuelle) dans Form.location
-        const label_location = current_form.locations.find(e => e.name === filled_form.location);
+        const label_location = (filled_form.location in current_form.locations ? 
+            current_form.locations[filled_form.location] : 
+            null
+        );
+
         if (label_location) {
             location.value = label_location.label;
         }
@@ -1474,7 +1478,7 @@ function textDistance(distance: number) : string {
     return `${str_distance} ${unit}`;
 }
 
-function locationSelector(modal: HTMLElement, locations: FormLocation[], current_location?: Position | false) {
+function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false) {
     // Met le modal en modal avec footer fixé
     modal.classList.add('modal-fixed-footer');
 
@@ -1502,18 +1506,18 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
     if (current_location) {
         // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
         function clickOnLocation(this: HTMLElement) {
-            input.value = this.dataset.label;
+            input.value = this.dataset.name + " - " + this.dataset.label;
             M.updateTextFields();
         }
 
         // Calcul de la distance entre chaque lieu et le lieu actuel
         let lieux_dispo: {name: string; label: string; distance: number}[] = [];
 
-        for (const lieu of locations) {
+        for (const lieu in locations) {
             lieux_dispo.push({
-                name: lieu.name,
-                label: lieu.label,
-                distance: calculateDistance(current_location.coords, lieu)
+                name: lieu,
+                label: locations[lieu].label,
+                distance: calculateDistance(current_location.coords, locations[lieu])
             });
         }
 
@@ -1533,7 +1537,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
             elem.href = "#!";
             elem.classList.add('collection-item');
             elem.innerHTML = `
-                ${lieux_dispo[i].label}
+                ${lieux_dispo[i].name} - ${lieux_dispo[i].label}
                 <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
             `;
             elem.dataset.name = lieux_dispo[i].name;
@@ -1574,6 +1578,8 @@ function locationSelector(modal: HTMLElement, locations: FormLocation[], current
         else if (input.value in labels_to_name) {
             const loc_input = document.getElementById('__location__id') as HTMLInputElement;
             loc_input.value = input.value;
+
+            // On stocke la clé de la localisation dans reallocation
             loc_input.dataset.reallocation = labels_to_name[input.value][0];
 
             getModalInstance().close();

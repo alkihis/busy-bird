@@ -1,11 +1,16 @@
 import { prompt } from "./vocal_recognition";
 
 /// FICHIER DE TEST DE LA RECONNAISSANCE VOCALE
-export function talk(sentence: string) {
+export function talk(sentence: string) : Promise<void> {
     const u = new SpeechSynthesisUtterance();
     u.text = sentence;
     u.lang = 'fr-FR';
-    speechSynthesis.speak(u);
+
+    return new Promise((resolve, _) => {
+        u.onend = () => { resolve() };
+
+        speechSynthesis.speak(u);
+    });
 }
 
 export function launchQuizz(base: HTMLElement) : void {
@@ -31,7 +36,7 @@ export function launchQuizz(base: HTMLElement) : void {
         "Avec la laine de quel animal fait-on du cachemire?": "Chèvre",
         "Quelle est la première ville du monde à s'être dotée d'un métro?": "Londres",
         "Dans quel état des Etats-Unis le Grand Canyon se trouve-t-il?": "Arizona",
-        "Combien de paires de côtes possède-t-on?": "Douze",
+        "Combien de paires de côtes possède-t-on?": ["Douze", "12"],
         "Quel os du squelette humain est le plus long et le plus solide?": "Fémur",
         "Quel arbre est connu pour être le plus grand au monde?": "Séquoia",
         "Quelle est l'unité de la tension électrique?": "Volt",

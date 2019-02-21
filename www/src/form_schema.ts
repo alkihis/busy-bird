@@ -32,11 +32,12 @@ export interface Form {
     name: string;
     id_field?: string; /* Indique le nom du champ qui sert à l'ID; Ne pas préciser si il n'y en a pas */
     fields: FormEntity[];
-    locations: FormLocation[];
+    locations: FormLocations;
 }
 
+export type FormLocations = {[locationId: string]: FormLocation};
+
 export interface FormLocation {
-    name: string;
     label: string;
     latitude: number | string;
     longitude: number | string;
@@ -96,7 +97,7 @@ export const Forms = new class {
     protected current: Form = null;
     protected _current_key: string = null;
     protected _default_form_key: string = null;
-    protected readonly DEAD_FORM_SCHEMA: Form = {name: null, fields: [], locations: []};
+    protected readonly DEAD_FORM_SCHEMA: Form = {name: null, fields: [], locations: {}};
 
     protected readonly FORM_LOCATION: string = 'loaded_forms.json';
 

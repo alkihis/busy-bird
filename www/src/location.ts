@@ -1,7 +1,7 @@
-import { FormLocation } from "./form_schema";
+import { FormLocations } from "./form_schema";
 import { showToast } from "./helpers";
 
-export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocation[], open_on_complete = false) {
+export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocations, open_on_complete = false) {
     const row = document.createElement('div');
     row.classList.add('row');
     container.appendChild(row);
@@ -24,13 +24,16 @@ export function createLocationInputSelector(container: HTMLElement, input: HTMLI
 
     // Initialisation de l'autocomplétion
     const auto_complete_data: any = {};
-    for (const lieu of locations) {
-        auto_complete_data[lieu.label] = null;
+    for (const lieu in locations) {
+        let key = lieu + " - " + locations[lieu].label;
+
+        auto_complete_data[key] = null;
     }
-    // Création d'un objet label => value
+    // Création d'un objet clé => [nom, "latitude,longitude"]
     const labels_to_name: {[label: string]: [string, string]} = {};
-    for (const lieu of locations) {
-        labels_to_name[lieu.label] = [lieu.name, String(lieu.latitude) + "," + String(lieu.longitude)];
+    for (const lieu in locations) {
+        let key = lieu + " - " + locations[lieu].label;
+        labels_to_name[key] = [lieu, String(locations[lieu].latitude) + "," + String(locations[lieu].longitude)];
     }
 
     // Lance l'autocomplétion materialize

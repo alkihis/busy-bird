@@ -1836,7 +1836,10 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
         const u = new SpeechSynthesisUtterance();
         u.text = sentence;
         u.lang = 'fr-FR';
-        speechSynthesis.speak(u);
+        return new Promise((resolve, _) => {
+            u.onend = () => { resolve(); };
+            speechSynthesis.speak(u);
+        });
     }
     exports.talk = talk;
     function launchQuizz(base) {
@@ -1860,7 +1863,7 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
             "Avec la laine de quel animal fait-on du cachemire?": "Chèvre",
             "Quelle est la première ville du monde à s'être dotée d'un métro?": "Londres",
             "Dans quel état des Etats-Unis le Grand Canyon se trouve-t-il?": "Arizona",
-            "Combien de paires de côtes possède-t-on?": "Douze",
+            "Combien de paires de côtes possède-t-on?": ["Douze", "12"],
             "Quel os du squelette humain est le plus long et le plus solide?": "Fémur",
             "Quel arbre est connu pour être le plus grand au monde?": "Séquoia",
             "Quelle est l'unité de la tension électrique?": "Volt",
@@ -1982,7 +1985,6 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
     exports.APP_VERSION = 0.5;
-    exports.PRESENTATION = true;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -2069,6 +2071,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             rmrf: helpers_4.rmrf,
             rmrfPromise: helpers_4.rmrfPromise,
             Logger: logger_3.Logger,
+            Forms: form_schema_1.Forms,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
                     name: "__test__",
@@ -2391,7 +2394,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             this.current = null;
             this._current_key = null;
             this._default_form_key = null;
-            this.DEAD_FORM_SCHEMA = { name: null, fields: [], locations: [] };
+            this.DEAD_FORM_SCHEMA = { name: null, fields: [], locations: {} };
             this.FORM_LOCATION = 'loaded_forms.json';
             if (localStorage.getItem('default_form_key')) {
                 this._default_form_key = localStorage.getItem('default_form_key');
@@ -2585,13 +2588,15 @@ define("location", ["require", "exports", "helpers"], function (require, exports
         input_f.appendChild(label);
         // Initialisation de l'autocomplétion
         const auto_complete_data = {};
-        for (const lieu of locations) {
-            auto_complete_data[lieu.label] = null;
+        for (const lieu in locations) {
+            let key = lieu + " - " + locations[lieu].label;
+            auto_complete_data[key] = null;
         }
-        // Création d'un objet label => value
+        // Création d'un objet clé => [nom, "latitude,longitude"]
         const labels_to_name = {};
-        for (const lieu of locations) {
-            labels_to_name[lieu.label] = [lieu.name, String(lieu.latitude) + "," + String(lieu.longitude)];
+        for (const lieu in locations) {
+            let key = lieu + " - " + locations[lieu].label;
+            labels_to_name[key] = [lieu, String(locations[lieu].latitude) + "," + String(locations[lieu].longitude)];
         }
         // Lance l'autocomplétion materialize
         M.Autocomplete.init(input, {
@@ -2772,9 +2777,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             callLocationSelector(current_form); // Appelle le modal pour changer de lieu
         });
         if (filled_form) {
-            location.value = location.dataset.reallocation = filled_form.location;
+            location.dataset.reallocation = filled_form.location;
             // Recherche la vraie localisation (textuelle) dans Form.location
-            const label_location = current_form.locations.find(e => e.name === filled_form.location);
+            const label_location = (filled_form.location in current_form.locations ?
+                current_form.locations[filled_form.location] :
+                null);
             if (label_location) {
                 location.value = label_location.label;
             }
@@ -3862,16 +3869,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         if (current_location) {
             // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
             function clickOnLocation() {
-                input.value = this.dataset.label;
+                input.value = this.dataset.name + " - " + this.dataset.label;
                 M.updateTextFields();
             }
             // Calcul de la distance entre chaque lieu et le lieu actuel
             let lieux_dispo = [];
-            for (const lieu of locations) {
+            for (const lieu in locations) {
                 lieux_dispo.push({
-                    name: lieu.name,
-                    label: lieu.label,
-                    distance: helpers_8.calculateDistance(current_location.coords, lieu)
+                    name: lieu,
+                    label: locations[lieu].label,
+                    distance: helpers_8.calculateDistance(current_location.coords, locations[lieu])
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -3887,7 +3894,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 elem.href = "#!";
                 elem.classList.add('collection-item');
                 elem.innerHTML = `
-                ${lieux_dispo[i].label}
+                ${lieux_dispo[i].name} - ${lieux_dispo[i].label}
                 <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
             `;
                 elem.dataset.name = lieux_dispo[i].name;
@@ -3924,6 +3931,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             else if (input.value in labels_to_name) {
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
+                // On stocke la clé de la localisation dans reallocation
                 loc_input.dataset.reallocation = labels_to_name[input.value][0];
                 helpers_8.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
@@ -4443,7 +4451,9 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             }
         };
         const version_t = document.querySelector('.relative-container span.version-text');
-        version_t.onclick = function () {
+        version_t.onclick = function (event) {
+            event.preventDefault();
+            event.stopPropagation();
             if (allow_to_click_to_terrain) {
                 test_vocal_reco_2.launchQuizz(helpers_11.getBase());
             }
