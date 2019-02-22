@@ -2797,37 +2797,40 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * @param filled_form Formulaire déjà rempli (utilisé pour l'édition)
      */
     function constructForm(placeh, current_form, filled_form) {
-        // Crée le champ de lieu
-        const loc_wrapper = document.createElement('div');
-        loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
-        const location = document.createElement('input');
-        location.type = "text";
-        location.readOnly = true;
-        location.name = "__location__";
-        location.id = "__location__id";
-        location.addEventListener('click', function () {
-            this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
-            callLocationSelector(current_form); // Appelle le modal pour changer de lieu
-        });
-        if (filled_form) {
-            location.dataset.reallocation = filled_form.location;
-            // Recherche la vraie localisation (textuelle) dans Form.location
-            const label_location = (filled_form.location in current_form.locations ?
-                current_form.locations[filled_form.location] :
-                null);
-            if (label_location) {
-                location.value = label_location.label;
+        // Si le formulaire accepte la localisation
+        if (!current_form.no_location) {
+            // Crée le champ de lieu
+            const loc_wrapper = document.createElement('div');
+            loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
+            const location = document.createElement('input');
+            location.type = "text";
+            location.readOnly = true;
+            location.name = "__location__";
+            location.id = "__location__id";
+            location.addEventListener('click', function () {
+                this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
+                callLocationSelector(current_form); // Appelle le modal pour changer de lieu
+            });
+            if (filled_form) {
+                location.dataset.reallocation = filled_form.location || "";
+                // Recherche la vraie localisation (textuelle) dans Form.location
+                const label_location = (filled_form.location in current_form.locations ?
+                    current_form.locations[filled_form.location] :
+                    null);
+                if (label_location) {
+                    location.value = label_location.label;
+                }
+                else if (filled_form.location !== null) {
+                    helpers_8.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
+                }
             }
-            else {
-                helpers_8.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
-            }
+            loc_wrapper.appendChild(location);
+            const loc_title = document.createElement('h4');
+            loc_title.innerText = "Lieu";
+            placeh.appendChild(loc_title);
+            placeh.appendChild(loc_wrapper);
+            // Fin champ de lieu, itération sur champs
         }
-        loc_wrapper.appendChild(location);
-        const loc_title = document.createElement('h4');
-        loc_title.innerText = "Lieu";
-        placeh.appendChild(loc_title);
-        placeh.appendChild(loc_wrapper);
-        // Fin champ de lieu, itération sur champs
         for (const ele of current_form.fields) {
             let element_to_add = null;
             if (ele.type === form_schema_3.FormEntityType.divider) {
@@ -3336,7 +3339,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * @param force_name? Force un identifiant pour le form à enregistrer
      * @param form_save? Précédente sauvegarde du formulaire
      */
-    function beginFormSave(type, force_name, form_save) {
+    function beginFormSave(type, current_form, force_name, form_save) {
         return __awaiter(this, void 0, void 0, function* () {
             // Ouverture du modal de verification
             const modal = helpers_8.getModal();
@@ -3350,6 +3353,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Recherche des éléments à vérifier
             const elements_failed = [];
             const elements_warn = [];
+            const location_element = document.getElementById('__location__id');
+            let location_str = null;
+            if (location_element) {
+                location_str = location_element.dataset.reallocation;
+            }
+            // Vérifie le lieu si le lieu est passable 
+            // (si il n'est pas requis, ne fait rien, si il est requis, cette fenêtre ne peut s'afficher)
+            if (!current_form.no_location && current_form.skip_location && !location_str) {
+                elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+            }
             // Input classiques: checkbox/slider, text, textarea, select, number
             for (const e of document.getElementsByClassName('input-form-element')) {
                 const element = e;
@@ -3528,7 +3541,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     modal.classList.remove('modal-fixed-footer');
                     const unique_id = force_name || helpers_8.generateId(main_4.ID_COMPLEXITY);
                     PageManager_3.PageManager.lock_return_button = true;
-                    saveForm(type, unique_id, form_save)
+                    saveForm(type, unique_id, location_str, form_save)
                         .then((form_values) => {
                         SyncManager_2.SyncManager.add(unique_id, form_values);
                         if (form_save) {
@@ -3596,11 +3609,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      *  @param type
      *  @param nom ID du formulaire
      */
-    function saveForm(type, name, form_save) {
+    function saveForm(type, name, location, form_save) {
         const form_values = {
             fields: {},
             type,
-            location: document.getElementById('__location__id').dataset.reallocation,
+            location,
             owner: (form_save ? form_save.owner : user_manager_4.UserManager.username),
             metadata: {}
         };
@@ -3803,8 +3816,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base.appendChild(base_block);
         M.updateTextFields();
         $('select').formSelect();
-        // Lance le sélecteur de localisation uniquement si on est pas en mode édition
-        if (!edition_mode) {
+        // Lance le sélecteur de localisation uniquement si on est pas en mode édition et si le formulaire autorise les lieux
+        if (!edition_mode && !current_form.no_location) {
             callLocationSelector(current_form);
         }
         // Autoredimensionnement des textaera si valeur par défaut
@@ -3819,11 +3832,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const current_form_key = form_schema_3.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
-                beginFormSave(edition_mode.save.type, edition_mode.name, edition_mode.save);
+                beginFormSave(edition_mode.save.type, current_form, edition_mode.name, edition_mode.save);
             }
             else {
                 try {
-                    beginFormSave(current_form_key);
+                    beginFormSave(current_form_key, current_form);
                 }
                 catch (e) {
                     logger_4.Logger.error(JSON.stringify(e));
@@ -3833,10 +3846,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base_block.appendChild(btn);
     }
     exports.loadFormPage = loadFormPage;
-    function cancelGeoLocModal() {
+    function cancelGeoLocModal(required = true) {
         // On veut fermer; Deux possibilités.
         // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
-        if (document.getElementById("__location__id").value.trim() !== "") {
+        if (!required || document.getElementById("__location__id").value.trim() !== "") {
             // On ferme juste le modal
         }
         else {
@@ -3866,15 +3879,15 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         };
         document.getElementById('dontloc-footer-geoloc').onclick = function () {
             is_loc_canceled = true;
-            locationSelector(modal, current_form.locations, false);
+            locationSelector(modal, current_form.locations, false, !current_form.skip_location);
         };
         // Cherche la localisation et remplit le modal
         helpers_8.getLocation(function (coords) {
             if (!is_loc_canceled)
-                locationSelector(modal, current_form.locations, coords);
+                locationSelector(modal, current_form.locations, coords, !current_form.skip_location);
         }, function () {
             if (!is_loc_canceled)
-                locationSelector(modal, current_form.locations);
+                locationSelector(modal, current_form.locations, undefined, !current_form.skip_location);
         });
     }
     function textDistance(distance) {
@@ -3882,7 +3895,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const str_distance = (distance >= 1000 ? (distance / 1000).toFixed(1) : distance.toString());
         return `${str_distance} ${unit}`;
     }
-    function locationSelector(modal, locations, current_location) {
+    function locationSelector(modal, locations, current_location, required = true) {
         // Met le modal en modal avec footer fixé
         modal.classList.add('modal-fixed-footer');
         // Crée le contenu du modal et son footer
@@ -3981,7 +3994,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         cancel.href = "#!";
         cancel.innerText = "Annuler";
         cancel.classList.add("btn-flat", "red-text", "left");
-        cancel.addEventListener('click', cancelGeoLocModal);
+        cancel.addEventListener('click', () => { cancelGeoLocModal(required); });
         footer.appendChild(cancel);
         modal.appendChild(footer);
     }

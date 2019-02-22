@@ -171,41 +171,45 @@ function isModuloZero(num1: number, num2: number) : boolean {
  * @param filled_form Formulaire déjà rempli (utilisé pour l'édition)
  */
 export function constructForm(placeh: HTMLElement, current_form: Form, filled_form?: FormSave) : void {
-    // Crée le champ de lieu
-    const loc_wrapper = document.createElement('div');
-    loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
-    const location = document.createElement('input');
-    location.type = "text";
-    location.readOnly = true;
-    location.name = "__location__";
-    location.id = "__location__id";
-    location.addEventListener('click', function(this: HTMLInputElement) {
-        this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
-        callLocationSelector(current_form); // Appelle le modal pour changer de lieu
-    });
 
-    if (filled_form) {
-        location.dataset.reallocation = filled_form.location;
-        // Recherche la vraie localisation (textuelle) dans Form.location
-        const label_location = (filled_form.location in current_form.locations ? 
-            current_form.locations[filled_form.location] : 
-            null
-        );
+    // Si le formulaire accepte la localisation
+    if (!current_form.no_location) {
+        // Crée le champ de lieu
+        const loc_wrapper = document.createElement('div');
+        loc_wrapper.classList.add('input-field', 'row', 'col', 's12');
+        const location = document.createElement('input');
+        location.type = "text";
+        location.readOnly = true;
+        location.name = "__location__";
+        location.id = "__location__id";
+        location.addEventListener('click', function(this: HTMLInputElement) {
+            this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
+            callLocationSelector(current_form); // Appelle le modal pour changer de lieu
+        });
 
-        if (label_location) {
-            location.value = label_location.label;
+        if (filled_form) {
+            location.dataset.reallocation = filled_form.location || "";
+            // Recherche la vraie localisation (textuelle) dans Form.location
+            const label_location = (filled_form.location in current_form.locations ? 
+                current_form.locations[filled_form.location] : 
+                null
+            );
+
+            if (label_location) {
+                location.value = label_location.label;
+            }
+            else if (filled_form.location !== null) {
+                showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
+            }
         }
-        else {
-            showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
-        }
+
+        loc_wrapper.appendChild(location);
+        const loc_title = document.createElement('h4');
+        loc_title.innerText = "Lieu";
+        placeh.appendChild(loc_title);
+        placeh.appendChild(loc_wrapper);
+        // Fin champ de lieu, itération sur champs
     }
-
-    loc_wrapper.appendChild(location);
-    const loc_title = document.createElement('h4');
-    loc_title.innerText = "Lieu";
-    placeh.appendChild(loc_title);
-    placeh.appendChild(loc_wrapper);
-    // Fin champ de lieu, itération sur champs
 
     for (const ele of current_form.fields) {
         let element_to_add: HTMLElement = null;
@@ -830,7 +834,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
  * @param force_name? Force un identifiant pour le form à enregistrer
  * @param form_save? Précédente sauvegarde du formulaire
  */
-async function beginFormSave(type: string, force_name?: string, form_save?: FormSave) : Promise<void> {
+async function beginFormSave(type: string, current_form: Form, force_name?: string, form_save?: FormSave) : Promise<void> {
     // Ouverture du modal de verification
     const modal = getModal();
     const instance = initModal({ dismissible: false, outDuration: 100 }, getModalPreloader(
@@ -853,6 +857,19 @@ async function beginFormSave(type: string, force_name?: string, form_save?: Form
     // Recherche des éléments à vérifier
     const elements_failed: VerifiedElement[] = [];
     const elements_warn: VerifiedElement[] = [];
+
+    const location_element = document.getElementById('__location__id') as HTMLInputElement;
+
+    let location_str = null;
+    if (location_element) {
+        location_str = location_element.dataset.reallocation;
+    }
+
+    // Vérifie le lieu si le lieu est passable 
+    // (si il n'est pas requis, ne fait rien, si il est requis, cette fenêtre ne peut s'afficher)
+    if (!current_form.no_location && current_form.skip_location && !location_str) {
+        elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+    }
 
     // Input classiques: checkbox/slider, text, textarea, select, number
     for (const e of document.getElementsByClassName('input-form-element')) {
@@ -1062,7 +1079,7 @@ async function beginFormSave(type: string, force_name?: string, form_save?: Form
             const unique_id = force_name || generateId(ID_COMPLEXITY);
             PageManager.lock_return_button = true;
 
-            saveForm(type, unique_id, form_save)
+            saveForm(type, unique_id, location_str, form_save)
                 .then((form_values) => {
                     SyncManager.add(unique_id, form_values);
 
@@ -1139,11 +1156,11 @@ async function beginFormSave(type: string, force_name?: string, form_save?: Form
  *  @param type
  *  @param nom ID du formulaire
  */
-export function saveForm(type: string, name: string, form_save?: FormSave) : Promise<FormSave> {
+export function saveForm(type: string, name: string, location: string, form_save?: FormSave) : Promise<FormSave> {
     const form_values: FormSave = {
         fields: {},
         type,
-        location: (document.getElementById('__location__id') as HTMLInputElement).dataset.reallocation,
+        location,
         owner: (form_save ? form_save.owner : UserManager.username),
         metadata: {}
     };
@@ -1388,8 +1405,8 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     M.updateTextFields();
     $('select').formSelect();
 
-    // Lance le sélecteur de localisation uniquement si on est pas en mode édition
-    if (!edition_mode) {
+    // Lance le sélecteur de localisation uniquement si on est pas en mode édition et si le formulaire autorise les lieux
+    if (!edition_mode && !current_form.no_location) {
         callLocationSelector(current_form);
     }
 
@@ -1407,11 +1424,11 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     const current_form_key = Forms.current_key;
     btn.addEventListener('click', function() {
         if (edition_mode) {
-            beginFormSave(edition_mode.save.type, edition_mode.name, edition_mode.save);
+            beginFormSave(edition_mode.save.type, current_form, edition_mode.name, edition_mode.save);
         }
         else {
             try {
-                beginFormSave(current_form_key);
+                beginFormSave(current_form_key, current_form);
             } catch (e) {
                 Logger.error(JSON.stringify(e));
             }
@@ -1421,10 +1438,10 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     base_block.appendChild(btn);
 }
 
-function cancelGeoLocModal() : void {
+function cancelGeoLocModal(required = true) : void {
     // On veut fermer; Deux possibilités.
     // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
-    if ((document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
+    if (!required || (document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
         // On ferme juste le modal
     }
     else {
@@ -1460,16 +1477,16 @@ function callLocationSelector(current_form: Form) : void {
     };
     document.getElementById('dontloc-footer-geoloc').onclick = function() {
         is_loc_canceled = true;
-        locationSelector(modal, current_form.locations, false);
+        locationSelector(modal, current_form.locations, false, !current_form.skip_location);
     };
 
     // Cherche la localisation et remplit le modal
     getLocation(function(coords: Position) {
         if (!is_loc_canceled)
-            locationSelector(modal, current_form.locations, coords);
+            locationSelector(modal, current_form.locations, coords, !current_form.skip_location);
     }, function() {
         if (!is_loc_canceled)
-            locationSelector(modal, current_form.locations);
+            locationSelector(modal, current_form.locations, undefined, !current_form.skip_location);
     });
 }
 
@@ -1480,7 +1497,7 @@ function textDistance(distance: number) : string {
     return `${str_distance} ${unit}`;
 }
 
-function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false) {
+function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false, required = true) {
     // Met le modal en modal avec footer fixé
     modal.classList.add('modal-fixed-footer');
 
@@ -1598,7 +1615,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
     cancel.href = "#!";
     cancel.innerText = "Annuler";
     cancel.classList.add("btn-flat", "red-text", "left");
-    cancel.addEventListener('click', cancelGeoLocModal);
+    cancel.addEventListener('click', () => { cancelGeoLocModal(required); });
     footer.appendChild(cancel);
 
     modal.appendChild(footer);

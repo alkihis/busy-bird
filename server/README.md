@@ -99,13 +99,13 @@ Renvoie les entrées enregistrées sur le serveur pour un type de formulaire don
 | type           | Type de formulaire| cincle_plongeur  |
 
 #### Réponse
-Set d'ID de formulaire, représentés sous la forme `{[formId: string]: true}` 
+Set d'ID de formulaire, représentés dans un tableau `string[]`.
 
 
 #### Exemple
 `GET https://busybird.lbbe.univ-lyon1.fr/forms/sended.json?type=cincle_plongeur`
 
-[HTTP Response] `{"AANUD18uziqu61253Dads": true, "UBD782ddnuaeAy576": true, ...}`
+[HTTP Response] `["AANUD18uziqu61253Dads", "UBD782ddnuaeAy576", ...]`
 
 
 ---
@@ -231,7 +231,7 @@ Si `trim_subs` vaut `true`, les souscriptions ne seront **PAS** renvoyées par l
 Objet de type `FormSchema` si `trim_subs` vaut `false`, `null` sinon.
 
 #### Exemple
-*L'utilisateur est est abonné à `cincle_plongeur` avant la requête.*
+*L'utilisateur est abonné à `cincle_plongeur` avant la requête.*
 
 `POST https://busybird.lbbe.univ-lyon1.fr/schemas/subscribe.json`
 

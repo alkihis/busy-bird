@@ -32,6 +32,9 @@ export interface Form {
     name: string;
     id_field?: string; /* Indique le nom du champ qui sert à l'ID; Ne pas préciser si il n'y en a pas */
     fields: FormEntity[];
+    
+    skip_location?: boolean; /** Autorise le fait que la localisation peut ne pas être précisée (champ non obligatoire) */
+    no_location?: boolean; /** Désactive la génération de l'entrée de localisation pour ce formulaire */
     locations: FormLocations;
 }
 
