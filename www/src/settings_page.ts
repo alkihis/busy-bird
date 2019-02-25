@@ -358,6 +358,7 @@ async function subscriptionsModal() : Promise<void> {
     content.insertAdjacentHTML('beforeend', `
         <p class="flow-text">
             Gérez vos souscriptions et abonnez-vous à des nouveaux schémas de formulaire ici.
+            Cochez pour vous abonner.
         </p>
     `);
 

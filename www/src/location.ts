@@ -49,6 +49,9 @@ export function createLocationInputSelector(container: HTMLElement, input: HTMLI
                 if (open_on_complete) {
                     window.open("geo:" + labels_to_name[location][1] + 
                     "?q=" +labels_to_name[location][1] + "&z=zoom&mode=w", '_system');
+                    
+                    // Clean de l'input
+                    input.value = "";
                 }
             }
             else {

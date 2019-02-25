@@ -3,12 +3,13 @@ import { initFormPage } from "./form";
 import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
 import { initHomePage, APP_NAME } from "./home";
+import { Logger } from "./logger";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 
 interface AppPageObj {
     not_sidenav_close?: boolean;
-    callback: (base: HTMLElement, additionnals?: any) => void;
+    callback: (base: HTMLElement, additionnals?: any) => any;
     name: string;
     ask_change?: boolean;
     reload_on_restore: boolean | Function;
@@ -112,64 +113,79 @@ export const PageManager = new class {
 
     /**
      * Change l'affichage et charge la page "page" dans le bloc principal
-     * @param AppPageName page 
-     * @param delete_paused supprime les pages sauvegardées
+     * @param page Page à charger
+     * @param delete_paused Supprime les pages chargées dans la pile
+     * @param force_name Forcer un nom pour la navbar
+     * @param additionnals Variable à passer en paramètre au callback de page
+     * @param reset_scroll Réinitiliser le scroll de la page en haut
      */
-    public changePage(page: AppPageName | AppPageObj, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : void {
-        let pagename: string = "";
-        if (typeof page === 'string') {
-            // AppPageName
-            if (!this.pageExists(page)) {
-                throw new ReferenceError("Page does not exists");
+    public changePage(page: AppPageName | AppPageObj, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
+        // Tente de charger la page
+        try {
+            let pagename: string = "";
+            if (typeof page === 'string') {
+                // AppPageName
+                if (!this.pageExists(page)) {
+                    throw new ReferenceError("Page does not exists");
+                }
+                
+                pagename = page;
+                page = this.AppPages[page];
             }
-            
-            pagename = page;
-            page = this.AppPages[page];
-        }
-        else {
-            // Recherche de la clé correspondante
-            for (const k in this.AppPages) {
-                if (this.AppPages[k] === page) {
-                    pagename = k;
-                    break;
+            else {
+                // Recherche de la clé correspondante
+                for (const k in this.AppPages) {
+                    if (this.AppPages[k] === page) {
+                        pagename = k;
+                        break;
+                    }
                 }
             }
+    
+            // Si on veut supprimer les pages en attente, on vide le tableau
+            if (delete_paused) {
+                this.pages_holder = [];
+            }
+    
+            // On écrit le preloader dans la base et on change l'historique
+            const base = getBase();
+            base.innerHTML = getPreloader("Chargement");
+            if (window.history) {
+                window.history.pushState({}, "", "?" + pagename);
+            }
+    
+            // Si on a demandé à fermer le sidenav, on le ferme
+            if (!page.not_sidenav_close) {
+                SIDENAV_OBJ.close();
+            }
+    
+            this.actual_page = page;
+            this._should_wait = page.ask_change;
+            this.lock_return_button = false;
+    
+            // On met le titre de la page dans la barre de navigation
+            document.getElementById('nav_title').innerText = force_name || page.name;
+    
+            // On appelle la fonction de création de la page
+            const result = page.callback(base, additionnals);
+    
+            if (reset_scroll) {
+                // Ramène en haut de la page
+                window.scrollTo(0, 0);
+            }
+    
+            this.updateReturnBtn();
+    
+            if (result instanceof Promise) {
+                return result;
+            }
+            else {
+                return Promise.resolve(result);
+            }
+        } catch (e) {
+            Logger.error("Erreur lors du changement de page", e);
+            return Promise.reject(e);
         }
-        
-
-        // Si on veut supprimer les pages en attente, on vide le tableau
-        if (delete_paused) {
-            this.pages_holder = [];
-        }
-
-        // On écrit le preloader dans la base et on change l'historique
-        const base = getBase();
-        base.innerHTML = getPreloader("Chargement");
-        if (window.history) {
-            window.history.pushState({}, "", "?" + pagename);
-        }
-
-        // Si on a demandé à fermer le sidenav, on le ferme
-        if (!page.not_sidenav_close) {
-            SIDENAV_OBJ.close();
-        }
-
-        this.actual_page = page;
-        this._should_wait = page.ask_change;
-        this.lock_return_button = false;
-
-        // On met le titre de la page dans la barre de navigation
-        document.getElementById('nav_title').innerText = force_name || page.name;
-
-        // On appelle la fonction de création de la page
-        page.callback(base, additionnals);
-
-        if (reset_scroll) {
-            // Ramène en haut de la page
-            window.scrollTo(0, 0);
-        }
-
-        this.updateReturnBtn();
     }
 
     protected cleanWaitingPages() : void {
@@ -180,9 +196,11 @@ export const PageManager = new class {
 
     /**
      * Pousse une nouvelle page dans la pile de page
-     * @param page 
+     * @param page Page à pousser
+     * @param force_name Nom à mettre dans la navbar
+     * @param additionnals Variable à passer au callback de la page à charger
      */
-    public pushPage(page: AppPageName | AppPageObj, force_name?: string | null, additionnals?: any) : void {
+    public pushPage(page: AppPageName | AppPageObj, force_name?: string | null, additionnals?: any) : Promise<any> {
         if (typeof page === 'string' && !this.pageExists(page)) {
             throw new ReferenceError("Page does not exists");
         }
@@ -215,7 +233,7 @@ export const PageManager = new class {
         document.getElementsByTagName('main')[0].appendChild(new_base);
 
         // Appelle la fonction pour charger la page demandée dans le bloc
-        this.changePage(page, false, force_name, additionnals);
+        return this.changePage(page, false, force_name, additionnals);
     }
 
     /**

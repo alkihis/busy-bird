@@ -1,5 +1,5 @@
-import { PageManager, AppPageName } from './PageManager';
-import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
+import { PageManager, AppPageName, SIDENAV_OBJ } from './PageManager';
+import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
@@ -88,15 +88,31 @@ function initApp() {
 
     // Quand les forms sont prêts, on affiche l'app !
     Forms.onReady(function() {
-        // @ts-ignore
-        navigator.splashscreen.hide();
+        let prom: Promise<any>;
 
         if (href && PageManager.pageExists(href)) {
-            PageManager.changePage(href as AppPageName);
+            prom = PageManager.changePage(href as AppPageName);
         }
         else {
-            PageManager.changePage(AppPageName.home);
+            prom = PageManager.changePage(AppPageName.home);
         }
+
+        prom
+            .then(() => {
+                // @ts-ignore On montre l'écran quand tout est chargé
+                navigator.splashscreen.hide();
+            })
+            .catch(err => {
+                // @ts-ignore On montre l'écran et on affiche l'erreur
+                navigator.splashscreen.hide();
+
+                // Bloque le sidenav pour empêcher de naviguer
+                try {
+                    SIDENAV_OBJ.destroy();
+                } catch (e) {}
+
+                getBase().innerHTML = displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+            });
     });
 }
 

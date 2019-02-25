@@ -38,6 +38,8 @@ export function launchQuizz(base: HTMLElement) : void {
         "Quelle est la première ville du monde à s'être dotée d'un métro?": "Londres",
         "Dans quel état des Etats-Unis le Grand Canyon se trouve-t-il?": "Arizona",
         "Combien de paires de côtes possède-t-on?": ["Douze", "12"],
+        "En géométrie, quel adjectif qualifie un angle de 180 degrés ?": "plat",
+        "En quelle année fut posé le premier pas sur la lune ?": "1969",
         "Quel os du squelette humain est le plus long et le plus solide?": "Fémur",
         "Quel arbre est connu pour être le plus grand au monde?": "Séquoia",
         "Quelle est l'unité de la tension électrique?": "Volt",

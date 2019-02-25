@@ -900,24 +900,31 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
     exports.convertMinutesToText = convertMinutesToText;
     /**
      * Demande à l'utilisateur de choisir parmi une liste
-     * @param items Choix possibles
+     * @param items Choix possibles. L'insertion d'HTML est autorisé et sera parsé.
      * @returns Index du choix choisi par l'utilisateur
      */
     function askModalList(items) {
         const modal = getBottomModal();
-        const instance = initBottomModal();
         modal.innerHTML = "";
         const content = document.createElement('div');
         content.classList.add('modal-list');
         modal.appendChild(content);
         return new Promise((resolve, reject) => {
+            let resolved = false;
+            const instance = initBottomModal({
+                onCloseEnd: () => {
+                    if (!resolved)
+                        reject();
+                }
+            });
             for (let i = 0; i < items.length; i++) {
                 const link = document.createElement('a');
                 link.classList.add('modal-list-item', 'flow-text', 'waves-effect');
-                link.innerText = items[i];
+                link.innerHTML = items[i];
                 link.href = "#!";
                 link.onclick = () => {
                     resolve(i);
+                    resolved = true;
                     instance.close();
                 };
                 content.appendChild(link);
@@ -2123,6 +2130,8 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
             "Quelle est la première ville du monde à s'être dotée d'un métro?": "Londres",
             "Dans quel état des Etats-Unis le Grand Canyon se trouve-t-il?": "Arizona",
             "Combien de paires de côtes possède-t-on?": ["Douze", "12"],
+            "En géométrie, quel adjectif qualifie un angle de 180 degrés ?": "plat",
+            "En quelle année fut posé le premier pas sur la lune ?": "1969",
             "Quel os du squelette humain est le plus long et le plus solide?": "Fémur",
             "Quel arbre est connu pour être le plus grand au monde?": "Séquoia",
             "Quelle est l'unité de la tension électrique?": "Volt",
@@ -2310,14 +2319,28 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         }
         // Quand les forms sont prêts, on affiche l'app !
         form_schema_1.Forms.onReady(function () {
-            // @ts-ignore
-            navigator.splashscreen.hide();
+            let prom;
             if (href && PageManager_2.PageManager.pageExists(href)) {
-                PageManager_2.PageManager.changePage(href);
+                prom = PageManager_2.PageManager.changePage(href);
             }
             else {
-                PageManager_2.PageManager.changePage(PageManager_2.AppPageName.home);
+                prom = PageManager_2.PageManager.changePage(PageManager_2.AppPageName.home);
             }
+            prom
+                .then(() => {
+                // @ts-ignore On montre l'écran quand tout est chargé
+                navigator.splashscreen.hide();
+            })
+                .catch(err => {
+                // @ts-ignore On montre l'écran et on affiche l'erreur
+                navigator.splashscreen.hide();
+                // Bloque le sidenav pour empêcher de naviguer
+                try {
+                    PageManager_2.SIDENAV_OBJ.destroy();
+                }
+                catch (e) { }
+                helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+            });
         });
     }
     function initDebug() {
@@ -2904,6 +2927,8 @@ define("location", ["require", "exports", "helpers"], function (require, exports
                     if (open_on_complete) {
                         window.open("geo:" + labels_to_name[location][1] +
                             "?q=" + labels_to_name[location][1] + "&z=zoom&mode=w", '_system');
+                        // Clean de l'input
+                        input.value = "";
                     }
                 }
                 else {
@@ -4112,6 +4137,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base_block.appendChild(btn);
     }
     exports.loadFormPage = loadFormPage;
+    /**
+     * Annule la sélection de lieu
+     * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
+     */
     function cancelGeoLocModal(required = true) {
         // On veut fermer; Deux possibilités.
         // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
@@ -4125,6 +4154,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         helpers_8.getModalInstance().close();
         helpers_8.getModal().classList.remove('modal-fixed-footer');
     }
+    /**
+     * Charge le sélecteur de localisation depuis un schéma de formulaire
+     * @param current_form Schéma de formulaire chargé
+     */
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
         const modal = helpers_8.getModal();
@@ -4156,11 +4189,22 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 locationSelector(modal, current_form.locations, undefined, !current_form.skip_location);
         });
     }
+    /**
+     * Formate une distance en mètres en texte lisible par un humain.
+     * @param distance Distance en mètres
+     */
     function textDistance(distance) {
         const unit = (distance >= 1000 ? "km" : "m");
         const str_distance = (distance >= 1000 ? (distance / 1000).toFixed(1) : distance.toString());
         return `${str_distance} ${unit}`;
     }
+    /**
+     * Charge le sélecteur de lieu dans le modal
+     * @param modal Élément modal
+     * @param locations Localisations disponibles pour ce formulaire
+     * @param current_location Position actuelle. Si échec de localisation, undefined. Si explicitement non donnée, false.
+     * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
+     */
     function locationSelector(modal, locations, current_location, required = true) {
         // Met le modal en modal avec footer fixé
         modal.classList.add('modal-fixed-footer');
@@ -4806,6 +4850,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             content.insertAdjacentHTML('beforeend', `
         <p class="flow-text">
             Gérez vos souscriptions et abonnez-vous à des nouveaux schémas de formulaire ici.
+            Cochez pour vous abonner.
         </p>
     `);
             const row = document.createElement('div');
@@ -5035,7 +5080,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                     else {
                         delete_element();
                     }
-                });
+                })
+                    .catch(() => { });
             });
             // Clear le float
             container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
@@ -5203,7 +5249,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_2) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_2, logger_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -5294,54 +5340,70 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         }
         /**
          * Change l'affichage et charge la page "page" dans le bloc principal
-         * @param AppPageName page
-         * @param delete_paused supprime les pages sauvegardées
+         * @param page Page à charger
+         * @param delete_paused Supprime les pages chargées dans la pile
+         * @param force_name Forcer un nom pour la navbar
+         * @param additionnals Variable à passer en paramètre au callback de page
+         * @param reset_scroll Réinitiliser le scroll de la page en haut
          */
         changePage(page, delete_paused = true, force_name, additionnals, reset_scroll = true) {
-            let pagename = "";
-            if (typeof page === 'string') {
-                // AppPageName
-                if (!this.pageExists(page)) {
-                    throw new ReferenceError("Page does not exists");
+            // Tente de charger la page
+            try {
+                let pagename = "";
+                if (typeof page === 'string') {
+                    // AppPageName
+                    if (!this.pageExists(page)) {
+                        throw new ReferenceError("Page does not exists");
+                    }
+                    pagename = page;
+                    page = this.AppPages[page];
                 }
-                pagename = page;
-                page = this.AppPages[page];
-            }
-            else {
-                // Recherche de la clé correspondante
-                for (const k in this.AppPages) {
-                    if (this.AppPages[k] === page) {
-                        pagename = k;
-                        break;
+                else {
+                    // Recherche de la clé correspondante
+                    for (const k in this.AppPages) {
+                        if (this.AppPages[k] === page) {
+                            pagename = k;
+                            break;
+                        }
                     }
                 }
+                // Si on veut supprimer les pages en attente, on vide le tableau
+                if (delete_paused) {
+                    this.pages_holder = [];
+                }
+                // On écrit le preloader dans la base et on change l'historique
+                const base = helpers_12.getBase();
+                base.innerHTML = helpers_12.getPreloader("Chargement");
+                if (window.history) {
+                    window.history.pushState({}, "", "?" + pagename);
+                }
+                // Si on a demandé à fermer le sidenav, on le ferme
+                if (!page.not_sidenav_close) {
+                    exports.SIDENAV_OBJ.close();
+                }
+                this.actual_page = page;
+                this._should_wait = page.ask_change;
+                this.lock_return_button = false;
+                // On met le titre de la page dans la barre de navigation
+                document.getElementById('nav_title').innerText = force_name || page.name;
+                // On appelle la fonction de création de la page
+                const result = page.callback(base, additionnals);
+                if (reset_scroll) {
+                    // Ramène en haut de la page
+                    window.scrollTo(0, 0);
+                }
+                this.updateReturnBtn();
+                if (result instanceof Promise) {
+                    return result;
+                }
+                else {
+                    return Promise.resolve(result);
+                }
             }
-            // Si on veut supprimer les pages en attente, on vide le tableau
-            if (delete_paused) {
-                this.pages_holder = [];
+            catch (e) {
+                logger_6.Logger.error("Erreur lors du changement de page", e);
+                return Promise.reject(e);
             }
-            // On écrit le preloader dans la base et on change l'historique
-            const base = helpers_12.getBase();
-            base.innerHTML = helpers_12.getPreloader("Chargement");
-            if (window.history) {
-                window.history.pushState({}, "", "?" + pagename);
-            }
-            // Si on a demandé à fermer le sidenav, on le ferme
-            if (!page.not_sidenav_close) {
-                exports.SIDENAV_OBJ.close();
-            }
-            this.actual_page = page;
-            this._should_wait = page.ask_change;
-            this.lock_return_button = false;
-            // On met le titre de la page dans la barre de navigation
-            document.getElementById('nav_title').innerText = force_name || page.name;
-            // On appelle la fonction de création de la page
-            page.callback(base, additionnals);
-            if (reset_scroll) {
-                // Ramène en haut de la page
-                window.scrollTo(0, 0);
-            }
-            this.updateReturnBtn();
         }
         cleanWaitingPages() {
             while (this.pages_holder.length >= 10) {
@@ -5350,7 +5412,9 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         }
         /**
          * Pousse une nouvelle page dans la pile de page
-         * @param page
+         * @param page Page à pousser
+         * @param force_name Nom à mettre dans la navbar
+         * @param additionnals Variable à passer au callback de la page à charger
          */
         pushPage(page, force_name, additionnals) {
             if (typeof page === 'string' && !this.pageExists(page)) {
@@ -5379,7 +5443,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Insère la nouvelle base vide à la racine de main
             document.getElementsByTagName('main')[0].appendChild(new_base);
             // Appelle la fonction pour charger la page demandée dans le bloc
-            this.changePage(page, false, force_name, additionnals);
+            return this.changePage(page, false, force_name, additionnals);
         }
         /**
          * Revient à la page précédente.

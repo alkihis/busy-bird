@@ -953,12 +953,11 @@ export function convertMinutesToText(min: number) : string {
 
 /**
  * Demande à l'utilisateur de choisir parmi une liste
- * @param items Choix possibles
+ * @param items Choix possibles. L'insertion d'HTML est autorisé et sera parsé.
  * @returns Index du choix choisi par l'utilisateur
  */
 export function askModalList(items: string[]) : Promise<number> {
     const modal = getBottomModal();
-    const instance = initBottomModal();
 
     modal.innerHTML = "";
     const content = document.createElement('div');
@@ -967,13 +966,23 @@ export function askModalList(items: string[]) : Promise<number> {
     modal.appendChild(content);
 
     return new Promise((resolve, reject) => {
+        let resolved = false;
+
+        const instance = initBottomModal({
+            onCloseEnd: () => {
+                if (!resolved)
+                    reject();
+            }
+        });
+
         for (let i = 0; i < items.length; i++) {
             const link = document.createElement('a');
             link.classList.add('modal-list-item', 'flow-text', 'waves-effect');
-            link.innerText = items[i];
+            link.innerHTML = items[i];
             link.href = "#!";
             link.onclick = () => {
                 resolve(i);
+                resolved = true;
                 instance.close();
             };
             content.appendChild(link);

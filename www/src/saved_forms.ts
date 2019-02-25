@@ -163,7 +163,8 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
                 else {
                     delete_element();
                 }
-            });
+            })
+            .catch(() => { /** Refus de l'utilisateur (fermeture du modal) */ });
     });
 
     // Clear le float

@@ -1443,6 +1443,10 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     base_block.appendChild(btn);
 }
 
+/**
+ * Annule la sélection de lieu
+ * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
+ */
 function cancelGeoLocModal(required = true) : void {
     // On veut fermer; Deux possibilités.
     // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
@@ -1459,6 +1463,10 @@ function cancelGeoLocModal(required = true) : void {
     getModal().classList.remove('modal-fixed-footer');
 }
 
+/**
+ * Charge le sélecteur de localisation depuis un schéma de formulaire
+ * @param current_form Schéma de formulaire chargé
+ */
 function callLocationSelector(current_form: Form) : void {
     // Obtient l'élément HTML du modal
     const modal = getModal();
@@ -1496,6 +1504,10 @@ function callLocationSelector(current_form: Form) : void {
     });
 }
 
+/**
+ * Formate une distance en mètres en texte lisible par un humain.
+ * @param distance Distance en mètres
+ */
 function textDistance(distance: number) : string {
     const unit = (distance >= 1000 ? "km" : "m");
     const str_distance = (distance >= 1000 ? (distance / 1000).toFixed(1) : distance.toString());
@@ -1503,6 +1515,13 @@ function textDistance(distance: number) : string {
     return `${str_distance} ${unit}`;
 }
 
+/**
+ * Charge le sélecteur de lieu dans le modal
+ * @param modal Élément modal
+ * @param locations Localisations disponibles pour ce formulaire
+ * @param current_location Position actuelle. Si échec de localisation, undefined. Si explicitement non donnée, false.
+ * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
+ */
 function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false, required = true) {
     // Met le modal en modal avec footer fixé
     modal.classList.add('modal-fixed-footer');
