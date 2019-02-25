@@ -1245,7 +1245,7 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
         }
     };
 });
-define("audio_listener", ["require", "exports", "helpers", "logger"], function (require, exports, helpers_2, logger_1) {
+define("audio_listener", ["require", "exports", "helpers", "logger", "main"], function (require, exports, helpers_2, logger_1, main_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function newModalRecord(button, input, ele) {
@@ -1286,9 +1286,9 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
         btn_confirm.onclick = function () {
             if (audioContent) {
                 input.value = audioContent;
-                input.dataset.duration = ((blobSize / 256000) * 8).toString();
+                input.dataset.duration = ((blobSize / (main_1.MP3_BITRATE * 1000)) * 8).toString();
                 // Met à jour le bouton
-                const duration = (blobSize / 256000) * 8;
+                const duration = (blobSize / (main_1.MP3_BITRATE * 1000)) * 8;
                 button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                 button.classList.remove('blue');
                 button.classList.add('green');
@@ -1301,15 +1301,20 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
             instance.close();
             // Clean le modal et donc les variables associées
             modal.innerHTML = "";
+            try {
+                if (recorder)
+                    recorder.stop();
+            }
+            catch (e) { }
         };
         function startRecording() {
             btn_start.classList.add('hide');
             player.innerHTML = `<p class='flow-text center'>
-                Initialisation...
-            </p>`;
+            Initialisation...
+        </p>`;
             // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
             recorder = new MicRecorder({
-                bitRate: 256
+                bitRate: main_1.MP3_BITRATE
             });
             recorder.start().then(function () {
                 player.innerHTML = `<p class='flow-text center'>
@@ -1328,18 +1333,21 @@ define("audio_listener", ["require", "exports", "helpers", "logger"], function (
             player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
             recorder
                 .stop()
-                .getMp3().then(([buffer, blob]) => {
+                .getMp3()
+                .then(([buffer, blob]) => {
                 blobSize = blob.size;
-                helpers_2.blobToBase64(blob).then(function (base64) {
-                    audioContent = base64;
-                    btn_confirm.classList.remove('hide');
-                    player.innerHTML = `<figure>
-                        <figcaption>Enregistrement</figcaption>
-                        <audio controls src="${base64}"></audio>
-                    </figure>`;
-                    btn_start.classList.remove('hide');
-                });
-            }).catch((e) => {
+                return helpers_2.blobToBase64(blob);
+            })
+                .then((base64) => {
+                audioContent = base64;
+                btn_confirm.classList.remove('hide');
+                player.innerHTML = `<figure>
+                    <figcaption>Enregistrement</figcaption>
+                    <audio controls src="${base64}"></audio>
+                </figure>`;
+                btn_start.classList.remove('hide');
+            })
+                .catch((e) => {
                 M.toast({ html: 'Impossible de lire votre enregistrement' });
                 logger_1.Logger.error("Enregistrement échoué:", e.message);
             });
@@ -1358,7 +1366,7 @@ define("fetch_timeout", ["require", "exports"], function (require, exports) {
     }
     exports.default = default_1;
 });
-define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout"], function (require, exports, logger_2, localforage_1, main_1, helpers_3, user_manager_1, fetch_timeout_1) {
+define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout"], function (require, exports, logger_2, localforage_1, main_2, helpers_3, user_manager_1, fetch_timeout_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
@@ -1453,7 +1461,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     const d = new FormData();
                     d.append("id", id);
                     d.append("form", content);
-                    return fetch_timeout_1.default(main_1.API_URL + "forms/send.json", {
+                    return fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
                         method: "POST",
                         body: d,
                         headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
@@ -1498,7 +1506,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                                     d.append("type", data.type);
                                     d.append("filename", basename);
                                     d.append("data", base64);
-                                    return fetch_timeout_1.default(main_1.API_URL + "forms/metadata_send.json", {
+                                    return fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
                                         method: "POST",
                                         body: d,
                                         headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
@@ -1987,6 +1995,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
     exports.APP_VERSION = 0.55;
+    exports.MP3_BITRATE = 256;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -2090,7 +2099,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_2, helpers_5, form_schema_2) {
+define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_3, helpers_5, form_schema_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.UserManager = new class {
@@ -2115,7 +2124,7 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
                 let data = new FormData();
                 data.append("username", username);
                 data.append('password', password);
-                fetch(main_2.API_URL + "users/login.json", { body: data, method: 'POST' })
+                fetch(main_3.API_URL + "users/login.json", { body: data, method: 'POST' })
                     .then((response) => {
                     return response.json();
                 })
@@ -2156,7 +2165,7 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
             data.append("password", password);
             data.append("admin_password", admin_password);
             return new Promise((resolve, reject) => {
-                fetch(main_2.API_URL + "users/create.json", {
+                fetch(main_3.API_URL + "users/create.json", {
                     method: "POST",
                     body: data
                 }).then((response) => {
@@ -2374,7 +2383,7 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
             });
         });
  */ 
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_6, user_manager_3, main_3, fetch_timeout_2) {
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_6, user_manager_3, main_4, fetch_timeout_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_2 = __importDefault(fetch_timeout_2);
@@ -2475,10 +2484,10 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 init_text.innerText = "Mise à jour des formulaires";
             }
             // @ts-ignore
-            if ((main_3.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
+            if ((main_4.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
-                return fetch_timeout_2.default(main_3.API_URL + "schemas/subscribed.json", {
+                return fetch_timeout_2.default(main_4.API_URL + "schemas/subscribed.json", {
                     headers: new Headers({ "Authorization": "Bearer " + user_manager_3.UserManager.token }),
                     method: "GET"
                 }, 20000)
@@ -2654,7 +2663,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_3, helpers_8, main_4, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_3, helpers_8, main_5, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -2812,13 +2821,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 callLocationSelector(current_form); // Appelle le modal pour changer de lieu
             });
             if (filled_form) {
-                location.dataset.reallocation = filled_form.location || "";
+                location.value = location.dataset.reallocation = filled_form.location || "";
                 // Recherche la vraie localisation (textuelle) dans Form.location
                 const label_location = (filled_form.location in current_form.locations ?
                     current_form.locations[filled_form.location] :
                     null);
                 if (label_location) {
-                    location.value = label_location.label;
+                    location.value = `${filled_form.location} - ${label_location.label}`;
                 }
                 else if (filled_form.location !== null) {
                     helpers_8.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
@@ -3286,10 +3295,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
-                        const duration = ((base64.length * 0.7) / 256000) * 8;
+                        const duration = ((base64.length * 0.7) / (main_5.MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                     }, function (fail) {
-                        console.log("Impossible de charger le fichier", fail);
+                        logger_4.Logger.warn("Impossible de charger le fichier", fail);
                     }, true);
                 }
                 ////// Fin
@@ -3358,10 +3367,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             if (location_element) {
                 location_str = location_element.dataset.reallocation;
             }
-            // Vérifie le lieu si le lieu est passable 
-            // (si il n'est pas requis, ne fait rien, si il est requis, cette fenêtre ne peut s'afficher)
-            if (!current_form.no_location && current_form.skip_location && !location_str) {
-                elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+            // Vérifie le lieu si le lieu est défini 
+            // (si il n'est pas requis, affiche un warning, sinon une erreur)
+            if (!current_form.no_location && !location_str) {
+                if (current_form.skip_location)
+                    elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+                else
+                    elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
             }
             // Input classiques: checkbox/slider, text, textarea, select, number
             for (const e of document.getElementsByClassName('input-form-element')) {
@@ -3539,7 +3551,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 save_btn.onclick = function () {
                     modal.innerHTML = helpers_8.getModalPreloader("Sauvegarde en cours");
                     modal.classList.remove('modal-fixed-footer');
-                    const unique_id = force_name || helpers_8.generateId(main_4.ID_COMPLEXITY);
+                    const unique_id = force_name || helpers_8.generateId(main_5.ID_COMPLEXITY);
                     PageManager_3.PageManager.lock_return_button = true;
                     saveForm(type, unique_id, location_str, form_save)
                         .then((form_values) => {
@@ -3723,7 +3735,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const file = audio.value;
                     const input_name = audio.name;
                     if (file) {
-                        const filename = helpers_8.generateId(main_4.ID_COMPLEXITY) + '.mp3';
+                        const filename = helpers_8.generateId(main_5.ID_COMPLEXITY) + '.mp3';
                         helpers_8.urlToBlob(file).then(function (blob) {
                             saveBlobToFile(resolve, reject, filename, input_name, blob);
                         });
@@ -3817,8 +3829,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         M.updateTextFields();
         $('select').formSelect();
         // Lance le sélecteur de localisation uniquement si on est pas en mode édition et si le formulaire autorise les lieux
-        if (!edition_mode && !current_form.no_location) {
-            callLocationSelector(current_form);
+        if (!edition_mode) {
+            if (!(current_form.no_location || current_form.skip_location)) {
+                callLocationSelector(current_form);
+            }
         }
         // Autoredimensionnement des textaera si valeur par défaut
         const $textarea = $('textarea');
@@ -3854,7 +3868,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
         else {
             // Sinon, on ramène à la page précédente
-            PageManager_3.PageManager.popPage();
+            PageManager_3.PageManager.goBack();
         }
         helpers_8.getModalInstance().close();
         helpers_8.getModal().classList.remove('modal-fixed-footer');
@@ -3875,7 +3889,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         let is_loc_canceled = false;
         document.getElementById("close-footer-geoloc").onclick = function () {
             is_loc_canceled = true;
-            cancelGeoLocModal();
+            cancelGeoLocModal(!current_form.skip_location);
         };
         document.getElementById('dontloc-footer-geoloc').onclick = function () {
             is_loc_canceled = true;
@@ -3937,7 +3951,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_4.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_5.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -3999,7 +4013,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main"], function (require, exports, user_manager_5, form_schema_4, helpers_9, SyncManager_3, PageManager_4, fetch_timeout_3, main_5) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main"], function (require, exports, user_manager_5, form_schema_4, helpers_9, SyncManager_3, PageManager_4, fetch_timeout_3, main_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -4180,7 +4194,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     exports.initSettingsPage = initSettingsPage;
     function getSubscriptions() {
         return __awaiter(this, void 0, void 0, function* () {
-            return fetch_timeout_3.default(main_5.API_URL + "schemas/available.json", {
+            return fetch_timeout_3.default(main_6.API_URL + "schemas/available.json", {
                 headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
                 method: "GET",
                 mode: "cors"
@@ -4195,7 +4209,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             if (!fetch_subs) {
                 form_data.append('trim_subs', 'true');
             }
-            return fetch_timeout_3.default(main_5.API_URL + "schemas/subscribe.json", {
+            return fetch_timeout_3.default(main_6.API_URL + "schemas/subscribe.json", {
                 headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
                 method: "POST",
                 mode: "cors",
@@ -4211,7 +4225,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             if (!fetch_subs) {
                 form_data.append('trim_subs', 'true');
             }
-            return fetch_timeout_3.default(main_5.API_URL + "schemas/unsubscribe.json", {
+            return fetch_timeout_3.default(main_6.API_URL + "schemas/unsubscribe.json", {
                 headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
                 method: "POST",
                 mode: "cors",
@@ -4555,7 +4569,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_6, form_schema_6, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_6, SyncManager_5, helpers_11, main_7, form_schema_6, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4566,7 +4580,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_6.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_7.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
             sur le terrain !

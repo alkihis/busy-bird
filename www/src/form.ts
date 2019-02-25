@@ -1,7 +1,7 @@
 import { prompt } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave, FormLocations } from './form_schema';
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast } from "./helpers";
-import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY } from "./main";
+import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
@@ -188,7 +188,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         });
 
         if (filled_form) {
-            location.dataset.reallocation = filled_form.location || "";
+            location.value = location.dataset.reallocation = filled_form.location || "";
             // Recherche la vraie localisation (textuelle) dans Form.location
             const label_location = (filled_form.location in current_form.locations ? 
                 current_form.locations[filled_form.location] : 
@@ -196,7 +196,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             );
 
             if (label_location) {
-                location.value = label_location.label;
+                location.value = `${filled_form.location} - ${label_location.label}`;
             }
             else if (filled_form.location !== null) {
                 showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
@@ -765,11 +765,11 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
-                        const duration = ((base64.length * 0.7) / 256000) * 8;
+                        const duration = ((base64.length * 0.7) / (MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                     },
                     function(fail) {
-                        console.log("Impossible de charger le fichier", fail);
+                        Logger.warn("Impossible de charger le fichier", fail);
                     },
                     true
                 );
@@ -865,10 +865,13 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
         location_str = location_element.dataset.reallocation;
     }
 
-    // Vérifie le lieu si le lieu est passable 
-    // (si il n'est pas requis, ne fait rien, si il est requis, cette fenêtre ne peut s'afficher)
-    if (!current_form.no_location && current_form.skip_location && !location_str) {
-        elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+    // Vérifie le lieu si le lieu est défini 
+    // (si il n'est pas requis, affiche un warning, sinon une erreur)
+    if (!current_form.no_location && !location_str) {
+        if (current_form.skip_location)
+            elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+        else
+            elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
     }
 
     // Input classiques: checkbox/slider, text, textarea, select, number
@@ -1406,8 +1409,10 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     $('select').formSelect();
 
     // Lance le sélecteur de localisation uniquement si on est pas en mode édition et si le formulaire autorise les lieux
-    if (!edition_mode && !current_form.no_location) {
-        callLocationSelector(current_form);
+    if (!edition_mode) {
+        if (!(current_form.no_location || current_form.skip_location)) {
+            callLocationSelector(current_form);
+        }
     }
 
     // Autoredimensionnement des textaera si valeur par défaut
@@ -1441,12 +1446,13 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
 function cancelGeoLocModal(required = true) : void {
     // On veut fermer; Deux possibilités.
     // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
+
     if (!required || (document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
         // On ferme juste le modal
     }
     else {
         // Sinon, on ramène à la page précédente
-        PageManager.popPage();
+        PageManager.goBack();
     }
 
     getModalInstance().close();
@@ -1473,7 +1479,7 @@ function callLocationSelector(current_form: Form) : void {
     let is_loc_canceled = false;
     document.getElementById("close-footer-geoloc").onclick = function() {
         is_loc_canceled = true;
-        cancelGeoLocModal();
+        cancelGeoLocModal(!current_form.skip_location);
     };
     document.getElementById('dontloc-footer-geoloc').onclick = function() {
         is_loc_canceled = true;

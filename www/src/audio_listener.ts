@@ -1,6 +1,7 @@
 import { getModal, initModal, getModalPreloader, blobToBase64 } from "./helpers";
 import { FormEntity } from "./form_schema";
 import { Logger } from "./logger";
+import { MP3_BITRATE } from "./main";
 
 export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElement, ele: FormEntity) {
     let recorder = null;
@@ -46,10 +47,10 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
     btn_confirm.onclick = function() {
         if (audioContent) {
             input.value = audioContent;
-            input.dataset.duration = ((blobSize / 256000) * 8).toString();
+            input.dataset.duration = ((blobSize / (MP3_BITRATE * 1000)) * 8).toString();
 
             // Met à jour le bouton
-            const duration = (blobSize / 256000) * 8;
+            const duration = (blobSize / (MP3_BITRATE * 1000)) * 8;
             button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
             button.classList.remove('blue');
             button.classList.add('green');
@@ -64,17 +65,22 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
         instance.close();
         // Clean le modal et donc les variables associées
         modal.innerHTML = "";
+
+        try {
+            if (recorder)
+                recorder.stop();
+        } catch (e) {}
     }
     
     function startRecording() {
         btn_start.classList.add('hide');
         player.innerHTML = `<p class='flow-text center'>
-                Initialisation...
-            </p>`;
+            Initialisation...
+        </p>`;
 
         // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
         recorder = new MicRecorder({
-            bitRate: 256
+            bitRate: MP3_BITRATE
         });
 
         recorder.start().then(function() {
@@ -96,21 +102,24 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
 
         recorder
             .stop()
-            .getMp3().then(([buffer, blob]) => {
+            .getMp3()
+            .then(([buffer, blob]) => {
                 blobSize = blob.size;
 
-                blobToBase64(blob).then(function(base64) {
-                    audioContent = base64;
-        
-                    btn_confirm.classList.remove('hide');
-                    player.innerHTML = `<figure>
-                        <figcaption>Enregistrement</figcaption>
-                        <audio controls src="${base64}"></audio>
-                    </figure>`;
-        
-                    btn_start.classList.remove('hide');
-                });
-            }).catch((e) => {
+                return blobToBase64(blob);
+            })
+            .then((base64: string) => {
+                audioContent = base64;
+    
+                btn_confirm.classList.remove('hide');
+                player.innerHTML = `<figure>
+                    <figcaption>Enregistrement</figcaption>
+                    <audio controls src="${base64}"></audio>
+                </figure>`;
+    
+                btn_start.classList.remove('hide');
+            })
+            .catch((e) => {
                 M.toast({html:'Impossible de lire votre enregistrement'});
                 Logger.error("Enregistrement échoué:", e.message);
             });
