@@ -78,6 +78,9 @@
     },
     "cordova-plugin-x-toast": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova-plugin-background-fetch": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {

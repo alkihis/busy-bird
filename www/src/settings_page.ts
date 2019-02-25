@@ -1,11 +1,12 @@
 import { UserManager, loginUser } from "./user_manager";
 import { Forms, FormSchema } from "./form_schema";
-import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal } from "./helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText } from "./helpers";
 import { SyncManager } from "./SyncManager";
 import { PageManager } from "./PageManager";
 import fetch from './fetch_timeout';
-import { API_URL } from "./main";
+import { API_URL, SYNC_FREQUENCY_POSSIBILITIES } from "./main";
 import { APP_NAME } from "./home";
+import { Settings } from './Settings';
 
 function headerText() : string {
     return `${UserManager.logged ? 
@@ -186,10 +187,67 @@ export function initSettingsPage(base: HTMLElement) {
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
     <h4>Synchronisation</h4>
+    <h5>Arrière-plan</h5>
+    <p class="flow-text">
+        L'application tente de synchroniser régulièrement les entrées 
+        si une connexion à Internet est disponible.
+    </p>
+    `);
+
+    // Select pour choisir la fréquence de synchro
+    const select_field = convertHTMLToElement('<div class="input-field col s12"></div>');
+    const select_input = document.createElement('select');
+    
+    for (const minutes of SYNC_FREQUENCY_POSSIBILITIES) {
+        const opt = document.createElement('option');
+        opt.value = String(minutes);
+        opt.innerText = convertMinutesToText(minutes);
+        opt.selected = minutes === Settings.sync_freq;
+        select_input.appendChild(opt);
+    }
+
+    select_input.onchange = function(this: GlobalEventHandlers) {
+        Settings.sync_freq = Number((this as HTMLSelectElement).value);
+        SyncManager.changeBackgroundSyncInterval(Settings.sync_freq);
+    };
+
+    const select_label = document.createElement('label');
+    select_label.innerText = "Fréquence de synchronisation";
+    select_field.appendChild(select_input);
+    select_field.appendChild(select_label);
+
+    container.appendChild(select_field);
+
+    // Initialisation du select materialize
+    M.FormSelect.init(select_input);
+
+    // Checkbox pour activer sync en arrière plan
+    container.insertAdjacentHTML('beforeend', `
+        <p style="margin-bottom: 20px">
+            <label>
+                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings.sync_bg ? 'checked' : ''}>
+                <span>Activer la synchronisation en arrière-plan</span>
+            </label>
+        </p>`);
+
+    document.getElementById('__sync_bg_checkbox_settings').onchange = function(this: GlobalEventHandlers) {
+        Settings.sync_bg = (this as HTMLInputElement).checked;
+        if (Settings.sync_bg) {
+            SyncManager.startBackgroundSync();
+        }
+        else {
+            SyncManager.stopBackgroundSync();
+        }
+    };
+
+    // Bouton pour forcer sync
+    container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <h5>Forcer synchronisation</h5>
     <p class="flow-text">
         La synchronisation standard se trouve dans la page des entrées.
-        Ici, vous pouvez forcer le renvoi complet des données vers le serveur,
-        y compris celles déjà synchronisées. 
+        Vous pouvez forcer le renvoi complet des données vers le serveur,
+        y compris celles déjà synchronisées, ici. 
     </p>
     `);
 

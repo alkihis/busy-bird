@@ -887,6 +887,45 @@ define("helpers", ["require", "exports", "PageManager"], function (require, expo
         }
     }
     exports.showToast = showToast;
+    function convertMinutesToText(min) {
+        if (min < 60) {
+            return `${min} minutes`;
+        }
+        else {
+            const hours = Math.trunc(min / 60);
+            const minutes = Math.trunc(min % 60);
+            return `${hours} heure${hours > 1 ? 's' : ''} ${minutes || ""}`;
+        }
+    }
+    exports.convertMinutesToText = convertMinutesToText;
+    /**
+     * Demande à l'utilisateur de choisir parmi une liste
+     * @param items Choix possibles
+     * @returns Index du choix choisi par l'utilisateur
+     */
+    function askModalList(items) {
+        const modal = getBottomModal();
+        const instance = initBottomModal();
+        modal.innerHTML = "";
+        const content = document.createElement('div');
+        content.classList.add('modal-list');
+        modal.appendChild(content);
+        return new Promise((resolve, reject) => {
+            for (let i = 0; i < items.length; i++) {
+                const link = document.createElement('a');
+                link.classList.add('modal-list-item', 'flow-text', 'waves-effect');
+                link.innerText = items[i];
+                link.href = "#!";
+                link.onclick = () => {
+                    resolve(i);
+                    instance.close();
+                };
+                content.appendChild(link);
+            }
+            instance.open();
+        });
+    }
+    exports.askModalList = askModalList;
 });
 define("vocal_recognition", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -1387,7 +1426,121 @@ define("fetch_timeout", ["require", "exports"], function (require, exports) {
     }
     exports.default = default_1;
 });
-define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout"], function (require, exports, logger_2, localforage_1, main_2, helpers_3, user_manager_1, fetch_timeout_1) {
+define("Settings", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Settings = new class {
+        constructor() {
+            this._sync_freq = 30; /** En minutes */
+            this._sync_bg = true; /** Activer la sync en arrière plan */
+            if (localStorage.getItem('_settings_sync_freq')) {
+                this._sync_freq = Number(localStorage.getItem('_settings_sync_freq'));
+            }
+            if (localStorage.getItem('_settings_sync_bg')) {
+                this._sync_bg = localStorage.getItem('_settings_sync_bg') === 'true';
+            }
+        }
+        set sync_bg(val) {
+            this._sync_bg = val;
+            localStorage.setItem('_settings_sync_bg', String(val));
+        }
+        get sync_bg() {
+            return this._sync_bg;
+        }
+        set sync_freq(val) {
+            this._sync_freq = val;
+            localStorage.setItem('_settings_sync_freq', String(val));
+        }
+        get sync_freq() {
+            return this._sync_freq;
+        }
+    };
+    exports.BackgroundSync = new class {
+        constructor() {
+            //// credit to https://github.com/transistorsoft/cordova-plugin-background-fetch
+            this.background_sync = null;
+            this.fetchCb = null;
+            this.failCb = null;
+        }
+        isInit() {
+            return this.background_sync !== null;
+        }
+        /**
+         * Initialise le module de background sync. Cette fonction ne doit être appelée qu'une seule fois !
+         * @param fetchCb Fonction à appeler lors du fetch
+         * @param failCb Fonction à appeler si échec
+         * @param interval Intervalle entre deux synchronisations (en minutes)
+         */
+        init(fetchCb, failCb, interval = exports.Settings.sync_freq) {
+            this.background_sync = ("BackgroundFetch" in window) ? window["BackgroundFetch"] : null;
+            return this.initBgSync(fetchCb, failCb, interval);
+        }
+        /**
+         * Modifie le module de background sync en cours d'exécution
+         * @param fetchCb Fonction à appeler lors du fetch
+         * @param failCb Fonction à appeler si échec
+         * @param interval Intervalle entre deux synchronisations (en minutes)
+         */
+        initBgSync(fetchCb, failCb, interval = exports.Settings.sync_freq) {
+            if (this.background_sync) {
+                this.stop();
+                console.log("Starting sync with interval: " + interval);
+                this.failCb = failCb;
+                this.fetchCb = fetchCb;
+                this.background_sync.configure(fetchCb, () => {
+                    // Désinitialise l'objet
+                    exports.Settings.sync_bg = false;
+                    this.background_sync = null;
+                    failCb();
+                }, {
+                    minimumFetchInterval: interval,
+                    stopOnTerminate: false // <-- Android only
+                });
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        finish() {
+            if (this.background_sync) {
+                this.background_sync.finish();
+            }
+        }
+        /**
+         * Change la fréquence de synchronisation
+         * @param interval Intervalle entre deux synchronisations (en minutes)
+         */
+        changeBgSyncInterval(interval) {
+            if (this.background_sync) {
+                return this.initBgSync(this.fetchCb, this.failCb, interval);
+            }
+            return false;
+        }
+        start() {
+            if (this.background_sync) {
+                this.background_sync.start(() => {
+                    console.log("Starting fetch");
+                }, () => {
+                    console.log("Failed to start fetch");
+                });
+            }
+        }
+        stop() {
+            try {
+                if (this.background_sync) {
+                    this.background_sync.stop(() => {
+                        console.log("Stopping sync");
+                    }, () => {
+                        console.log("Failed to stop sync");
+                    });
+                }
+            }
+            catch (e) { /** Ne fait rien si échoue à stopper (ce n'était pas lancé) */ }
+        }
+    };
+});
+define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout", "Settings"], function (require, exports, logger_2, localforage_1, main_2, helpers_3, user_manager_1, fetch_timeout_1, Settings_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
@@ -1397,7 +1550,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
     const MAX_TIMEOUT_FOR_METADATA = 180000;
     // Nombre de formulaires à envoyer en même temps
     // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
-    const PROMISE_BY_SYNC_STEP = 10;
+    const PROMISE_BY_SYNC_STEP = 5;
     const SyncList = new class {
         init() {
             localforage_1.default.config({
@@ -1442,9 +1595,64 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         constructor() {
             this.in_sync = false;
             this.list = SyncList;
+            this.last_bgsync = Date.now();
         }
         init() {
             this.list.init();
+            this.initBackgroundSync();
+        }
+        initBackgroundSync(interval = Settings_1.Settings.sync_freq) {
+            const success_fn = () => {
+                logger_2.Logger.info("Il s'est écoulé " + ((Date.now() - this.last_bgsync) / 1000) + " secondes depuis la dernière synchronisation.");
+                this.last_bgsync = Date.now();
+                this.launchBackgroundSync()
+                    .then(() => {
+                    logger_2.Logger.info(`La synchronisation d'arrière-plan s'est bien déroulée et a duré ${((Date.now() - this.last_bgsync) / 1000)} secondes.`);
+                    Settings_1.BackgroundSync.finish();
+                })
+                    .catch(e => {
+                    logger_2.Logger.error("Impossible de synchroniser en arrière plan.", e);
+                    Settings_1.BackgroundSync.finish();
+                });
+            };
+            const failure_fn = () => {
+                console.log("La synchronisation n'a pas pu se lancer.");
+                const checkbox_setting_bgsync = document.getElementById('__sync_bg_checkbox_settings');
+                if (checkbox_setting_bgsync) {
+                    helpers_3.showToast("Impossible de lancer la synchronisation");
+                    checkbox_setting_bgsync.checked = false;
+                }
+            };
+            if (Settings_1.Settings.sync_bg) {
+                // Initialise la synchronisation en arrière plan uniquement si elle est demandée
+                if (Settings_1.BackgroundSync.isInit()) {
+                    Settings_1.BackgroundSync.initBgSync(success_fn, failure_fn, interval);
+                }
+                else {
+                    Settings_1.BackgroundSync.init(success_fn, failure_fn, interval);
+                }
+            }
+        }
+        changeBackgroundSyncInterval(interval) {
+            if (Settings_1.BackgroundSync.isInit()) {
+                Settings_1.BackgroundSync.changeBgSyncInterval(interval);
+            }
+            else {
+                this.initBackgroundSync(interval);
+            }
+        }
+        startBackgroundSync() {
+            if (Settings_1.BackgroundSync.isInit()) {
+                Settings_1.BackgroundSync.start();
+            }
+            else {
+                this.initBackgroundSync();
+            }
+        }
+        stopBackgroundSync() {
+            if (Settings_1.BackgroundSync.isInit()) {
+                Settings_1.BackgroundSync.stop();
+            }
         }
         add(id, data) {
             const saveItem = (id, type, metadata) => {
@@ -1527,6 +1735,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                             }
                             const file = base_path + data.metadata[metadata];
                             const basename = data.metadata[metadata];
+                            // Envoi de tous les fichiers associés un à un
                             promises.push(new Promise((res, rej) => {
                                 helpers_3.readFile(file, true)
                                     .then(base64 => {
@@ -1559,6 +1768,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         }
                         Promise.all(promises)
                             .then(values => {
+                            this.list.remove(id);
                             resolve();
                         })
                             .catch(err => {
@@ -1566,6 +1776,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         });
                     }
                     else {
+                        this.list.remove(id);
                         resolve();
                     }
                 })
@@ -1787,14 +1998,16 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             if (helpers_3.hasGoodConnection()) {
                 return this.sync();
             }
+            return Promise.reject({ code: "no_good_connection" });
         }
         /**
          * Synchronise les formulaires courants avec la BDD distante
          * @param force_all Forcer l'envoi de tous les formulaires
          * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
          * @param text_element Élément HTML dans lequel écrire l'avancement
+         * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
          */
-        sync(force_all = false, clear_cache = false, text_element) {
+        sync(force_all = false, clear_cache = false, text_element, force_specific_elements) {
             if (this.in_sync) {
                 return Promise.reject({ code: 'already' });
             }
@@ -1822,6 +2035,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         });
                     }
                 }
+                else if (force_specific_elements) {
+                    entries_promise = Promise.resolve(force_specific_elements);
+                }
                 else {
                     entries_promise = this.list.listSaved();
                 }
@@ -1842,7 +2058,8 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     }
                     return this.subSyncDivider(id_getter, entries, text_element)
                         .then(v => {
-                        this.list.clear();
+                        if (!force_specific_elements)
+                            this.list.clear();
                         this.in_sync = false;
                         // La synchro a réussi !
                         resolve();
@@ -2027,8 +2244,9 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-    exports.APP_VERSION = 0.55;
-    exports.MP3_BITRATE = 256;
+    exports.APP_VERSION = 0.6;
+    exports.MP3_BITRATE = 256; /** En kb/s */
+    exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -2060,7 +2278,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     };
     function initApp() {
         // Change le répertoire de données
-        // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
+        // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
         // Sinon, si mobile, on passe sur dataDirectory
         helpers_4.changeDir();
         logger_3.Logger.init();
@@ -2116,6 +2334,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             rmrfPromise: helpers_4.rmrfPromise,
             Logger: logger_3.Logger,
             Forms: form_schema_1.Forms,
+            askModalList: helpers_4.askModalList,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
                     name: "__test__",
@@ -4290,7 +4509,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home"], function (require, exports, user_manager_6, form_schema_5, helpers_10, SyncManager_4, PageManager_4, fetch_timeout_3, main_7, home_1) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_5, helpers_10, SyncManager_4, PageManager_4, fetch_timeout_3, main_7, home_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -4446,10 +4665,58 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
     <h4>Synchronisation</h4>
+    <h5>Arrière-plan</h5>
+    <p class="flow-text">
+        L'application tente de synchroniser régulièrement les entrées 
+        si une connexion à Internet est disponible.
+    </p>
+    `);
+        // Select pour choisir la fréquence de synchro
+        const select_field = helpers_10.convertHTMLToElement('<div class="input-field col s12"></div>');
+        const select_input = document.createElement('select');
+        for (const minutes of main_7.SYNC_FREQUENCY_POSSIBILITIES) {
+            const opt = document.createElement('option');
+            opt.value = String(minutes);
+            opt.innerText = helpers_10.convertMinutesToText(minutes);
+            opt.selected = minutes === Settings_2.Settings.sync_freq;
+            select_input.appendChild(opt);
+        }
+        select_input.onchange = function () {
+            Settings_2.Settings.sync_freq = Number(this.value);
+            SyncManager_4.SyncManager.changeBackgroundSyncInterval(Settings_2.Settings.sync_freq);
+        };
+        const select_label = document.createElement('label');
+        select_label.innerText = "Fréquence de synchronisation";
+        select_field.appendChild(select_input);
+        select_field.appendChild(select_label);
+        container.appendChild(select_field);
+        // Initialisation du select materialize
+        M.FormSelect.init(select_input);
+        // Checkbox pour activer sync en arrière plan
+        container.insertAdjacentHTML('beforeend', `
+        <p style="margin-bottom: 20px">
+            <label>
+                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_2.Settings.sync_bg ? 'checked' : ''}>
+                <span>Activer la synchronisation en arrière-plan</span>
+            </label>
+        </p>`);
+        document.getElementById('__sync_bg_checkbox_settings').onchange = function () {
+            Settings_2.Settings.sync_bg = this.checked;
+            if (Settings_2.Settings.sync_bg) {
+                SyncManager_4.SyncManager.startBackgroundSync();
+            }
+            else {
+                SyncManager_4.SyncManager.stopBackgroundSync();
+            }
+        };
+        // Bouton pour forcer sync
+        container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <h5>Forcer synchronisation</h5>
     <p class="flow-text">
         La synchronisation standard se trouve dans la page des entrées.
-        Ici, vous pouvez forcer le renvoi complet des données vers le serveur,
-        y compris celles déjà synchronisées. 
+        Vous pouvez forcer le renvoi complet des données vers le serveur,
+        y compris celles déjà synchronisées, ici. 
     </p>
     `);
         const syncbtn = document.createElement('button');
@@ -4674,6 +4941,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             container.classList.add('saved-form-item');
             let id = json[0].name;
             let id_without_json = id.split('.json')[0];
+            container.dataset.formid = id_without_json;
             let state = SaveState.error;
             let type = "Type inconnu";
             if (save.type !== null && form_schema_6.Forms.formExists(save.type)) {
@@ -4714,21 +4982,63 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             [${type}] ${id} <br> 
             Modifié le ${helpers_11.formatDate(new Date(json[0].lastModified), true)}
         </div>`);
-            // Ajoute le bouton de suppression
-            const delete_btn = helpers_11.convertHTMLToElement(`<a href="#!" class="secondary-content"><i class="material-icons red-text">delete_forever</i></a>`);
-            const file_name = json[0].name;
-            delete_btn.addEventListener('click', function (evt) {
-                evt.preventDefault();
-                evt.stopPropagation();
-                modalDeleteForm(file_name);
+            // Ajout des actions de l'élément
+            //// ACTION 1: Modifier
+            const modify_element = () => {
+                editAForm(json[1], json[0].name.split(/\.json$/)[0]);
+            };
+            const delete_element = () => {
+                modalDeleteForm(json[0].name);
+            };
+            let sync_element = null;
+            if (state !== SaveState.saved) {
+                sync_element = () => {
+                    // On fait tourner le bouton
+                    const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`);
+                    if (sync_icon) {
+                        const icon = sync_icon.innerText;
+                        const classes = sync_icon.className;
+                        sync_icon.innerText = "sync";
+                        sync_icon.className = "material-icons grey-text turn-anim";
+                        SyncManager_5.SyncManager.sync(false, false, undefined, [id_without_json])
+                            .then(() => {
+                            // La synchro a réussi
+                            sync_icon.className = "material-icons green-text";
+                        })
+                            .catch(() => {
+                            helpers_11.showToast("La synchronisation a échoué");
+                            // La synchronisation a échoué
+                            sync_icon.className = "material-icons red-text";
+                            sync_icon.innerText = "sync_problem";
+                        });
+                    }
+                    else {
+                        console.log("L'élément a disparu");
+                    }
+                };
+            }
+            // Définit l'événement de clic sur le formulaire
+            selector.addEventListener('click', function () {
+                const list = ["Modifier"];
+                if (sync_element) {
+                    list.push("Synchroniser");
+                }
+                list.push("Supprimer");
+                helpers_11.askModalList(list)
+                    .then(index => {
+                    if (index === 0) {
+                        modify_element();
+                    }
+                    else if (sync_element && index === 1) {
+                        sync_element();
+                    }
+                    else {
+                        delete_element();
+                    }
+                });
             });
-            container.appendChild(delete_btn);
             // Clear le float
             container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
-            // Définit l'événement d'édition
-            selector.addEventListener('click', function () {
-                editAForm(json[1], json[0].name.split(/\.json$/)[0]);
-            });
             // Ajoute les éléments dans le conteneur final
             selector.appendChild(container);
             ph.appendChild(selector);

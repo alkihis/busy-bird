@@ -10,7 +10,7 @@
     <content src="index.html" />
     <preference name="DisallowOverscroll" value="true" />
     <preference name="websecurity" value="disable" />
-    <preference name="android-minSdkVersion" value="19" />
+    <preference name="android-minSdkVersion" value="21" />
     <platform name="android">
         <icon density="ldpi" src="www/res/icon/android/drawable-mdpi-icon.png" />
         <icon density="mdpi" src="www/res/icon/android/drawable-mdpi-icon.png" />
@@ -89,6 +89,7 @@
     <plugin name="cordova-plugin-splashscreen" spec="5.0.2" />
     <plugin name="cordova-plugin-multi-window" spec="0.0.3" />
     <plugin name="cordova-plugin-x-toast" spec="2.7.2" />
+    <plugin name="cordova-plugin-background-fetch" spec="5.4.1" />
     <engine name="android" spec="^7.1.4" />
     <engine name="browser" spec="^5.0.4" />
 </widget>

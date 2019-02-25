@@ -239,6 +239,28 @@ p.smiley.big-text {
     object-fit: cover;
 }
 
+.modal-list {
+    margin-bottom: 15px;
+    margin-top: 10px;
+}
+
+.modal-list-item {
+    width: 100%;
+    padding: 1em 2em;
+    display: block;
+    color: black;
+}
+
+.turn-anim {
+    animation: turn-anim 2.5s infinite linear reverse;
+}
+
+@keyframes turn-anim {
+    from { transform: rotate(0deg); }
+    50% { transform: rotate(180deg); }
+    to { transform: rotate(360deg); }
+}
+
 .sync-icon {
     margin-left: -10px;
     float: left;

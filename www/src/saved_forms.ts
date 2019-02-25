@@ -1,4 +1,4 @@
-import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast } from "./helpers";
+import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast, askModalList } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
@@ -50,6 +50,7 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     container.classList.add('saved-form-item');
     let id = json[0].name;
     let id_without_json = id.split('.json')[0];
+    container.dataset.formid = id_without_json;
     let state = SaveState.error;
     let type = "Type inconnu";
 
@@ -99,26 +100,74 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
             Modifié le ${formatDate(new Date(json[0].lastModified), true)}
         </div>`);
 
-    // Ajoute le bouton de suppression
-    const delete_btn = convertHTMLToElement(
-        `<a href="#!" class="secondary-content"><i class="material-icons red-text">delete_forever</i></a>`
-    ) as HTMLAnchorElement;
+    // Ajout des actions de l'élément
+    //// ACTION 1: Modifier
+    const modify_element = () => {
+        editAForm(json[1], json[0].name.split(/\.json$/)[0]);
+    };
 
-    const file_name = json[0].name;
-    delete_btn.addEventListener('click', function(evt) {
-        evt.preventDefault();
-        evt.stopPropagation();
-        modalDeleteForm(file_name);
+    const delete_element = () => {
+        modalDeleteForm(json[0].name);
+    }
+
+    let sync_element: Function = null;
+    
+    if (state !== SaveState.saved) {
+        sync_element = () => {
+            // On fait tourner le bouton
+            const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`) as HTMLElement;
+
+            if (sync_icon) {
+                const icon = sync_icon.innerText;
+                const classes = sync_icon.className;
+
+                sync_icon.innerText = "sync";
+                sync_icon.className = "material-icons grey-text turn-anim";
+
+                SyncManager.sync(false, false, undefined, [id_without_json])
+                    .then(() => {
+                        // La synchro a réussi
+                        sync_icon.className = "material-icons green-text";
+                    })
+                    .catch(() => {
+                        showToast("La synchronisation a échoué");
+                        // La synchronisation a échoué
+                        sync_icon.className = "material-icons red-text";
+                        sync_icon.innerText = "sync_problem";
+                    });
+            }
+            else {
+                console.log("L'élément a disparu");
+            }
+        };
+    }
+
+    // Définit l'événement de clic sur le formulaire
+    selector.addEventListener('click', function() {
+        const list = ["Modifier"];
+
+        if (sync_element) {
+            list.push("Synchroniser");
+        }
+        
+        list.push("Supprimer");
+
+        askModalList(list)
+            .then(index => {
+                if (index === 0) {
+                    modify_element();
+                }
+                else if (sync_element && index === 1) {
+                    sync_element();
+                }
+                else {
+                    delete_element();
+                }
+            });
     });
-    container.appendChild(delete_btn);
 
     // Clear le float
     container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
-
-    // Définit l'événement d'édition
-    selector.addEventListener('click', function() {
-        editAForm(json[1], json[0].name.split(/\.json$/)[0]);
-    });
 
     // Ajoute les éléments dans le conteneur final
     selector.appendChild(container);

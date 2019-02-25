@@ -39,7 +39,8 @@
     "phonegap-plugin-mobile-accessibility": "https://github.com/phonegap/phonegap-mobile-accessibility.git",
     "cordova-plugin-splashscreen": "5.0.2",
     "cordova-plugin-multi-window": "0.0.3",
-    "cordova-plugin-x-toast": "2.7.2"
+    "cordova-plugin-x-toast": "2.7.2",
+    "cordova-plugin-background-fetch": "5.4.1"
   },
   "devDependencies": {},
   "scripts": {
@@ -72,7 +73,8 @@
       "phonegap-plugin-mobile-accessibility": {},
       "cordova-plugin-splashscreen": {},
       "cordova-plugin-multi-window": {},
-      "cordova-plugin-x-toast": {}
+      "cordova-plugin-x-toast": {},
+      "cordova-plugin-background-fetch": {}
     },
     "platforms": [
       "android",

@@ -5,6 +5,7 @@ import { API_URL } from "./main";
 import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
 import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
+import { BackgroundSync, Settings } from "./Settings";
 
 // en millisecondes
 const MAX_TIMEOUT_FOR_FORM = 20000;
@@ -12,7 +13,7 @@ const MAX_TIMEOUT_FOR_METADATA = 180000;
 
 // Nombre de formulaires à envoyer en même temps
 // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
-const PROMISE_BY_SYNC_STEP = 10;
+const PROMISE_BY_SYNC_STEP = 5;
 
 const SyncList = new class {
     public init() {
@@ -66,9 +67,73 @@ const SyncList = new class {
 export const SyncManager = new class {
     protected in_sync = false;
     protected list = SyncList;
+    protected last_bgsync = Date.now();
 
     public init() {
         this.list.init();
+        this.initBackgroundSync();
+    }
+
+    public initBackgroundSync(interval: number = Settings.sync_freq) : void {
+        const success_fn = () => {
+            Logger.info("Il s'est écoulé " + ((Date.now() - this.last_bgsync) / 1000) + " secondes depuis la dernière synchronisation.");
+            this.last_bgsync = Date.now();
+
+            this.launchBackgroundSync()
+                .then(() => {
+                    Logger.info(`La synchronisation d'arrière-plan s'est bien déroulée et a duré ${((Date.now() - this.last_bgsync) / 1000)} secondes.`);
+                    BackgroundSync.finish();
+                })
+                .catch(e => {
+                    Logger.error("Impossible de synchroniser en arrière plan.", e);
+                    BackgroundSync.finish();
+                });
+        };
+
+        const failure_fn = () => {
+            console.log("La synchronisation n'a pas pu se lancer.");
+
+            const checkbox_setting_bgsync = document.getElementById('__sync_bg_checkbox_settings');
+            if (checkbox_setting_bgsync) {
+                showToast("Impossible de lancer la synchronisation");
+                (checkbox_setting_bgsync as HTMLInputElement).checked = false;
+            }
+        };
+
+        if (Settings.sync_bg) {
+            // Initialise la synchronisation en arrière plan uniquement si elle est demandée
+            if (BackgroundSync.isInit()) {
+                BackgroundSync.initBgSync(success_fn, failure_fn, interval);
+            }
+            else {
+                BackgroundSync.init(success_fn, failure_fn, interval);
+            }
+            
+        }
+    }
+
+    public changeBackgroundSyncInterval(interval: number) : void {
+        if (BackgroundSync.isInit()) {
+            BackgroundSync.changeBgSyncInterval(interval);
+        }
+        else {
+            this.initBackgroundSync(interval);
+        }
+    }
+
+    public startBackgroundSync() : void {
+        if (BackgroundSync.isInit()) {
+            BackgroundSync.start();
+        }
+        else {
+            this.initBackgroundSync();
+        }
+    }
+
+    public stopBackgroundSync() : void {
+        if (BackgroundSync.isInit()) {
+            BackgroundSync.stop();
+        }
     }
 
     public add(id: string, data: FormSave) : Promise<SList> {
@@ -165,6 +230,7 @@ export const SyncManager = new class {
                             const file = base_path + data.metadata[metadata];
                             const basename = data.metadata[metadata];
 
+                            // Envoi de tous les fichiers associés un à un
                             promises.push(new Promise((res, rej) => {
                                 readFile(file, true)
                                     .then(base64 => {
@@ -199,6 +265,7 @@ export const SyncManager = new class {
 
                         Promise.all(promises)
                             .then(values => {
+                                this.list.remove(id);
                                 resolve();
                             })
                             .catch(err => {
@@ -206,6 +273,7 @@ export const SyncManager = new class {
                             })
                     }
                     else {
+                        this.list.remove(id);
                         resolve();
                     }
                 })
@@ -463,6 +531,7 @@ export const SyncManager = new class {
         if (hasGoodConnection()) {
             return this.sync();
         }
+        return Promise.reject({code: "no_good_connection"});
     }
 
     /**
@@ -470,8 +539,9 @@ export const SyncManager = new class {
      * @param force_all Forcer l'envoi de tous les formulaires
      * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
      * @param text_element Élément HTML dans lequel écrire l'avancement
+     * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
      */
-    public sync(force_all = false, clear_cache = false, text_element?: HTMLElement) : Promise<any> {
+    public sync(force_all = false, clear_cache = false, text_element?: HTMLElement, force_specific_elements?: string[]) : Promise<any> {
         if (this.in_sync) {
             return Promise.reject({code: 'already'});
         }
@@ -503,6 +573,9 @@ export const SyncManager = new class {
                     });
                 }
             }
+            else if (force_specific_elements) {
+                entries_promise = Promise.resolve(force_specific_elements);
+            }
             else {
                 entries_promise = this.list.listSaved();
             }
@@ -526,7 +599,9 @@ export const SyncManager = new class {
 
                     return this.subSyncDivider(id_getter, entries, text_element)
                         .then(v => {
-                            this.list.clear();
+                            if (!force_specific_elements)
+                                this.list.clear();
+                            
                             this.in_sync = false;
 
                             // La synchro a réussi !

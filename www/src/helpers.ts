@@ -938,3 +938,47 @@ export function showToast(message: string, duration: number = 4000) : void {
         });
     }
 }
+
+export function convertMinutesToText(min: number) : string {
+    if (min < 60) {
+        return `${min} minutes`;
+    }
+    else {
+        const hours = Math.trunc(min / 60);
+        const minutes = Math.trunc(min % 60);
+
+        return `${hours} heure${hours > 1 ? 's' : ''} ${minutes || ""}`;
+    }
+}
+
+/**
+ * Demande à l'utilisateur de choisir parmi une liste
+ * @param items Choix possibles
+ * @returns Index du choix choisi par l'utilisateur
+ */
+export function askModalList(items: string[]) : Promise<number> {
+    const modal = getBottomModal();
+    const instance = initBottomModal();
+
+    modal.innerHTML = "";
+    const content = document.createElement('div');
+    content.classList.add('modal-list');
+
+    modal.appendChild(content);
+
+    return new Promise((resolve, reject) => {
+        for (let i = 0; i < items.length; i++) {
+            const link = document.createElement('a');
+            link.classList.add('modal-list-item', 'flow-text', 'waves-effect');
+            link.innerText = items[i];
+            link.href = "#!";
+            link.onclick = () => {
+                resolve(i);
+                instance.close();
+            };
+            content.appendChild(link);
+        }
+
+        instance.open();
+    });
+}

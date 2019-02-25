@@ -1,5 +1,5 @@
 import { PageManager, AppPageName } from './PageManager';
-import { readFromFile, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
+import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
@@ -12,8 +12,9 @@ export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le mod
 export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
 export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-export const APP_VERSION = 0.55;
-export const MP3_BITRATE = 256;
+export const APP_VERSION = 0.6;
+export const MP3_BITRATE = 256; /** En kb/s */
+export const SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
 
 export const app = {
     // Application Constructor
@@ -47,7 +48,7 @@ export const app = {
 
 function initApp() {
     // Change le répertoire de données
-    // Si c'est un navigateur, on est sur cdvfile://localhost/persistent
+    // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
     // Sinon, si mobile, on passe sur dataDirectory
     changeDir();
 
@@ -114,6 +115,7 @@ function initDebug() {
         rmrfPromise,
         Logger,
         Forms,
+        askModalList,
         recorder: function() {
             newModalRecord(document.createElement('button'), document.createElement('input'),
             {
