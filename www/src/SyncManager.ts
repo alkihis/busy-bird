@@ -50,6 +50,17 @@ const SyncList = new class {
     public clear() : Promise<void> {
         return localforage.clear();
     }
+
+    public has(id: string) : Promise<boolean> {
+        return this.get(id)
+            .then(item => {
+                if (item) {
+                    return true;
+                }
+                
+                return false;
+            });
+    }
 }
 
 export const SyncManager = new class {
@@ -540,6 +551,10 @@ export const SyncManager = new class {
 
     public remainingToSync() : Promise<number> {
         return this.list.getRemainingToSync();
+    }
+
+    public has(id: string) : Promise<boolean> {
+        return this.list.has(id);
     }
 };
 

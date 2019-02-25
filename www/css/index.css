@@ -239,6 +239,17 @@ p.smiley.big-text {
     object-fit: cover;
 }
 
+.sync-icon {
+    margin-left: -10px;
+    float: left;
+    margin-right: 7px;
+}
+
+.saver-collection-margin {
+    width: 1px;
+    margin-bottom: calc(23px + 40px + 18px);
+}
+
 .divider-margin {
     margin: 10px 0;
 }

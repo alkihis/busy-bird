@@ -1,5 +1,5 @@
 import { prompt } from "./vocal_recognition";
-import { FormEntityType, FormEntity, Forms, Form, FormLocation, FormSave, FormLocations } from './form_schema';
+import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
 import { PageManager, AppPageName } from "./PageManager";

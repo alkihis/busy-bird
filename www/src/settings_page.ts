@@ -5,6 +5,7 @@ import { SyncManager } from "./SyncManager";
 import { PageManager } from "./PageManager";
 import fetch from './fetch_timeout';
 import { API_URL } from "./main";
+import { APP_NAME } from "./home";
 
 function headerText() : string {
     return `${UserManager.logged ? 
@@ -85,15 +86,17 @@ export function initSettingsPage(base: HTMLElement) {
         logUserButton();
     }
 
-    /////// PARTIE DEUX: CHOIX DU FORMULAIRE ACTUELLEMENT CHARGE
+    /////// PARTIE DEUX: FORMULAIRES
     container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
-    <h4>Formulaire actif</h4>
+    <h4>Formulaires</h4>
+    <h5>Schéma actif</h5>
     <p class="flow-text">
-        Ce formulaire correspond à celui proposé dans la page "Nouvelle entrée".
+        Ce schéma d'entrée correspond à celui proposé dans la page "Nouvelle entrée".
     </p>
     `);
+    // Choix du formulaire actif
     const select = document.createElement('select');
     select.classList.add('material-select');
 
@@ -124,62 +127,20 @@ export function initSettingsPage(base: HTMLElement) {
         }
     });
 
-    //// SYNCHRONISATION
+    // Bouton pour accéder aux souscriptions
     container.insertAdjacentHTML('beforeend', `
-    <div class="clearb"></div>
-    <div class="divider divider-margin"></div>
-    <h4>Synchronisation</h4>
+    <h5>Souscriptions aux schémas</h5>
     <p class="flow-text">
-        Synchronisez vos entrées de formulaire avec un serveur distant.
+        Les schémas de formulaires sont les types de formulaires vous étant proposés à la saisie dans ${APP_NAME}.
+        ${UserManager.logged ? `
+            Consultez et modifiez ici les différents schémas auquel l'application autorise "${UserManager.username}" à remplir.
+        ` : ''}
     </p>
-    `);
-    const syncbtn = document.createElement('button');
-    syncbtn.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-small-margins');
-    syncbtn.innerHTML = "Synchroniser";
-    syncbtn.onclick = function() {
-        SyncManager.graphicalSync();
-    }
-    container.appendChild(syncbtn);
-
-    const syncbtn2 = document.createElement('button');
-    syncbtn2.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
-    syncbtn2.innerHTML = "Tout resynchroniser";
-    syncbtn2.onclick = function() {
-        askModal(
-            "Tout synchroniser ?", 
-            "Ceci peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
-        ).then(() => {
-            // L'utilisateur a dit oui
-            SyncManager.graphicalSync(true);
-        });
-    }
-    container.appendChild(syncbtn2);
-
-    const syncbtn3 = document.createElement('button');
-    syncbtn3.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-small-margins');
-    syncbtn3.innerHTML = "Vider cache et synchroniser";
-    syncbtn3.onclick = function() {
-        askModal(
-            "Vider cache et tout resynchroniser ?", 
-            "Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation qui va suivre.\
-            N'utilisez cette option que si vous êtes certains de pouvoir venir à bout de l'opération.\
-            Cette opération peut prendre beaucoup de temps si de nombreux éléments sont à sauvegarder. Veillez à disposer d'une bonne connexion à Internet."
-        ).then(() => {
-            // L'utilisateur a dit oui
-            SyncManager.graphicalSync(true, true);
-        });
-    }
-    container.appendChild(syncbtn3);
-    
-    /// BOUTON POUR AFFICHER LE MODAL DE SOUSCRIPTIONS
-    container.insertAdjacentHTML('beforeend', `
-    <div class="clearb"></div>
-    <div class="divider divider-margin"></div>
     `);
 
     const subs_btn = document.createElement('button');
     subs_btn.classList.add('col', 's12', 'purple', 'btn', 'btn-perso', 'btn-small-margins');
-    subs_btn.innerHTML = "Gérer souscriptions schémas";
+    subs_btn.innerHTML = "Gérer souscriptions";
     subs_btn.onclick = function() {
         if (UserManager.logged) {
             subscriptionsModal();
@@ -190,10 +151,15 @@ export function initSettingsPage(base: HTMLElement) {
     }
     container.appendChild(subs_btn);
 
-    /// BOUTON POUR FORCER ACTUALISATION DES FORMULAIRES
+    // Bouton pour actualiser les schémas
     container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
-    <div class="divider divider-margin"></div>
+    <h5>Actualiser les schémas</h5>
+    <p class="flow-text">
+        Une actualisation automatique est faite à chaque démarrage de l'application.
+        Si vous pensez que les schémas auquel vous avez souscrit ont changé depuis le dernier
+        démarrage, vous pouvez les actualiser.
+    </p>
     `);
 
     const formbtn = document.createElement('button');
@@ -214,6 +180,36 @@ export function initSettingsPage(base: HTMLElement) {
         }
     }
     container.appendChild(formbtn);
+
+    //// PARTIE TROIS: SYNCHRONISATION
+    container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>Synchronisation</h4>
+    <p class="flow-text">
+        La synchronisation standard se trouve dans la page des entrées.
+        Ici, vous pouvez forcer le renvoi complet des données vers le serveur,
+        y compris celles déjà synchronisées. 
+    </p>
+    `);
+
+    const syncbtn = document.createElement('button');
+    syncbtn.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
+    syncbtn.innerHTML = "Tout resynchroniser";
+    syncbtn.onclick = function() {
+        askModal(
+            "Tout synchroniser ?", 
+            "Veillez à disposer d'une bonne connexion à Internet.\
+            Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.",
+            "Oui",
+            "Non",
+            "Vider cache de synchronisation"
+        ).then(checked_val => {
+            // L'utilisateur a dit oui
+            SyncManager.graphicalSync(true, checked_val);
+        });
+    }
+    container.appendChild(syncbtn);
 }
 
 interface SubscriptionObject {
