@@ -8,8 +8,8 @@ import fetch from './fetch_timeout';
 import { BackgroundSync, Settings } from "./Settings";
 
 // en millisecondes
-const MAX_TIMEOUT_FOR_FORM = 20000;
-const MAX_TIMEOUT_FOR_METADATA = 180000;
+const MAX_TIMEOUT_FOR_FORM = 20000; /** Pour le fichier .json de l'entrée */
+const MAX_TIMEOUT_FOR_METADATA = 180000; /** Pour chaque fichier "métadonnée" (img, audio, ...) */
 
 // Nombre de formulaires à envoyer en même temps
 // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
@@ -172,116 +172,105 @@ export const SyncManager = new class {
         return this.list.remove(id);
     }
 
-    protected sendForm(id: string, data: SList) : Promise<void> {
+    protected async sendForm(id: string, data: SList) : Promise<void> {
         // Renvoie une promise réussie si l'envoi du formulaire 
         // et de ses métadonnées a réussi.
-        return new Promise((resolve, reject) => {
-            // Récupération du fichier
-            readFile('forms/' + id + ".json")
-                .then(content => {
-                    if (!this.in_sync) {
-                        reject({code: "aborted"});
-                        return;
-                    }
+        let content: string;
+        try {
+            content = await readFile('forms/' + id + ".json");
+        } catch (error) {
+            Logger.info("Impossible de lire le fichier", error.message);
+            throw {code: "file_read", error};
+        }
 
-                    const d = new FormData();
-                    d.append("id", id);
-                    d.append("form", content);
+        if (!this.in_sync) {
+            throw {code: "aborted"};
+        }
 
-                    return fetch(API_URL + "forms/send.json", {
+        const d = new FormData();
+        d.append("id", id);
+        d.append("form", content);
+
+        let response: Response;
+        
+        try {
+            response = await fetch(API_URL + "forms/send.json", {
+                method: "POST",
+                body: d,
+                headers: new Headers({"Authorization": "Bearer " + UserManager.token})
+            }, MAX_TIMEOUT_FOR_FORM);
+        } catch (error) {
+            throw {code: "json_send", error};
+        }
+
+        let json = await response.json();
+
+        if (json.error_code) {
+            throw {code: "json_treatement", error_code: json.error_code, "message": json.message};
+        }
+            
+        // On peut envoyer les métadonnées du json !
+        if (!this.in_sync) {
+            throw {code: "aborted"};
+        }
+
+        // Le JSON du form est envoyé !
+        if (json.status && json.send_metadata) {
+            // Si on doit envoyer les fichiers en plus
+            const base_path = "form_data/" + id + "/";
+
+            // json.send_metadata est un tableau de fichiers à envoyer
+
+            for (const metadata in data.metadata) {
+                if ((json.send_metadata as string[]).indexOf(metadata) === -1) {
+                    // La donnée actuelle n'est pas demandée par le serveur
+                    continue;
+                }
+
+                const file = base_path + data.metadata[metadata];
+                const basename = data.metadata[metadata];
+
+                // Envoi de tous les fichiers associés un à un
+                // Pour des raisons de charge réseau, on envoie les fichiers un par un.
+                let base64: string;
+                try {
+                    base64 = await readFile(file, true);
+                } catch (e) {
+                    // Le fichier n'existe pas en local. On passe.
+                    continue;
+                }
+
+                // On récupère la partie base64 qui nous intéresse
+                base64 = base64.split(',')[1];
+
+                // On construit le formdata à envoyer
+                const d = new FormData();
+                d.append("id", id);
+                d.append("type", data.type);
+                d.append("filename", basename);
+                d.append("data", base64);
+                
+                try {
+                    const resp = await fetch(API_URL + "forms/metadata_send.json", {
                         method: "POST",
                         body: d,
                         headers: new Headers({"Authorization": "Bearer " + UserManager.token})
-                    }, MAX_TIMEOUT_FOR_FORM)
-                    .catch((error): never => {
-                        reject({code: "json_send", error});
-                        throw '';
-                    })
-                    .then(response => {
-                        return response.json();
-                    })
-                    .then((json) => {
-                        if (json.error_code) throw json.error_code;
+                    }, MAX_TIMEOUT_FOR_METADATA);
 
-                        return json;
-                    });
-                })
-                .then(json => {
-                    if (!this.in_sync) {
-                        reject({code: "aborted"});
-                        return;
+                    const json = await resp.json();
+                    if (json.error_code) {
+                        throw {code: "metadata_treatement", error_code: json.error_code, "message": json.message};
                     }
 
-                    // Le JSON est envoyé !
-                    if (json.status && json.send_metadata) {
-                        // Si on doit envoyer les fichiers en plus
-                        const base_path = "form_data/" + id + "/";
+                    // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
+                } catch (error) {
+                    showToast("Impossible d'envoyer " + basename + ".");
+                    throw {code: "metadata_send", error};
+                }
+            } // end for in
+        }
 
-                        const promises: Promise<any>[] = [];
-
-                        // json.send_metadata est un tableau de fichiers à envoyer
-
-                        for (const metadata in data.metadata) {
-                            if ((json.send_metadata as string[]).indexOf(metadata) === -1) {
-                                // La donnée actuelle n'est pas demandée par le serveur
-                                continue;
-                            }
-
-                            const file = base_path + data.metadata[metadata];
-                            const basename = data.metadata[metadata];
-
-                            // Envoi de tous les fichiers associés un à un
-                            promises.push(new Promise((res, rej) => {
-                                readFile(file, true)
-                                    .then(base64 => {
-                                        base64 = base64.split(',')[1];
-                                        const d = new FormData();
-                                        d.append("id", id);
-                                        d.append("type", data.type);
-                                        d.append("filename", basename);
-                                        d.append("data", base64);
-                                        
-                                        return fetch(API_URL + "forms/metadata_send.json", {
-                                            method: "POST",
-                                            body: d,
-                                            headers: new Headers({"Authorization": "Bearer " + UserManager.token})
-                                        }, MAX_TIMEOUT_FOR_METADATA)
-                                        .then((response) => {
-                                            return response.json();
-                                        })
-                                        .then((json) => {
-                                            if (json.error_code) rej(json.error_code);
-                    
-                                            res(json);
-                                        })
-                                        .catch(error => {
-                                            showToast("Impossible d'envoyer " + basename + ".");
-                                            rej({code: "metadata_send", error});
-                                        })
-                                    })
-                                    .catch(res);
-                            }))
-                        }
-
-                        Promise.all(promises)
-                            .then(values => {
-                                this.list.remove(id);
-                                resolve();
-                            })
-                            .catch(err => {
-                                reject(err);
-                            })
-                    }
-                    else {
-                        this.list.remove(id);
-                        resolve();
-                    }
-                })
-                .catch((error) => {
-                    Logger.info("Impossible de lire le fichier", error.message);
-                    reject({code: "file_read", error});
-                });
-        });
+        this.list.remove(id);
     }
 
     public available() : Promise<string[]> {

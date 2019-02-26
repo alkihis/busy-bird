@@ -1553,8 +1553,8 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
     localforage_1 = __importDefault(localforage_1);
     fetch_timeout_1 = __importDefault(fetch_timeout_1);
     // en millisecondes
-    const MAX_TIMEOUT_FOR_FORM = 20000;
-    const MAX_TIMEOUT_FOR_METADATA = 180000;
+    const MAX_TIMEOUT_FOR_FORM = 20000; /** Pour le fichier .json de l'entrée */
+    const MAX_TIMEOUT_FOR_METADATA = 180000; /** Pour chaque fichier "métadonnée" (img, audio, ...) */
     // Nombre de formulaires à envoyer en même temps
     // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
     const PROMISE_BY_SYNC_STEP = 5;
@@ -1693,104 +1693,91 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             return this.list.remove(id);
         }
         sendForm(id, data) {
-            // Renvoie une promise réussie si l'envoi du formulaire 
-            // et de ses métadonnées a réussi.
-            return new Promise((resolve, reject) => {
-                // Récupération du fichier
-                helpers_3.readFile('forms/' + id + ".json")
-                    .then(content => {
-                    if (!this.in_sync) {
-                        reject({ code: "aborted" });
-                        return;
-                    }
-                    const d = new FormData();
-                    d.append("id", id);
-                    d.append("form", content);
-                    return fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
+            return __awaiter(this, void 0, void 0, function* () {
+                // Renvoie une promise réussie si l'envoi du formulaire 
+                // et de ses métadonnées a réussi.
+                let content;
+                try {
+                    content = yield helpers_3.readFile('forms/' + id + ".json");
+                }
+                catch (error) {
+                    logger_2.Logger.info("Impossible de lire le fichier", error.message);
+                    throw { code: "file_read", error };
+                }
+                if (!this.in_sync) {
+                    throw { code: "aborted" };
+                }
+                const d = new FormData();
+                d.append("id", id);
+                d.append("form", content);
+                let response;
+                try {
+                    response = yield fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
                         method: "POST",
                         body: d,
                         headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
-                    }, MAX_TIMEOUT_FOR_FORM)
-                        .catch((error) => {
-                        reject({ code: "json_send", error });
-                        throw '';
-                    })
-                        .then(response => {
-                        return response.json();
-                    })
-                        .then((json) => {
-                        if (json.error_code)
-                            throw json.error_code;
-                        return json;
-                    });
-                })
-                    .then(json => {
-                    if (!this.in_sync) {
-                        reject({ code: "aborted" });
-                        return;
-                    }
-                    // Le JSON est envoyé !
-                    if (json.status && json.send_metadata) {
-                        // Si on doit envoyer les fichiers en plus
-                        const base_path = "form_data/" + id + "/";
-                        const promises = [];
-                        // json.send_metadata est un tableau de fichiers à envoyer
-                        for (const metadata in data.metadata) {
-                            if (json.send_metadata.indexOf(metadata) === -1) {
-                                // La donnée actuelle n'est pas demandée par le serveur
-                                continue;
-                            }
-                            const file = base_path + data.metadata[metadata];
-                            const basename = data.metadata[metadata];
-                            // Envoi de tous les fichiers associés un à un
-                            promises.push(new Promise((res, rej) => {
-                                helpers_3.readFile(file, true)
-                                    .then(base64 => {
-                                    base64 = base64.split(',')[1];
-                                    const d = new FormData();
-                                    d.append("id", id);
-                                    d.append("type", data.type);
-                                    d.append("filename", basename);
-                                    d.append("data", base64);
-                                    return fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
-                                        method: "POST",
-                                        body: d,
-                                        headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
-                                    }, MAX_TIMEOUT_FOR_METADATA)
-                                        .then((response) => {
-                                        return response.json();
-                                    })
-                                        .then((json) => {
-                                        if (json.error_code)
-                                            rej(json.error_code);
-                                        res(json);
-                                    })
-                                        .catch(error => {
-                                        helpers_3.showToast("Impossible d'envoyer " + basename + ".");
-                                        rej({ code: "metadata_send", error });
-                                    });
-                                })
-                                    .catch(res);
-                            }));
+                    }, MAX_TIMEOUT_FOR_FORM);
+                }
+                catch (error) {
+                    throw { code: "json_send", error };
+                }
+                let json = yield response.json();
+                if (json.error_code) {
+                    throw { code: "json_treatement", error_code: json.error_code, "message": json.message };
+                }
+                // On peut envoyer les métadonnées du json !
+                if (!this.in_sync) {
+                    throw { code: "aborted" };
+                }
+                // Le JSON du form est envoyé !
+                if (json.status && json.send_metadata) {
+                    // Si on doit envoyer les fichiers en plus
+                    const base_path = "form_data/" + id + "/";
+                    // json.send_metadata est un tableau de fichiers à envoyer
+                    for (const metadata in data.metadata) {
+                        if (json.send_metadata.indexOf(metadata) === -1) {
+                            // La donnée actuelle n'est pas demandée par le serveur
+                            continue;
                         }
-                        Promise.all(promises)
-                            .then(values => {
-                            this.list.remove(id);
-                            resolve();
-                        })
-                            .catch(err => {
-                            reject(err);
-                        });
-                    }
-                    else {
-                        this.list.remove(id);
-                        resolve();
-                    }
-                })
-                    .catch((error) => {
-                    logger_2.Logger.info("Impossible de lire le fichier", error.message);
-                    reject({ code: "file_read", error });
-                });
+                        const file = base_path + data.metadata[metadata];
+                        const basename = data.metadata[metadata];
+                        // Envoi de tous les fichiers associés un à un
+                        // Pour des raisons de charge réseau, on envoie les fichiers un par un.
+                        let base64;
+                        try {
+                            base64 = yield helpers_3.readFile(file, true);
+                        }
+                        catch (e) {
+                            // Le fichier n'existe pas en local. On passe.
+                            continue;
+                        }
+                        // On récupère la partie base64 qui nous intéresse
+                        base64 = base64.split(',')[1];
+                        // On construit le formdata à envoyer
+                        const d = new FormData();
+                        d.append("id", id);
+                        d.append("type", data.type);
+                        d.append("filename", basename);
+                        d.append("data", base64);
+                        try {
+                            const resp = yield fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
+                                method: "POST",
+                                body: d,
+                                headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
+                            }, MAX_TIMEOUT_FOR_METADATA);
+                            const json = yield resp.json();
+                            if (json.error_code) {
+                                throw { code: "metadata_treatement", error_code: json.error_code, "message": json.message };
+                            }
+                            // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
+                        }
+                        catch (error) {
+                            helpers_3.showToast("Impossible d'envoyer " + basename + ".");
+                            throw { code: "metadata_send", error };
+                        }
+                    } // end for in
+                }
+                this.list.remove(id);
             });
         }
         available() {
