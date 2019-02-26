@@ -1,4 +1,4 @@
-import { prompt } from "./vocal_recognition";
+import { prompt, testOptionsVersusExpected } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
@@ -597,24 +597,10 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
                 mic_btn.addEventListener('click', function() {
                     prompt("Parlez maintenant", true).then(function(value) {
-                        const v = value as string[];
-
-                        let find = false;
-                        for (const opt of sel_opt) {
-                            for (const match of v) {
-                                if (match.toLowerCase() === opt[0].toLowerCase()) {
-                                    htmle.value = opt[1];
-                                    find = true;
-                                    break;
-                                }
-                            }
-                            
-                            if (find) {
-                                break;
-                            }
-                        }
+                        const val = testOptionsVersusExpected(sel_opt as [string, string][], value as string[]);
                         
-                        if (find) {
+                        if (val) {
+                            htmle.value = val as string;
                             // On réinitialise le select
                             const instance = M.FormSelect.getInstance(htmle);
 

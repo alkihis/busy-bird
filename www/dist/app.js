@@ -1007,6 +1007,30 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
         });
     }
     exports.prompt = prompt;
+    function testOptionsVersusExpected(options, dicted, match_all = false) {
+        const matches = [];
+        // Conversion des choses dictées et corrections mineures (genre le a toujours détecté en à)
+        dicted = dicted.map(match => match.toLowerCase().replace(/à/g, 'a').replace(/ /g, ''));
+        for (const opt of options) {
+            const cur_val = opt[0].toLowerCase().replace(/à/g, 'a').replace(/ /g, '');
+            for (const match of dicted) {
+                // Si les valeurs sans espace sont identiques
+                if (cur_val === match) {
+                    if (match_all) {
+                        matches.push(opt[1]);
+                    }
+                    else {
+                        return opt[1];
+                    }
+                }
+            }
+        }
+        if (matches.length > 0) {
+            return matches;
+        }
+        return null;
+    }
+    exports.testOptionsVersusExpected = testOptionsVersusExpected;
 });
 // export function oldPrompt(text: string = "", options: string[] = ["*"]) : Promise<string> {
 //     return new Promise(function(resolve, reject) {
@@ -3425,21 +3449,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const sel_opt = Array.from(htmle.options).map(e => [e.label, e.value]);
                     mic_btn.addEventListener('click', function () {
                         vocal_recognition_3.prompt("Parlez maintenant", true).then(function (value) {
-                            const v = value;
-                            let find = false;
-                            for (const opt of sel_opt) {
-                                for (const match of v) {
-                                    if (match.toLowerCase() === opt[0].toLowerCase()) {
-                                        htmle.value = opt[1];
-                                        find = true;
-                                        break;
-                                    }
-                                }
-                                if (find) {
-                                    break;
-                                }
-                            }
-                            if (find) {
+                            const val = vocal_recognition_3.testOptionsVersusExpected(sel_opt, value);
+                            if (val) {
+                                htmle.value = val;
                                 // On réinitialise le select
                                 const instance = M.FormSelect.getInstance(htmle);
                                 if (instance) {

@@ -77,7 +77,35 @@ export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Pr
             reject();
         }
     });
-}    
+}  
+
+export function testOptionsVersusExpected(options: [string, string][], dicted: string[], match_all = false) : string | string[] {
+    const matches: string[] = [];
+    // Conversion des choses dictées et corrections mineures (genre le a toujours détecté en à)
+    dicted = dicted.map(match => match.toLowerCase().replace(/à/g, 'a').replace(/ /g, ''));
+    
+    for (const opt of options) {
+        const cur_val = opt[0].toLowerCase().replace(/à/g, 'a').replace(/ /g, '');
+        
+        for (const match of dicted) {
+            // Si les valeurs sans espace sont identiques
+            if (cur_val === match) {
+                if (match_all) {
+                    matches.push(opt[1]);
+                }
+                else {
+                    return opt[1];
+                }
+            }
+        }
+    }
+
+    if (matches.length > 0) {
+        return matches;
+    }
+
+    return null;
+}
 
 // export function oldPrompt(text: string = "", options: string[] = ["*"]) : Promise<string> {
 //     return new Promise(function(resolve, reject) {
