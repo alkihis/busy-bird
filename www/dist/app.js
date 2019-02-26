@@ -1034,7 +1034,7 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
     exports.testOptionsVersusExpected = testOptionsVersusExpected;
     function testMultipleOptionsVesusExpected(options, dicted, keyword = "stop") {
         // Explose en fonction du keyword
-        const possibilities = dicted.map(match => match.toLowerCase().split(' ' + keyword + ' '));
+        const possibilities = dicted.map(match => match.toLowerCase().split(new RegExp('\\b' + keyword + '\\b', 'i')));
         const finded_possibilities = [];
         for (const p of possibilities) {
             // On va de la plus probable à la moins probable
@@ -3241,10 +3241,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const mic_btn = document.createElement('div');
                     mic_btn.classList.add('col', 's1', 'mic-wrapper');
                     mic_btn.style.paddingRight = "0";
-                    mic_btn.innerHTML = `
-                    <i class="material-icons red-text">mic</i>
-                `;
-                    mic_btn.addEventListener('click', function () {
+                    mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
+                    mic_btn.firstChild.addEventListener('click', function () {
                         vocal_recognition_3.prompt().then(function (value) {
                             const val = value;
                             value = val.replace(/ /g, '').replace(/,/g, '.').replace(/-/g, '.');
@@ -3335,9 +3333,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const mic_btn = document.createElement('div');
                     mic_btn.classList.add('col', 's1', 'mic-wrapper');
                     mic_btn.style.paddingRight = "0";
-                    mic_btn.innerHTML = `
-                    <i class="material-icons red-text">mic</i>
-                `;
+                    mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
                     let timer;
                     const gestion_click = function (erase = true) {
                         vocal_recognition_3.prompt().then(function (value) {
@@ -3360,7 +3356,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         });
                         timer = 0;
                     };
-                    mic_btn.addEventListener('click', function () {
+                    mic_btn.firstChild.addEventListener('click', function () {
                         if (timer) {
                             clearTimeout(timer);
                             // On a double cliqué
@@ -3424,11 +3420,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     const mic_btn = document.createElement('div');
                     mic_btn.classList.add('col', 's1', 'mic-wrapper');
                     mic_btn.style.paddingRight = "0";
-                    mic_btn.innerHTML = `
-                    <i class="material-icons red-text">mic</i>
-                `;
+                    mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
                     const sel_opt = Array.from(htmle.options).map(e => [e.label, e.value]);
-                    mic_btn.addEventListener('click', function () {
+                    mic_btn.firstChild.addEventListener('click', function () {
                         vocal_recognition_3.prompt("Parlez maintenant", true).then(function (value) {
                             let val;
                             if (htmle.multiple)

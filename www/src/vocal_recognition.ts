@@ -110,7 +110,7 @@ export function testOptionsVersusExpected(options: [string, string][], dicted: s
 
 export function testMultipleOptionsVesusExpected(options: [string, string][], dicted: string[], keyword = "stop") : string[] {
     // Explose en fonction du keyword
-    const possibilities: string[][] = dicted.map(match => match.toLowerCase().split(' ' + keyword + ' '));
+    const possibilities: string[][] = dicted.map(match => match.toLowerCase().split(new RegExp('\\b' + keyword + '\\b', 'i')));
 
     const finded_possibilities: string[][] = [];
 

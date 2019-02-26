@@ -365,11 +365,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 const mic_btn = document.createElement('div');
                 mic_btn.classList.add('col', 's1', 'mic-wrapper');
                 mic_btn.style.paddingRight = "0";
-                mic_btn.innerHTML = `
-                    <i class="material-icons red-text">mic</i>
-                `;
+                mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
 
-                mic_btn.addEventListener('click', function() {
+                mic_btn.firstChild.addEventListener('click', function() {
                     prompt().then(function(value) {
                         const val = value as string;
 
@@ -480,9 +478,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 mic_btn.classList.add('col', 's1', 'mic-wrapper');
                 mic_btn.style.paddingRight = "0";
 
-                mic_btn.innerHTML = `
-                    <i class="material-icons red-text">mic</i>
-                `;
+                mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
 
                 let timer: number;
                 const gestion_click = function(erase = true) {
@@ -507,7 +503,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                     timer = 0;
                 }
 
-                mic_btn.addEventListener('click', function() {
+                mic_btn.firstChild.addEventListener('click', function() {
                     if (timer) {
                         clearTimeout(timer);
                         // On a double cliqué
@@ -589,13 +585,11 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 mic_btn.classList.add('col', 's1', 'mic-wrapper');
                 mic_btn.style.paddingRight = "0";
 
-                mic_btn.innerHTML = `
-                    <i class="material-icons red-text">mic</i>
-                `;
+                mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
 
                 const sel_opt = Array.from(htmle.options).map(e => [e.label, e.value]);
 
-                mic_btn.addEventListener('click', function() {
+                mic_btn.firstChild.addEventListener('click', function() {
                     prompt("Parlez maintenant", true).then(function(value) {
                         let val: string | string[]
                         
