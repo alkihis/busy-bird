@@ -7,6 +7,7 @@ const options = {
 /**
  * Récupère le texte dicté par l'utilisateur
  * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire
+ * @param as_array Au lieu de renvoyer la phrase la plus probable dite par l'utilisateur, renvoie toutes les possibilités
  * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
  */
 export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Promise<string | string[]> {
@@ -107,45 +108,25 @@ export function testOptionsVersusExpected(options: [string, string][], dicted: s
     return null;
 }
 
-// export function oldPrompt(text: string = "", options: string[] = ["*"]) : Promise<string> {
-//     return new Promise(function(resolve, reject) {
-//         const j = Jarvis.Jarvis;
-//         j.fatality();
-        
-//         j.initialize({
-//             lang:"fr-FR",
-//             debug: true, // Show what recognizes in the Console
-//             listen: true, // Start listening after this
-//             speed: 1,
-//             continuous: false
-//         });
+export function testMultipleOptionsVesusExpected(options: [string, string][], dicted: string[], keyword = "stop") : string[] {
+    // Explose en fonction du keyword
+    const possibilities: string[][] = dicted.map(match => match.toLowerCase().split(' ' + keyword + ' '));
 
-//         try {
-//             j.newPrompt({
-//                 question: text,
-//                 //We set the smart property to true to accept wildcards
-//                 smart: true,
-//                 options,
-//                 beforePrompt: () => {
-//                     setTimeout(function() {
-//                         M.toast({html: "Parlez maintenant"})
-//                     }, 400);
-//                 },
-//                 onMatch: (i, wildcard) => { // i returns the index of the given options    
-//                     let action;
-            
-//                     action = () => {
-//                         resolve(wildcard);
-//                     };
-            
-//                     // A function needs to be returned in onMatch event
-//                     // in order to accomplish what you want to execute
-//                     return action;                       
-//                 }
-//             });
-//         } catch (e) {
-//             // Artyom crashes on Cordova. Catching error.
-//             // Logger.error(e.stack, e.message);
-//         }
-//     });
-// }
+    const finded_possibilities: string[][] = [];
+
+    for (const p of possibilities) {
+        // On va de la plus probable à la moins probable
+        const vals = testOptionsVersusExpected(options, p, true) as string[];
+
+        if (vals) {
+            finded_possibilities.push(vals);
+        }
+    }
+
+    if (finded_possibilities.length > 0) {
+        console.log(finded_possibilities);
+        return finded_possibilities[0];
+    }
+
+    return null;
+}

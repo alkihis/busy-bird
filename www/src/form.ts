@@ -1,4 +1,4 @@
-import { prompt, testOptionsVersusExpected } from "./vocal_recognition";
+import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
@@ -581,7 +581,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             /// Gestion du voice control
             real_wrapper.appendChild(wrapper);
 
-            if (ele.allow_voice_control && !htmle.multiple) {
+            if (ele.allow_voice_control) {
                 wrapper.classList.add('s11');
                 wrapper.classList.remove('s12');
 
@@ -597,10 +597,16 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
                 mic_btn.addEventListener('click', function() {
                     prompt("Parlez maintenant", true).then(function(value) {
-                        const val = testOptionsVersusExpected(sel_opt as [string, string][], value as string[]);
+                        let val: string | string[]
                         
+                        if (htmle.multiple)
+                            val = testMultipleOptionsVesusExpected(sel_opt as [string, string][], value as string[]);
+                        else
+                            val = testOptionsVersusExpected(sel_opt as [string, string][], value as string[]);
+
                         if (val) {
-                            htmle.value = val as string;
+                            $(htmle).val(val);
+
                             // On réinitialise le select
                             const instance = M.FormSelect.getInstance(htmle);
 
