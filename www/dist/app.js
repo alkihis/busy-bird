@@ -1710,18 +1710,18 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 const d = new FormData();
                 d.append("id", id);
                 d.append("form", content);
-                let response;
+                let json;
                 try {
-                    response = yield fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
+                    const response = yield fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
                         method: "POST",
                         body: d,
                         headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
                     }, MAX_TIMEOUT_FOR_FORM);
+                    json = yield response.json();
                 }
                 catch (error) {
                     throw { code: "json_send", error };
                 }
-                let json = yield response.json();
                 if (json.error_code) {
                     throw { code: "json_treatement", error_code: json.error_code, "message": json.message };
                 }
@@ -3369,6 +3369,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 element_to_add = real_wrapper;
             }
             else if (ele.type === form_schema_3.FormEntityType.select) {
+                const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
                 const label = document.createElement('label');
@@ -3400,14 +3401,6 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     };
                     htmle.addEventListener('change', select_verif);
                 }
-                // const mic_btn = document.createElement('div');
-                // if (!htmle.multiple) {
-                //     mic_btn.addEventListener('click', function() {
-                //         prompt("Valeur ?", Array.from(htmle.options).map(e => e.label)).then(function(value) {
-                //             htmle.value = value;
-                //         });
-                //     });
-                // }
                 if (filled_form && ele.name in filled_form.fields) {
                     if (ele.select_options.multiple) {
                         $(htmle).val(filled_form.fields[ele.name]);
@@ -3418,6 +3411,50 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 wrapper.appendChild(htmle);
                 wrapper.appendChild(label);
+                /// Gestion du voice control
+                real_wrapper.appendChild(wrapper);
+                if (ele.allow_voice_control && !htmle.multiple) {
+                    wrapper.classList.add('s11');
+                    wrapper.classList.remove('s12');
+                    const mic_btn = document.createElement('div');
+                    mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                    mic_btn.style.paddingRight = "0";
+                    mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+                    const sel_opt = Array.from(htmle.options).map(e => [e.label, e.value]);
+                    mic_btn.addEventListener('click', function () {
+                        vocal_recognition_3.prompt("Parlez maintenant", true).then(function (value) {
+                            const v = value;
+                            let find = false;
+                            for (const opt of sel_opt) {
+                                for (const match of v) {
+                                    if (match.toLowerCase() === opt[0].toLowerCase()) {
+                                        htmle.value = opt[1];
+                                        find = true;
+                                        break;
+                                    }
+                                }
+                                if (find) {
+                                    break;
+                                }
+                            }
+                            if (find) {
+                                // On réinitialise le select
+                                const instance = M.FormSelect.getInstance(htmle);
+                                if (instance) {
+                                    instance.destroy();
+                                }
+                                M.FormSelect.init(htmle);
+                            }
+                            else {
+                                // Force M.toast: Les toasts natifs ne s'affichent pas à cause du toast affiché par Google
+                                M.toast({ html: "Aucune option ne correspond à votre demande" });
+                            }
+                        });
+                    });
+                    real_wrapper.appendChild(mic_btn);
+                }
                 htmle.dataset.e_constraints = ele.external_constraints || "";
                 htmle.dataset.invalid_tip = ele.tip_on_invalid || "";
                 // Évènement pour le select: contraintes externes ou si select multiple.required
@@ -3440,7 +3477,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         }
                     });
                 }
-                element_to_add = wrapper;
+                element_to_add = real_wrapper;
             }
             else if (ele.type === form_schema_3.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');

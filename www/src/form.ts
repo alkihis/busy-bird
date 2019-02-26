@@ -524,6 +524,8 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         }
 
         else if (ele.type === FormEntityType.select) {
+            const real_wrapper = document.createElement('div');
+        
             const wrapper = createInputWrapper();
             const htmle = document.createElement('select');
             const label = document.createElement('label');
@@ -564,15 +566,6 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 htmle.addEventListener('change', select_verif);
             }
 
-            // const mic_btn = document.createElement('div');
-            // if (!htmle.multiple) {
-            //     mic_btn.addEventListener('click', function() {
-            //         prompt("Valeur ?", Array.from(htmle.options).map(e => e.label)).then(function(value) {
-            //             htmle.value = value;
-            //         });
-            //     });
-            // }
-
             if (filled_form && ele.name in filled_form.fields) {
                 if (ele.select_options.multiple) {
                     $(htmle).val(filled_form.fields[ele.name] as string[]);
@@ -584,6 +577,62 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             wrapper.appendChild(htmle);
             wrapper.appendChild(label);
+
+            /// Gestion du voice control
+            real_wrapper.appendChild(wrapper);
+
+            if (ele.allow_voice_control && !htmle.multiple) {
+                wrapper.classList.add('s11');
+                wrapper.classList.remove('s12');
+
+                const mic_btn = document.createElement('div');
+                mic_btn.classList.add('col', 's1', 'mic-wrapper');
+                mic_btn.style.paddingRight = "0";
+
+                mic_btn.innerHTML = `
+                    <i class="material-icons red-text">mic</i>
+                `;
+
+                const sel_opt = Array.from(htmle.options).map(e => [e.label, e.value]);
+
+                mic_btn.addEventListener('click', function() {
+                    prompt("Parlez maintenant", true).then(function(value) {
+                        const v = value as string[];
+
+                        let find = false;
+                        for (const opt of sel_opt) {
+                            for (const match of v) {
+                                if (match.toLowerCase() === opt[0].toLowerCase()) {
+                                    htmle.value = opt[1];
+                                    find = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (find) {
+                                break;
+                            }
+                        }
+                        
+                        if (find) {
+                            // On réinitialise le select
+                            const instance = M.FormSelect.getInstance(htmle);
+
+                            if (instance) {
+                                instance.destroy();
+                            }
+
+                            M.FormSelect.init(htmle);
+                        }
+                        else {
+                            // Force M.toast: Les toasts natifs ne s'affichent pas à cause du toast affiché par Google
+                            M.toast({html:"Aucune option ne correspond à votre demande"});
+                        }
+                    });
+                });
+
+                real_wrapper.appendChild(mic_btn);
+            }
 
             htmle.dataset.e_constraints = ele.external_constraints || "";
             htmle.dataset.invalid_tip = ele.tip_on_invalid || "";
@@ -610,7 +659,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 });
             }
 
-            element_to_add = wrapper;
+            element_to_add = real_wrapper;
         }
 
         else if (ele.type === FormEntityType.checkbox) {

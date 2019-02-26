@@ -191,19 +191,18 @@ export const SyncManager = new class {
         d.append("id", id);
         d.append("form", content);
 
-        let response: Response;
-        
+        let json: any;
         try {
-            response = await fetch(API_URL + "forms/send.json", {
+            const response = await fetch(API_URL + "forms/send.json", {
                 method: "POST",
                 body: d,
                 headers: new Headers({"Authorization": "Bearer " + UserManager.token})
             }, MAX_TIMEOUT_FOR_FORM);
+
+            json = await response.json();
         } catch (error) {
             throw {code: "json_send", error};
         }
-
-        let json = await response.json();
 
         if (json.error_code) {
             throw {code: "json_treatement", error_code: json.error_code, "message": json.message};
