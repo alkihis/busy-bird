@@ -124,8 +124,8 @@ export function testMultipleOptionsVesusExpected(options: [string, string][], di
     }
 
     if (finded_possibilities.length > 0) {
-        console.log(finded_possibilities);
-        return finded_possibilities[0];
+        // Tri en fonction de la taille du tableau (plus grand en premier) et récupère celui qui a le plus de match
+        return finded_possibilities.sort((a, b) => b.length - a.length)[0];
     }
 
     return null;

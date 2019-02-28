@@ -40,8 +40,18 @@ function loadEndpoint(string $method) : array {
             continue;
         }
 
-        $forms[] = str_replace('.json', '', basename($file));
+        $name = str_replace('.json', '', basename($file));
+        $forms[$name] = true;
     }
 
     return $forms;
+
+    // if (!isset($_GET['id'])) {
+        
+    // }
+    // else {
+    //     // Récupération du formulaire id avec ses métadonnées, au format ZIP
+
+    //     // TODO dans forms/id.json
+    // }
 }

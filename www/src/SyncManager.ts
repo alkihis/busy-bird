@@ -2,7 +2,7 @@ import { FormSave } from "./form_schema";
 import { Logger } from "./logger";
 import localforage from 'localforage';
 import { API_URL } from "./main";
-import { readFile, getDir, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
+import { readFile, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
 import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
 import { BackgroundSync, Settings } from "./Settings";
@@ -243,16 +243,16 @@ export const SyncManager = new class {
                 base64 = base64.split(',')[1];
 
                 // On construit le formdata à envoyer
-                const d = new FormData();
-                d.append("id", id);
-                d.append("type", data.type);
-                d.append("filename", basename);
-                d.append("data", base64);
+                const md = new FormData();
+                md.append("id", id);
+                md.append("type", data.type);
+                md.append("filename", basename);
+                md.append("data", base64);
                 
                 try {
                     const resp = await fetch(API_URL + "forms/metadata_send.json", {
                         method: "POST",
-                        body: d,
+                        body: md,
                         headers: new Headers({"Authorization": "Bearer " + UserManager.token})
                     }, MAX_TIMEOUT_FOR_METADATA);
 

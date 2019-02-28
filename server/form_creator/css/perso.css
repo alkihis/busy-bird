@@ -1,0 +1,54 @@
+body {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+.no-margin-top {
+    margin-top: 0;
+}
+
+.no-margin-bottom {
+    margin-bottom: 0;
+}
+
+.valign-middle {
+    vertical-align: middle;
+}
+
+.valign-bottom {
+    vertical-align: bottom;
+}
+
+.clearb {
+    clear: both;
+}
+
+.one-select-opt {
+    padding: 0 10px 15px 10px;
+    margin: 5px 0;
+    border-radius: 8px;
+    border: 1px rgba(165, 165, 165, 0.329) solid;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.nopointer {
+    cursor: inherit;
+}
+
+.delete-button {
+    margin-right: 10px;
+}
+
+.divider-margin {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+

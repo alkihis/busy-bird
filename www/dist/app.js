@@ -1044,8 +1044,8 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
             }
         }
         if (finded_possibilities.length > 0) {
-            console.log(finded_possibilities);
-            return finded_possibilities[0];
+            // Tri en fonction de la taille du tableau (plus grand en premier) et récupère celui qui a le plus de match
+            return finded_possibilities.sort((a, b) => b.length - a.length)[0];
         }
         return null;
     }
@@ -1759,15 +1759,15 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         // On récupère la partie base64 qui nous intéresse
                         base64 = base64.split(',')[1];
                         // On construit le formdata à envoyer
-                        const d = new FormData();
-                        d.append("id", id);
-                        d.append("type", data.type);
-                        d.append("filename", basename);
-                        d.append("data", base64);
+                        const md = new FormData();
+                        md.append("id", id);
+                        md.append("type", data.type);
+                        md.append("filename", basename);
+                        md.append("data", base64);
                         try {
                             const resp = yield fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
                                 method: "POST",
-                                body: d,
+                                body: md,
                                 headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
                             }, MAX_TIMEOUT_FOR_METADATA);
                             const json = yield resp.json();
@@ -4782,11 +4782,16 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn.innerHTML = "Tout resynchroniser";
         syncbtn.onclick = function () {
-            helpers_10.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
-            Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.", "Oui", "Non", "Vider cache de synchronisation").then(checked_val => {
-                // L'utilisateur a dit oui
-                SyncManager_4.SyncManager.graphicalSync(true, checked_val);
-            });
+            if (user_manager_6.UserManager.logged) {
+                helpers_10.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
+                Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.", "Oui", "Non", "Vider cache de synchronisation").then(checked_val => {
+                    // L'utilisateur a dit oui
+                    SyncManager_4.SyncManager.graphicalSync(true, checked_val);
+                });
+            }
+            else {
+                helpers_10.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
+            }
         };
         container.appendChild(syncbtn);
     }
@@ -4978,8 +4983,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return __awaiter(this, void 0, void 0, function* () {
             // On veut supprimer tous les fichiers
             // Récupération de tous les fichiers de forms
-            let dirEntries = yield helpers_11.getDirP('forms');
-            const entries = yield dirEntries(dirEntries);
+            let dentries = yield helpers_11.getDirP('forms');
+            const entries = yield helpers_11.dirEntries(dentries);
             const promises = [];
             for (const e of entries) {
                 if (e.isFile) {

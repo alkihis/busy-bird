@@ -255,17 +255,22 @@ export function initSettingsPage(base: HTMLElement) {
     syncbtn.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
     syncbtn.innerHTML = "Tout resynchroniser";
     syncbtn.onclick = function() {
-        askModal(
-            "Tout synchroniser ?", 
-            "Veillez à disposer d'une bonne connexion à Internet.\
-            Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.",
-            "Oui",
-            "Non",
-            "Vider cache de synchronisation"
-        ).then(checked_val => {
-            // L'utilisateur a dit oui
-            SyncManager.graphicalSync(true, checked_val);
-        });
+        if (UserManager.logged) {
+            askModal(
+                "Tout synchroniser ?", 
+                "Veillez à disposer d'une bonne connexion à Internet.\
+                Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.",
+                "Oui",
+                "Non",
+                "Vider cache de synchronisation"
+            ).then(checked_val => {
+                // L'utilisateur a dit oui
+                SyncManager.graphicalSync(true, checked_val);
+            });
+        }
+        else {
+            informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
+        }
     }
     container.appendChild(syncbtn);
 }

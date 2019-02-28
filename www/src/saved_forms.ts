@@ -23,8 +23,8 @@ function editAForm(form: FormSave, name: string) {
 async function deleteAll() : Promise<any> {
     // On veut supprimer tous les fichiers
     // Récupération de tous les fichiers de forms
-    let dirEntries = await getDirP('forms');
-    const entries = await dirEntries(dirEntries);
+    let dentries = await getDirP('forms');
+    const entries = await dirEntries(dentries);
     const promises: Promise<any>[] = [];
 
     for (const e of entries) {

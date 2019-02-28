@@ -50,13 +50,6 @@ function loadEndpoint(string $method) : array {
 
     $path = UPLOAD_FILE_PATH . "$type/$id.json";
 
-    if (file_exists($path)) {
-        // Le formulaire existe déjà
-        if (md5_file($path) === md5($str_form)) {
-            return ['status' => true, 'send_metadata' => false];
-        }
-    }
-
     // On écrit le form
     file_put_contents($path, $str_form);
 
