@@ -52,7 +52,7 @@ const FORM_TYPES = {
 };
 
 const EMPTY_CHILDRENS = new Set(["divider", "checkbox", "slider"]); // > No default value & no possibility of require it
-const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "file"]); // > No default value
+const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "file", "select"]); // > No default value
 
 // dec2hex :: Integer -> String
 function dec2hex(dec) {

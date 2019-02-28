@@ -175,7 +175,8 @@ function generateForm(baseElement, type, existing_item) {
 
     baseElement.insertAdjacentHTML('beforeend', `
         <div class="input-field col s12">
-            <input id="unique_name" name="unique_name" type="text" required class="validate ${existing_item ? "" : "in"}valid">
+            <input id="unique_name" name="unique_name" type="text" pattern="^[0-9a-zA-Z_-]+$" placeholder="Aucun espace autorisé"
+                required class="validate ${existing_item ? "" : "in"}valid">
             <label for="unique_name">Nom interne du champ (doit être unique)</label>
         </div>
         <div class="input-field col s12">
@@ -194,9 +195,7 @@ function generateForm(baseElement, type, existing_item) {
             baseElement.insertAdjacentHTML('beforeend', `
             <div class="input-field col s12">
                 <input id="default_val" name="default_val" type="text" placeholder="Laissez vide pour aucune valeur">
-                <label for="default_val">Valeur par défaut du champ ${
-                    type === "select" ? "(si multiple, séparer les valeurs par des points-virgules)" : ""
-                }</label>
+                <label for="default_val">Valeur par défaut du champ</label>
             </div>`);
 
             if (existing_item) {
@@ -262,29 +261,7 @@ function readNewEntry(form, type, instance, f_label, existing_item) {
             const def_val = form.querySelector(`[name="${PROPERTIES_INTERNAL_NAME.default_value}"]`);
 
             if (def_val.value) {
-                //// Si type est un select, on peut possiblement mettre un tableau
-                if (type ===  "select") {
-                    const vals = def_val.value.split(';');
-                    const defaults = [];
-
-                    for (const v of vals) {
-                        if (v.trim() !== "") {
-                            defaults.push(v.trim());
-                        }
-                    }
-
-                    if (defaults.length > 0) {
-                        if (defaults.length > 1) {
-                            entry.default_value = defaults;
-                        }
-                        else {
-                            entry.default_value = defaults[0];
-                        }
-                    }
-                }
-                else {
-                    entry.default_value = def_val.value;
-                }
+                entry.default_value = def_val.value;
             }
         }
 
@@ -389,14 +366,19 @@ function createCollectionItem(collection, entry, f_label, existing_item = undefi
         evt.stopPropagation();
         evt.preventDefault();
 
-        delete form_items[entry.name];
-        item.remove();
+        askModal("Supprimer cet élément ?", "Voulez vous vraiment supprimer \"" + entry.label + "\" ?")
+            .then(() => {
+                // Oui
+                delete form_items[entry.name];
+                item.remove();
 
-        try {
-            Sortable.active.destroy();
-        } catch (e) {}
-    
-        Sortable.create(collection);
+                try {
+                    Sortable.active.destroy();
+                } catch (e) {}
+            
+                Sortable.create(collection);
+            })
+            .catch(() => {});
     }
 
     item.firstChild.appendChild(delete_btn);
@@ -683,5 +665,24 @@ $(function() {
 
     // Initialisation du bouton d'export
     document.getElementById('__export_form_btn').onclick = exportFormModal;
+
+    // Initialisation du bouton de reset
+    document.getElementById('__reset_form_btn').onclick = resetForm;
 });
 
+function resetForm() {
+    askModal("Remettre à zéro ?", "Toutes les modifications sur cette page seront perdues.")
+        .then(() => {
+            // Oui
+            form_items = {};
+            form_locations = {};
+            loaded_form = null;
+
+            getCollection().innerHTML = "";
+
+            try {
+                Sortable.active.destroy();
+            } catch (e) {}
+        })
+        .catch(() => {});
+}
