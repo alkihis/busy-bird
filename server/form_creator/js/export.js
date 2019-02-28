@@ -9,7 +9,7 @@ function exportFormModal() {
     const form_skip_loc = loaded_form && loaded_form.skip_location ? true : false;
 
     modal.innerHTML = `
-    <div class="modal-content row no-margin-bottom">
+    <div class="modal-content row no-margin-bottom no-padding-bottom">
         <h5 class="no-margin-top">Exporter le formulaire</h5>
 
         <p>

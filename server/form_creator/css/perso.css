@@ -16,6 +16,10 @@ main {
     margin-bottom: 0;
 }
 
+.no-padding-bottom {
+    padding-bottom: 0 !important;
+}
+
 .valign-middle {
     vertical-align: middle;
 }
