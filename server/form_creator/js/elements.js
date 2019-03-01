@@ -40,9 +40,9 @@ const FORM_PROPERTIES = {
 const FORM_TYPES = {
     divider: {label: "Titre / séparateur", props: []},
     string: {label: "Texte court", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
-    textarea: {label: "Paragraphe", props: ["allow_voice_control", "remove_whitespaces", "range", "tip_on_invalid", "placeholder"]}, 
-    integer: {label: "Nombre entier", props: ["allow_voice_control", "range", "tip_on_invalid", "placeholder"]}, 
-    float: {label: "Nombre à virgule", props: ["allow_voice_control", "range", "tip_on_invalid", "float_precision", "placeholder"]}, 
+    textarea: {label: "Paragraphe", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
+    integer: {label: "Nombre entier", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
+    float: {label: "Nombre à virgule", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "float_precision", "placeholder"]}, 
     slider: {label: "Choix binaire", props: ["slider_options"]},
     select: {label: "Liste de choix", props: ["allow_voice_control", "tip_on_invalid", "external_constraints", "select_options"]}, 
     checkbox: {label: "Case à cocher", info: "La valeur par défaut est le statut décoché.", props: []},

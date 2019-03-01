@@ -299,7 +299,7 @@ export const PageManager = new class {
         };
     
         if (this.should_wait || force_asking) {
-            askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
+            askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
                 .then(stepBack)
                 .catch(() => {})
         }

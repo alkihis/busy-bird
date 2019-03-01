@@ -303,7 +303,8 @@
         "placeholder": "Entre 30g et 100g \u00b10.1g",
         "float_precision": 0.1,
         "tip_on_invalid": "Unit\u00e9 gramme. 30g min, 100 max, pr\u00e9cision 0.1.",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "tarsus",
         "label": "Tarse",
@@ -315,7 +316,8 @@
         "placeholder": "Entre 20mm et 40mm \u00b10.1mm",
         "float_precision": 0.1,
         "tip_on_invalid": "Unit\u00e9 mm. 20mm min, 40 max, pr\u00e9cision 0.1",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "wing",
         "label": "Aile",
@@ -327,7 +329,8 @@
         "placeholder": "Entre 60mm et 120mm \u00b10.5mm",
         "float_precision": 0.5,
         "tip_on_invalid": "Unit\u00e9 mm. 60mm min, 120 max, pr\u00e9cision 0.5",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "abraded",
         "label": "\u00c9tat des plumes",
@@ -357,7 +360,8 @@
         "placeholder": "Entre 30mm et 80mm \u00b10.5mm",
         "float_precision": 0.5,
         "tip_on_invalid": "Unit\u00e9 mm. 30mm min, 80 max, pr\u00e9cision 0.5",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "third_prim",
         "label": "Longueur 3\u00e8me primaire",
@@ -369,7 +373,8 @@
         "placeholder": "Entre 40mm et 90mm \u00b10.5mm",
         "float_precision": 0.5,
         "tip_on_invalid": "Unit\u00e9 mm. 40mm min, 90 max, pr\u00e9cision 0.5",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "sk_bl_lght",
         "label": "Longueur t\u00eate plus bec",
@@ -381,7 +386,8 @@
         "placeholder": "Entre 30mm et 70mm \u00b10.1mm",
         "float_precision": 0.1,
         "tip_on_invalid": "Unit\u00e9 mm. 30mm min, 70 max, pr\u00e9cision 0.1",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "bl_lght",
         "label": "Longueur bec seul",
@@ -393,7 +399,8 @@
         "placeholder": "Entre 10mm et 30mm \u00b10.1mm",
         "float_precision": 0.1,
         "tip_on_invalid": "Unit\u00e9 mm. 10mm min, 30 max, pr\u00e9cision 0.1",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "blood_patch",
         "label": "Pr\u00e9sence plaque incubatrice",
@@ -412,7 +419,8 @@
             "max": 200
         },
         "tip_on_invalid": "Doit \u00eatre compris entre 10 et 200.",
-        "allow_voice_control": true
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "card_rythm",
         "label": "Rythme cardiaque",

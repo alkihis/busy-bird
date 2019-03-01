@@ -149,22 +149,6 @@ function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement | H
 }
 
 /**
- * Polyfill for modulo (seems to work unproperly on flaoting point)
- * @param num1
- * @param num2
- */
-function isModuloZero(num1: number, num2: number) : boolean {
-    let reste = num1;
-
-    while (reste > 0.0001) {
-        reste -= num2;
-    }
-
-    // Arrondit le nombre pour éviter les problèmes de précision
-    return Number(reste.toFixed(5)) === 0;
-}
-
-/**
  * Construit le formulaire automatiquement passé via "current_form"
  * @param placeh Élement HTML dans lequel écrire le formulaire
  * @param current_form Formulaire courant
@@ -255,6 +239,16 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                     htmle.max = String(ele.range.max);
                 }
             }
+            if (ele.type === FormEntityType.float && ele.float_precision) {
+                htmle.step = String(ele.float_precision);
+            }
+
+            // On vérifie si le champ a un message de suggestion si non rempli
+            const contraintes = [];
+            if (ele.suggested_not_blank) {
+                contraintes.push(["suggest", "true"]);
+            }
+            htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
             wrapper.appendChild(label);
             wrapper.appendChild(htmle);
@@ -264,37 +258,6 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 htmle.value = filled_form.fields[ele.name] as string;
             }
 
-            // Calcul de nombre de décimales requises
-            // si le nombre demandé est un float
-            let NB_DECIMALES: number = 0;
-            if (ele.type === FormEntityType.float && ele.float_precision) {
-                // Récupération de la partie décimale sous forme de string
-                const dec_part = ele.float_precision.toString().split('.');
-                // Calcul du nombre de décimales
-                if (dec_part.length > 1) {
-                    NB_DECIMALES = dec_part[1].length;
-                }
-                else {
-                    throw new Error(`La précision pour la partie décimale spécifiée pour le champ "${ele.name}" est invalide: Elle ne comporte pas de décimales.`);
-                }
-            }
-
-            // Définition des contraintes
-            const contraintes = [];
-            if (typeof ele.range !== 'undefined') {
-                if (typeof ele.range.min !== 'undefined') {
-                    contraintes.push(["min", ele.range.min]);
-                }
-                if (typeof ele.range.max !== 'undefined') {
-                    contraintes.push(["max", ele.range.max]);
-                }
-            }
-            if (ele.type === FormEntityType.float && ele.float_precision) {
-                contraintes.push(["precision", ele.float_precision]);
-            }
-            contraintes.push(['type', ele.type === FormEntityType.float ? 'float' : 'int']);
-            htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
-
             // Attachage de l'évènement de vérification
             const num_verif = function() {
                 let valid = true;
@@ -303,6 +266,10 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 try {
                     value = Number(this.value);
                 } catch (e) {
+                    valid = false;
+                }
+
+                if (!this.checkValidity()) {
                     valid = false;
                 }
 
@@ -317,25 +284,11 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                     // if différent, il est juste en else if pour éviter de faire les
                     // calculs si le valid est déjà à false
                     else if (ele.type === FormEntityType.float) {
-                        if (ele.float_precision) {
-                            // Si on a demandé à avoir un nombre de flottant précis
-                            const floating_point = this.value.split('.');
+                        const floating_point = this.value.split('.');
 
-                            if (floating_point.length > 1) {
-                                // Récupération de la partie décimale avec le bon nombre de décimales
-                                // (round obligatoire, à cause de la gestion des float imprécise)
-                                const partie_decimale = Number((value % 1).toFixed(NB_DECIMALES));
-
-                                // Si le nombre de chiffres après la virgule n'est pas le bon
-                                // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
-                                if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, ele.float_precision)) {
-                                    valid = false;
-                                }
-                            }
-                            else {
-                                //Il n'y a pas de . dans le nombre
-                                valid = false;
-                            }
+                        if (floating_point.length === 1) {
+                            //Il n'y a pas de . dans le nombre
+                            valid = false;
                         }
                     }
                     else if (this.value.indexOf(".") !== -1) {
@@ -434,6 +387,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 if (typeof ele.range.max !== 'undefined') {
                     contraintes.push(["max", ele.range.max]);
                 }
+            }
+            if (ele.suggested_not_blank) {
+                contraintes.push(["suggest", "true"]);
             }
             htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
 
@@ -708,6 +664,14 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         }
 
         else if (ele.type === FormEntityType.file) {
+            //// Attention ////
+            // L'input de type file pour les images, sur android,
+            // ne propose pas le choix entre prendre une nouvelle photo
+            // et choisir une image enregistrée. Le choix est FORCÉMENT
+            // de choisir une image enregistrée. 
+            // Le problème peut être contourné en créant un input personnalisé
+            // avec choix en utilisant navigator.camera et le plugin cordova camera.
+
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                 // L'input file est déjà présent dans le formulaire
                 // on affiche une miniature
@@ -942,64 +906,46 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
             }
         }
         else {
-            let fail = false;
             let str = "";
 
             // Si le champ est requis et a une valeur, on recherche ses contraintes
-            if (Object.keys(contraintes).length > 0) {
+            if (Object.keys(contraintes).length > 0 || element.type === "number") {
                 if (element.type === "text" || element.tagName === "textarea") {
                     if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
-                        fail = true;
-                        str += "La taille du texte doit dépasser " + contraintes.min + " caractères. ";
+                        str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
                     }
                     if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
-                        fail = true;
-                        str += "La taille du texte doit être inférieure à " + contraintes.max + " caractères. ";
+                        str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
                     }
                 }
-                else if (element.type === "number") {
-                    if (typeof contraintes.min !== 'undefined' && Number(element.value) < contraintes.min) {
-                        fail = true;
-                        str += "Le nombre doit dépasser " + contraintes.min + ". ";
+                else if (element.type === "number" && element.value !== "") {
+                    if (element.validity.rangeUnderflow) {
+                        str += "Le nombre doit être égal ou supérieur à " + (element as HTMLInputElement).min + ". ";
                     }
-                    if (typeof contraintes.max !== 'undefined' && Number(element.value) > contraintes.max) {
-                        fail = true;
-                        str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
+                    if (element.validity.rangeOverflow) {
+                        str += "Le nombre doit être égal ou inférieur à " + (element as HTMLInputElement).max + ". ";
                     }
 
                     // Vérification de la précision
-                    if (contraintes.precision) {
-                        // Calcul de nombre de décimales requises
-                        // si le nombre demandé est un float
-                        let NB_DECIMALES: number = 0;
-                        const dec_part = contraintes.precision.toString().split('.');
-                        NB_DECIMALES = dec_part[1].length;
-
-                        // Si on a demandé à avoir un nombre de flottant précis
-                        const floating_point = element.value.split('.');
-
-                        if (floating_point.length > 1) {
-                            // Récupération de la partie décimale avec le bon nombre de décimales
-                            // (round obligatoire, à cause de la gestion des float imprécise)
-                            const partie_decimale = Number((Number(element.value) % 1).toFixed(NB_DECIMALES));
-
-                            // Si le nombre de chiffres après la virgule n'est pas le bon
-                            // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
-                            if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
-                                fail = true;
-                                str += "Le nombre doit avoir une précision de " + contraintes.precision + ". ";
-                            }
+                    if ((element as HTMLInputElement).step) {
+                        if (element.validity.stepMismatch) {
+                            str += "Le nombre doit avoir une précision de " + (element as HTMLInputElement).step + ". ";
                         }
-                        else {
-                            //Il n'y a pas de . dans le nombre
-                            fail = true;
+                        else if (element.value.indexOf('.') === -1) {
                             str += "Le nombre doit être à virgule. ";
                         }
                     }
                 }
             }
 
-            if (fail) {
+            // On vérifie que le champ n'a pas un "suggested_not_blank"
+            // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
+            // sont vides, la vérification lève une erreur fatale.
+            if (contraintes.suggest && !element.required && element.value === "") {
+                str += "Cet élément ne devrait pas être vide. ";
+            }
+
+            if (str) {
                 if (element.required) {
                     elements_failed.push([name, str, element]);
                 }

@@ -1,7 +1,7 @@
 # API de Busy Bird, l'application du LBBE
 ## Introduction
 
-Cette API est à destination d'une utilisation avec l'application Busy Bird uniquement. Les endpoints REST disponibles ne sont pensés que pour servir l'application, excepté les endpoints de récupération `GET forms/sended.json` et `GET forms/id.json`.
+Cette API est à destination d'une utilisation avec l'application Busy Bird uniquement. Les endpoints REST disponibles ne sont pensés que pour servir l'application, excepté l'endpoint de récupération `GET forms/sended.json`.
 
 Ce serveur permet de connecter un utilisateur dans Busy Bird, ainsi que de recevoir des entrées de formulaires saisies via l'application.
 
@@ -124,7 +124,7 @@ Envoie une entrée de formulaire sur le serveur.
 #### Réponse
 | Clé            | Valeur                   | Exemple                    | Type                 |
 | -------------  |----------------:         |---------                   |----------:           |
-| status         | true                     | true                       | bool                 |
+| status         | true                     | true                       | boolean                 |
 | send_metadata  | Métadonnées à envoyer    | ["pic_eye", "card_rythm"]  | false OU string[]    |
 
 `send_metadata` peut être `false` (aucune métadonnée à envoyer) ou peut valoir un tableau de chaînes de caractères représentant le nom des champs liés à des fichiers encore non présents sur le serveur.
@@ -158,7 +158,7 @@ Le formulaire `id` doit exister sur le serveur pour pouvoir envoyer des données
 #### Réponse
 | Clé            | Valeur                   | Exemple                    | Type                 |
 | -------------  |----------------:         |---------                   |----------:           |
-| status         | true                     | true                       | bool                 |
+| status         | true                     | true                       | boolean                 |
 
 
 #### Exemple
@@ -182,7 +182,7 @@ Renvoie les schémas de formulaires disponibles sur le serveur et si l'utilisate
 Aucun.
 
 #### Réponse
-Objet de type `{[formName: string]: [string, bool]}`.
+Objet de type `{[formName: string]: [string, boolean]}`.
 
 L'objet associe nom du formulaire (clé unique, comme `cincle_plongeur`) à un tuple de deux valeurs. 
 La première valeur du tuple est le label du formulaire (champ `name` de l'objet `Form`), la seconde est un booléen précisant si l'utilisateur connecté a souscrit ou non à ce formulaire.

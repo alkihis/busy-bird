@@ -51,7 +51,7 @@ export interface FormEntity {
     label: string;
     placeholder?: string;
     required?: boolean;
-    suggested_not_blank?: boolean; /* for type.string */
+    suggested_not_blank?: boolean; /* for type.string && type.bigstring && type.integer && type.float */
     type: FormEntityType;
     range?: {min?: number, max?: number}; /* for type.integer && type.float */
     select_options?: {options: SelectOption[], multiple: boolean}; /* for type.select */

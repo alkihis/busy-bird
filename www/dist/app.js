@@ -3056,19 +3056,6 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         return htmle;
     }
     /**
-     * Polyfill for modulo (seems to work unproperly on flaoting point)
-     * @param num1
-     * @param num2
-     */
-    function isModuloZero(num1, num2) {
-        let reste = num1;
-        while (reste > 0.0001) {
-            reste -= num2;
-        }
-        // Arrondit le nombre pour éviter les problèmes de précision
-        return Number(reste.toFixed(5)) === 0;
-    }
-    /**
      * Construit le formulaire automatiquement passé via "current_form"
      * @param placeh Élement HTML dans lequel écrire le formulaire
      * @param current_form Formulaire courant
@@ -3144,41 +3131,21 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         htmle.max = String(ele.range.max);
                     }
                 }
+                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
+                    htmle.step = String(ele.float_precision);
+                }
+                // On vérifie si le champ a un message de suggestion si non rempli
+                const contraintes = [];
+                if (ele.suggested_not_blank) {
+                    contraintes.push(["suggest", "true"]);
+                }
+                htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 wrapper.appendChild(label);
                 wrapper.appendChild(htmle);
                 createTip(wrapper, ele);
                 if (filled_form && ele.name in filled_form.fields) {
                     htmle.value = filled_form.fields[ele.name];
                 }
-                // Calcul de nombre de décimales requises
-                // si le nombre demandé est un float
-                let NB_DECIMALES = 0;
-                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
-                    // Récupération de la partie décimale sous forme de string
-                    const dec_part = ele.float_precision.toString().split('.');
-                    // Calcul du nombre de décimales
-                    if (dec_part.length > 1) {
-                        NB_DECIMALES = dec_part[1].length;
-                    }
-                    else {
-                        throw new Error(`La précision pour la partie décimale spécifiée pour le champ "${ele.name}" est invalide: Elle ne comporte pas de décimales.`);
-                    }
-                }
-                // Définition des contraintes
-                const contraintes = [];
-                if (typeof ele.range !== 'undefined') {
-                    if (typeof ele.range.min !== 'undefined') {
-                        contraintes.push(["min", ele.range.min]);
-                    }
-                    if (typeof ele.range.max !== 'undefined') {
-                        contraintes.push(["max", ele.range.max]);
-                    }
-                }
-                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
-                    contraintes.push(["precision", ele.float_precision]);
-                }
-                contraintes.push(['type', ele.type === form_schema_3.FormEntityType.float ? 'float' : 'int']);
-                htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
                 const num_verif = function () {
                     let valid = true;
@@ -3187,6 +3154,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         value = Number(this.value);
                     }
                     catch (e) {
+                        valid = false;
+                    }
+                    if (!this.checkValidity()) {
                         valid = false;
                     }
                     if (typeof value === 'number' && value === value) {
@@ -3199,23 +3169,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         // if différent, il est juste en else if pour éviter de faire les
                         // calculs si le valid est déjà à false
                         else if (ele.type === form_schema_3.FormEntityType.float) {
-                            if (ele.float_precision) {
-                                // Si on a demandé à avoir un nombre de flottant précis
-                                const floating_point = this.value.split('.');
-                                if (floating_point.length > 1) {
-                                    // Récupération de la partie décimale avec le bon nombre de décimales
-                                    // (round obligatoire, à cause de la gestion des float imprécise)
-                                    const partie_decimale = Number((value % 1).toFixed(NB_DECIMALES));
-                                    // Si le nombre de chiffres après la virgule n'est pas le bon
-                                    // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
-                                    if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, ele.float_precision)) {
-                                        valid = false;
-                                    }
-                                }
-                                else {
-                                    //Il n'y a pas de . dans le nombre
-                                    valid = false;
-                                }
+                            const floating_point = this.value.split('.');
+                            if (floating_point.length === 1) {
+                                //Il n'y a pas de . dans le nombre
+                                valid = false;
                             }
                         }
                         else if (this.value.indexOf(".") !== -1) {
@@ -3297,6 +3254,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     if (typeof ele.range.max !== 'undefined') {
                         contraintes.push(["max", ele.range.max]);
                     }
+                }
+                if (ele.suggested_not_blank) {
+                    contraintes.push(["suggest", "true"]);
                 }
                 htmle.dataset.constraints = contraintes.map(e => e.join('=')).join(';');
                 // Attachage de l'évènement de vérification
@@ -3516,6 +3476,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 element_to_add = wrapper;
             }
             else if (ele.type === form_schema_3.FormEntityType.file) {
+                //// Attention ////
+                // L'input de type file pour les images, sur android,
+                // ne propose pas le choix entre prendre une nouvelle photo
+                // et choisir une image enregistrée. Le choix est FORCÉMENT
+                // de choisir une image enregistrée. 
+                // Le problème peut être contourné en créant un input personnalisé
+                // avec choix en utilisant navigator.camera et le plugin cordova camera.
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                     // L'input file est déjà présent dans le formulaire
                     // on affiche une miniature
@@ -3698,58 +3665,42 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     }
                 }
                 else {
-                    let fail = false;
                     let str = "";
                     // Si le champ est requis et a une valeur, on recherche ses contraintes
-                    if (Object.keys(contraintes).length > 0) {
+                    if (Object.keys(contraintes).length > 0 || element.type === "number") {
                         if (element.type === "text" || element.tagName === "textarea") {
                             if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
-                                fail = true;
-                                str += "La taille du texte doit dépasser " + contraintes.min + " caractères. ";
+                                str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
                             }
                             if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
-                                fail = true;
-                                str += "La taille du texte doit être inférieure à " + contraintes.max + " caractères. ";
+                                str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
                             }
                         }
-                        else if (element.type === "number") {
-                            if (typeof contraintes.min !== 'undefined' && Number(element.value) < contraintes.min) {
-                                fail = true;
-                                str += "Le nombre doit dépasser " + contraintes.min + ". ";
+                        else if (element.type === "number" && element.value !== "") {
+                            if (element.validity.rangeUnderflow) {
+                                str += "Le nombre doit être égal ou supérieur à " + element.min + ". ";
                             }
-                            if (typeof contraintes.max !== 'undefined' && Number(element.value) > contraintes.max) {
-                                fail = true;
-                                str += "Le nombre doit être inférieur à " + contraintes.max + ". ";
+                            if (element.validity.rangeOverflow) {
+                                str += "Le nombre doit être égal ou inférieur à " + element.max + ". ";
                             }
                             // Vérification de la précision
-                            if (contraintes.precision) {
-                                // Calcul de nombre de décimales requises
-                                // si le nombre demandé est un float
-                                let NB_DECIMALES = 0;
-                                const dec_part = contraintes.precision.toString().split('.');
-                                NB_DECIMALES = dec_part[1].length;
-                                // Si on a demandé à avoir un nombre de flottant précis
-                                const floating_point = element.value.split('.');
-                                if (floating_point.length > 1) {
-                                    // Récupération de la partie décimale avec le bon nombre de décimales
-                                    // (round obligatoire, à cause de la gestion des float imprécise)
-                                    const partie_decimale = Number((Number(element.value) % 1).toFixed(NB_DECIMALES));
-                                    // Si le nombre de chiffres après la virgule n'est pas le bon
-                                    // ou si la valeur n'est pas de l'ordre souhaité (précision 0.05 avec valeur 10.03 p.e.)
-                                    if (floating_point[1].length !== NB_DECIMALES || !isModuloZero(partie_decimale, Number(contraintes.precision))) {
-                                        fail = true;
-                                        str += "Le nombre doit avoir une précision de " + contraintes.precision + ". ";
-                                    }
+                            if (element.step) {
+                                if (element.validity.stepMismatch) {
+                                    str += "Le nombre doit avoir une précision de " + element.step + ". ";
                                 }
-                                else {
-                                    //Il n'y a pas de . dans le nombre
-                                    fail = true;
+                                else if (element.value.indexOf('.') === -1) {
                                     str += "Le nombre doit être à virgule. ";
                                 }
                             }
                         }
                     }
-                    if (fail) {
+                    // On vérifie que le champ n'a pas un "suggested_not_blank"
+                    // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
+                    // sont vides, la vérification lève une erreur fatale.
+                    if (contraintes.suggest && !element.required && element.value === "") {
+                        str += "Cet élément ne devrait pas être vide. ";
+                    }
+                    if (str) {
                         if (element.required) {
                             elements_failed.push([name, str, element]);
                         }
@@ -4596,26 +4547,14 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         base.innerHTML = `
     <div class="container row" id="main_settings_container">
         <h4>Utilisateur</h4>
-        <p id="settings_main_text" class="flow-text no-margin-bottom">${headerText()}</p>
+        <p class="flow-text no-margin-bottom">${headerText()}</p>
     </div>
     `;
         ////// DEFINITION DU BOUTON DE CONNEXION
         const container = document.getElementById('main_settings_container');
         const button = document.createElement('button');
-        const header = document.getElementById('settings_main_text');
         container.appendChild(button);
-        function logUserButton() {
-            button.type = "button";
-            button.innerHTML = "Se connecter";
-            button.classList.remove('red');
-            button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
-            button.onclick = function () {
-                user_manager_6.loginUser().then(function () {
-                    PageManager_4.PageManager.reload();
-                });
-            };
-        }
-        function unlogUserButton() {
+        if (connecte) {
             button.type = "button";
             button.innerHTML = "Déconnexion";
             button.classList.remove('blue');
@@ -4625,19 +4564,32 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                     .then(function () {
                     // L'utilisateur veut se déconnecter
                     user_manager_6.UserManager.unlog();
-                    logUserButton();
-                    header.innerHTML = headerText();
+                    PageManager_4.PageManager.reload();
                 })
                     .catch(function () {
                     // L'utilisateur ne se déconnecte pas, finalement
                 });
             };
         }
-        if (connecte) {
-            unlogUserButton();
-        }
         else {
-            logUserButton();
+            button.type = "button";
+            button.innerHTML = "Se connecter";
+            button.classList.remove('red');
+            button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
+            button.onclick = function () {
+                user_manager_6.loginUser().then(function () {
+                    PageManager_4.PageManager.reload();
+                }).catch(() => { });
+            };
+        }
+        // Si l'utilisateur n'est pas connecté, on propose de créer un compte
+        if (!connecte) {
+            const createaccbtn = document.createElement('button');
+            createaccbtn.classList.add('col', 's12', 'blue-grey', 'btn', 'btn-perso', 'btn-small-margins');
+            createaccbtn.innerHTML = "Créer un compte";
+            createaccbtn.style.marginTop = "-5px";
+            createaccbtn.onclick = user_manager_6.createNewUser;
+            container.appendChild(createaccbtn);
         }
         /////// PARTIE DEUX: FORMULAIRES
         container.insertAdjacentHTML('beforeend', `
@@ -5525,7 +5477,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             };
             if (this.should_wait || force_asking) {
-                helpers_12.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Retour", "Annuler")
+                helpers_12.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
                     .then(stepBack)
                     .catch(() => { });
             }

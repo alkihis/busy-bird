@@ -1,4 +1,4 @@
-import { UserManager, loginUser } from "./user_manager";
+import { UserManager, loginUser, createNewUser } from "./user_manager";
 import { Forms, FormSchema } from "./form_schema";
 import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText } from "./helpers";
 import { SyncManager } from "./SyncManager";
@@ -36,30 +36,16 @@ export function initSettingsPage(base: HTMLElement) {
     base.innerHTML = `
     <div class="container row" id="main_settings_container">
         <h4>Utilisateur</h4>
-        <p id="settings_main_text" class="flow-text no-margin-bottom">${headerText()}</p>
+        <p class="flow-text no-margin-bottom">${headerText()}</p>
     </div>
     `;
 
     ////// DEFINITION DU BOUTON DE CONNEXION
     const container = document.getElementById('main_settings_container');
     const button = document.createElement('button');
-    const header = document.getElementById('settings_main_text');
     container.appendChild(button);
 
-    function logUserButton() : void {
-        button.type = "button";
-        button.innerHTML = "Se connecter";
-        button.classList.remove('red');
-        button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
-
-        button.onclick = function() {
-            loginUser().then(function() {
-                PageManager.reload();
-            });
-        };
-    }
-
-    function unlogUserButton() : void {
+    if (connecte) {
         button.type = "button";
         button.innerHTML = "Déconnexion";
         button.classList.remove('blue');
@@ -71,20 +57,34 @@ export function initSettingsPage(base: HTMLElement) {
                 .then(function() {
                     // L'utilisateur veut se déconnecter
                     UserManager.unlog();
-                    logUserButton();
-                    header.innerHTML = headerText();
+                    PageManager.reload();
                 })
                 .catch(function() {
                     // L'utilisateur ne se déconnecte pas, finalement
                 });
         };
     }
-
-    if (connecte) {
-        unlogUserButton();
-    }
     else {
-        logUserButton();
+        button.type = "button";
+        button.innerHTML = "Se connecter";
+        button.classList.remove('red');
+        button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
+
+        button.onclick = function() {
+            loginUser().then(function() {
+                PageManager.reload();
+            }).catch(() => {});
+        };
+    }
+
+    // Si l'utilisateur n'est pas connecté, on propose de créer un compte
+    if (!connecte) {
+        const createaccbtn = document.createElement('button');
+        createaccbtn.classList.add('col', 's12', 'blue-grey', 'btn', 'btn-perso', 'btn-small-margins');
+        createaccbtn.innerHTML = "Créer un compte";
+        createaccbtn.style.marginTop = "-5px";
+        createaccbtn.onclick = createNewUser;
+        container.appendChild(createaccbtn);
     }
 
     /////// PARTIE DEUX: FORMULAIRES
