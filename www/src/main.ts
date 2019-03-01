@@ -1,5 +1,5 @@
 import { PageManager, AppPageName, SIDENAV_OBJ } from './PageManager';
-import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage } from "./helpers";
+import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage, createRandomForms } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
@@ -99,11 +99,11 @@ function initApp() {
 
         prom
             .then(() => {
-                // @ts-ignore On montre l'écran quand tout est chargé
+                // On montre l'écran quand tout est chargé
                 navigator.splashscreen.hide();
             })
             .catch(err => {
-                // @ts-ignore On montre l'écran et on affiche l'erreur
+                // On montre l'écran et on affiche l'erreur
                 navigator.splashscreen.hide();
 
                 // Bloque le sidenav pour empêcher de naviguer
@@ -132,6 +132,7 @@ function initDebug() {
         Logger,
         Forms,
         askModalList,
+        createRandomForms,
         recorder: function() {
             newModalRecord(document.createElement('button'), document.createElement('input'),
             {

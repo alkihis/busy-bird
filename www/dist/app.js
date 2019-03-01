@@ -10,1047 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-define("helpers", ["require", "exports", "PageManager"], function (require, exports, PageManager_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    // PRELOADERS: spinners for waiting time
-    exports.PRELOADER_BASE = `
-<div class="spinner-layer spinner-blue-only">
-    <div class="circle-clipper left">
-        <div class="circle"></div>
-    </div><div class="gap-patch">
-        <div class="circle"></div>
-    </div><div class="circle-clipper right">
-        <div class="circle"></div>
-    </div>
-</div>`;
-    exports.PRELOADER = `
-<div class="preloader-wrapper active">
-    ${exports.PRELOADER_BASE}
-</div>`;
-    exports.SMALL_PRELOADER = `
-<div class="preloader-wrapper small active">
-    ${exports.PRELOADER_BASE}
-</div>`;
-    exports.MODAL_PRELOADER_TEXT_ID = "__classic_preloader_text";
-    /**
-     * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
-     */
-    function getBase() {
-        return document.getElementById('main_block');
-    }
-    exports.getBase = getBase;
-    /**
-     * Initialise le modal simple avec les options données (voir doc.)
-     * et insère de l'HTML dedans avec content
-     * @returns M.Modal Instance du modal instancié avec Materialize
-     */
-    function initModal(options = {}, content) {
-        const modal = getModal();
-        modal.classList.remove('modal-fixed-footer');
-        if (content)
-            modal.innerHTML = content;
-        return M.Modal.init(modal, options);
-    }
-    exports.initModal = initModal;
-    /**
-     * Initialise le modal collé en bas avec les options données (voir doc.)
-     * et insère de l'HTML dedans avec content
-     * @returns M.Modal Instance du modal instancié avec Materialize
-     */
-    function initBottomModal(options = {}, content) {
-        const modal = getBottomModal();
-        if (content)
-            modal.innerHTML = content;
-        return M.Modal.init(modal, options);
-    }
-    exports.initBottomModal = initBottomModal;
-    /**
-     * @returns HTMLElement Élément HTML racine du modal
-     */
-    function getModal() {
-        return document.getElementById('modal_placeholder');
-    }
-    exports.getModal = getModal;
-    /**
-     * @returns HTMLElement Élément HTML racine du modal fixé en bas
-     */
-    function getBottomModal() {
-        return document.getElementById('bottom_modal_placeholder');
-    }
-    exports.getBottomModal = getBottomModal;
-    /**
-     * @returns M.Modal Instance du modal (doit être initialisé)
-     */
-    function getModalInstance() {
-        return M.Modal.getInstance(getModal());
-    }
-    exports.getModalInstance = getModalInstance;
-    /**
-     * @returns M.Modal Instance du modal fixé en bas (doit être initialisé)
-     */
-    function getBottomModalInstance() {
-        return M.Modal.getInstance(getBottomModal());
-    }
-    exports.getBottomModalInstance = getBottomModalInstance;
-    /**
-     * Génère un spinner centré sur l'écran avec un message d'attente
-     * @param text Texte à insérer comme message de chargement
-     * @returns string HTML à insérer
-     */
-    function getPreloader(text) {
-        return `
-    <center style="margin-top: 35vh;">
-        ${exports.PRELOADER}
-    </center>
-    <center class="flow-text" style="margin-top: 10px">${text}</center>
-    `;
-    }
-    exports.getPreloader = getPreloader;
-    /**
-     * Génère un spinner adapté à un modal avec un message d'attente
-     * @param text Texte à insérer comme message de chargement
-     * @returns string HTML à insérer dans la racine d'un modal
-     */
-    function getModalPreloader(text, footer = "") {
-        return `<div class="modal-content">
-    <center>
-        ${exports.SMALL_PRELOADER}
-    </center>
-    <center class="flow-text pre-wrapper" id="${exports.MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px">${text}</center>
-    </div>
-    ${footer}
-    `;
-    }
-    exports.getModalPreloader = getModalPreloader;
-    // dec2hex :: Integer -> String
-    function dec2hex(dec) {
-        return ('0' + dec.toString(16)).substr(-2);
-    }
-    /**
-     * Génère un identifiant aléatoire
-     * @param len Longueur de l'ID
-     */
-    function generateId(len) {
-        const arr = new Uint8Array((len || 40) / 2);
-        window.crypto.getRandomValues(arr);
-        return Array.from(arr, dec2hex).join('');
-    }
-    exports.generateId = generateId;
-    // USELESS
-    function saveDefaultForm() {
-        // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
-    }
-    exports.saveDefaultForm = saveDefaultForm;
-    // @ts-ignore 
-    // Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
-    // utilise le répertoire data (partition /data) de Android
-    let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
-    /**
-     * Change le répertoire actif en fonction de la plateforme et l'insère dans FOLDER.
-     * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
-     */
-    function changeDir() {
-        // @ts-ignore
-        if (device.platform === "browser") {
-            FOLDER = "cdvfile://localhost/temporary/";
-            // Permet le bouton retour sur navigateur
-            const back_btn = document.getElementById('__nav_back_button');
-            back_btn.onclick = function () {
-                PageManager_1.PageManager.goBack();
-            };
-            back_btn.classList.remove('hide');
-        }
-        // @ts-ignore
-        else if (device.platform === "iOS") {
-            // @ts-ignore
-            FOLDER = cordova.file.dataDirectory;
-        }
-    }
-    exports.changeDir = changeDir;
-    let DIR_ENTRY = null;
-    /**
-     * Lit un fichier et passe son résultat sous forme de texte ou base64 à callback
-     * @param fileName Nom du fichier
-     * @param callback Fonction appelée si réussie
-     * @param callbackIfFailed Fonction appelée en cas d'échec
-     * @param asBase64 true si le fichier doit être passé encodé en base64
-     */
-    function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
-        // @ts-ignore
-        const pathToFile = FOLDER + fileName;
-        // @ts-ignore
-        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-            fileEntry.file(function (file) {
-                const reader = new FileReader();
-                reader.onloadend = function (e) {
-                    callback(this.result);
-                };
-                if (asBase64) {
-                    reader.readAsDataURL(file);
-                }
-                else {
-                    reader.readAsText(file);
-                }
-            }, function () {
-                if (callbackIfFailed) {
-                    callbackIfFailed();
-                }
-                else {
-                    console.log("not readable");
-                }
-            });
-        }, function () {
-            if (callbackIfFailed) {
-                callbackIfFailed();
-            }
-            else {
-                console.log("not found");
-            }
-        });
-    }
-    exports.readFromFile = readFromFile;
-    /**
-     * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
-     */
-    function toValidUrl() {
-        // @ts-ignore
-        if (device.platform === "browser") {
-            return '';
-        }
-        // @ts-ignore
-        return cordova.file.applicationDirectory + 'www/';
-    }
-    exports.toValidUrl = toValidUrl;
-    /**
-     * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
-     * @param fileName Nom du fichier
-     * @param asBase64 true si fichier passé en base64 dans la promesse
-     * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
-     */
-    function readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
-        const pathToFile = forceBaseDir + fileName;
-        return new Promise(function (resolve, reject) {
-            // @ts-ignore
-            window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-                fileEntry.file(function (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = function (e) {
-                        resolve(this.result);
-                    };
-                    if (asBase64) {
-                        reader.readAsDataURL(file);
-                    }
-                    else {
-                        reader.readAsText(file);
-                    }
-                }, reject);
-            }, function (err) {
-                reject(err);
-            });
-        });
-    }
-    exports.readFile = readFile;
-    /**
-     * Lit un fichier en texte ou base64 depuis son FileEntry et envoie son résultat dans une Promise
-     * @param fileEntry FileEntry
-     * @param asBase64 true si fichier passé en base64 à la Promise
-     */
-    function readFileFromEntry(fileEntry, asBase64 = false) {
-        return new Promise(function (resolve, reject) {
-            fileEntry.file(function (file) {
-                const reader = new FileReader();
-                reader.onloadend = function (e) {
-                    resolve(this.result);
-                };
-                if (asBase64) {
-                    reader.readAsDataURL(file);
-                }
-                else {
-                    reader.readAsText(file);
-                }
-            }, reject);
-        });
-    }
-    exports.readFileFromEntry = readFileFromEntry;
-    /**
-     * Version Promise de getDir.
-     * Voir getDir().
-     * @param dirName string Nom du répertoire
-     * @return Promise<DirectoryEntry>
-     */
-    function getDirP(dirName) {
-        return new Promise((resolve, reject) => {
-            getDir(resolve, dirName, reject);
-        });
-    }
-    exports.getDirP = getDirP;
-    /**
-     * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
-     * Sans dirName, renvoie la racine du système de fichiers.
-     * @param callback Function(dirEntry) => void
-     * @param dirName string
-     * @param onError Function(error) => void
-     */
-    function getDir(callback, dirName = "", onError) {
-        function callGetDirEntry(dirEntry) {
-            DIR_ENTRY = dirEntry;
-            if (dirName) {
-                dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
-                    if (callback) {
-                        callback(newEntry);
-                    }
-                }, (err) => {
-                    console.log("Unable to create dir");
-                    if (onError) {
-                        onError(err);
-                    }
-                });
-            }
-            else if (callback) {
-                callback(dirEntry);
-            }
-        }
-        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
-        if (DIR_ENTRY === null) {
-            // @ts-ignore
-            window.resolveLocalFileSystemURL(FOLDER, callGetDirEntry, (err) => {
-                console.log("Persistent not available", err.message);
-                if (onError) {
-                    onError(err);
-                }
-            });
-        }
-        else {
-            callGetDirEntry(DIR_ENTRY);
-        }
-    }
-    exports.getDir = getDir;
-    /**
-     * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
-     * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
-     * @param dirName string
-     * @param fileName string
-     * @param blob Blob
-     * @param callback Function() => void
-     * @param onFailure Function(error) => void | Généralement, error est une DOMException
-     */
-    function writeFile(dirName, fileName, blob, callback, onFailure) {
-        getDir(function (dirEntry) {
-            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                write(fileEntry, blob).then(function () {
-                    if (callback) {
-                        callback();
-                    }
-                }).catch(error => { if (onFailure)
-                    onFailure(error); });
-            }, function (err) { console.log("Error in writing file", err.message); if (onFailure) {
-                onFailure(err);
-            } });
-        }, dirName);
-        function write(fileEntry, dataObj) {
-            // Prend l'entry du fichier et son blob à écrire en paramètre
-            return new Promise(function (resolve, reject) {
-                // Fonction pour écrire le fichier après vidage
-                function finally_write() {
-                    fileEntry.createWriter(function (fileWriter) {
-                        fileWriter.onerror = function (e) {
-                            reject(e);
-                        };
-                        fileWriter.onwriteend = null;
-                        fileWriter.write(dataObj);
-                        fileWriter.onwriteend = function () {
-                            resolve();
-                        };
-                    });
-                }
-                // Vide le fichier
-                fileEntry.createWriter(function (fileWriter) {
-                    fileWriter.onerror = function (e) {
-                        reject(e);
-                    };
-                    // Vide le fichier
-                    fileWriter.truncate(0);
-                    // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
-                    fileWriter.onwriteend = finally_write;
-                });
-            });
-        }
-    }
-    exports.writeFile = writeFile;
-    /**
-     * Crée un dossier name dans la racine du système de fichiers.
-     * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
-     * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
-     * Si échec, appelle onError avec l'erreur
-     * @param name string
-     * @param onSuccess Function(dirEntry) => void
-     * @param onError Function(error: DOMException) => void
-     */
-    function createDir(name, onSuccess, onError) {
-        getDir(function (dirEntry) {
-            dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
-        });
-    }
-    exports.createDir = createDir;
-    /**
-     * Fonction de test.
-     * Affiche les entrées du répertoire path dans la console.
-     * Par défaut, affiche la racine du système de fichiers.
-     * @param path string
-     */
-    function listDir(path = "") {
-        // @ts-ignore
-        getDir(function (fileSystem) {
-            const reader = fileSystem.createReader();
-            reader.readEntries(function (entries) {
-                console.log(entries);
-            }, function (err) {
-                console.log(err);
-            });
-        }, path);
-    }
-    exports.listDir = listDir;
-    function sleep(ms) {
-        return new Promise((resolve, _) => {
-            setTimeout(resolve, ms);
-        });
-    }
-    exports.sleep = sleep;
-    function dirEntries(dirEntry) {
-        return new Promise(function (resolve, reject) {
-            const reader = dirEntry.createReader();
-            reader.readEntries(function (entries) {
-                resolve(entries);
-            }, function (err) {
-                reject(err);
-            });
-        });
-    }
-    exports.dirEntries = dirEntries;
-    /**
-     * Fonction de test.
-     * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
-     * @param ele HTMLElement
-     * @param obj any
-     */
-    function printObj(ele, obj) {
-        ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
-    }
-    exports.printObj = printObj;
-    /**
-     * Obtient la localisation de l'utilisation.
-     * Si réussi, onSuccess est appelée avec en paramètre un objet de type Position
-     * @param onSuccess Function(coords: Position) => void
-     * @param onFailed Function(error) => void
-     */
-    function getLocation(onSuccess, onFailed) {
-        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
-    }
-    exports.getLocation = getLocation;
-    /**
-     * Calcule la distance en mètres entre deux coordonnées GPS.
-     * Les deux objets passés doivent implémenter l'interface CoordsLike
-     * @param coords1 CoordsLike
-     * @param coords2 CoordsLike
-     * @returns number Nombre de mètres entre les deux coordonnées
-     */
-    function calculateDistance(coords1, coords2) {
-        // @ts-ignore
-        return geolib.getDistance({ latitude: coords1.latitude, longitude: coords1.longitude }, { latitude: coords2.latitude, longitude: coords2.longitude });
-    }
-    exports.calculateDistance = calculateDistance;
-    /**
-     * Fonction de test pour tester la géolocalisation.
-     * @param latitude
-     * @param longitude
-     */
-    function testDistance(latitude = 45.353421, longitude = 5.836441) {
-        getLocation(function (res) {
-            console.log(calculateDistance(res.coords, { latitude, longitude }));
-        }, function (error) {
-            console.log(error);
-        });
-    }
-    exports.testDistance = testDistance;
-    /**
-     * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
-     * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
-     * @param dirName string
-     * @param fileName string
-     * @param callback Function() => void Fonction appelée quand le fichier est supprimé
-     */
-    function removeFileByName(dirName, fileName, callback) {
-        getDir(function (dirEntry) {
-            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                removeFile(fileEntry, callback);
-            });
-        }, dirName);
-    }
-    exports.removeFileByName = removeFileByName;
-    /**
-     * Supprime un fichier via son fileEntry
-     * @param entry fileEntry
-     * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
-     */
-    function removeFile(entry, callback) {
-        entry.remove(function () {
-            // Fichier supprimé !
-            if (callback)
-                callback();
-        }, function (err) {
-            console.log("error", err);
-            if (callback)
-                callback(err);
-        }, function () {
-            console.log("file not found");
-            if (callback)
-                callback(false);
-        });
-    }
-    exports.removeFile = removeFile;
-    /**
-     * Supprime un fichier via son fileEntry
-     * @param entry fileEntry
-     * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
-     */
-    function removeFilePromise(entry) {
-        return new Promise(function (resolve, reject) {
-            entry.remove(function () {
-                // Fichier supprimé !
-                resolve();
-            }, function (err) {
-                reject(err);
-            }, function () {
-                resolve();
-            });
-        });
-    }
-    exports.removeFilePromise = removeFilePromise;
-    /**
-     * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
-     * @param dirName string Chemin du répertoire
-     * @param callback NE PAS UTILISER. USAGE INTERNE.
-     * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
-     */
-    function rmrf(dirName, callback, dirEntry) {
-        // Récupère le dossier dirName (ou la racine du système de fichiers)
-        function readDirEntry(dirEntry) {
-            const reader = dirEntry.createReader();
-            // Itère sur les entrées du répertoire via readEntries
-            reader.readEntries(function (entries) {
-                // Pour chaque entrée du dossier
-                for (const entry of entries) {
-                    if (entry.isDirectory) {
-                        // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                        rmrf(entry.fullPath, function () {
-                            // Puis on le supprime lui-même
-                            removeFile(entry, callback);
-                        });
-                    }
-                    else {
-                        // Si c'est un fichier, on le supprime
-                        removeFile(entry, callback);
-                    }
-                }
-            });
-        }
-        if (dirEntry) {
-            readDirEntry(dirEntry);
-        }
-        else {
-            getDir(readDirEntry, dirName, function () {
-                if (callback)
-                    callback();
-            });
-        }
-    }
-    exports.rmrf = rmrf;
-    /**
-     * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
-     * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
-     * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
-     * @param dirName string Chemin du dossier à supprimer
-     * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
-     * @returns Promise Promesse tenue si suppression réussie, rompue sinon
-     */
-    function rmrfPromise(dirName, deleteSelf = false) {
-        function rmrfFromEntry(dirEntry) {
-            return new Promise(function (resolve, reject) {
-                const reader = dirEntry.createReader();
-                // Itère sur les entrées du répertoire via readEntries
-                reader.readEntries(function (entries) {
-                    // Pour chaque entrée du dossier
-                    const promises = [];
-                    for (const entry of entries) {
-                        promises.push(new Promise(function (resolve, reject) {
-                            if (entry.isDirectory) {
-                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                                rmrfFromEntry(entry).then(function () {
-                                    // Quand c'est fini, on supprime le répertoire lui-même
-                                    // Puis on résout
-                                    removeFilePromise(entry).then(resolve).catch(reject);
-                                });
-                            }
-                            else {
-                                // Si c'est un fichier, on le supprime
-                                removeFilePromise(entry).then(resolve).catch(reject);
-                            }
-                        }));
-                    }
-                    // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
-                    Promise.all(promises).then(function () {
-                        // Quand ils le sont, résout la promesse
-                        resolve();
-                    }).catch(reject);
-                });
-            });
-        }
-        return new Promise(function (resolve, reject) {
-            getDir(function (dirEntry) {
-                // Attends que tous les dossiers soient supprimés sous ce répertoire
-                rmrfFromEntry(dirEntry).then(function () {
-                    // Si on doit supprimer le dossier et que ce n'est pas la racine
-                    if (deleteSelf && dirName !== "") {
-                        // On supprime puis on résout
-                        removeFilePromise(dirEntry).then(resolve).catch(reject);
-                    }
-                    // On résout immédiatement
-                    else {
-                        resolve();
-                    }
-                }).catch(reject);
-            }, dirName, reject);
-        });
-    }
-    exports.rmrfPromise = rmrfPromise;
-    /**
-     * Formate un objet Date en chaîne de caractères potable.
-     * @param date Date
-     * @param withTime boolean Détermine si la chaîne de caractères contient l'heure et les minutes
-     * @returns string La châine formatée
-     */
-    function formatDate(date, withTime = false) {
-        const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
-        const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
-        const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
-        return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
-    }
-    exports.formatDate = formatDate;
-    /**
-     * Formate un objet Date en chaîne de caractères potable.
-     * Pour comprendre les significations des lettres du schéma, se référer à : http://php.net/manual/fr/function.date.php
-     * @param schema string Schéma de la chaîne. Supporte Y, m, d, h, H, i, s, n, N, v, z, w
-     * @param date Date Date depuis laquelle effectuer le formatage
-     * @returns string La châine formatée
-     */
-    function dateFormatter(schema, date = new Date()) {
-        function getDayOfTheYear(now) {
-            const start = new Date(now.getFullYear(), 0, 0);
-            const diff = now.getTime() - start.getTime();
-            const oneDay = 1000 * 60 * 60 * 24;
-            const day = Math.floor(diff / oneDay);
-            return day - 1; // Retourne de 0 à 364/365
-        }
-        const Y = date.getFullYear();
-        const N = date.getDay() === 0 ? 7 : date.getDay();
-        const n = date.getMonth() + 1;
-        const m = (n < 10 ? "0" : "") + String(n);
-        const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
-        const L = Y % 4 == 0 ? 1 : 0;
-        const i = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
-        const H = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
-        const h = date.getHours();
-        const s = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
-        const replacements = {
-            Y, m, d, i, H, h, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
-        };
-        let str = "";
-        // Construit la chaîne de caractères
-        for (const char of schema) {
-            if (char in replacements) {
-                if (typeof replacements[char] === 'string') {
-                    str += replacements[char];
-                }
-                else if (typeof replacements[char] === 'number') {
-                    str += String(replacements[char]);
-                }
-                else {
-                    str += String(replacements[char](date));
-                }
-            }
-            else {
-                str += char;
-            }
-        }
-        return str;
-    }
-    exports.dateFormatter = dateFormatter;
-    /**
-     * Assigne la balise src de l'image element au contenu de l'image située dans path.
-     * @param path string
-     * @param element HTMLImageElement
-     */
-    function createImgSrc(path, element) {
-        const parts = path.split('/');
-        const file_name = parts.pop();
-        const dir_name = parts.join('/');
-        getDir(function (dirEntry) {
-            dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
-                element.src = fileEntry.toURL();
-            });
-        }, dir_name);
-    }
-    exports.createImgSrc = createImgSrc;
-    /**
-     * Convertit un Blob en chaîne base64.
-     * @param blob Blob Données binaires à convertir en base64
-     */
-    function blobToBase64(blob) {
-        const reader = new FileReader();
-        return new Promise(function (resolve, reject) {
-            reader.onload = function () {
-                resolve(reader.result);
-            };
-            reader.onerror = function (e) {
-                reject(e);
-            };
-            reader.readAsDataURL(blob);
-        });
-    }
-    exports.blobToBase64 = blobToBase64;
-    /**
-     * Convertit une URL (distante, locale, data:base64...) en objet binaire Blob
-     * @param str string URL
-     */
-    function urlToBlob(str) {
-        return fetch(str).then(res => res.blob());
-    }
-    exports.urlToBlob = urlToBlob;
-    /**
-     * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
-     * @param title string Titre affiché sur le modal
-     * @param question string Question complète / détails sur l'action qui sera réalisée
-     * @param text_close string Texte affiché sur le bouton de fermeture
-     */
-    function informalBottomModal(title, question, text_close = "Fermer") {
-        const modal = getBottomModal();
-        const instance = initBottomModal();
-        modal.innerHTML = `
-    <div class="modal-content">
-        <h5 class="no-margin-top">${title}</h5>
-        <p class="flow-text">${question}</p>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" class="btn-flat blue-text modal-close right">${text_close}</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-        instance.open();
-    }
-    exports.informalBottomModal = informalBottomModal;
-    /**
-     * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
-     * @param title string Titre affiché sur le modal
-     * @param question string Question complète / détails sur l'action qui sera réalisée
-     * @param text_yes string Texte affiché sur le bouton de validation
-     * @param text_no string Texte affiché sur le bouton d'annulation
-     * @returns Promise<void | boolean> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
-     * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
-     */
-    function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox) {
-        const modal = getBottomModal();
-        const instance = initBottomModal({ dismissible: false });
-        modal.innerHTML = `
-    <div class="modal-content">
-        <h5 class="no-margin-top">${title}</h5>
-        <p class="flow-text">${question}</p>
-
-        ${typeof checkbox !== 'undefined' ? `
-            <p class="no-margin-bottom">
-                <label>
-                    <input type="checkbox" id="__question_checkbox" />
-                    <span>${checkbox}</span>
-                </label>
-            </p>
-        ` : ''}
-    </div>
-    <div class="modal-footer">
-        <a href="#!" id="__question_no" class="btn-flat green-text modal-close left">${text_no}</a>
-        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close right">${text_yes}</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-        instance.open();
-        const chk = document.getElementById("__question_checkbox");
-        return new Promise(function (resolve, reject) {
-            PageManager_1.PageManager.lock_return_button = true;
-            document.getElementById('__question_yes').addEventListener('click', () => {
-                PageManager_1.PageManager.lock_return_button = false;
-                if (chk) {
-                    resolve(chk.checked);
-                }
-                else {
-                    resolve();
-                }
-            });
-            document.getElementById('__question_no').addEventListener('click', () => {
-                PageManager_1.PageManager.lock_return_button = false;
-                if (chk) {
-                    reject(chk.checked);
-                }
-                else {
-                    reject();
-                }
-            });
-        });
-    }
-    exports.askModal = askModal;
-    /**
-     * Échappe les caractères HTML de la chaîne text
-     * @param text string
-     */
-    function escapeHTML(text) {
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-    exports.escapeHTML = escapeHTML;
-    /**
-     * Renvoie une chaîne contenant de l'HTML représentant un message d'information
-     * @param title Titre du message
-     * @param message Message complémentaire
-     */
-    function displayInformalMessage(title, message = "") {
-        return `
-        <div class="absolute-container">
-            <div class="absolute-center-container">
-                <p class="flow-text grey-text text-lighten-1">
-                    ${escapeHTML(title)}
-                </p>
-                <p class="flow-text">
-                    ${escapeHTML(message)}
-                </p>
-            </div>
-        </div>
-    `;
-    }
-    exports.displayInformalMessage = displayInformalMessage;
-    /**
-     * Renvoie une chaîne contenant de l'HTML représentant un message d'erreur
-     * @param title Titre a afficher (sera en rouge)
-     * @param message Message complémentaire
-     */
-    function displayErrorMessage(title, message = "") {
-        return `
-        <div class="absolute-container">
-            <div class="absolute-center-container">
-                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
-                <p class="flow-text red-text text-lighten-1">
-                    ${escapeHTML(title)}
-                </p>
-                <p class="flow-text">
-                    ${escapeHTML(message)}
-                </p>
-            </div>
-        </div>
-    `;
-    }
-    exports.displayErrorMessage = displayErrorMessage;
-    /**
-     * Renvoie vrai si l'utilisateur est en ligne et a une connexion potable.
-     */
-    function hasGoodConnection() {
-        // @ts-ignore
-        const networkState = navigator.connection.type;
-        // @ts-ignore
-        return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
-    }
-    exports.hasGoodConnection = hasGoodConnection;
-    function convertHTMLToElement(htmlString) {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = htmlString;
-        return tempDiv.firstElementChild;
-    }
-    exports.convertHTMLToElement = convertHTMLToElement;
-    function showToast(message, duration = 4000) {
-        // @ts-ignore
-        if (device.platform === "browser") {
-            M.toast({ html: message, displayLength: duration });
-        }
-        else {
-            // @ts-ignore
-            window.plugins.toast.showWithOptions({
-                message,
-                duration,
-                position: "bottom",
-                addPixelsY: -250 // (optional) added a negative value to move it up a bit (default 0)
-            });
-        }
-    }
-    exports.showToast = showToast;
-    function convertMinutesToText(min) {
-        if (min < 60) {
-            return `${min} minutes`;
-        }
-        else {
-            const hours = Math.trunc(min / 60);
-            const minutes = Math.trunc(min % 60);
-            return `${hours} heure${hours > 1 ? 's' : ''} ${minutes || ""}`;
-        }
-    }
-    exports.convertMinutesToText = convertMinutesToText;
-    /**
-     * Demande à l'utilisateur de choisir parmi une liste
-     * @param items Choix possibles. L'insertion d'HTML est autorisé et sera parsé.
-     * @returns Index du choix choisi par l'utilisateur
-     */
-    function askModalList(items) {
-        const modal = getBottomModal();
-        modal.innerHTML = "";
-        const content = document.createElement('div');
-        content.classList.add('modal-list');
-        modal.appendChild(content);
-        return new Promise((resolve, reject) => {
-            let resolved = false;
-            const instance = initBottomModal({
-                onCloseEnd: () => {
-                    if (!resolved)
-                        reject();
-                }
-            });
-            for (let i = 0; i < items.length; i++) {
-                const link = document.createElement('a');
-                link.classList.add('modal-list-item', 'flow-text', 'waves-effect');
-                link.innerHTML = items[i];
-                link.href = "#!";
-                link.onclick = () => {
-                    resolve(i);
-                    resolved = true;
-                    instance.close();
-                };
-                content.appendChild(link);
-            }
-            instance.open();
-        });
-    }
-    exports.askModalList = askModalList;
-});
-define("vocal_recognition", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    // options de la reconnaissance vocale
-    const options = {
-        language: "fr-FR",
-        prompt: "Parlez maintenant"
-    };
-    /**
-     * Récupère le texte dicté par l'utilisateur
-     * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire
-     * @param as_array Au lieu de renvoyer la phrase la plus probable dite par l'utilisateur, renvoie toutes les possibilités
-     * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
-     */
-    function prompt(prompt_text = "Parlez maintenant", as_array = false) {
-        return new Promise(function (resolve, reject) {
-            options.prompt = prompt_text;
-            // @ts-ignore
-            if (window.plugins && window.plugins.speechRecognition) {
-                // @ts-ignore
-                window.plugins.speechRecognition.startListening(function (matches) {
-                    // Le premier match est toujours le meilleur
-                    if (matches.length > 0) {
-                        if (as_array) {
-                            resolve(matches);
-                            return;
-                        }
-                        resolve(matches[0]);
-                    }
-                    else {
-                        // La reconnaissance a échoué
-                        reject();
-                    }
-                }, function (error) {
-                    // @ts-ignore Polyfill pour le navigateur web
-                    if (device.platform === "browser") {
-                        // @ts-ignore
-                        const speech_reco = window.webkitSpeechRecognition || window.SpeechRecognition;
-                        const recognition = new speech_reco();
-                        recognition.onresult = (event) => {
-                            if (event.results && event.results.length > 0) {
-                                if (as_array) {
-                                    const array = [];
-                                    for (const r of event.results) {
-                                        for (const e of r) {
-                                            array.push(e.transcript);
-                                        }
-                                    }
-                                    resolve(array);
-                                    return;
-                                }
-                                const speechToText = event.results[0][0].transcript;
-                                recognition.stop();
-                                resolve(speechToText);
-                            }
-                            else {
-                                reject();
-                            }
-                        };
-                        recognition.onerror = reject;
-                        recognition.start();
-                        M.toast({ html: prompt_text });
-                    }
-                    else {
-                        reject();
-                    }
-                }, options);
-            }
-            else {
-                reject();
-            }
-        });
-    }
-    exports.prompt = prompt;
-    function testOptionsVersusExpected(options, dicted, match_all = false) {
-        const matches = [];
-        // Conversion des choses dictées et corrections mineures (genre le a toujours détecté en à)
-        dicted = dicted.map(match => match.toLowerCase().replace(/à/g, 'a').replace(/ /g, ''));
-        for (const opt of options) {
-            const cur_val = opt[0].toLowerCase().replace(/à/g, 'a').replace(/ /g, '');
-            for (const match of dicted) {
-                // Si les valeurs sans espace sont identiques
-                if (cur_val === match) {
-                    if (match_all) {
-                        matches.push(opt[1]);
-                    }
-                    else {
-                        return opt[1];
-                    }
-                }
-            }
-        }
-        if (matches.length > 0) {
-            return matches;
-        }
-        return null;
-    }
-    exports.testOptionsVersusExpected = testOptionsVersusExpected;
-    function testMultipleOptionsVesusExpected(options, dicted, keyword = "stop") {
-        // Explose en fonction du keyword
-        const possibilities = dicted.map(match => match.toLowerCase().split(new RegExp('\\b' + keyword + '\\b', 'i')));
-        const finded_possibilities = [];
-        for (const p of possibilities) {
-            // On va de la plus probable à la moins probable
-            const vals = testOptionsVersusExpected(options, p, true);
-            if (vals) {
-                finded_possibilities.push(vals);
-            }
-        }
-        if (finded_possibilities.length > 0) {
-            // Tri en fonction de la taille du tableau (plus grand en premier) et récupère celui qui a le plus de match
-            return finded_possibilities.sort((a, b) => b.length - a.length)[0];
-        }
-        return null;
-    }
-    exports.testMultipleOptionsVesusExpected = testMultipleOptionsVesusExpected;
-});
 define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -1427,13 +386,139 @@ define("audio_listener", ["require", "exports", "helpers", "logger", "main"], fu
     }
     exports.newModalRecord = newModalRecord;
 });
+define("vocal_recognition", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // options de la reconnaissance vocale
+    const options = {
+        language: "fr-FR",
+        prompt: "Parlez maintenant"
+    };
+    /**
+     * Récupère le texte dicté par l'utilisateur
+     * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire
+     * @param as_array Au lieu de renvoyer la phrase la plus probable dite par l'utilisateur, renvoie toutes les possibilités
+     * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
+     */
+    function prompt(prompt_text = "Parlez maintenant", as_array = false) {
+        return new Promise(function (resolve, reject) {
+            options.prompt = prompt_text;
+            // @ts-ignore
+            if (window.plugins && window.plugins.speechRecognition) {
+                // @ts-ignore
+                window.plugins.speechRecognition.startListening(function (matches) {
+                    // Le premier match est toujours le meilleur
+                    if (matches.length > 0) {
+                        if (as_array) {
+                            resolve(matches);
+                            return;
+                        }
+                        resolve(matches[0]);
+                    }
+                    else {
+                        // La reconnaissance a échoué
+                        reject();
+                    }
+                }, function (error) {
+                    // @ts-ignore Polyfill pour le navigateur web
+                    if (device.platform === "browser") {
+                        // @ts-ignore
+                        const speech_reco = window.webkitSpeechRecognition || window.SpeechRecognition;
+                        const recognition = new speech_reco();
+                        recognition.onresult = (event) => {
+                            if (event.results && event.results.length > 0) {
+                                if (as_array) {
+                                    const array = [];
+                                    for (const r of event.results) {
+                                        for (const e of r) {
+                                            array.push(e.transcript);
+                                        }
+                                    }
+                                    resolve(array);
+                                    return;
+                                }
+                                const speechToText = event.results[0][0].transcript;
+                                recognition.stop();
+                                resolve(speechToText);
+                            }
+                            else {
+                                reject();
+                            }
+                        };
+                        recognition.onerror = reject;
+                        recognition.start();
+                        M.toast({ html: prompt_text });
+                    }
+                    else {
+                        reject();
+                    }
+                }, options);
+            }
+            else {
+                reject();
+            }
+        });
+    }
+    exports.prompt = prompt;
+    function testOptionsVersusExpected(options, dicted, match_all = false) {
+        const matches = [];
+        // Conversion des choses dictées et corrections mineures (genre le a toujours détecté en à)
+        dicted = dicted.map(match => match.toLowerCase().replace(/à/g, 'a').replace(/ /g, ''));
+        for (const opt of options) {
+            const cur_val = opt[0].toLowerCase().replace(/à/g, 'a').replace(/ /g, '');
+            for (const match of dicted) {
+                // Si les valeurs sans espace sont identiques
+                if (cur_val === match) {
+                    if (match_all) {
+                        matches.push(opt[1]);
+                    }
+                    else {
+                        return opt[1];
+                    }
+                }
+            }
+        }
+        if (matches.length > 0) {
+            return matches;
+        }
+        return null;
+    }
+    exports.testOptionsVersusExpected = testOptionsVersusExpected;
+    function testMultipleOptionsVesusExpected(options, dicted, keyword = "stop") {
+        // Explose en fonction du keyword
+        const possibilities = dicted.map(match => match.toLowerCase().split(new RegExp('\\b' + keyword + '\\b', 'i')));
+        const finded_possibilities = [];
+        for (const p of possibilities) {
+            // On va de la plus probable à la moins probable
+            const vals = testOptionsVersusExpected(options, p, true);
+            if (vals) {
+                finded_possibilities.push(vals);
+            }
+        }
+        if (finded_possibilities.length > 0) {
+            // Tri en fonction de la taille du tableau (plus grand en premier) et récupère celui qui a le plus de match
+            return finded_possibilities.sort((a, b) => b.length - a.length)[0];
+        }
+        return null;
+    }
+    exports.testMultipleOptionsVesusExpected = testMultipleOptionsVesusExpected;
+});
 define("fetch_timeout", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function default_1(url, options, timeout = 10000) {
+        let controller;
+        if ("AbortController" in window) {
+            controller = new AbortController();
+        }
+        let signal = controller ? controller.signal : undefined;
         return Promise.race([
-            fetch(url, options),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+            fetch(url, Object.assign({ signal }, options)),
+            new Promise((_, reject) => setTimeout(() => {
+                if (controller)
+                    controller.abort();
+                reject(new Error('timeout'));
+            }, timeout))
         ]);
     }
     exports.default = default_1;
@@ -1562,7 +647,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
     const MAX_TIMEOUT_FOR_METADATA = 180000; /** Pour chaque fichier "métadonnée" (img, audio, ...) */
     // Nombre de formulaires à envoyer en même temps
     // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
-    const PROMISE_BY_SYNC_STEP = 5;
+    const PROMISE_BY_SYNC_STEP = 10;
     const SyncList = new class {
         init() {
             localforage_1.default.config({
@@ -1588,7 +673,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             return localforage_1.default.keys();
         }
         getRemainingToSync() {
-            return localforage_1.default.keys().then(keys => keys.length);
+            return localforage_1.default.length();
         }
         clear() {
             return localforage_1.default.clear();
@@ -1608,6 +693,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             this.in_sync = false;
             this.list = SyncList;
             this.last_bgsync = Date.now();
+            this.running_fetchs = [];
         }
         init() {
             this.list.init();
@@ -1717,9 +803,17 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 d.append("form", content);
                 let json;
                 try {
+                    // Contrôleur pour arrêter les fetch si abort
+                    let controller;
+                    if ("AbortController" in window) {
+                        controller = new AbortController();
+                        this.running_fetchs.push(controller);
+                    }
+                    let signal = controller ? controller.signal : undefined;
                     const response = yield fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
                         method: "POST",
                         body: d,
+                        signal,
                         headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
                     }, MAX_TIMEOUT_FOR_FORM);
                     json = yield response.json();
@@ -1765,9 +859,17 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         md.append("filename", basename);
                         md.append("data", base64);
                         try {
+                            // Contrôleur pour arrêter les fetch si abort
+                            let controller;
+                            if ("AbortController" in window) {
+                                controller = new AbortController();
+                                this.running_fetchs.push(controller);
+                            }
+                            let signal = controller ? controller.signal : undefined;
                             const resp = yield fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
                                 method: "POST",
                                 body: md,
+                                signal,
                                 headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
                             }, MAX_TIMEOUT_FOR_METADATA);
                             const json = yield resp.json();
@@ -1787,6 +889,21 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         }
         available() {
             return this.list.listSaved();
+        }
+        getSpecificFile(id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const entries = yield helpers_3.getDirP('forms').then(helpers_3.dirEntries);
+                const filename = id + ".json";
+                for (const entry of entries) {
+                    if (entry.name === filename) {
+                        const text = yield helpers_3.readFileFromEntry(entry);
+                        const json = JSON.parse(text);
+                        return { type: json.type, metadata: json.metadata };
+                    }
+                }
+                // On a pas trouvé, on rejette
+                throw "";
+            });
         }
         /**
          * Obtient tous les fichiers JSON disponibles sur l'appareil
@@ -1855,7 +972,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             const modal_cancel = document.getElementById('__sync_modal_cancel');
             modal_cancel.onclick = () => {
                 cancel_clicked = true;
-                this.in_sync = false;
+                this.cancelSync();
                 if (text)
                     text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
             };
@@ -1866,7 +983,10 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 return data;
             })
                 .catch(reason => {
-                if (reason && typeof reason === 'object') {
+                if (cancel_clicked) {
+                    instance.close();
+                }
+                else if (reason && typeof reason === 'object') {
                     logger_2.Logger.error("Sync fail:", reason);
                     // Si jamais la syncho a été refusée parce qu'une est déjà en cours
                     if (reason.code === "already") {
@@ -1937,9 +1057,6 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         `;
                     }
                 }
-                else if (cancel_clicked) {
-                    instance.close();
-                }
                 else {
                     // Modifie le texte du modal
                     modal.innerHTML = `
@@ -1959,36 +1076,118 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 return Promise.reject(reason);
             });
         }
+        inlineSync() {
+            return this.sync(undefined, undefined, undefined, undefined, true)
+                .then(data => {
+                helpers_3.showToast("Synchronisation réussie");
+                return data;
+            })
+                .catch(reason => {
+                if (reason && typeof reason === 'object') {
+                    logger_2.Logger.error("Sync fail:", reason);
+                    // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                    if (reason.code === "already") {
+                        helpers_3.showToast('Une synchronisation est déjà en cours.');
+                    }
+                    else if (typeof reason.code === "string") {
+                        let cause = (function (reason) {
+                            switch (reason) {
+                                case "aborted": return "La synchonisation a été annulée.";
+                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
+                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
+                                default: return "Erreur inconnue.";
+                            }
+                        })(reason.code);
+                        // Modifie le texte du modal
+                        helpers_3.showToast("Impossible de synchroniser: " + cause);
+                    }
+                }
+                else {
+                    helpers_3.showToast("Une erreur est survenue lors de la synchronisation");
+                }
+                return Promise.reject(reason);
+            });
+        }
         /**
          * Divise le nombre d'éléments à envoyer par requête.
          * @param id_getter Fonction pour récupérer un ID depuis la BDD
          * @param entries Tableau des IDs à envoyer
          * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
-         * @param position Position actuelle dans le tableau d'entrées (utilisation interne)
+         * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
          */
-        subSyncDivider(id_getter, entries, text_element) {
+        subSyncDivider(id_getter, entries, text_element, inline_sync = false) {
             return __awaiter(this, void 0, void 0, function* () {
                 for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
                     const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
                     const promises = [];
+                    if (inline_sync)
+                        this.changeInlineSyncStatus(subset, "running");
                     let i = 1;
+                    let error_id;
                     for (const id of subset) {
                         // Pour chaque clé disponible
                         promises.push(id_getter(id)
                             .catch(error => {
+                            error_id = id;
                             return Promise.reject({ code: "id_getter", error });
                         })
                             .then(value => {
                             if (text_element) {
-                                text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i + position}/${entries.length})`;
+                                text_element.innerHTML = `Envoi des données au serveur\n(Formulaire ${i + position}/${entries.length})`;
                             }
                             i++;
-                            return this.sendForm(id, value);
+                            return this.sendForm(id, value)
+                                .catch(error => {
+                                error_id = id;
+                                return Promise.reject(error);
+                            });
                         }));
                     }
-                    yield Promise.all(promises);
+                    yield Promise.all(promises)
+                        .then(val => {
+                        if (inline_sync)
+                            this.changeInlineSyncStatus(subset, "synced");
+                        return val;
+                    })
+                        .catch(error => {
+                        if (inline_sync) {
+                            this.changeInlineSyncStatus(subset, "unsynced");
+                            this.changeInlineSyncStatus([error_id], "error");
+                        }
+                        return Promise.reject(error);
+                    });
                 }
             });
+        }
+        changeInlineSyncStatus(entries, status = "running") {
+            for (const e of entries) {
+                // On fait tourner le bouton
+                const sync_icon = document.querySelector(`div[data-formid="${e}"] .sync-icon i`);
+                if (sync_icon) {
+                    const container = sync_icon.parentElement.parentElement;
+                    if (status === "running") {
+                        sync_icon.innerText = "sync";
+                        sync_icon.className = "material-icons grey-text turn-anim";
+                    }
+                    else if (status === "synced") {
+                        sync_icon.className = "material-icons green-text";
+                        container.dataset.synced = "true";
+                    }
+                    else if (status === "error") {
+                        sync_icon.className = "material-icons red-text";
+                        sync_icon.innerText = "sync_problem";
+                        container.dataset.synced = "false";
+                    }
+                    else {
+                        // Unsynced
+                        sync_icon.className = "material-icons grey-text";
+                        sync_icon.innerText = "sync_disabled";
+                        container.dataset.synced = "false";
+                    }
+                }
+            }
         }
         /**
          * Lance la synchronisation en arrière plan
@@ -2005,8 +1204,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
          * @param text_element Élément HTML dans lequel écrire l'avancement
          * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
+         * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
          */
-        sync(force_all = false, clear_cache = false, text_element, force_specific_elements) {
+        sync(force_all = false, clear_cache = false, text_element, force_specific_elements, inline_sync = false) {
             if (this.in_sync) {
                 return Promise.reject({ code: 'already' });
             }
@@ -2046,7 +1246,18 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         return Promise.resolve(data_cache[id]);
                     }
                     else {
-                        return this.list.get(id);
+                        return this.list.get(id)
+                            .then(value => {
+                            if (value === null) {
+                                // Si la valeur n'existe pas, il faut chercher le fichier id.
+                                // Si le fichier est inexistant, cela lancera une exception,
+                                // donc une promesse rejetée
+                                return this.getSpecificFile(id);
+                            }
+                            else {
+                                return value;
+                            }
+                        });
                     }
                 };
                 entries_promise
@@ -2055,11 +1266,12 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         reject({ code: "aborted" });
                         return;
                     }
-                    return this.subSyncDivider(id_getter, entries, text_element)
+                    return this.subSyncDivider(id_getter, entries, text_element, inline_sync)
                         .then(v => {
                         if (!force_specific_elements)
                             this.list.clear();
                         this.in_sync = false;
+                        this.running_fetchs = [];
                         // La synchro a réussi !
                         resolve();
                     });
@@ -2073,6 +1285,10 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         }
         cancelSync() {
             this.in_sync = false;
+            for (const ctl of this.running_fetchs) {
+                ctl.abort();
+            }
+            this.running_fetchs = [];
         }
         clear() {
             return this.list.clear();
@@ -2238,7 +1454,7 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
     }
     exports.launchQuizz = launchQuizz;
 });
-define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco"], function (require, exports, PageManager_2, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1) {
+define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco"], function (require, exports, PageManager_1, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
@@ -2297,7 +1513,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         }, e => { console.log(e); });
         // Initialise le bouton retour
         document.addEventListener("backbutton", function () {
-            PageManager_2.PageManager.goBack();
+            PageManager_1.PageManager.goBack();
         }, false);
         exports.app.initialize();
         initDebug();
@@ -2312,23 +1528,23 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         // Quand les forms sont prêts, on affiche l'app !
         form_schema_1.Forms.onReady(function () {
             let prom;
-            if (href && PageManager_2.PageManager.pageExists(href)) {
-                prom = PageManager_2.PageManager.changePage(href);
+            if (href && PageManager_1.PageManager.pageExists(href)) {
+                prom = PageManager_1.PageManager.changePage(href);
             }
             else {
-                prom = PageManager_2.PageManager.changePage(PageManager_2.AppPageName.home);
+                prom = PageManager_1.PageManager.changePage(PageManager_1.AppPageName.home);
             }
             prom
                 .then(() => {
-                // @ts-ignore On montre l'écran quand tout est chargé
+                // On montre l'écran quand tout est chargé
                 navigator.splashscreen.hide();
             })
                 .catch(err => {
-                // @ts-ignore On montre l'écran et on affiche l'erreur
+                // On montre l'écran et on affiche l'erreur
                 navigator.splashscreen.hide();
                 // Bloque le sidenav pour empêcher de naviguer
                 try {
-                    PageManager_2.SIDENAV_OBJ.destroy();
+                    PageManager_1.SIDENAV_OBJ.destroy();
                 }
                 catch (e) { }
                 helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
@@ -2338,7 +1554,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     function initDebug() {
         window["DEBUG"] = {
             launchQuizz: test_vocal_reco_1.launchQuizz,
-            PageManager: PageManager_2.PageManager,
+            PageManager: PageManager_1.PageManager,
             readFromFile: helpers_4.readFromFile,
             listDir: helpers_4.listDir,
             saveDefaultForm: helpers_4.saveDefaultForm,
@@ -2350,6 +1566,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             Logger: logger_3.Logger,
             Forms: form_schema_1.Forms,
             askModalList: helpers_4.askModalList,
+            createRandomForms: helpers_4.createRandomForms,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
                     name: "__test__",
@@ -2734,13 +1951,11 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                     }, 'json')
                         .fail(function (error) {
                         // Essaie de lire le fichier sur le périphérique
-                        // @ts-ignore
                         helpers_6.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {
                             loadJSONInObject(JSON.parse(string));
                         })
                             .catch((err) => {
-                            // @ts-ignore
                             helpers_6.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                         });
                     });
@@ -2750,7 +1965,6 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             if (init_text) {
                 init_text.innerText = "Mise à jour des formulaires";
             }
-            // @ts-ignore
             if ((main_4.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
@@ -2875,6 +2089,1001 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
+define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager"], function (require, exports, PageManager_2, form_schema_3, SyncManager_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    // PRELOADERS: spinners for waiting time
+    exports.PRELOADER_BASE = `
+<div class="spinner-layer spinner-blue-only">
+    <div class="circle-clipper left">
+        <div class="circle"></div>
+    </div><div class="gap-patch">
+        <div class="circle"></div>
+    </div><div class="circle-clipper right">
+        <div class="circle"></div>
+    </div>
+</div>`;
+    exports.PRELOADER = `
+<div class="preloader-wrapper active">
+    ${exports.PRELOADER_BASE}
+</div>`;
+    exports.SMALL_PRELOADER = `
+<div class="preloader-wrapper small active">
+    ${exports.PRELOADER_BASE}
+</div>`;
+    exports.MODAL_PRELOADER_TEXT_ID = "__classic_preloader_text";
+    /**
+     * @returns HTMLElement Élément HTML dans lequel écrire pour modifier la page active
+     */
+    function getBase() {
+        return document.getElementById('main_block');
+    }
+    exports.getBase = getBase;
+    /**
+     * Initialise le modal simple avec les options données (voir doc.)
+     * et insère de l'HTML dedans avec content
+     * @returns M.Modal Instance du modal instancié avec Materialize
+     */
+    function initModal(options = {}, content) {
+        const modal = getModal();
+        modal.classList.remove('modal-fixed-footer');
+        if (content)
+            modal.innerHTML = content;
+        return M.Modal.init(modal, options);
+    }
+    exports.initModal = initModal;
+    /**
+     * Initialise le modal collé en bas avec les options données (voir doc.)
+     * et insère de l'HTML dedans avec content
+     * @returns M.Modal Instance du modal instancié avec Materialize
+     */
+    function initBottomModal(options = {}, content) {
+        const modal = getBottomModal();
+        modal.classList.remove('unlimited');
+        if (content)
+            modal.innerHTML = content;
+        return M.Modal.init(modal, options);
+    }
+    exports.initBottomModal = initBottomModal;
+    /**
+     * @returns HTMLElement Élément HTML racine du modal
+     */
+    function getModal() {
+        return document.getElementById('modal_placeholder');
+    }
+    exports.getModal = getModal;
+    /**
+     * @returns HTMLElement Élément HTML racine du modal fixé en bas
+     */
+    function getBottomModal() {
+        return document.getElementById('bottom_modal_placeholder');
+    }
+    exports.getBottomModal = getBottomModal;
+    /**
+     * @returns M.Modal Instance du modal (doit être initialisé)
+     */
+    function getModalInstance() {
+        return M.Modal.getInstance(getModal());
+    }
+    exports.getModalInstance = getModalInstance;
+    /**
+     * @returns M.Modal Instance du modal fixé en bas (doit être initialisé)
+     */
+    function getBottomModalInstance() {
+        return M.Modal.getInstance(getBottomModal());
+    }
+    exports.getBottomModalInstance = getBottomModalInstance;
+    /**
+     * Génère un spinner centré sur l'écran avec un message d'attente
+     * @param text Texte à insérer comme message de chargement
+     * @returns string HTML à insérer
+     */
+    function getPreloader(text) {
+        return `
+    <center style="margin-top: 35vh;">
+        ${exports.PRELOADER}
+    </center>
+    <center class="flow-text" style="margin-top: 10px">${text}</center>
+    `;
+    }
+    exports.getPreloader = getPreloader;
+    /**
+     * Génère un spinner adapté à un modal avec un message d'attente
+     * @param text Texte à insérer comme message de chargement
+     * @returns string HTML à insérer dans la racine d'un modal
+     */
+    function getModalPreloader(text, footer = "") {
+        return `<div class="modal-content">
+    <center>
+        ${exports.SMALL_PRELOADER}
+    </center>
+    <center class="flow-text pre-wrapper" id="${exports.MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px">${text}</center>
+    </div>
+    ${footer}
+    `;
+    }
+    exports.getModalPreloader = getModalPreloader;
+    // dec2hex :: Integer -> String
+    function dec2hex(dec) {
+        return ('0' + dec.toString(16)).substr(-2);
+    }
+    /**
+     * Génère un identifiant aléatoire
+     * @param len Longueur de l'ID
+     */
+    function generateId(len) {
+        const arr = new Uint8Array((len || 40) / 2);
+        window.crypto.getRandomValues(arr);
+        return Array.from(arr, dec2hex).join('');
+    }
+    exports.generateId = generateId;
+    // USELESS
+    function saveDefaultForm() {
+        // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
+    }
+    exports.saveDefaultForm = saveDefaultForm;
+    // Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
+    // utilise le répertoire data (partition /data) de Android
+    let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
+    /**
+     * Change le répertoire actif en fonction de la plateforme et l'insère dans FOLDER.
+     * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
+     */
+    function changeDir() {
+        if (device.platform === "browser") {
+            FOLDER = "cdvfile://localhost/temporary/";
+            // Permet le bouton retour sur navigateur
+            const back_btn = document.getElementById('__nav_back_button');
+            back_btn.onclick = function () {
+                PageManager_2.PageManager.goBack();
+            };
+            back_btn.classList.remove('hide');
+        }
+        else if (device.platform === "iOS") {
+            FOLDER = cordova.file.dataDirectory;
+        }
+    }
+    exports.changeDir = changeDir;
+    let DIR_ENTRY = null;
+    /**
+     * Lit un fichier et passe son résultat sous forme de texte ou base64 à callback
+     * @param fileName Nom du fichier
+     * @param callback Fonction appelée si réussie
+     * @param callbackIfFailed Fonction appelée en cas d'échec
+     * @param asBase64 true si le fichier doit être passé encodé en base64
+     */
+    function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
+        const pathToFile = FOLDER + fileName;
+        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
+            fileEntry.file(function (file) {
+                const reader = new FileReader();
+                reader.onloadend = function (e) {
+                    callback(this.result);
+                };
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
+            }, function () {
+                if (callbackIfFailed) {
+                    callbackIfFailed();
+                }
+                else {
+                    console.log("not readable");
+                }
+            });
+        }, function () {
+            if (callbackIfFailed) {
+                callbackIfFailed();
+            }
+            else {
+                console.log("not found");
+            }
+        });
+    }
+    exports.readFromFile = readFromFile;
+    /**
+     * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
+     */
+    function toValidUrl() {
+        if (device.platform === "browser") {
+            return '';
+        }
+        return cordova.file.applicationDirectory + 'www/';
+    }
+    exports.toValidUrl = toValidUrl;
+    /**
+     * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
+     * @param fileName Nom du fichier
+     * @param asBase64 true si fichier passé en base64 dans la promesse
+     * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
+     */
+    function readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
+        const pathToFile = forceBaseDir + fileName;
+        return new Promise(function (resolve, reject) {
+            window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
+                fileEntry.file(function (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = function (e) {
+                        resolve(this.result);
+                    };
+                    if (asBase64) {
+                        reader.readAsDataURL(file);
+                    }
+                    else {
+                        reader.readAsText(file);
+                    }
+                }, reject);
+            }, function (err) {
+                reject(err);
+            });
+        });
+    }
+    exports.readFile = readFile;
+    /**
+     * Lit un fichier en texte ou base64 depuis son FileEntry et envoie son résultat dans une Promise
+     * @param fileEntry FileEntry
+     * @param asBase64 true si fichier passé en base64 à la Promise
+     */
+    function readFileFromEntry(fileEntry, asBase64 = false) {
+        return new Promise(function (resolve, reject) {
+            fileEntry.file(function (file) {
+                const reader = new FileReader();
+                reader.onloadend = function (e) {
+                    resolve(this.result);
+                };
+                if (asBase64) {
+                    reader.readAsDataURL(file);
+                }
+                else {
+                    reader.readAsText(file);
+                }
+            }, reject);
+        });
+    }
+    exports.readFileFromEntry = readFileFromEntry;
+    /**
+     * Version Promise de getDir.
+     * Voir getDir().
+     * @param dirName string Nom du répertoire
+     * @return Promise<DirectoryEntry>
+     */
+    function getDirP(dirName) {
+        return new Promise((resolve, reject) => {
+            getDir(resolve, dirName, reject);
+        });
+    }
+    exports.getDirP = getDirP;
+    /**
+     * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
+     * Sans dirName, renvoie la racine du système de fichiers.
+     * @param callback Function(dirEntry) => void
+     * @param dirName string
+     * @param onError Function(error) => void
+     */
+    function getDir(callback, dirName = "", onError) {
+        function callGetDirEntry(dirEntry) {
+            DIR_ENTRY = dirEntry;
+            if (dirName) {
+                dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
+                    if (callback) {
+                        callback(newEntry);
+                    }
+                }, (err) => {
+                    console.log("Unable to create dir");
+                    if (onError) {
+                        onError(err);
+                    }
+                });
+            }
+            else if (callback) {
+                callback(dirEntry);
+            }
+        }
+        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
+        if (DIR_ENTRY === null) {
+            window.resolveLocalFileSystemURL(FOLDER, (dirEntry) => {
+                callGetDirEntry(dirEntry);
+            }, (err) => {
+                console.log("Persistent not available", err.code);
+                if (onError) {
+                    onError(err);
+                }
+            });
+        }
+        else {
+            callGetDirEntry(DIR_ENTRY);
+        }
+    }
+    exports.getDir = getDir;
+    /**
+     * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
+     * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
+     * @param dirName string
+     * @param fileName string
+     * @param blob Blob
+     * @param callback Function() => void
+     * @param onFailure Function(error) => void | Généralement, error est une FileError
+     */
+    function writeFile(dirName, fileName, blob, callback, onFailure) {
+        getDir(function (dirEntry) {
+            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
+                write(fileEntry, blob).then(function () {
+                    if (callback) {
+                        callback();
+                    }
+                }).catch(error => { if (onFailure)
+                    onFailure(error); });
+            }, function (err) { console.log("Error in writing file", err.code); if (onFailure) {
+                onFailure(err);
+            } });
+        }, dirName);
+        function write(fileEntry, dataObj) {
+            // Prend l'entry du fichier et son blob à écrire en paramètre
+            return new Promise(function (resolve, reject) {
+                // Fonction pour écrire le fichier après vidage
+                function finally_write() {
+                    fileEntry.createWriter(function (fileWriter) {
+                        fileWriter.onerror = function (e) {
+                            reject(e);
+                        };
+                        fileWriter.onwriteend = null;
+                        fileWriter.write(dataObj);
+                        fileWriter.onwriteend = function () {
+                            resolve();
+                        };
+                    });
+                }
+                // Vide le fichier
+                fileEntry.createWriter(function (fileWriter) {
+                    fileWriter.onerror = function (e) {
+                        reject(e);
+                    };
+                    // Vide le fichier
+                    fileWriter.truncate(0);
+                    // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
+                    fileWriter.onwriteend = finally_write;
+                });
+            });
+        }
+    }
+    exports.writeFile = writeFile;
+    /**
+     * Crée un dossier name dans la racine du système de fichiers.
+     * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
+     * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
+     * Si échec, appelle onError avec l'erreur
+     * @param name string
+     * @param onSuccess Function(dirEntry) => void
+     * @param onError Function(error: FileError) => void
+     */
+    function createDir(name, onSuccess, onError) {
+        getDir(function (dirEntry) {
+            dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
+        });
+    }
+    exports.createDir = createDir;
+    /**
+     * Fonction de test.
+     * Affiche les entrées du répertoire path dans la console.
+     * Par défaut, affiche la racine du système de fichiers.
+     * @param path string
+     */
+    function listDir(path = "") {
+        getDir(function (fileSystem) {
+            const reader = fileSystem.createReader();
+            reader.readEntries(function (entries) {
+                console.log(entries);
+            }, function (err) {
+                console.log(err);
+            });
+        }, path);
+    }
+    exports.listDir = listDir;
+    function sleep(ms) {
+        return new Promise((resolve, _) => {
+            setTimeout(resolve, ms);
+        });
+    }
+    exports.sleep = sleep;
+    function dirEntries(dirEntry) {
+        return new Promise(function (resolve, reject) {
+            const reader = dirEntry.createReader();
+            reader.readEntries(function (entries) {
+                resolve(entries);
+            }, function (err) {
+                reject(err);
+            });
+        });
+    }
+    exports.dirEntries = dirEntries;
+    /**
+     * Fonction de test.
+     * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
+     * @param ele HTMLElement
+     * @param obj any
+     */
+    function printObj(ele, obj) {
+        ele.insertAdjacentText('beforeend', JSON.stringify(obj, null, 2));
+    }
+    exports.printObj = printObj;
+    /**
+     * Obtient la localisation de l'utilisation.
+     * Si réussi, onSuccess est appelée avec en paramètre un objet de type Position
+     * @param onSuccess Function(coords: Position) => void
+     * @param onFailed Function(error) => void
+     */
+    function getLocation(onSuccess, onFailed) {
+        navigator.geolocation.getCurrentPosition(onSuccess, onFailed, { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 });
+    }
+    exports.getLocation = getLocation;
+    /**
+     * Calcule la distance en mètres entre deux coordonnées GPS.
+     * Les deux objets passés doivent implémenter l'interface CoordsLike
+     * @param coords1 CoordsLike
+     * @param coords2 CoordsLike
+     * @returns number Nombre de mètres entre les deux coordonnées
+     */
+    function calculateDistance(coords1, coords2) {
+        return geolib.getDistance({ latitude: String(coords1.latitude), longitude: String(coords1.longitude) }, { latitude: String(coords2.latitude), longitude: String(coords2.longitude) });
+    }
+    exports.calculateDistance = calculateDistance;
+    /**
+     * Fonction de test pour tester la géolocalisation.
+     * @param latitude
+     * @param longitude
+     */
+    function testDistance(latitude = 45.353421, longitude = 5.836441) {
+        getLocation(function (res) {
+            console.log(calculateDistance(res.coords, { latitude, longitude }));
+        }, function (error) {
+            console.log(error);
+        });
+    }
+    exports.testDistance = testDistance;
+    /**
+     * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
+     * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
+     * @param dirName string
+     * @param fileName string
+     * @param callback Function() => void Fonction appelée quand le fichier est supprimé
+     */
+    function removeFileByName(dirName, fileName, callback) {
+        getDir(function (dirEntry) {
+            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
+                removeFile(fileEntry, callback);
+            });
+        }, dirName);
+    }
+    exports.removeFileByName = removeFileByName;
+    /**
+     * Supprime un fichier via son fileEntry
+     * @param entry fileEntry
+     * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
+     */
+    function removeFile(entry, callback) {
+        entry.remove(function () {
+            // Fichier supprimé !
+            if (callback)
+                callback();
+        }, function (err) {
+            console.log("error", err);
+            if (callback)
+                callback(err);
+        }, function () {
+            console.log("file not found");
+            if (callback)
+                callback(false);
+        });
+    }
+    exports.removeFile = removeFile;
+    /**
+     * Supprime un fichier via son fileEntry
+     * @param entry fileEntry
+     * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
+     */
+    function removeFilePromise(entry) {
+        return new Promise(function (resolve, reject) {
+            entry.remove(function () {
+                // Fichier supprimé !
+                resolve();
+            }, function (err) {
+                reject(err);
+            }, function () {
+                resolve();
+            });
+        });
+    }
+    exports.removeFilePromise = removeFilePromise;
+    /**
+     * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
+     * @param dirName string Chemin du répertoire
+     * @param callback NE PAS UTILISER. USAGE INTERNE.
+     * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
+     */
+    function rmrf(dirName, callback, dirEntry) {
+        // Récupère le dossier dirName (ou la racine du système de fichiers)
+        function readDirEntry(dirEntry) {
+            const reader = dirEntry.createReader();
+            // Itère sur les entrées du répertoire via readEntries
+            reader.readEntries(function (entries) {
+                // Pour chaque entrée du dossier
+                for (const entry of entries) {
+                    if (entry.isDirectory) {
+                        // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                        rmrf(entry.fullPath, function () {
+                            // Puis on le supprime lui-même
+                            removeFile(entry, callback);
+                        });
+                    }
+                    else {
+                        // Si c'est un fichier, on le supprime
+                        removeFile(entry, callback);
+                    }
+                }
+            });
+        }
+        if (dirEntry) {
+            readDirEntry(dirEntry);
+        }
+        else {
+            getDir(readDirEntry, dirName, function () {
+                if (callback)
+                    callback();
+            });
+        }
+    }
+    exports.rmrf = rmrf;
+    /**
+     * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
+     * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
+     * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
+     * @param dirName string Chemin du dossier à supprimer
+     * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
+     * @returns Promise Promesse tenue si suppression réussie, rompue sinon
+     */
+    function rmrfPromise(dirName, deleteSelf = false) {
+        function rmrfFromEntry(dirEntry) {
+            return new Promise(function (resolve, reject) {
+                const reader = dirEntry.createReader();
+                // Itère sur les entrées du répertoire via readEntries
+                reader.readEntries(function (entries) {
+                    // Pour chaque entrée du dossier
+                    const promises = [];
+                    for (const entry of entries) {
+                        promises.push(new Promise(function (resolve, reject) {
+                            if (entry.isDirectory) {
+                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
+                                rmrfFromEntry(entry).then(function () {
+                                    // Quand c'est fini, on supprime le répertoire lui-même
+                                    // Puis on résout
+                                    removeFilePromise(entry).then(resolve).catch(reject);
+                                });
+                            }
+                            else {
+                                // Si c'est un fichier, on le supprime
+                                removeFilePromise(entry).then(resolve).catch(reject);
+                            }
+                        }));
+                    }
+                    // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
+                    Promise.all(promises).then(function () {
+                        // Quand ils le sont, résout la promesse
+                        resolve();
+                    }).catch(reject);
+                });
+            });
+        }
+        return new Promise(function (resolve, reject) {
+            getDir(function (dirEntry) {
+                // Attends que tous les dossiers soient supprimés sous ce répertoire
+                rmrfFromEntry(dirEntry).then(function () {
+                    // Si on doit supprimer le dossier et que ce n'est pas la racine
+                    if (deleteSelf && dirName !== "") {
+                        // On supprime puis on résout
+                        removeFilePromise(dirEntry).then(resolve).catch(reject);
+                    }
+                    // On résout immédiatement
+                    else {
+                        resolve();
+                    }
+                }).catch(reject);
+            }, dirName, reject);
+        });
+    }
+    exports.rmrfPromise = rmrfPromise;
+    /**
+     * Formate un objet Date en chaîne de caractères potable.
+     * @param date Date
+     * @param withTime boolean Détermine si la chaîne de caractères contient l'heure et les minutes
+     * @returns string La châine formatée
+     */
+    function formatDate(date, withTime = false) {
+        const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
+        const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+        const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+        return `${d}/${m}/${date.getFullYear()}` + (withTime ? ` ${date.getHours()}h${min}` : "");
+    }
+    exports.formatDate = formatDate;
+    /**
+     * Formate un objet Date en chaîne de caractères potable.
+     * Pour comprendre les significations des lettres du schéma, se référer à : http://php.net/manual/fr/function.date.php
+     * @param schema string Schéma de la chaîne. Supporte Y, m, d, h, H, i, s, n, N, v, z, w
+     * @param date Date Date depuis laquelle effectuer le formatage
+     * @returns string La châine formatée
+     */
+    function dateFormatter(schema, date = new Date()) {
+        function getDayOfTheYear(now) {
+            const start = new Date(now.getFullYear(), 0, 0);
+            const diff = now.getTime() - start.getTime();
+            const oneDay = 1000 * 60 * 60 * 24;
+            const day = Math.floor(diff / oneDay);
+            return day - 1; // Retourne de 0 à 364/365
+        }
+        const Y = date.getFullYear();
+        const N = date.getDay() === 0 ? 7 : date.getDay();
+        const n = date.getMonth() + 1;
+        const m = (n < 10 ? "0" : "") + String(n);
+        const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+        const L = Y % 4 == 0 ? 1 : 0;
+        const i = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+        const H = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
+        const h = date.getHours();
+        const s = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
+        const replacements = {
+            Y, m, d, i, H, h, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
+        };
+        let str = "";
+        // Construit la chaîne de caractères
+        for (const char of schema) {
+            if (char in replacements) {
+                if (typeof replacements[char] === 'string') {
+                    str += replacements[char];
+                }
+                else if (typeof replacements[char] === 'number') {
+                    str += String(replacements[char]);
+                }
+                else {
+                    str += String(replacements[char](date));
+                }
+            }
+            else {
+                str += char;
+            }
+        }
+        return str;
+    }
+    exports.dateFormatter = dateFormatter;
+    /**
+     * Assigne la balise src de l'image element au contenu de l'image située dans path.
+     * @param path string
+     * @param element HTMLImageElement
+     */
+    function createImgSrc(path, element) {
+        const parts = path.split('/');
+        const file_name = parts.pop();
+        const dir_name = parts.join('/');
+        getDir(function (dirEntry) {
+            dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
+                element.src = fileEntry.toURL();
+            });
+        }, dir_name);
+    }
+    exports.createImgSrc = createImgSrc;
+    /**
+     * Convertit un Blob en chaîne base64.
+     * @param blob Blob Données binaires à convertir en base64
+     */
+    function blobToBase64(blob) {
+        const reader = new FileReader();
+        return new Promise(function (resolve, reject) {
+            reader.onload = function () {
+                resolve(reader.result);
+            };
+            reader.onerror = function (e) {
+                reject(e);
+            };
+            reader.readAsDataURL(blob);
+        });
+    }
+    exports.blobToBase64 = blobToBase64;
+    /**
+     * Convertit une URL (distante, locale, data:base64...) en objet binaire Blob
+     * @param str string URL
+     */
+    function urlToBlob(str) {
+        return fetch(str).then(res => res.blob());
+    }
+    exports.urlToBlob = urlToBlob;
+    /**
+     * Ouvre un modal informant l'utilisateur
+     * @param title string Titre affiché sur le modal
+     * @param info string Information
+     * @param text_close string Texte affiché sur le bouton de fermeture
+     */
+    function informalBottomModal(title, info, text_close = "Fermer") {
+        const modal = getBottomModal();
+        const instance = initBottomModal();
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">${title}</h5>
+        <p class="flow-text">${info}</p>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat blue-text modal-close right">${text_close}</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        instance.open();
+    }
+    exports.informalBottomModal = informalBottomModal;
+    /**
+     * Ouvre un modal informant l'utilisateur, mais sans possiblité de le fermer. Il devra être fermé via JS
+     * @param title string Titre affiché sur le modal
+     * @param question string Question complète / détails sur l'action qui sera réalisée
+     * @param text_close string Texte affiché sur le bouton de fermeture
+     * @returns {M.Modal} Instance du modal généré
+     */
+    function unclosableBottomModal(content) {
+        const modal = getBottomModal();
+        const instance = initBottomModal({ dismissible: false });
+        modal.innerHTML = `
+    <div class="modal-content">
+        ${content}
+    </div>
+    `;
+        instance.open();
+        return instance;
+    }
+    exports.unclosableBottomModal = unclosableBottomModal;
+    /**
+     * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
+     * @param title string Titre affiché sur le modal
+     * @param question string Question complète / détails sur l'action qui sera réalisée
+     * @param text_yes string Texte affiché sur le bouton de validation
+     * @param text_no string Texte affiché sur le bouton d'annulation
+     * @returns Promise<void | boolean> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
+     * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
+     */
+    function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox) {
+        const modal = getBottomModal();
+        const instance = initBottomModal({ dismissible: false });
+        modal.classList.add('unlimited');
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">${title}</h5>
+        <p class="flow-text">${question}</p>
+
+        ${typeof checkbox !== 'undefined' ? `
+            <p class="no-margin-bottom">
+                <label>
+                    <input type="checkbox" id="__question_checkbox" />
+                    <span>${checkbox}</span>
+                </label>
+            </p>
+        ` : ''}
+    </div>
+    <div class="modal-footer">
+        <a href="#!" id="__question_no" class="btn-flat green-text modal-close left">${text_no}</a>
+        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close right">${text_yes}</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        instance.open();
+        const chk = document.getElementById("__question_checkbox");
+        return new Promise(function (resolve, reject) {
+            PageManager_2.PageManager.lock_return_button = true;
+            document.getElementById('__question_yes').addEventListener('click', () => {
+                PageManager_2.PageManager.lock_return_button = false;
+                if (chk) {
+                    resolve(chk.checked);
+                }
+                else {
+                    resolve();
+                }
+            });
+            document.getElementById('__question_no').addEventListener('click', () => {
+                PageManager_2.PageManager.lock_return_button = false;
+                if (chk) {
+                    reject(chk.checked);
+                }
+                else {
+                    reject();
+                }
+            });
+        });
+    }
+    exports.askModal = askModal;
+    /**
+     * Échappe les caractères HTML de la chaîne text
+     * @param text string
+     */
+    function escapeHTML(text) {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    exports.escapeHTML = escapeHTML;
+    /**
+     * Renvoie une chaîne contenant de l'HTML représentant un message d'information
+     * @param title Titre du message
+     * @param message Message complémentaire
+     */
+    function displayInformalMessage(title, message = "") {
+        return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="flow-text grey-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
+    }
+    exports.displayInformalMessage = displayInformalMessage;
+    /**
+     * Renvoie une chaîne contenant de l'HTML représentant un message d'erreur
+     * @param title Titre a afficher (sera en rouge)
+     * @param message Message complémentaire
+     */
+    function displayErrorMessage(title, message = "") {
+        return `
+        <div class="absolute-container">
+            <div class="absolute-center-container">
+                <p class="rotate-90 big-text smiley grey-text text-lighten-1">:(</p>
+                <p class="flow-text red-text text-lighten-1">
+                    ${escapeHTML(title)}
+                </p>
+                <p class="flow-text">
+                    ${escapeHTML(message)}
+                </p>
+            </div>
+        </div>
+    `;
+    }
+    exports.displayErrorMessage = displayErrorMessage;
+    /**
+     * Renvoie vrai si l'utilisateur est en ligne et a une connexion potable.
+     */
+    function hasGoodConnection() {
+        const networkState = navigator.connection.type;
+        return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
+    }
+    exports.hasGoodConnection = hasGoodConnection;
+    function convertHTMLToElement(htmlString) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlString;
+        return tempDiv.firstElementChild;
+    }
+    exports.convertHTMLToElement = convertHTMLToElement;
+    function showToast(message, duration = 4000) {
+        if (device.platform === "browser") {
+            M.toast({ html: message, displayLength: duration });
+        }
+        else {
+            // @ts-ignore
+            window.plugins.toast.showWithOptions({
+                message,
+                duration,
+                position: "bottom",
+                addPixelsY: -250 // (optional) added a negative value to move it up a bit (default 0)
+            });
+        }
+    }
+    exports.showToast = showToast;
+    function convertMinutesToText(min) {
+        if (min < 60) {
+            return `${min} minutes`;
+        }
+        else {
+            const hours = Math.trunc(min / 60);
+            const minutes = Math.trunc(min % 60);
+            return `${hours} heure${hours > 1 ? 's' : ''} ${minutes || ""}`;
+        }
+    }
+    exports.convertMinutesToText = convertMinutesToText;
+    /**
+     * Demande à l'utilisateur de choisir parmi une liste
+     * @param items Choix possibles. L'insertion d'HTML est autorisé et sera parsé.
+     * @returns Index du choix choisi par l'utilisateur
+     */
+    function askModalList(items) {
+        const modal = getBottomModal();
+        modal.innerHTML = "";
+        const content = document.createElement('div');
+        content.classList.add('modal-list');
+        modal.appendChild(content);
+        return new Promise((resolve, reject) => {
+            let resolved = false;
+            const instance = initBottomModal({
+                onCloseEnd: () => {
+                    if (!resolved)
+                        reject();
+                }
+            });
+            modal.classList.add('unlimited');
+            for (let i = 0; i < items.length; i++) {
+                const link = document.createElement('a');
+                link.classList.add('modal-list-item', 'flow-text', 'waves-effect');
+                link.innerHTML = items[i];
+                link.href = "#!";
+                link.onclick = () => {
+                    resolve(i);
+                    resolved = true;
+                    instance.close();
+                };
+                content.appendChild(link);
+            }
+            instance.open();
+        });
+    }
+    exports.askModalList = askModalList;
+    function createRandomForms(count) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (form_schema_3.Forms.current_key === null) {
+                throw "Impossible de créer des formulaires sans base";
+            }
+            const current = form_schema_3.Forms.getForm(form_schema_3.Forms.current_key);
+            const promises = [];
+            for (let i = 0; i < count; i++) {
+                const save = {
+                    fields: {},
+                    location: "",
+                    type: form_schema_3.Forms.current_key,
+                    owner: "randomizer",
+                    metadata: {}
+                };
+                for (const field of current.fields) {
+                    switch (field.type) {
+                        case form_schema_3.FormEntityType.bigstring:
+                        case form_schema_3.FormEntityType.string:
+                        case form_schema_3.FormEntityType.datetime:
+                        case form_schema_3.FormEntityType.select:
+                        case form_schema_3.FormEntityType.slider:
+                            save.fields[field.name] = generateId(25);
+                            break;
+                        case form_schema_3.FormEntityType.integer:
+                            save.fields[field.name] = Math.trunc(Math.random() * 1000);
+                            break;
+                        case form_schema_3.FormEntityType.float:
+                            save.fields[field.name] = Math.random();
+                            break;
+                        case form_schema_3.FormEntityType.file:
+                        case form_schema_3.FormEntityType.audio:
+                            save.fields[field.name] = null;
+                            break;
+                        case form_schema_3.FormEntityType.checkbox:
+                            save.fields[field.name] = Math.random() > 0.5;
+                            break;
+                    }
+                }
+                // Sauvegarde du formulaire
+                promises.push(new Promise((resolve, reject) => {
+                    const id = generateId(20);
+                    writeFile('forms', id + '.json', new Blob([JSON.stringify(save)]), function () {
+                        SyncManager_2.SyncManager.add(id, save).then(resolve).catch(reject);
+                    }, reject);
+                }));
+            }
+            yield Promise.all(promises);
+        });
+    }
+    exports.createRandomForms = createRandomForms;
+    function removeContentOfDirectory(name) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const entry = yield getDirP(name);
+            yield new Promise((resolve, reject) => {
+                entry.removeRecursively(resolve, reject);
+            });
+            // Recrée le répertoire
+            yield getDirP(name);
+        });
+    }
+    exports.removeContentOfDirectory = removeContentOfDirectory;
+});
 define("location", ["require", "exports", "helpers"], function (require, exports, helpers_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -2932,7 +3141,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_3, helpers_8, main_5, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_2, location_1) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_4, helpers_8, main_5, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_3, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3098,7 +3307,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
         for (const ele of current_form.fields) {
             let element_to_add = null;
-            if (ele.type === form_schema_3.FormEntityType.divider) {
+            if (ele.type === form_schema_4.FormEntityType.divider) {
                 // C'est un titre
                 // On divide
                 const clearer = document.createElement('div');
@@ -3110,7 +3319,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 placeh.appendChild(htmle);
                 continue;
             }
-            else if (ele.type === form_schema_3.FormEntityType.integer || ele.type === form_schema_3.FormEntityType.float) {
+            else if (ele.type === form_schema_4.FormEntityType.integer || ele.type === form_schema_4.FormEntityType.float) {
                 const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
                 if (ele.allow_voice_control) {
@@ -3131,7 +3340,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         htmle.max = String(ele.range.max);
                     }
                 }
-                if (ele.type === form_schema_3.FormEntityType.float && ele.float_precision) {
+                if (ele.type === form_schema_4.FormEntityType.float && ele.float_precision) {
                     htmle.step = String(ele.float_precision);
                 }
                 // On vérifie si le champ a un message de suggestion si non rempli
@@ -3168,7 +3377,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         }
                         // if différent, il est juste en else if pour éviter de faire les
                         // calculs si le valid est déjà à false
-                        else if (ele.type === form_schema_3.FormEntityType.float) {
+                        else if (ele.type === form_schema_4.FormEntityType.float) {
                             const floating_point = this.value.split('.');
                             if (floating_point.length === 1) {
                                 //Il n'y a pas de . dans le nombre
@@ -3219,11 +3428,11 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 element_to_add = real_wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.string || ele.type === form_schema_3.FormEntityType.bigstring) {
+            else if (ele.type === form_schema_4.FormEntityType.string || ele.type === form_schema_4.FormEntityType.bigstring) {
                 const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
                 let htmle;
-                if (ele.type === form_schema_3.FormEntityType.string) {
+                if (ele.type === form_schema_4.FormEntityType.string) {
                     htmle = document.createElement('input');
                     htmle.type = "text";
                     htmle.autocomplete = "off";
@@ -3329,7 +3538,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 element_to_add = real_wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.select) {
+            else if (ele.type === form_schema_4.FormEntityType.select) {
                 const real_wrapper = document.createElement('div');
                 const wrapper = createInputWrapper();
                 const htmle = document.createElement('select');
@@ -3430,7 +3639,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 element_to_add = real_wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.checkbox) {
+            else if (ele.type === form_schema_4.FormEntityType.checkbox) {
                 const wrapper = document.createElement('p');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3449,7 +3658,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // Il faudra par contrer créer (plus tard les input vocaux)
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.datetime) {
+            else if (ele.type === form_schema_4.FormEntityType.datetime) {
                 const wrapper = createInputWrapper();
                 const input = document.createElement('input');
                 const label = document.createElement('label');
@@ -3475,7 +3684,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.file) {
+            else if (ele.type === form_schema_4.FormEntityType.file) {
                 //// Attention ////
                 // L'input de type file pour les images, sur android,
                 // ne propose pas le choix entre prendre une nouvelle photo
@@ -3526,7 +3735,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
             }
-            else if (ele.type === form_schema_3.FormEntityType.audio) {
+            else if (ele.type === form_schema_4.FormEntityType.audio) {
                 // Création d'un bouton pour enregistrer du son
                 const wrapper = document.createElement('div');
                 wrapper.classList.add('input-field', 'row', 'col', 's12', 'no-margin-top');
@@ -3569,7 +3778,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(real_input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === form_schema_3.FormEntityType.slider) {
+            else if (ele.type === form_schema_4.FormEntityType.slider) {
                 const wrapper = document.createElement('div');
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -3798,7 +4007,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     PageManager_3.PageManager.lock_return_button = true;
                     saveForm(type, unique_id, location_str, form_save)
                         .then((form_values) => {
-                        SyncManager_2.SyncManager.add(unique_id, form_values);
+                        SyncManager_3.SyncManager.add(unique_id, form_values);
                         if (form_save) {
                             instance.close();
                             helpers_8.showToast("Écriture du formulaire et de ses données réussie.");
@@ -4030,8 +4239,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             loadFormPage(base, edition_mode.form, edition_mode);
         }
         else {
-            form_schema_3.Forms.onReady(function (available, current) {
-                if (form_schema_3.Forms.current_key === null) {
+            form_schema_4.Forms.onReady(function (available, current) {
+                if (form_schema_4.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
                     base.innerHTML = helpers_8.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
@@ -4086,7 +4295,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const btn = document.createElement('div');
         btn.classList.add('btn-flat', 'right', 'red-text');
         btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_3.Forms.current_key;
+        const current_form_key = form_schema_4.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
                 beginFormSave(edition_mode.save.type, current_form, edition_mode.name, edition_mode.save);
@@ -4128,7 +4337,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Obtient l'élément HTML du modal
         const modal = helpers_8.getModal();
         const instance = helpers_8.initModal({
-            dismissible: false, preventScrolling: true, inDuration: 100, outDuration: 100
+            dismissible: false, preventScrolling: true
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
@@ -4275,7 +4484,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_3, helpers_9, main_6, form_schema_4, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_4, helpers_9, main_6, form_schema_5, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4307,7 +4516,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             const home_container = document.getElementById('__home_container');
             // Calcul du nombre de formulaires en attente de synchronisation
             try {
-                const remaining_count = yield SyncManager_3.SyncManager.remainingToSync();
+                const remaining_count = yield SyncManager_4.SyncManager.remainingToSync();
                 if (helpers_9.hasGoodConnection()) {
                     if (remaining_count > 15) {
                         home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
@@ -4348,8 +4557,8 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             <span class="red-text text-darken-2">Cette erreur est probablement grave. 
             Nous vous conseillons de ne pas tenter d'enregistrer un formulaire et de vérifier votre stockage interne.</span>`));
             }
-            form_schema_4.Forms.onReady(function (available, current) {
-                if (form_schema_4.Forms.current_key === null) {
+            form_schema_5.Forms.onReady(function (available, current) {
+                if (form_schema_5.Forms.current_key === null) {
                     return;
                 }
                 const locations = current.locations;
@@ -4519,7 +4728,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_5, helpers_10, SyncManager_4, PageManager_4, fetch_timeout_3, main_7, home_1, Settings_2) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_6, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_7, home_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -4531,7 +4740,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     function formActualisationModal() {
         const instance = helpers_10.initModal({ dismissible: false }, helpers_10.getModalPreloader("Actualisation..."));
         instance.open();
-        form_schema_5.Forms.init(true)
+        form_schema_6.Forms.init(true)
             .then(() => {
             helpers_10.showToast("Actualisation terminée.");
             instance.close();
@@ -4605,13 +4814,13 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         const select = document.createElement('select');
         select.classList.add('material-select');
         container.appendChild(select);
-        form_schema_5.Forms.onReady(function () {
-            const available = [["", "Aucun"], ...form_schema_5.Forms.getAvailableForms()];
+        form_schema_6.Forms.onReady(function () {
+            const available = [["", "Aucun"], ...form_schema_6.Forms.getAvailableForms()];
             for (const option of available) {
                 const o = document.createElement('option');
                 o.value = option[0];
                 o.innerText = option[1];
-                if (option[0] === form_schema_5.Forms.current_key || (option[0] === "" && form_schema_5.Forms.current_key === null)) {
+                if (option[0] === form_schema_6.Forms.current_key || (option[0] === "" && form_schema_6.Forms.current_key === null)) {
                     o.selected = true;
                 }
                 select.appendChild(o);
@@ -4620,8 +4829,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         });
         select.addEventListener('change', function () {
             const value = select.value || null;
-            if (form_schema_5.Forms.formExists(value)) {
-                form_schema_5.Forms.changeForm(value, true);
+            if (form_schema_6.Forms.formExists(value)) {
+                form_schema_6.Forms.changeForm(value, true);
             }
         });
         // Bouton pour accéder aux souscriptions
@@ -4694,7 +4903,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         }
         select_input.onchange = function () {
             Settings_2.Settings.sync_freq = Number(this.value);
-            SyncManager_4.SyncManager.changeBackgroundSyncInterval(Settings_2.Settings.sync_freq);
+            SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_2.Settings.sync_freq);
         };
         const select_label = document.createElement('label');
         select_label.innerText = "Fréquence de synchronisation";
@@ -4714,10 +4923,10 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         document.getElementById('__sync_bg_checkbox_settings').onchange = function () {
             Settings_2.Settings.sync_bg = this.checked;
             if (Settings_2.Settings.sync_bg) {
-                SyncManager_4.SyncManager.startBackgroundSync();
+                SyncManager_5.SyncManager.startBackgroundSync();
             }
             else {
-                SyncManager_4.SyncManager.stopBackgroundSync();
+                SyncManager_5.SyncManager.stopBackgroundSync();
             }
         };
         // Bouton pour forcer sync
@@ -4738,7 +4947,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 helpers_10.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
                 Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.", "Oui", "Non", "Vider cache de synchronisation").then(checked_val => {
                     // L'utilisateur a dit oui
-                    SyncManager_4.SyncManager.graphicalSync(true, checked_val);
+                    SyncManager_5.SyncManager.graphicalSync(true, checked_val);
                 });
             }
             else {
@@ -4793,7 +5002,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     function subscriptionsModal() {
         return __awaiter(this, void 0, void 0, function* () {
             const modal = helpers_10.getModal();
-            const instance = helpers_10.initModal({ outDuration: 100, inDuration: 100 }, helpers_10.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+            const instance = helpers_10.initModal(undefined, helpers_10.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
             instance.open();
             const content = document.createElement('div');
             content.classList.add('modal-content');
@@ -4880,9 +5089,9 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                             yield unsubscribe(to_uncheck, false);
                             // Suppression des formulaires demandés à être unsub
                             for (const f of to_uncheck) {
-                                form_schema_5.Forms.deleteForm(f);
+                                form_schema_6.Forms.deleteForm(f);
                             }
-                            form_schema_5.Forms.saveForms();
+                            form_schema_6.Forms.saveForms();
                         }
                         let subs = undefined;
                         // Appel à subscribe
@@ -4893,7 +5102,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                         instance.close();
                         // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
                         if (subs) {
-                            form_schema_5.Forms.schemas = subs;
+                            form_schema_6.Forms.schemas = subs;
                         }
                     }
                     catch (e) {
@@ -4912,7 +5121,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         });
     }
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_11, form_schema_6, PageManager_5, SyncManager_5, logger_5) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_11, form_schema_7, PageManager_5, SyncManager_6, logger_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var SaveState;
@@ -4924,29 +5133,34 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     ;
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
-        if (form.type === null || !form_schema_6.Forms.formExists(form.type)) {
+        if (form.type === null || !form_schema_7.Forms.formExists(form.type)) {
             helpers_11.showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type + "'.", 10000);
             return;
         }
-        const current_form = form_schema_6.Forms.getForm(form.type);
+        const current_form = form_schema_7.Forms.getForm(form.type);
         PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     function deleteAll() {
         return __awaiter(this, void 0, void 0, function* () {
-            // On veut supprimer tous les fichiers
-            // Récupération de tous les fichiers de forms
-            let dentries = yield helpers_11.getDirP('forms');
-            const entries = yield helpers_11.dirEntries(dentries);
-            const promises = [];
-            for (const e of entries) {
-                if (e.isFile) {
-                    promises.push(deleteForm(e.name));
-                }
+            const instance = helpers_11.unclosableBottomModal(`
+        ${helpers_11.SMALL_PRELOADER}
+        <p class="flow-text">Suppression en cours</p>
+    `);
+            PageManager_5.PageManager.lock_return_button = true;
+            try {
+                // On veut supprimer tous les fichiers
+                yield helpers_11.removeContentOfDirectory('forms');
+                yield SyncManager_6.SyncManager.clear();
+                helpers_11.showToast("Fichiers supprimés avec succès");
+                PageManager_5.PageManager.lock_return_button = false;
+                instance.close();
+                PageManager_5.PageManager.reload();
             }
-            yield Promise.all(promises);
-            yield SyncManager_5.SyncManager.clear();
-            helpers_11.showToast("Fichiers supprimés avec succès");
-            PageManager_5.PageManager.reload();
+            catch (e) {
+                PageManager_5.PageManager.lock_return_button = false;
+                instance.close();
+                throw e;
+            }
         });
     }
     function appendFileEntry(json, ph) {
@@ -4961,8 +5175,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             container.dataset.formid = id_without_json;
             let state = SaveState.error;
             let type = "Type inconnu";
-            if (save.type !== null && form_schema_6.Forms.formExists(save.type)) {
-                const form = form_schema_6.Forms.getForm(save.type);
+            if (save.type !== null && form_schema_7.Forms.formExists(save.type)) {
+                const form = form_schema_7.Forms.getForm(save.type);
                 type = form.name;
                 if (form.id_field) {
                     // Si un champ existe pour ce formulaire
@@ -4971,7 +5185,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             }
             // Recherche si il y a déjà eu synchronisation
             try {
-                const present = yield SyncManager_5.SyncManager.has(id_without_json);
+                const present = yield SyncManager_6.SyncManager.has(id_without_json);
                 if (present) {
                     state = SaveState.waiting;
                 }
@@ -4984,8 +5198,10 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             }
             // Ajoute de l'icône indiquant si l'élément a été synchronisé
             let sync_str = `<i class="material-icons red-text">sync_problem</i>`;
+            container.dataset.synced = "false";
             if (state === SaveState.saved) {
                 sync_str = `<i class="material-icons green-text">sync</i>`;
+                container.dataset.synced = "true";
             }
             else if (state === SaveState.waiting) {
                 sync_str = `<i class="material-icons grey-text">sync_disabled</i>`;
@@ -5008,45 +5224,41 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 modalDeleteForm(json[0].name);
             };
             let sync_element = null;
-            if (state !== SaveState.saved) {
-                sync_element = () => {
-                    // On fait tourner le bouton
-                    const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`);
-                    if (sync_icon) {
-                        const icon = sync_icon.innerText;
-                        const classes = sync_icon.className;
-                        sync_icon.innerText = "sync";
-                        sync_icon.className = "material-icons grey-text turn-anim";
-                        SyncManager_5.SyncManager.sync(false, false, undefined, [id_without_json])
-                            .then(() => {
-                            // La synchro a réussi
-                            sync_icon.className = "material-icons green-text";
-                        })
-                            .catch(() => {
-                            helpers_11.showToast("La synchronisation a échoué");
-                            // La synchronisation a échoué
-                            sync_icon.className = "material-icons red-text";
-                            sync_icon.innerText = "sync_problem";
-                        });
-                    }
-                    else {
-                        console.log("L'élément a disparu");
-                    }
-                };
-            }
+            sync_element = () => {
+                // On fait tourner le bouton
+                const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`);
+                if (sync_icon) {
+                    sync_icon.innerText = "sync";
+                    sync_icon.className = "material-icons grey-text turn-anim";
+                    SyncManager_6.SyncManager.sync(false, false, undefined, [id_without_json])
+                        .then(() => {
+                        // La synchro a réussi
+                        sync_icon.className = "material-icons green-text";
+                        container.dataset.synced = "true";
+                    })
+                        .catch(() => {
+                        helpers_11.showToast("La synchronisation a échoué");
+                        // La synchronisation a échoué
+                        sync_icon.className = "material-icons red-text";
+                        sync_icon.innerText = "sync_problem";
+                        container.dataset.synced = "false";
+                    });
+                }
+                else {
+                    console.log("L'élément a disparu");
+                }
+            };
             // Définit l'événement de clic sur le formulaire
             selector.addEventListener('click', function () {
                 const list = ["Modifier"];
-                if (sync_element) {
-                    list.push("Synchroniser");
-                }
+                list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
                 list.push("Supprimer");
                 helpers_11.askModalList(list)
                     .then(index => {
                     if (index === 0) {
                         modify_element();
                     }
-                    else if (sync_element && index === 1) {
+                    else if (index === 1) {
                         sync_element();
                     }
                     else {
@@ -5073,7 +5285,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                         promises.push(new Promise(function (resolve, reject) {
                             entry.file(function (file) {
                                 const reader = new FileReader();
-                                console.log(file);
+                                // console.log(file);
                                 reader.onloadend = function () {
                                     try {
                                         resolve([file, JSON.parse(this.result)]);
@@ -5126,7 +5338,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         if (id.match(/\.json$/)) {
             id = id.substring(0, id.length - 5);
         }
-        SyncManager_5.SyncManager.remove(id);
+        SyncManager_6.SyncManager.remove(id);
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
@@ -5151,7 +5363,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     function initSavedForm(base) {
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
-        form_schema_6.Forms.onReady(function () {
+        form_schema_7.Forms.onReady(function () {
             readAllFilesOfDirectory('forms').then(all_promises => Promise.all(all_promises)
                 .then(function (files) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -5179,10 +5391,10 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                         syncbtn.onclick = function () {
                             helpers_11.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
                                 .then(() => {
-                                return SyncManager_5.SyncManager.graphicalSync();
+                                return SyncManager_6.SyncManager.inlineSync();
                             })
                                 .then(() => {
-                                PageManager_5.PageManager.reload();
+                                // PageManager.reload();
                             })
                                 .catch(() => { });
                         };
@@ -5293,7 +5505,6 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
         }
         updateReturnBtn() {
-            // @ts-ignore
             if (device.platform === "browser") {
                 const back_btn = document.getElementById('__nav_back_button');
                 if (this.isPageWaiting()) {

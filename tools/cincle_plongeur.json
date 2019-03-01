@@ -1,9 +1,8 @@
 {
     "name": "Cincle plongeur",
-    "id_field": "ringnb",
     "fields": [{
         "name": "title_general",
-        "label": "G\u00e9n\u00e9ral",
+        "label": "Général",
         "type": "divider"
     }, {
         "name": "__date__",
@@ -29,9 +28,9 @@
         }
     }, {
         "name": "ringnb",
-        "label": "Num\u00e9ro de bague",
+        "label": "Numéro de bague",
         "type": "string",
-        "placeholder": "Compos\u00e9 de chiffres et de lettres",
+        "placeholder": "Composé de chiffres et de lettres",
         "required": true,
         "remove_whitespaces": true,
         "allow_voice_control": true
@@ -52,7 +51,7 @@
         }]
     }, {
         "name": "age",
-        "label": "\u00c2ge",
+        "label": "Âge",
         "type": "select",
         "select_options": {
             "multiple": false,
@@ -107,10 +106,10 @@
         "type": "divider"
     }, {
         "name": "bague_metal_gauche",
-        "label": "M\u00e9tal",
+        "label": "Métal",
         "type": "select",
         "external_constraints": "bague_metal_droite!=*",
-        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague gauche si il a une bague m\u00e9tal droite.",
+        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague gauche si il a une bague métal droite.",
         "select_options": {
             "multiple": false,
             "options": [{
@@ -194,10 +193,10 @@
         "type": "divider"
     }, {
         "name": "bague_metal_droite",
-        "label": "M\u00e9tal",
+        "label": "Métal",
         "type": "select",
         "external_constraints": "bague_metal_gauche!=*",
-        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague droite si il a une bague m\u00e9tal gauche.",
+        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague droite si il a une bague métal gauche.",
         "select_options": {
             "multiple": false,
             "options": [{
@@ -277,7 +276,7 @@
         "allow_voice_control": true
     }, {
         "name": "additionnal_info",
-        "label": "Relev\u00e9s",
+        "label": "Relevés",
         "type": "divider"
     }, {
         "name": "transpond",
@@ -287,8 +286,8 @@
             "min": 10,
             "max": 10
         },
-        "tip_on_invalid": "Doit \u00eatre compos\u00e9 de 10 chiffres et lettres",
-        "placeholder": "Compos\u00e9 de 10 chiffres et de lettres",
+        "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
+        "placeholder": "Composé de 10 chiffres et de lettres",
         "required": true,
         "remove_whitespaces": true,
         "allow_voice_control": true
@@ -300,10 +299,11 @@
             "min": 30,
             "max": 100
         },
-        "placeholder": "Entre 30g et 100g \u00b10.1g",
+        "placeholder": "Entre 30g et 100g ±0.1g",
         "float_precision": 0.1,
-        "tip_on_invalid": "Unit\u00e9 gramme. 30g min, 100 max, pr\u00e9cision 0.1.",
-        "allow_voice_control": true
+        "tip_on_invalid": "Unité gramme. 30g min, 100 max, précision 0.1.",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "tarsus",
         "label": "Tarse",
@@ -312,10 +312,11 @@
             "min": 20,
             "max": 40
         },
-        "placeholder": "Entre 20mm et 40mm \u00b10.1mm",
+        "placeholder": "Entre 20mm et 40mm ±0.1mm",
         "float_precision": 0.1,
-        "tip_on_invalid": "Unit\u00e9 mm. 20mm min, 40 max, pr\u00e9cision 0.1",
-        "allow_voice_control": true
+        "tip_on_invalid": "Unité mm. 20mm min, 40 max, précision 0.1",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "wing",
         "label": "Aile",
@@ -324,13 +325,14 @@
             "min": 60,
             "max": 120
         },
-        "placeholder": "Entre 60mm et 120mm \u00b10.5mm",
+        "placeholder": "Entre 60mm et 120mm ±0.5mm",
         "float_precision": 0.5,
-        "tip_on_invalid": "Unit\u00e9 mm. 60mm min, 120 max, pr\u00e9cision 0.5",
-        "allow_voice_control": true
+        "tip_on_invalid": "Unité mm. 60mm min, 120 max, précision 0.5",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "abraded",
-        "label": "\u00c9tat des plumes",
+        "label": "État des plumes",
         "type": "select",
         "select_options": {
             "multiple": false,
@@ -354,34 +356,37 @@
             "min": 30,
             "max": 80
         },
-        "placeholder": "Entre 30mm et 80mm \u00b10.5mm",
+        "placeholder": "Entre 30mm et 80mm ±0.5mm",
         "float_precision": 0.5,
-        "tip_on_invalid": "Unit\u00e9 mm. 30mm min, 80 max, pr\u00e9cision 0.5",
-        "allow_voice_control": true
+        "tip_on_invalid": "Unité mm. 30mm min, 80 max, précision 0.5",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "third_prim",
-        "label": "Longueur 3\u00e8me primaire",
+        "label": "Longueur 3ème primaire",
         "type": "float",
         "range": {
             "min": 40,
             "max": 90
         },
-        "placeholder": "Entre 40mm et 90mm \u00b10.5mm",
+        "placeholder": "Entre 40mm et 90mm ±0.5mm",
         "float_precision": 0.5,
-        "tip_on_invalid": "Unit\u00e9 mm. 40mm min, 90 max, pr\u00e9cision 0.5",
-        "allow_voice_control": true
+        "tip_on_invalid": "Unité mm. 40mm min, 90 max, précision 0.5",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "sk_bl_lght",
-        "label": "Longueur t\u00eate plus bec",
+        "label": "Longueur tête plus bec",
         "type": "float",
         "range": {
             "min": 30,
             "max": 70
         },
-        "placeholder": "Entre 30mm et 70mm \u00b10.1mm",
+        "placeholder": "Entre 30mm et 70mm ±0.1mm",
         "float_precision": 0.1,
-        "tip_on_invalid": "Unit\u00e9 mm. 30mm min, 70 max, pr\u00e9cision 0.1",
-        "allow_voice_control": true
+        "tip_on_invalid": "Unité mm. 30mm min, 70 max, précision 0.1",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "bl_lght",
         "label": "Longueur bec seul",
@@ -390,13 +395,14 @@
             "min": 10,
             "max": 30
         },
-        "placeholder": "Entre 10mm et 30mm \u00b10.1mm",
+        "placeholder": "Entre 10mm et 30mm ±0.1mm",
         "float_precision": 0.1,
-        "tip_on_invalid": "Unit\u00e9 mm. 10mm min, 30 max, pr\u00e9cision 0.1",
-        "allow_voice_control": true
+        "tip_on_invalid": "Unité mm. 10mm min, 30 max, précision 0.1",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "blood_patch",
-        "label": "Pr\u00e9sence plaque incubatrice",
+        "label": "Présence plaque incubatrice",
         "type": "checkbox"
     }, {
         "name": "molt",
@@ -411,8 +417,9 @@
             "min": 10,
             "max": 200
         },
-        "tip_on_invalid": "Doit \u00eatre compris entre 10 et 200.",
-        "allow_voice_control": true
+        "tip_on_invalid": "Doit être compris entre 10 et 200.",
+        "allow_voice_control": true,
+        "suggested_not_blank": true
     }, {
         "name": "card_rythm",
         "label": "Rythme cardiaque",
@@ -563,7 +570,7 @@
         "file_type": "image/*"
     }, {
         "name": "complement_info",
-        "label": "Compl\u00e9ment d'information",
+        "label": "Complément d'information",
         "type": "divider"
     }, {
         "name": "struggle",
@@ -845,7 +852,7 @@
             "longitude": 5.68969
         },
         "Bueil_passerelle_amont": {
-            "label": "\"Juste au niveau de la cascade, sur mur, a la fin de la partie \"\"gorges\"\", 100 m en amont de la passerelle\"",
+            "label": "Juste au niveau de la cascade, sur mur, a la fin de la partie \"gorges\", 100 m en amont de la passerelle",
             "latitude": 45.4756305,
             "longitude": 5.6908482
         },
@@ -855,7 +862,7 @@
             "longitude": 5.6924844
         },
         "Grand_crolaz_amont": {
-            "label": "\"Dans une cavite (en haut a gauche) au niveau suintement / arrivee du petit affluent en amont des \"\"rapides\"\"\"",
+            "label": "Dans une cavite (en haut a gauche) au niveau suintement / arrivee du petit affluent en amont des \"rapides\"",
             "latitude": 45.4879739,
             "longitude": 5.7029369
         },
@@ -980,7 +987,7 @@
             "longitude": 5.7464719
         },
         "Burdin": {
-            "label": "\"Direction \"\"le Bois du Blanc\"\"\"",
+            "label": "Direction \"le Bois du Blanc\"",
             "latitude": 45.4018852,
             "longitude": 5.7586169
         },
@@ -1020,7 +1027,7 @@
             "longitude": 5.728485
         },
         "Ruisseau_morge": {
-            "label": "\"Descendre par l'amont RG et longer le bord (peu profond sous le pont mais \"\"piscines\"\" juste avant et apres)\"",
+            "label": "Descendre par l'amont RG et longer le bord (peu profond sous le pont mais \"piscines\" juste avant et apres)",
             "latitude": 45.4373019,
             "longitude": 5.7351637
         },
@@ -1175,12 +1182,12 @@
             "longitude": 5.7449806
         },
         "Arenier": {
-            "label": "\"Nid dans petite \"\"falaise\"\" de concretions calcaires a environ 2-3 m de hauteur\"",
+            "label": "Nid dans petite \"falaise\" de concretions calcaires a environ 2-3 m de hauteur",
             "latitude": 45.47184,
             "longitude": 5.74044
         },
         "Auberge_morge_amont_2": {
-            "label": "\"Pont sous la route principale, dans 4e \"\"meurtriere\"\" rive droite en partant de l'aval, tout au fond (il faut mettre le bras entier!)\"",
+            "label": "Pont sous la route principale, dans 4e \"meurtriere\" rive droite en partant de l'aval, tout au fond (il faut mettre le bras entier!)",
             "latitude": 45.4721171,
             "longitude": 5.7389563
         },
@@ -1245,7 +1252,7 @@
             "longitude": 5.7209587
         },
         "Grenats_aval": {
-            "label": "\"En aval du nichoir, dans petit tunnel sous la route \"\"chemin des pecheurs\"\"\"",
+            "label": "En aval du nichoir, dans petit tunnel sous la route \"chemin des pecheurs\"",
             "latitude": 45.4137748,
             "longitude": 5.7383126
         },
@@ -1580,7 +1587,7 @@
             "longitude": 5.8486962
         },
         "Philibert_cascade": {
-            "label": "\"Acces en contournant maison a cote Eglise puis continuer jusqu'au chemin qui longe la riviere. Le nid est plutot au milieu/bas de la serie de \"\"cascades\"\" (au niveau de 3 arbres tombes enchevetres, juste avant un goulet de gros rochers\"",
+            "label": "Acces en contournant maison a cote Eglise puis continuer jusqu'au chemin qui longe la riviere. Le nid est plutot au milieu/bas de la serie de \"cascades\" (au niveau de 3 arbres tombes enchevetres, juste avant un goulet de gros rochers",
             "latitude": 45.382326,
             "longitude": 5.8488679
         },
@@ -1684,7 +1691,7 @@
             "latitude": 45.3896144,
             "longitude": 5.5015366
         },
-        "\"Billionnieres_\"\"amont\"\"\"": {
+        "Billionnieres_\"amont\"": {
             "label": "Sous 1er pont (rive droite, par rapport au pont suivant)",
             "latitude": 45.3887837,
             "longitude": 5.5005133
@@ -1705,7 +1712,7 @@
             "longitude": 5.499215
         },
         "Cote_manin": {
-            "label": "\"Sous le pont sur le bras \"\"mort\"\", car l'autre bras a trop de courant pour etre a l'aise (et pont trop bas) - descente par le chemin entre les deux bras, ne pas aller trop loin car vase\"",
+            "label": "Sous le pont sur le bras \"mort\", car l'autre bras a trop de courant pour etre a l'aise (et pont trop bas) - descente par le chemin entre les deux bras, ne pas aller trop loin car vase",
             "latitude": 45.379043,
             "longitude": 5.496225
         },
@@ -1715,7 +1722,7 @@
             "longitude": 5.4947733
         },
         "Prairies": {
-            "label": "\"Sous passerelle en bois, au-dessus bras \"\"mort\"\" (boueux mais courant et tres proche du cours principal). Pas d'equerre ni trou (visser dans le bois). Descendre vers les batiments et se garder sur petit parking au fond\"",
+            "label": "Sous passerelle en bois, au-dessus bras \"mort\" (boueux mais courant et tres proche du cours principal). Pas d'equerre ni trou (visser dans le bois). Descendre vers les batiments et se garder sur petit parking au fond",
             "latitude": 45.3731449,
             "longitude": 5.4898623
         },
@@ -1840,7 +1847,7 @@
             "longitude": 5.4917746
         },
         "Hurtieres": {
-            "label": "\"Sous pont du 1er bras \"\"mort\"\" / canal vers nord, descendre par les arbres en amont, rive droite\"",
+            "label": "Sous pont du 1er bras \"mort\" / canal vers nord, descendre par les arbres en amont, rive droite",
             "latitude": 45.313065,
             "longitude": 5.4863941
         },
@@ -2130,7 +2137,7 @@
             "longitude": 5.8660126
         },
         "Cascade_aval": {
-            "label": "\"Sous rebord du canal qui part depuis la cascade RD ; derriere rideau d'eau lorsque le niveau est haut ; attention descente RG et acces en contournant (zone profonde en aval de la cascade, rester bien au bord)\"",
+            "label": "Sous rebord du canal qui part depuis la cascade RD ; derriere rideau d'eau lorsque le niveau est haut ; attention descente RG et acces en contournant (zone profonde en aval de la cascade, rester bien au bord)",
             "latitude": 45.536547,
             "longitude": 5.866753
         },
@@ -2475,7 +2482,7 @@
             "longitude": 5.5907106
         },
         "Trincon": {
-            "label": "\"Dans tunnel sous ancienne usine, a la sortie. Acces : vers \"\"Castel Anne\"\", tourner vers batiments, entrer dans la cour et se garer, passer sous le porche en direction de la voie ferree, longer le cote arriere du batiment.\"",
+            "label": "Dans tunnel sous ancienne usine, a la sortie. Acces : vers \"Castel Anne\", tourner vers batiments, entrer dans la cour et se garer, passer sous le porche en direction de la voie ferree, longer le cote arriere du batiment.",
             "latitude": 45.3477721,
             "longitude": 5.5852711
         },
@@ -2985,7 +2992,7 @@
             "longitude": 5.6530881
         },
         "Cote_alleyron": {
-            "label": "\"Attention en remontant  sur route du gigot au dos d'ane tres marque! Rouler au pas! ; Descente en amont RG\"",
+            "label": "Attention en remontant  sur route du gigot au dos d'ane tres marque! Rouler au pas! ; Descente en amont RG",
             "latitude": 45.3093792,
             "longitude": 5.6510496
         },
@@ -3115,7 +3122,7 @@
             "longitude": 5.7628226
         },
         "Tannerie": {
-            "label": "\"Descente en amont RD. Route interdite aux non-riverains ; se garer au debut de la route et aller a pied\"",
+            "label": "Descente en amont RD. Route interdite aux non-riverains ; se garer au debut de la route et aller a pied",
             "latitude": 45.5233074,
             "longitude": 5.7606983
         },
@@ -3185,7 +3192,7 @@
             "longitude": 5.7413006
         },
         "Rameaux_cascade": {
-            "label": "\"Dans grande cascade juste avant les maisons; acces en remontant l'impasse puis le cours de la riviere jusqu'a la cascade; nid sur le mur juste a gauche de la cascade, tres humide!\"",
+            "label": "Dans grande cascade juste avant les maisons; acces en remontant l'impasse puis le cours de la riviere jusqu'a la cascade; nid sur le mur juste a gauche de la cascade, tres humide!",
             "latitude": 45.52675,
             "longitude": 5.7412148
         },
@@ -3340,7 +3347,7 @@
             "longitude": 5.7238984
         },
         "Pierre_arche": {
-            "label": "\"Descendre par le chemin (maison aux volets bleus en contre bas) jusqu'a la maison (notee \"\"1990\"\"). Fine passerelle au niveau de cette maison, acces en amont RG\"",
+            "label": "Descendre par le chemin (maison aux volets bleus en contre bas) jusqu'a la maison (notee \"1990\"). Fine passerelle au niveau de cette maison, acces en amont RG",
             "latitude": 45.2874482,
             "longitude": 5.7138777
         },
@@ -3420,7 +3427,7 @@
             "longitude": 5.706057
         },
         "Moulin_brieux_aval": {
-            "label": "\"Dans \"\"grotte\"\" a hauteur d'homme, au milieu, en bordure (pas au fond de la grotte), dans 2 derniers virages avant grande falaise RG. Descendre dans chemin terre a droite et longer la bordure du champ/for\ufffdt\"",
+            "label": "Dans \"grotte\" a hauteur d'homme, au milieu, en bordure (pas au fond de la grotte), dans 2 derniers virages avant grande falaise RG. Descendre dans chemin terre a droite et longer la bordure du champ/for�t",
             "latitude": 45.2618462,
             "longitude": 5.7034332
         },
@@ -3439,5 +3446,6 @@
             "latitude": 45.2522925,
             "longitude": 5.7304859
         }
-    }
+    },
+    "id_field": "ringnb"
 }

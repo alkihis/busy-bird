@@ -166,13 +166,11 @@ export const Forms = new class {
                     }, 'json')
                     .fail(function(error) {
                         // Essaie de lire le fichier sur le périphérique
-                        // @ts-ignore
                         readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {
                                 loadJSONInObject(JSON.parse(string));
                             })
                             .catch((err) => {
-                                // @ts-ignore
                                 showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                             })
                     });
@@ -186,7 +184,6 @@ export const Forms = new class {
             init_text.innerText = "Mise à jour des formulaires";
         }
 
-        // @ts-ignore
         if ((ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && UserManager.logged) {
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes

@@ -1,4 +1,6 @@
 import { PageManager } from "./PageManager";
+import { Forms, FormSave, FormEntityType } from "./form_schema";
+import { SyncManager } from "./SyncManager";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -51,6 +53,7 @@ export function initModal(options: M.ModalOptions | {} = {}, content?: string) :
  */
 export function initBottomModal(options: M.ModalOptions | {} = {}, content?: string) : M.Modal {
     const modal = getBottomModal();
+    modal.classList.remove('unlimited');
     
     if (content)
         modal.innerHTML = content;
@@ -135,7 +138,6 @@ export function saveDefaultForm() {
     // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
 }
 
-// @ts-ignore 
 // Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
 // utilise le répertoire data (partition /data) de Android
 let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
@@ -145,7 +147,6 @@ let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
  * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
  */
 export function changeDir() {
-    // @ts-ignore
     if (device.platform === "browser") {
         FOLDER = "cdvfile://localhost/temporary/";
 
@@ -156,9 +157,7 @@ export function changeDir() {
         };
         back_btn.classList.remove('hide');
     }
-    // @ts-ignore
     else if (device.platform === "iOS") {
-        // @ts-ignore
         FOLDER = cordova.file.dataDirectory;
     }
 }
@@ -172,11 +171,9 @@ let DIR_ENTRY = null;
  * @param asBase64 true si le fichier doit être passé encodé en base64
  */
 export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) : void {
-    // @ts-ignore
     const pathToFile = FOLDER + fileName;
-    // @ts-ignore
     window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-        fileEntry.file(function (file) {
+        (fileEntry as FileEntry).file(function (file) {
             const reader = new FileReader();
 
             reader.onloadend = function (e) {
@@ -211,11 +208,9 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
  * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
  */
 export function toValidUrl() : string {
-    // @ts-ignore
     if (device.platform === "browser") {
         return '';
     }
-    // @ts-ignore
     return cordova.file.applicationDirectory + 'www/';
 }
 
@@ -229,9 +224,8 @@ export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLD
     const pathToFile = forceBaseDir + fileName;
 
     return new Promise(function(resolve, reject) {
-        // @ts-ignore
         window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-            fileEntry.file(function (file) {
+            (fileEntry as FileEntry).file(function (file) {
                 const reader = new FileReader();
     
                 reader.onloadend = function (e) {
@@ -281,7 +275,7 @@ export function readFileFromEntry(fileEntry, asBase64 = false) : Promise<string>
  * @param dirName string Nom du répertoire
  * @return Promise<DirectoryEntry>
  */
-export function getDirP(dirName: string) : Promise<any> {
+export function getDirP(dirName: string) : Promise<DirectoryEntry> {
     return new Promise((resolve, reject) => {
         getDir(resolve, dirName, reject);
     });
@@ -294,12 +288,12 @@ export function getDirP(dirName: string) : Promise<any> {
  * @param dirName string
  * @param onError Function(error) => void
  */
-export function getDir(callback: (dirEntry) => void, dirName: string = "", onError?) {
-    function callGetDirEntry(dirEntry) {
+export function getDir(callback: (dirEntry: DirectoryEntry) => void, dirName: string = "", onError?) {
+    function callGetDirEntry(dirEntry: DirectoryEntry) {
         DIR_ENTRY = dirEntry;
 
         if (dirName) {
-            dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
+            dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry: DirectoryEntry) => {
                 if (callback) {
                     callback(newEntry);
                 }
@@ -318,9 +312,11 @@ export function getDir(callback: (dirEntry) => void, dirName: string = "", onErr
     // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
 
     if (DIR_ENTRY === null) {
-        // @ts-ignore
-        window.resolveLocalFileSystemURL(FOLDER, callGetDirEntry, (err) => { 
-            console.log("Persistent not available", err.message); 
+        window.resolveLocalFileSystemURL(FOLDER, 
+            (dirEntry: Entry) => {
+                callGetDirEntry(dirEntry as DirectoryEntry);
+            }, (err) => { 
+            console.log("Persistent not available", err.code); 
             if (onError) {
                 onError(err);
             }
@@ -338,7 +334,7 @@ export function getDir(callback: (dirEntry) => void, dirName: string = "", onErr
  * @param fileName string
  * @param blob Blob
  * @param callback Function() => void
- * @param onFailure Function(error) => void | Généralement, error est une DOMException
+ * @param onFailure Function(error) => void | Généralement, error est une FileError
  */
 export function writeFile(dirName: string, fileName: string, blob: Blob, callback?, onFailure?) {
     getDir(function(dirEntry) {
@@ -348,7 +344,7 @@ export function writeFile(dirName: string, fileName: string, blob: Blob, callbac
                     callback();
                 }
             }).catch(error => { if (onFailure) onFailure(error); });
-        }, function(err) { console.log("Error in writing file", err.message); if (onFailure) { onFailure(err); } });
+        }, function(err) { console.log("Error in writing file", err.code); if (onFailure) { onFailure(err); } });
     }, dirName);
 
     function write(fileEntry, dataObj) {
@@ -394,9 +390,9 @@ export function writeFile(dirName: string, fileName: string, blob: Blob, callbac
  * Si échec, appelle onError avec l'erreur
  * @param name string
  * @param onSuccess Function(dirEntry) => void
- * @param onError Function(error: DOMException) => void
+ * @param onError Function(error: FileError) => void
  */
-export function createDir(name: string, onSuccess?: Function, onError?: Function) {
+export function createDir(name: string, onSuccess?: (dirEntry: DirectoryEntry) => void, onError?: (error: FileError) => void) {
     getDir(function(dirEntry) {
         dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
     });
@@ -409,7 +405,6 @@ export function createDir(name: string, onSuccess?: Function, onError?: Function
  * @param path string
  */
 export function listDir(path: string = "") : void {
-    // @ts-ignore
     getDir(function (fileSystem) {
         const reader = fileSystem.createReader();
         reader.readEntries(
@@ -429,7 +424,7 @@ export function sleep(ms: number) : Promise<void> {
     });
 }
 
-export function dirEntries(dirEntry) : Promise<any[]> {
+export function dirEntries(dirEntry: DirectoryEntry) : Promise<Entry[]> {
     return new Promise(function(resolve, reject) {
         const reader = dirEntry.createReader();
         reader.readEntries(
@@ -478,10 +473,9 @@ export interface CoordsLike {
  * @returns number Nombre de mètres entre les deux coordonnées
  */
 export function calculateDistance(coords1: CoordsLike, coords2: CoordsLike) : number {
-    // @ts-ignore
     return geolib.getDistance(
-        {latitude: coords1.latitude, longitude: coords1.longitude},
-        {latitude: coords2.latitude, longitude: coords2.longitude}
+        {latitude: String(coords1.latitude), longitude: String(coords1.longitude)},
+        {latitude: String(coords2.latitude), longitude: String(coords2.longitude)}
     );
 }
 
@@ -771,19 +765,19 @@ export function urlToBlob(str: string) : Promise<Blob> {
 }
 
 /**
- * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
+ * Ouvre un modal informant l'utilisateur
  * @param title string Titre affiché sur le modal
- * @param question string Question complète / détails sur l'action qui sera réalisée
+ * @param info string Information
  * @param text_close string Texte affiché sur le bouton de fermeture
  */
-export function informalBottomModal(title: string, question: string, text_close = "Fermer") : void {
+export function informalBottomModal(title: string, info: string, text_close = "Fermer") : void {
     const modal = getBottomModal();
     const instance = initBottomModal();
 
     modal.innerHTML = `
     <div class="modal-content">
         <h5 class="no-margin-top">${title}</h5>
-        <p class="flow-text">${question}</p>
+        <p class="flow-text">${info}</p>
     </div>
     <div class="modal-footer">
         <a href="#!" class="btn-flat blue-text modal-close right">${text_close}</a>
@@ -792,6 +786,28 @@ export function informalBottomModal(title: string, question: string, text_close 
     `;
 
     instance.open();
+}
+
+/**
+ * Ouvre un modal informant l'utilisateur, mais sans possiblité de le fermer. Il devra être fermé via JS
+ * @param title string Titre affiché sur le modal
+ * @param question string Question complète / détails sur l'action qui sera réalisée
+ * @param text_close string Texte affiché sur le bouton de fermeture
+ * @returns {M.Modal} Instance du modal généré
+ */
+export function unclosableBottomModal(content: string) : M.Modal {
+    const modal = getBottomModal();
+    const instance = initBottomModal({dismissible: false});
+
+    modal.innerHTML = `
+    <div class="modal-content">
+        ${content}
+    </div>
+    `;
+
+    instance.open();
+
+    return instance;
 }
 
 /**
@@ -806,6 +822,8 @@ export function informalBottomModal(title: string, question: string, text_close 
 export function askModal(title: string, question: string, text_yes = "Oui", text_no = "Non", checkbox?: string) : Promise<any> {
     const modal = getBottomModal();
     const instance = initBottomModal({ dismissible: false });
+
+    modal.classList.add('unlimited');
 
     modal.innerHTML = `
     <div class="modal-content">
@@ -911,9 +929,7 @@ export function displayErrorMessage(title: string, message: string = "") : strin
  * Renvoie vrai si l'utilisateur est en ligne et a une connexion potable.
  */
 export function hasGoodConnection() : boolean {
-    // @ts-ignore
     const networkState = navigator.connection.type;
-    // @ts-ignore
     return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
 }
 
@@ -924,7 +940,6 @@ export function convertHTMLToElement(htmlString: string) : HTMLElement {
 }
 
 export function showToast(message: string, duration: number = 4000) : void {
-    // @ts-ignore
     if (device.platform === "browser") {
         M.toast({html: message, displayLength: duration});
     }
@@ -975,6 +990,8 @@ export function askModalList(items: string[]) : Promise<number> {
             }
         });
 
+        modal.classList.add('unlimited');
+
         for (let i = 0; i < items.length; i++) {
             const link = document.createElement('a');
             link.classList.add('modal-list-item', 'flow-text', 'waves-effect');
@@ -990,4 +1007,70 @@ export function askModalList(items: string[]) : Promise<number> {
 
         instance.open();
     });
+}
+
+export async function createRandomForms(count: 50) : Promise<void> {
+    if (Forms.current_key === null) {
+        throw "Impossible de créer des formulaires sans base";
+    }
+
+    const current = Forms.getForm(Forms.current_key);
+    const promises: Promise<any>[] = [];
+    for (let i = 0; i < count; i++) {
+        const save: FormSave = {
+            fields: {},
+            location: "",
+            type: Forms.current_key,
+            owner: "randomizer",
+            metadata: {}
+        };
+
+        for (const field of current.fields) {
+            switch(field.type) {
+                case FormEntityType.bigstring:
+                case FormEntityType.string:
+                case FormEntityType.datetime:
+                case FormEntityType.select:
+                case FormEntityType.slider:
+                    save.fields[field.name] = generateId(25);
+                    break;
+                case FormEntityType.integer:
+                    save.fields[field.name] = Math.trunc(Math.random() * 1000);
+                    break;
+                case FormEntityType.float:
+                    save.fields[field.name] = Math.random();
+                    break;
+                case FormEntityType.file:
+                case FormEntityType.audio:
+                    save.fields[field.name] = null;
+                    break;
+                case FormEntityType.checkbox:
+                    save.fields[field.name] = Math.random() > 0.5;
+                    break;
+            }
+        }
+
+        // Sauvegarde du formulaire
+        promises.push(
+            new Promise((resolve, reject) => {
+                const id = generateId(20);
+                writeFile('forms', id + '.json', new Blob([JSON.stringify(save)]), function() {
+                    SyncManager.add(id, save).then(resolve).catch(reject);
+                }, reject);
+            })
+        );
+    }
+
+    await Promise.all(promises);
+}
+
+export async function removeContentOfDirectory(name: string) {
+    const entry = await getDirP(name);
+
+    await new Promise((resolve, reject) => {
+        entry.removeRecursively(resolve, reject);
+    });
+    
+    // Recrée le répertoire
+    await getDirP(name);
 }

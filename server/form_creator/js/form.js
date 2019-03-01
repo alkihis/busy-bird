@@ -557,10 +557,10 @@ async function loadTSV(file, mode, id, label, lat, long) {
         line = line.split('\t');
         
         try {
-            const local_id = line[num_id].replace('"', ''); // Supprime des guillemets rajoutés par excel
+            const local_id = line[num_id].replace(/""/g, '"').replace(/^"/, '').replace(/"$/, ''); // Supprime les groupes de guillemets rajoutés par excel
 
             locations[local_id] = {
-                'label': line[num_label],
+                'label': line[num_label].replace(/""/g, '"').replace(/^"/, '').replace(/"$/, ''),
                 'latitude': Number(line[num_lat].replace(',', '.')),
                 'longitude': Number(line[num_long].replace(',', '.'))
             };

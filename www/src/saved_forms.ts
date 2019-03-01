@@ -1,4 +1,4 @@
-import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast, askModalList } from "./helpers";
+import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast, askModalList, removeContentOfDirectory, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
@@ -21,24 +21,30 @@ function editAForm(form: FormSave, name: string) {
 }
 
 async function deleteAll() : Promise<any> {
-    // On veut supprimer tous les fichiers
-    // Récupération de tous les fichiers de forms
-    let dentries = await getDirP('forms');
-    const entries = await dirEntries(dentries);
-    const promises: Promise<any>[] = [];
+    const instance = unclosableBottomModal(`
+        ${SMALL_PRELOADER}
+        <p class="flow-text">Suppression en cours</p>
+    `);
 
-    for (const e of entries) {
-        if (e.isFile) {
-            promises.push(deleteForm(e.name));
-        }
+    PageManager.lock_return_button = true;
+
+    try {
+        // On veut supprimer tous les fichiers
+        await removeContentOfDirectory('forms');
+
+        await SyncManager.clear();
+
+        showToast("Fichiers supprimés avec succès");
+
+        PageManager.lock_return_button = false;
+        instance.close();
+
+        PageManager.reload();
+    } catch (e) {
+        PageManager.lock_return_button = false;
+        instance.close();
+        throw e;
     }
-
-    await Promise.all(promises);
-
-    await SyncManager.clear();
-
-    showToast("Fichiers supprimés avec succès");
-    PageManager.reload();
 }
 
 async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
@@ -78,9 +84,11 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
 
     // Ajoute de l'icône indiquant si l'élément a été synchronisé
     let sync_str = `<i class="material-icons red-text">sync_problem</i>`;
+    container.dataset.synced = "false";
 
     if (state === SaveState.saved) {
         sync_str = `<i class="material-icons green-text">sync</i>`;
+        container.dataset.synced = "true";
     }
     else if (state === SaveState.waiting) {
         sync_str = `<i class="material-icons grey-text">sync_disabled</i>`;
@@ -112,44 +120,38 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
 
     let sync_element: Function = null;
     
-    if (state !== SaveState.saved) {
-        sync_element = () => {
-            // On fait tourner le bouton
-            const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`) as HTMLElement;
+    sync_element = () => {
+        // On fait tourner le bouton
+        const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`) as HTMLElement;
 
-            if (sync_icon) {
-                const icon = sync_icon.innerText;
-                const classes = sync_icon.className;
+        if (sync_icon) {
+            sync_icon.innerText = "sync";
+            sync_icon.className = "material-icons grey-text turn-anim";
 
-                sync_icon.innerText = "sync";
-                sync_icon.className = "material-icons grey-text turn-anim";
-
-                SyncManager.sync(false, false, undefined, [id_without_json])
-                    .then(() => {
-                        // La synchro a réussi
-                        sync_icon.className = "material-icons green-text";
-                    })
-                    .catch(() => {
-                        showToast("La synchronisation a échoué");
-                        // La synchronisation a échoué
-                        sync_icon.className = "material-icons red-text";
-                        sync_icon.innerText = "sync_problem";
-                    });
-            }
-            else {
-                console.log("L'élément a disparu");
-            }
-        };
-    }
+            SyncManager.sync(false, false, undefined, [id_without_json])
+                .then(() => {
+                    // La synchro a réussi
+                    sync_icon.className = "material-icons green-text";
+                    container.dataset.synced = "true";
+                })
+                .catch(() => {
+                    showToast("La synchronisation a échoué");
+                    // La synchronisation a échoué
+                    sync_icon.className = "material-icons red-text";
+                    sync_icon.innerText = "sync_problem";
+                    container.dataset.synced = "false";
+                });
+        }
+        else {
+            console.log("L'élément a disparu");
+        }
+    };
 
     // Définit l'événement de clic sur le formulaire
     selector.addEventListener('click', function() {
         const list = ["Modifier"];
 
-        if (sync_element) {
-            list.push("Synchroniser");
-        }
-        
+        list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
         list.push("Supprimer");
 
         askModalList(list)
@@ -157,7 +159,7 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
                 if (index === 0) {
                     modify_element();
                 }
-                else if (sync_element && index === 1) {
+                else if (index === 1) {
                     sync_element();
                 }
                 else {
@@ -186,9 +188,9 @@ function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormS
                 for (const entry of entries) {
                     promises.push(
                         new Promise(function(resolve, reject) {
-                            entry.file(function (file) {
+                            (entry as FileEntry).file(function (file) {
                                 const reader = new FileReader();
-                                console.log(file);
+                                // console.log(file);
                         
                                 reader.onloadend = function() {
                                     try {
@@ -197,7 +199,6 @@ function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormS
                                         console.log("JSON mal formé:", this.result);
                                         resolve([file, { fields: {}, type: "", location: "", owner: "", metadata: {} }])
                                     }
-                                    
                                 };
 
                                 reader.onerror = function(err) {
@@ -315,10 +316,10 @@ export function initSavedForm(base: HTMLElement) {
                         syncbtn.onclick = function() {
                             askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
                                 .then(() => {
-                                    return SyncManager.graphicalSync();
+                                    return SyncManager.inlineSync();
                                 })
                                 .then(() => {
-                                    PageManager.reload();
+                                    // PageManager.reload();
                                 })
                                 .catch(() => {});
                         }

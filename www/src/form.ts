@@ -1452,7 +1452,7 @@ function callLocationSelector(current_form: Form) : void {
     // Obtient l'élément HTML du modal
     const modal = getModal();
     const instance = initModal({
-        dismissible: false, preventScrolling: true, inDuration: 100, outDuration: 100
+        dismissible: false, preventScrolling: true
     });
     // Ouvre le modal et insère un chargeur
     instance.open();

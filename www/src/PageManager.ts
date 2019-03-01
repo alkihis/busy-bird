@@ -91,7 +91,6 @@ export const PageManager = new class {
     }
     
     protected updateReturnBtn() : void {
-        // @ts-ignore
         if (device.platform === "browser") {
             const back_btn = document.getElementById('__nav_back_button');
             

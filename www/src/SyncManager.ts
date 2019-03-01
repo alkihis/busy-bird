@@ -13,7 +13,7 @@ const MAX_TIMEOUT_FOR_METADATA = 180000; /** Pour chaque fichier "métadonnée" 
 
 // Nombre de formulaires à envoyer en même temps
 // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
-const PROMISE_BY_SYNC_STEP = 5;
+const PROMISE_BY_SYNC_STEP = 10;
 
 const SyncList = new class {
     public init() {
@@ -45,7 +45,7 @@ const SyncList = new class {
     }
 
     public getRemainingToSync() : Promise<number> {
-        return localforage.keys().then(keys => keys.length);
+        return localforage.length();
     }
 
     public clear() : Promise<void> {
@@ -68,6 +68,7 @@ export const SyncManager = new class {
     protected in_sync = false;
     protected list = SyncList;
     protected last_bgsync = Date.now();
+    protected running_fetchs: AbortController[] = [];
 
     public init() {
         this.list.init();
@@ -193,9 +194,20 @@ export const SyncManager = new class {
 
         let json: any;
         try {
+            // Contrôleur pour arrêter les fetch si abort
+            let controller: AbortController;
+
+            if ("AbortController" in window) {
+                controller = new AbortController();
+                this.running_fetchs.push(controller);
+            }
+            
+            let signal = controller ? controller.signal : undefined;
+
             const response = await fetch(API_URL + "forms/send.json", {
                 method: "POST",
                 body: d,
+                signal,
                 headers: new Headers({"Authorization": "Bearer " + UserManager.token})
             }, MAX_TIMEOUT_FOR_FORM);
 
@@ -250,9 +262,20 @@ export const SyncManager = new class {
                 md.append("data", base64);
                 
                 try {
+                    // Contrôleur pour arrêter les fetch si abort
+                    let controller: AbortController;
+
+                    if ("AbortController" in window) {
+                        controller = new AbortController();
+                        this.running_fetchs.push(controller);
+                    }
+                    
+                    let signal = controller ? controller.signal : undefined;
+
                     const resp = await fetch(API_URL + "forms/metadata_send.json", {
                         method: "POST",
                         body: md,
+                        signal,
                         headers: new Headers({"Authorization": "Bearer " + UserManager.token})
                     }, MAX_TIMEOUT_FOR_METADATA);
 
@@ -274,6 +297,24 @@ export const SyncManager = new class {
 
     public available() : Promise<string[]> {
         return this.list.listSaved();
+    }
+
+    public async getSpecificFile(id: string) : Promise<SList> {
+        const entries = await getDirP('forms').then(dirEntries);
+        
+        const filename = id + ".json";
+
+        for (const entry of entries) {
+            if (entry.name === filename) {
+                const text = await readFileFromEntry(entry);
+                const json: FormSave = JSON.parse(text);
+
+                return { type: json.type, metadata: json.metadata };
+            }
+        }
+
+        // On a pas trouvé, on rejette
+        throw "";
     }
 
     /**
@@ -360,7 +401,7 @@ export const SyncManager = new class {
         const modal_cancel = document.getElementById('__sync_modal_cancel');
         modal_cancel.onclick = () => {
             cancel_clicked = true;
-            this.in_sync = false;
+            this.cancelSync();
 
             if (text)
                 text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
@@ -375,7 +416,10 @@ export const SyncManager = new class {
                 return data;
             })
             .catch(reason => {
-                if (reason && typeof reason === 'object') {
+                if (cancel_clicked) {
+                    instance.close();
+                }
+                else if (reason && typeof reason === 'object') {
                     Logger.error("Sync fail:", reason);
 
                     // Si jamais la syncho a été refusée parce qu'une est déjà en cours
@@ -453,9 +497,6 @@ export const SyncManager = new class {
                         `;
                     }
                 }
-                else if (cancel_clicked) {
-                    instance.close();
-                }
                 else {
                     // Modifie le texte du modal
                     modal.innerHTML = `
@@ -477,38 +518,131 @@ export const SyncManager = new class {
             });
     }
 
+    public inlineSync() : Promise<any> {
+        return this.sync(undefined, undefined, undefined, undefined, true)
+            .then(data => {
+                showToast("Synchronisation réussie");
+
+                return data;
+            })
+            .catch(reason => {
+                if (reason && typeof reason === 'object') {
+                    Logger.error("Sync fail:", reason);
+
+                    // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                    if (reason.code === "already") {
+                        showToast('Une synchronisation est déjà en cours.');
+                    }
+                    else if (typeof reason.code === "string") {
+                        let cause = (function(reason) {
+                            switch (reason) {
+                                case "aborted": return "La synchonisation a été annulée.";
+                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
+                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
+                                default: return "Erreur inconnue.";
+                            }
+                        })(reason.code);
+
+                        // Modifie le texte du modal
+                        showToast("Impossible de synchroniser: " + cause);
+                    }
+                }
+                else {
+                    showToast("Une erreur est survenue lors de la synchronisation");
+                }
+
+                return Promise.reject(reason);
+            });
+    }
+
     /**
      * Divise le nombre d'éléments à envoyer par requête.
      * @param id_getter Fonction pour récupérer un ID depuis la BDD
      * @param entries Tableau des IDs à envoyer
      * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
-     * @param position Position actuelle dans le tableau d'entrées (utilisation interne)
+     * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
      */
-    protected async subSyncDivider(id_getter: Function, entries: string[], text_element?: HTMLElement) : Promise<void> {    
+    protected async subSyncDivider(id_getter: Function, entries: string[], text_element?: HTMLElement, inline_sync = false) : Promise<void> {    
         for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
             const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
             const promises: Promise<any>[] = [];
+
+            if (inline_sync)
+                this.changeInlineSyncStatus(subset, "running");
     
             let i = 1;
+            let error_id: string;
+
             for (const id of subset) {
                 // Pour chaque clé disponible
                 promises.push(
                     id_getter(id)
                         .catch(error => {
+                            error_id = id;
                             return Promise.reject({code: "id_getter", error});
                         })
                         .then(value => {
                             if (text_element) {
-                                text_element.innerHTML = `Envoi des données au serveur (Formulaire ${i+position}/${entries.length})`;
+                                text_element.innerHTML = `Envoi des données au serveur\n(Formulaire ${i+position}/${entries.length})`;
                             }
                             i++;
     
-                            return this.sendForm(id, value);
+                            return this.sendForm(id, value)
+                                .catch(error => {
+                                    error_id = id;
+                                    return Promise.reject(error);
+                                });
                         })
                 );
             }
     
-            await Promise.all(promises);
+            await Promise.all(promises)
+                .then(val => {
+                    if (inline_sync)
+                        this.changeInlineSyncStatus(subset, "synced");
+
+                    return val;
+                })
+                .catch(error => {
+                    if (inline_sync) {
+                        this.changeInlineSyncStatus(subset, "unsynced");
+                        this.changeInlineSyncStatus([error_id], "error");
+                    }
+
+                    return Promise.reject(error);
+                });
+        }
+    }
+
+    protected changeInlineSyncStatus(entries: string[], status = "running") : void {
+        for (const e of entries) {
+            // On fait tourner le bouton
+            const sync_icon = document.querySelector(`div[data-formid="${e}"] .sync-icon i`) as HTMLElement;
+
+            if (sync_icon) {
+                const container = sync_icon.parentElement.parentElement;
+                if (status === "running") {
+                    sync_icon.innerText = "sync";
+                    sync_icon.className = "material-icons grey-text turn-anim";
+                }
+                else if (status === "synced") {
+                    sync_icon.className = "material-icons green-text";
+                    container.dataset.synced = "true";
+                }
+                else if (status === "error") {
+                    sync_icon.className = "material-icons red-text";
+                    sync_icon.innerText = "sync_problem";
+                    container.dataset.synced = "false";
+                }
+                else {
+                    // Unsynced
+                    sync_icon.className = "material-icons grey-text";
+                    sync_icon.innerText = "sync_disabled";
+                    container.dataset.synced = "false";
+                }
+            }
         }
     }
 
@@ -528,8 +662,9 @@ export const SyncManager = new class {
      * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
      * @param text_element Élément HTML dans lequel écrire l'avancement
      * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
+     * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
      */
-    public sync(force_all = false, clear_cache = false, text_element?: HTMLElement, force_specific_elements?: string[]) : Promise<any> {
+    public sync(force_all = false, clear_cache = false, text_element?: HTMLElement, force_specific_elements?: string[], inline_sync = false) : Promise<any> {
         if (this.in_sync) {
             return Promise.reject({code: 'already'});
         }
@@ -574,7 +709,18 @@ export const SyncManager = new class {
                     return Promise.resolve(data_cache[id]);
                 }
                 else {
-                    return this.list.get(id);
+                    return this.list.get(id)
+                        .then(value => {
+                            if (value === null) {
+                                // Si la valeur n'existe pas, il faut chercher le fichier id.
+                                // Si le fichier est inexistant, cela lancera une exception,
+                                // donc une promesse rejetée
+                                return this.getSpecificFile(id);
+                            }
+                            else {
+                                return value;
+                            }
+                        });
                 }
             };
 
@@ -585,12 +731,13 @@ export const SyncManager = new class {
                         return;
                     }
 
-                    return this.subSyncDivider(id_getter, entries, text_element)
+                    return this.subSyncDivider(id_getter, entries, text_element, inline_sync)
                         .then(v => {
                             if (!force_specific_elements)
                                 this.list.clear();
                             
                             this.in_sync = false;
+                            this.running_fetchs = [];
 
                             // La synchro a réussi !
                             resolve();
@@ -606,6 +753,12 @@ export const SyncManager = new class {
 
     protected cancelSync() : void {
         this.in_sync = false;
+
+        for (const ctl of this.running_fetchs) {
+            ctl.abort();
+        }
+
+        this.running_fetchs = [];
     }
 
     public clear() : Promise<void> {

@@ -240,7 +240,7 @@ p.smiley.big-text {
 }
 
 .modal-list {
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     margin-top: 10px;
 }
 
@@ -393,12 +393,27 @@ label, .form-audio-label {
     .modal {
         width: 90%;
     }
+    .modal.bottom-sheet {
+        width: 95%;
+    }
 }
 
 .modal {
     max-height: 75%;
+    border-radius: 0;
 }
 
 .modal.modal-fixed-footer {
     height: 75%;
+}
+
+.modal.bottom-sheet {
+    margin: auto;
+    border-radius: 15px;
+    margin-bottom: 10px;
+}
+
+.modal.bottom-sheet.unlimited {
+    max-height: 90%;
+    height: auto;
 }
