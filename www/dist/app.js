@@ -2757,7 +2757,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 return fetch_timeout_2.default(main_4.API_URL + "schemas/subscribed.json", {
                     headers: new Headers({ "Authorization": "Bearer " + user_manager_3.UserManager.token }),
                     method: "GET"
-                }, 20000)
+                }, crash_if_not_form_download ? 30000 : 5000)
                     .then(response => response.json())
                     .then(json => {
                     if (json.error_code)

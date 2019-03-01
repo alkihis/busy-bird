@@ -166,20 +166,21 @@ function makeSelectOption(required = false, def = undefined) {
 
     one_opt.insertAdjacentElement('beforeend', generateTextInput("select_option", "Option (nom interne)", false, undefined, true, def_opt));
     one_opt.insertAdjacentElement('beforeend', generateTextInput("select_label", "Option (nom affiché)", required, undefined, true, def_label));
-    one_opt.insertAdjacentHTML('beforeend', generateCheckbox("select_selected", "Sélectionnée par défaut", def_sel));
 
-    one_opt.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
+    const chkbox = convertHTMLToElement(generateCheckbox("select_selected", "Sélectionnée par défaut", def_sel));
+    chkbox.classList.remove('s12');
+    one_opt.insertAdjacentElement('beforeend', chkbox);
 
     if (!required) {
         // Bouton pour supprimer cette option
         const del = document.createElement('div');
-        del.classList.add('col', 's12', 'delete-btn', 'right-align', 'btn-flat', 'nopointer', 'red-text');
-        del.innerHTML = "<span class='pointer'><i class='material-icons right'>close</i> Supprimer cette option</span>";
+        del.classList.add('delete-btn', 'right', 'btn-floating', 'pointer', 'red', 'z-depth-0');
+        del.innerHTML = "<i class='material-icons'>delete_forever</i>";
         del.firstChild.onclick = function() { one_opt.remove(); };
 
         one_opt.appendChild(del);
-        one_opt.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
     }
+    one_opt.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
 
     return one_opt;
 }

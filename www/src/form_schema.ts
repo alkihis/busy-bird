@@ -193,7 +193,7 @@ export const Forms = new class {
             return fetch(API_URL + "schemas/subscribed.json", {
                 headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
                 method: "GET"
-            }, 20000)
+            },  crash_if_not_form_download ? 30000 : 5000)
                 .then(response => response.json())
                 .then(json => {
                     if (json.error_code) throw json.error_code;

@@ -388,3 +388,17 @@ label, .form-audio-label {
     border-radius: 8px;    
     padding: 20px;
 }
+
+@media only screen and (max-width: 663px) {
+    .modal {
+        width: 90%;
+    }
+}
+
+.modal {
+    max-height: 75%;
+}
+
+.modal.modal-fixed-footer {
+    height: 75%;
+}

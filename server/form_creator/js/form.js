@@ -132,7 +132,7 @@ function addItem(type, label, existing_item = undefined) {
     <div class="modal-content">
         <h5 class="no-margin-top">${existing_item ? "Modifier" : "Nouvel élement"} (${label})</h5>
 
-        <form id="form_new_input" class="row"></form>
+        <form id="form_new_input" class="row" autocomplete="off"></form>
         <div class="clearb"></div>
     </div>
     <div class="modal-footer">

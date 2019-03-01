@@ -28,7 +28,7 @@ function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox =
     const instance = initBottomModal();
 
     modal.innerHTML = `
-    <div class="modal-content">
+    <div class="modal-content center">
         <h5 class="no-margin-top">${title}</h5>
         <p>${question}</p>
 
@@ -42,9 +42,8 @@ function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox =
         ` : ''}
     </div>
     <div class="modal-footer">
-        <a href="#!" id="__question_no" class="btn-flat green-text modal-close left">${text_no}</a>
-        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close right">${text_yes}</a>
-        <div class="clearb"></div>
+        <a href="#!" id="__question_no" class="btn-flat green-text modal-close">${text_no}</a>
+        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close">${text_yes}</a>
     </div>
     `;
 
@@ -70,4 +69,10 @@ function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox =
             }
         });
     });
+}
+
+function convertHTMLToElement(htmlString) {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlString;
+    return tempDiv.firstElementChild;
 }

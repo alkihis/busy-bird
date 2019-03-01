@@ -136,16 +136,3 @@ function exportForm(name, id_field, locations, skip_location, no_location) {
     return URL.createObjectURL(new Blob([JSON.stringify(exported)], {type: "application/json"}));
 }
 
-function test() {
-    let info = document.getElementById('__newfile_info');
-
-    const a = document.createElement('a');
-
-    a.href = exportForm("Cincle plongeur", "ringnb", {}, false, false);
-    a.innerText = "Télécharger";
-    a.target = '_blank';
-    a.download = 'schema.json';
-
-    info.appendChild(a);
-}
-
