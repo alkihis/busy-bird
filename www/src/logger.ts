@@ -72,7 +72,7 @@ export const Logger = new class {
      * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
      */
     public onReady(callback?: (any?) => void) : Promise<void> {
-        const oninit: Promise<void> = new Promise((resolve, reject) => {
+        const oninit: Promise<void> = new Promise((resolve) => {
             if (this.isInit()) {
                 resolve();
             }
@@ -113,7 +113,7 @@ export const Logger = new class {
      * Écrit dans le fichier de log le contenu de text avec le niveau level.
      * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
      * Si level vaut debug, rien ne sera affiché dans la console.
-     * @param text Message
+     * @param data
      * @param level Niveau de log
      */
     public write(data: any, level: LogLevel = LogLevel.warn) : void {
@@ -208,7 +208,7 @@ export const Logger = new class {
      * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
      */
     public onWriteEnd(callbackSuccess?: (any?) => void) : Promise<void> {
-        const onwriteend: Promise<void> = new Promise((resolve, reject) => {
+        const onwriteend: Promise<void> = new Promise((resolve) => {
             if (!this.onWrite && this.isInit()) {
                 resolve();
             }
@@ -241,7 +241,7 @@ export const Logger = new class {
                     resolve();
                 };
         
-                fileWriter.onerror = (e) => {
+                fileWriter.onerror = () => {
                     console.log("Logger: Failed to truncate.");
                     this.onWrite = false;
                     reject();

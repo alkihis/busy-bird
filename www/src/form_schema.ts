@@ -1,4 +1,4 @@
-import { readFile, writeFile, toValidUrl, showToast } from "./helpers";
+import {readFile, writeFile, toValidUrl, showToast, hasConnection} from "./helpers";
 import { Logger } from "./logger";
 import { UserManager } from "./user_manager";
 import { API_URL, ENABLE_FORM_DOWNLOAD } from "./main";
@@ -86,7 +86,7 @@ interface SelectOption {
 export enum FormEntityType {
     integer = "integer", float = "float", select = "select", string = "string", bigstring = "textarea", 
     checkbox = "checkbox", file = "file", slider = "slider", datetime = "datetime", divider = "divider",
-    audio = "audio"
+    audio = "audio", date = "date", time = "time"
 }
 
 export type FormSchema = {[formName: string] : Form};
@@ -123,8 +123,12 @@ export const Forms = new class {
         }
     }
 
-    // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
-    // La clé du formulaire par défaut est contenu dans "default_form_name"
+    /**
+     * Initialise les formulaires disponible via un fichier JSON.
+     * Si un connexion Internet est disponible, télécharge les derniers formulaires depuis le serveur.
+     * Charge automatiquement un formulaire par défaut: la clé du formulaire par défaut est contenu dans "default_form_name"
+     * @param crash_if_not_form_download Rejette la promesse si le téléchargement des formulaires
+     */
     public init(crash_if_not_form_download = false) : Promise<any> {
         const loadJSONInObject = (json: any, save = false) => {
             // Le JSON est reçu, on l'enregistre dans available_forms
@@ -164,13 +168,13 @@ export const Forms = new class {
                     $.get('assets/form.json', {}, (json: any) => {
                         loadJSONInObject(json, true);
                     }, 'json')
-                    .fail(function(error) {
+                    .fail(function() {
                         // Essaie de lire le fichier sur le périphérique
                         readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {
                                 loadJSONInObject(JSON.parse(string));
                             })
-                            .catch((err) => {
+                            .catch(() => {
                                 showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                             })
                     });
@@ -184,7 +188,8 @@ export const Forms = new class {
             init_text.innerText = "Mise à jour des formulaires";
         }
 
-        if ((ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && UserManager.logged) {
+        // noinspection OverlyComplexBooleanExpressionJS
+        if ((ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && hasConnection() && UserManager.logged) {
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes
             return fetch(API_URL + "schemas/subscribed.json", {
@@ -215,6 +220,10 @@ export const Forms = new class {
         }
     }
 
+    /**
+     * Exécute callback quand l'objet est prêt.
+     * @param callback Fonction à appeler quand le formulaire est prêt
+     */
     public onReady(callback: FormCallback) : void {
         if (this.form_ready) {
             callback(this.available_forms, this.current);
@@ -224,6 +233,10 @@ export const Forms = new class {
         }
     }
 
+    /**
+     * Renvoie vrai si le formulaire existe. Renvoie également vrai pour null.
+     * @param name Clé du formulaire
+     */
     public formExists(name: string) : boolean {
         return name === null || name in this.available_forms;
     }

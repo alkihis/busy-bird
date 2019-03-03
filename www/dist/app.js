@@ -77,7 +77,7 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
          * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
          */
         onReady(callback) {
-            const oninit = new Promise((resolve, reject) => {
+            const oninit = new Promise((resolve) => {
                 if (this.isInit()) {
                     resolve();
                 }
@@ -113,7 +113,7 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
          * Écrit dans le fichier de log le contenu de text avec le niveau level.
          * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
          * Si level vaut debug, rien ne sera affiché dans la console.
-         * @param text Message
+         * @param data
          * @param level Niveau de log
          */
         write(data, level = LogLevel.warn) {
@@ -194,7 +194,7 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
          * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
          */
         onWriteEnd(callbackSuccess) {
-            const onwriteend = new Promise((resolve, reject) => {
+            const onwriteend = new Promise((resolve) => {
                 if (!this.onWrite && this.isInit()) {
                     resolve();
                 }
@@ -223,7 +223,7 @@ define("logger", ["require", "exports", "helpers"], function (require, exports, 
                         this.onWrite = false;
                         resolve();
                     };
-                    fileWriter.onerror = (e) => {
+                    fileWriter.onerror = () => {
                         console.log("Logger: Failed to truncate.");
                         this.onWrite = false;
                         reject();
@@ -419,8 +419,8 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
                         // La reconnaissance a échoué
                         reject();
                     }
-                }, function (error) {
-                    // @ts-ignore Polyfill pour le navigateur web
+                }, function () {
+                    // Polyfill pour le navigateur web
                     if (device.platform === "browser") {
                         // @ts-ignore
                         const speech_reco = window.webkitSpeechRecognition || window.SpeechRecognition;
@@ -681,10 +681,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         has(id) {
             return this.get(id)
                 .then(item => {
-                if (item) {
-                    return true;
-                }
-                return false;
+                return !!item;
             });
         }
     };
@@ -950,7 +947,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     promises.push(this.list.add(form[0], form[1]));
                 }
                 return Promise.all(promises)
-                    .then(res => {
+                    .then(() => {
                     return;
                 });
             });
@@ -976,7 +973,16 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 if (text)
                     text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
             };
-            return this.sync(force_all, clear_cache, text)
+            const receiver = new EventTarget();
+            // Actualise le texte avec des events
+            receiver.addEventListener('begin', () => {
+                text.innerText = "Lecture des données à synchroniser";
+            });
+            receiver.addEventListener('send', (event) => {
+                const detail = event.detail;
+                text.innerHTML = `Envoi des données au serveur\n(Formulaire ${detail.number}/${detail.total})`;
+            });
+            return this.sync(force_all, clear_cache, undefined, receiver)
                 .then(data => {
                 helpers_3.showToast("Synchronisation réussie");
                 instance.close();
@@ -1077,53 +1083,72 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             });
         }
         inlineSync() {
-            return this.sync(undefined, undefined, undefined, undefined, true)
-                .then(data => {
-                helpers_3.showToast("Synchronisation réussie");
-                return data;
-            })
-                .catch(reason => {
-                if (reason && typeof reason === 'object') {
-                    logger_2.Logger.error("Sync fail:", reason);
-                    // Si jamais la syncho a été refusée parce qu'une est déjà en cours
-                    if (reason.code === "already") {
-                        helpers_3.showToast('Une synchronisation est déjà en cours.');
-                    }
-                    else if (typeof reason.code === "string") {
-                        let cause = (function (reason) {
-                            switch (reason) {
-                                case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
-                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
-                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
-                                default: return "Erreur inconnue.";
-                            }
-                        })(reason.code);
-                        // Modifie le texte du modal
-                        helpers_3.showToast("Impossible de synchroniser: " + cause);
-                    }
+            return __awaiter(this, void 0, void 0, function* () {
+                const receiver = new EventTarget;
+                // Définit les évènements qui vont se passer lors d'une synchro
+                receiver.addEventListener('send', (event) => {
+                    const id = event.detail.id; /** detail: { id, data: value, number: i+position, total: entries.length } */
+                    changeInlineSyncStatus([id], "running");
+                });
+                receiver.addEventListener('sended', (event) => {
+                    const id = event.detail; /** detail: string */
+                    changeInlineSyncStatus([id], "synced");
+                });
+                receiver.addEventListener('groupsenderror', (event) => {
+                    const subset = event.detail; /** detail: string[] */
+                    changeInlineSyncStatus(subset, "unsynced");
+                });
+                receiver.addEventListener('senderrorfailer', (event) => {
+                    const id = event.detail; /** detail: string */
+                    changeInlineSyncStatus([id], "error");
+                });
+                try {
+                    const data = yield this.sync(undefined, undefined, undefined, receiver);
+                    helpers_3.showToast("Synchronisation réussie");
+                    return data;
                 }
-                else {
-                    helpers_3.showToast("Une erreur est survenue lors de la synchronisation");
+                catch (reason) {
+                    if (reason && typeof reason === 'object') {
+                        logger_2.Logger.error("Sync fail:", reason);
+                        // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                        if (reason.code === "already") {
+                            helpers_3.showToast('Une synchronisation est déjà en cours.');
+                        }
+                        else if (typeof reason.code === "string") {
+                            let cause = (function (reason_1) {
+                                switch (reason_1) {
+                                    case "aborted": return "La synchonisation a été annulée.";
+                                    case "json_send": return "Un formulaire n'a pas pu être envoyé.";
+                                    case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                    case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
+                                    case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
+                                    default: return "Erreur inconnue.";
+                                }
+                            })(reason.code);
+                            // Modifie le texte du modal
+                            helpers_3.showToast("Impossible de synchroniser: " + cause);
+                        }
+                    }
+                    else {
+                        helpers_3.showToast("Une erreur est survenue lors de la synchronisation");
+                    }
+                    throw reason;
                 }
-                return Promise.reject(reason);
             });
         }
         /**
          * Divise le nombre d'éléments à envoyer par requête.
          * @param id_getter Fonction pour récupérer un ID depuis la BDD
          * @param entries Tableau des IDs à envoyer
-         * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
-         * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
+         * @param receiver Récepteur aux événements lancés par la synchro
          */
-        subSyncDivider(id_getter, entries, text_element, inline_sync = false) {
+        subSyncDivider(id_getter, entries, receiver) {
             return __awaiter(this, void 0, void 0, function* () {
                 for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
+                    // Itère par groupe de formulaire. Group de taille PROMISE_BY_SYNC_STEP
                     const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
                     const promises = [];
-                    if (inline_sync)
-                        this.changeInlineSyncStatus(subset, "running");
+                    receiver.dispatchEvent(eventCreator("groupsend", subset));
                     let i = 1;
                     let error_id;
                     for (const id of subset) {
@@ -1134,11 +1159,12 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                             return Promise.reject({ code: "id_getter", error });
                         })
                             .then(value => {
-                            if (text_element) {
-                                text_element.innerHTML = `Envoi des données au serveur\n(Formulaire ${i + position}/${entries.length})`;
-                            }
+                            receiver.dispatchEvent(eventCreator("send", { id, data: value, number: i + position, total: entries.length }));
                             i++;
                             return this.sendForm(id, value)
+                                .then(() => {
+                                receiver.dispatchEvent(eventCreator("sended", id));
+                            })
                                 .catch(error => {
                                 error_id = id;
                                 return Promise.reject(error);
@@ -1147,47 +1173,16 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     }
                     yield Promise.all(promises)
                         .then(val => {
-                        if (inline_sync)
-                            this.changeInlineSyncStatus(subset, "synced");
+                        receiver.dispatchEvent(eventCreator("groupsended", subset));
                         return val;
                     })
                         .catch(error => {
-                        if (inline_sync) {
-                            this.changeInlineSyncStatus(subset, "unsynced");
-                            this.changeInlineSyncStatus([error_id], "error");
-                        }
+                        receiver.dispatchEvent(eventCreator("groupsenderror", subset));
+                        receiver.dispatchEvent(eventCreator("senderrorfailer", error_id));
                         return Promise.reject(error);
                     });
                 }
             });
-        }
-        changeInlineSyncStatus(entries, status = "running") {
-            for (const e of entries) {
-                // On fait tourner le bouton
-                const sync_icon = document.querySelector(`div[data-formid="${e}"] .sync-icon i`);
-                if (sync_icon) {
-                    const container = sync_icon.parentElement.parentElement;
-                    if (status === "running") {
-                        sync_icon.innerText = "sync";
-                        sync_icon.className = "material-icons grey-text turn-anim";
-                    }
-                    else if (status === "synced") {
-                        sync_icon.className = "material-icons green-text";
-                        container.dataset.synced = "true";
-                    }
-                    else if (status === "error") {
-                        sync_icon.className = "material-icons red-text";
-                        sync_icon.innerText = "sync_problem";
-                        container.dataset.synced = "false";
-                    }
-                    else {
-                        // Unsynced
-                        sync_icon.className = "material-icons grey-text";
-                        sync_icon.innerText = "sync_disabled";
-                        container.dataset.synced = "false";
-                    }
-                }
-            }
         }
         /**
          * Lance la synchronisation en arrière plan
@@ -1202,21 +1197,19 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * Synchronise les formulaires courants avec la BDD distante
          * @param force_all Forcer l'envoi de tous les formulaires
          * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
-         * @param text_element Élément HTML dans lequel écrire l'avancement
          * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
-         * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
+         * @param receiver EventTarget qui recevra les événements lancés par la synchronisation
          */
-        sync(force_all = false, clear_cache = false, text_element, force_specific_elements, inline_sync = false) {
+        sync(force_all = false, clear_cache = false, force_specific_elements, receiver = new EventTarget) {
             if (this.in_sync) {
+                receiver.dispatchEvent(eventCreator("error", { code: 'already' }));
                 return Promise.reject({ code: 'already' });
             }
             this.in_sync = true;
             let data_cache = {};
             let use_cache = false;
             return new Promise((resolve, reject) => {
-                if (text_element) {
-                    text_element.innerText = "Lecture des données à synchroniser";
-                }
+                receiver.dispatchEvent(eventCreator("begin"));
                 let entries_promise;
                 if (force_all) {
                     if (clear_cache) {
@@ -1263,20 +1256,24 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 entries_promise
                     .then(entries => {
                     if (!this.in_sync) {
+                        receiver.dispatchEvent(eventCreator("abort"));
                         reject({ code: "aborted" });
                         return;
                     }
-                    return this.subSyncDivider(id_getter, entries, text_element, inline_sync)
-                        .then(v => {
+                    receiver.dispatchEvent(eventCreator("beforesend", entries));
+                    return this.subSyncDivider(id_getter, entries, receiver)
+                        .then(() => {
                         if (!force_specific_elements)
                             this.list.clear();
                         this.in_sync = false;
                         this.running_fetchs = [];
                         // La synchro a réussi !
+                        receiver.dispatchEvent(eventCreator("complete"));
                         resolve();
                     });
                 })
                     .catch(r => {
+                    receiver.dispatchEvent(eventCreator("error", r));
                     this.in_sync = false;
                     logger_2.Logger.info("Synchronisation échouée:", r);
                     reject(r);
@@ -1300,6 +1297,47 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             return this.list.has(id);
         }
     };
+    /**
+     * Crée un événement personnalisé
+     * @param type Type de l'événement
+     * @param detail Données à ajouter
+     */
+    function eventCreator(type, detail) {
+        return new CustomEvent(type, { detail });
+    }
+    /**
+     * Changer l'état des spinners sur la page des entrées
+     * @param entries ID des entrées à actualiser
+     * @param status Status à donner à ces entrées
+     */
+    function changeInlineSyncStatus(entries, status = "running") {
+        for (const e of entries) {
+            // On fait tourner le bouton
+            const sync_icon = document.querySelector(`div[data-formid="${e}"] .sync-icon i`);
+            if (sync_icon) {
+                const container = sync_icon.parentElement.parentElement;
+                if (status === "running") {
+                    sync_icon.innerText = "sync";
+                    sync_icon.className = "material-icons grey-text turn-anim";
+                }
+                else if (status === "synced") {
+                    sync_icon.className = "material-icons green-text";
+                    container.dataset.synced = "true";
+                }
+                else if (status === "error") {
+                    sync_icon.className = "material-icons red-text";
+                    sync_icon.innerText = "sync_problem";
+                    container.dataset.synced = "false";
+                }
+                else {
+                    // Unsynced
+                    sync_icon.className = "material-icons grey-text";
+                    sync_icon.innerText = "sync_disabled";
+                    container.dataset.synced = "false";
+                }
+            }
+        }
+    }
 });
 define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function (require, exports, vocal_recognition_1) {
     "use strict";
@@ -1309,7 +1347,7 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
         const u = new SpeechSynthesisUtterance();
         u.text = sentence;
         u.lang = 'fr-FR';
-        return new Promise((resolve, _) => {
+        return new Promise((resolve) => {
             u.onend = () => { resolve(); };
             speechSynthesis.speak(u);
         });
@@ -1481,10 +1519,10 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         // The scope of 'this' is the event. In order to call the 'receivedEvent'
         // function, we must explicitly call 'app.receivedEvent(...);'
         onDeviceReady: function () {
-            exports.app.receivedEvent('deviceready');
+            // app.receivedEvent('deviceready');
         },
         // Update DOM on a Received Event
-        receivedEvent: function (id) {
+        receivedEvent: function () {
             // var parentElement = document.getElementById(id);
             // var listeningElement = parentElement.querySelector('.listening');
             // var receivedElement = parentElement.querySelector('.received');
@@ -1508,7 +1546,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         }
         // @ts-ignore Force à demander la permission pour enregistrer du son
         const permissions = cordova.plugins.permissions;
-        permissions.requestPermission(permissions.RECORD_AUDIO, status => {
+        permissions.requestPermission(permissions.RECORD_AUDIO, () => {
             // console.log(status);
         }, e => { console.log(e); });
         // Initialise le bouton retour
@@ -1888,6 +1926,8 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         FormEntityType["datetime"] = "datetime";
         FormEntityType["divider"] = "divider";
         FormEntityType["audio"] = "audio";
+        FormEntityType["date"] = "date";
+        FormEntityType["time"] = "time";
     })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
     // Classe contenant le formulaire JSON chargé et parsé
     exports.Forms = new class {
@@ -1911,8 +1951,12 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 helpers_6.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
             }
         }
-        // Initialise les formulaires disponibles via le fichier JSON contenant les formulaires
-        // La clé du formulaire par défaut est contenu dans "default_form_name"
+        /**
+         * Initialise les formulaires disponible via un fichier JSON.
+         * Si un connexion Internet est disponible, télécharge les derniers formulaires depuis le serveur.
+         * Charge automatiquement un formulaire par défaut: la clé du formulaire par défaut est contenu dans "default_form_name"
+         * @param crash_if_not_form_download Rejette la promesse si le téléchargement des formulaires
+         */
         init(crash_if_not_form_download = false) {
             const loadJSONInObject = (json, save = false) => {
                 // Le JSON est reçu, on l'enregistre dans available_forms
@@ -1949,13 +1993,13 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                     $.get('assets/form.json', {}, (json) => {
                         loadJSONInObject(json, true);
                     }, 'json')
-                        .fail(function (error) {
+                        .fail(function () {
                         // Essaie de lire le fichier sur le périphérique
                         helpers_6.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {
                             loadJSONInObject(JSON.parse(string));
                         })
-                            .catch((err) => {
+                            .catch(() => {
                             helpers_6.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                         });
                     });
@@ -1965,7 +2009,8 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             if (init_text) {
                 init_text.innerText = "Mise à jour des formulaires";
             }
-            if ((main_4.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && navigator.connection.type !== Connection.NONE && user_manager_3.UserManager.logged) {
+            // noinspection OverlyComplexBooleanExpressionJS
+            if ((main_4.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && helpers_6.hasConnection() && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
                 return fetch_timeout_2.default(main_4.API_URL + "schemas/subscribed.json", {
@@ -1994,6 +2039,10 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 readStandardForm();
             }
         }
+        /**
+         * Exécute callback quand l'objet est prêt.
+         * @param callback Fonction à appeler quand le formulaire est prêt
+         */
         onReady(callback) {
             if (this.form_ready) {
                 callback(this.available_forms, this.current);
@@ -2002,6 +2051,10 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 this.waiting_callee.push(callback);
             }
         }
+        /**
+         * Renvoie vrai si le formulaire existe. Renvoie également vrai pour null.
+         * @param name Clé du formulaire
+         */
         formExists(name) {
             return name === null || name in this.available_forms;
         }
@@ -2180,24 +2233,25 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
      */
     function getPreloader(text) {
         return `
-    <center style="margin-top: 35vh;">
+    <div style="margin-top: 35vh; text-align: center;">
         ${exports.PRELOADER}
-    </center>
-    <center class="flow-text" style="margin-top: 10px">${text}</center>
+    </div>
+    <div class="flow-text" style="margin-top: 10px; text-align: center;">${text}</div>
     `;
     }
     exports.getPreloader = getPreloader;
     /**
      * Génère un spinner adapté à un modal avec un message d'attente
      * @param text Texte à insérer comme message de chargement
+     * @param footer HTML du footer à injecter (doit contenir le tag .modal-footer)
      * @returns string HTML à insérer dans la racine d'un modal
      */
     function getModalPreloader(text, footer = "") {
         return `<div class="modal-content">
-    <center>
+    <div style="text-align: center;">
         ${exports.SMALL_PRELOADER}
-    </center>
-    <center class="flow-text pre-wrapper" id="${exports.MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px">${text}</center>
+    </div>
+    <div class="flow-text pre-wrapper" id="${exports.MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px; text-align: center;">${text}</div>
     </div>
     ${footer}
     `;
@@ -2257,7 +2311,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
             fileEntry.file(function (file) {
                 const reader = new FileReader();
-                reader.onloadend = function (e) {
+                reader.onloadend = function () {
                     callback(this.result);
                 };
                 if (asBase64) {
@@ -2306,7 +2360,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
                 fileEntry.file(function (file) {
                     const reader = new FileReader();
-                    reader.onloadend = function (e) {
+                    reader.onloadend = function () {
                         resolve(this.result);
                     };
                     if (asBase64) {
@@ -2331,7 +2385,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         return new Promise(function (resolve, reject) {
             fileEntry.file(function (file) {
                 const reader = new FileReader();
-                reader.onloadend = function (e) {
+                reader.onloadend = function () {
                     resolve(this.result);
                 };
                 if (asBase64) {
@@ -2483,7 +2537,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     }
     exports.listDir = listDir;
     function sleep(ms) {
-        return new Promise((resolve, _) => {
+        return new Promise(resolve => {
             setTimeout(resolve, ms);
         });
     }
@@ -2821,9 +2875,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     exports.informalBottomModal = informalBottomModal;
     /**
      * Ouvre un modal informant l'utilisateur, mais sans possiblité de le fermer. Il devra être fermé via JS
-     * @param title string Titre affiché sur le modal
-     * @param question string Question complète / détails sur l'action qui sera réalisée
-     * @param text_close string Texte affiché sur le bouton de fermeture
+     * @param content Texte affiché
      * @returns {M.Modal} Instance du modal généré
      */
     function unclosableBottomModal(content) {
@@ -2844,7 +2896,8 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
      * @param question string Question complète / détails sur l'action qui sera réalisée
      * @param text_yes string Texte affiché sur le bouton de validation
      * @param text_no string Texte affiché sur le bouton d'annulation
-     * @returns Promise<void | boolean> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
+     * @param checkbox Texte d'une checkbox
+     * @returns {Promise<void | boolean>} Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
      * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
      */
     function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox) {
@@ -2953,6 +3006,13 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
     }
     exports.hasGoodConnection = hasGoodConnection;
+    /**
+     * Renvoie vrai si l'utilisateur est en ligne.
+     */
+    function hasConnection() {
+        return navigator.connection.type !== Connection.NONE;
+    }
+    exports.hasConnection = hasConnection;
     function convertHTMLToElement(htmlString) {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = htmlString;
@@ -3216,6 +3276,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     /**
      * Classe le champ comme valide.
      * @param e Element input
+     * @param force_element
      */
     function setValid(e, force_element) {
         e.classList.add('valid');
@@ -3226,6 +3287,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     /**
      * Classe le champ comme invalide.
      * @param e Element input
+     * @param force_element
      */
     function setInvalid(e, force_element) {
         if (e.value === "" && !e.required) {
@@ -3621,7 +3683,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 if (htmle.multiple || ele.external_constraints) {
                     // Création du tip
                     createTip(wrapper, ele);
-                    htmle.addEventListener('change', function (e) {
+                    htmle.addEventListener('change', function () {
                         let valid = true;
                         if (this.multiple && this.required && $(this).val().length === 0) {
                             valid = false;
@@ -3679,6 +3741,50 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     date_plus_timezone.setTime(date_plus_timezone.getTime() + (-date_plus_timezone.getTimezoneOffset() * 60 * 1000));
                     const date_str = date_plus_timezone.toISOString();
                     input.value = date_str.substring(0, date_str.length - 8);
+                }
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                element_to_add = wrapper;
+            }
+            else if (ele.type === form_schema_4.FormEntityType.date) {
+                const wrapper = createInputWrapper();
+                const input = document.createElement('input');
+                const label = document.createElement('label');
+                // Pour que le label ne recouvre pas le texte du champ
+                label.classList.add('active');
+                input.type = "date";
+                input.classList.add('input-form-element');
+                fillStandardInputValues(input, ele, label);
+                // les date sont TOUJOURS valides, si ils sont pleins
+                input.dataset.valid = "1";
+                if (filled_form && ele.name in filled_form.fields) {
+                    input.value = filled_form.fields[ele.name];
+                }
+                else {
+                    // Définition de la valeur par défaut = date actuelle
+                    input.value = helpers_8.dateFormatter("Y-m-d");
+                }
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                element_to_add = wrapper;
+            }
+            else if (ele.type === form_schema_4.FormEntityType.time) {
+                const wrapper = createInputWrapper();
+                const input = document.createElement('input');
+                const label = document.createElement('label');
+                // Pour que le label ne recouvre pas le texte du champ
+                label.classList.add('active');
+                input.type = "time";
+                input.classList.add('input-form-element');
+                fillStandardInputValues(input, ele, label);
+                // les date sont TOUJOURS valides, si ils sont pleins
+                input.dataset.valid = "1";
+                if (filled_form && ele.name in filled_form.fields) {
+                    input.value = filled_form.fields[ele.name];
+                }
+                else {
+                    // Définition de la valeur par défaut = date actuelle
+                    input.value = helpers_8.dateFormatter("h:i");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -3813,6 +3919,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     /**
      * Lance la vérification des champs pour ensuite sauvegarder le formulaire
      * @param type Type de formulaire (ex: cincle_plongeur)
+     * @param current_form
      * @param force_name? Force un identifiant pour le form à enregistrer
      * @param form_save? Précédente sauvegarde du formulaire
      */
@@ -4070,8 +4177,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     }
     /**
      * Sauvegarde le formulaire actuel dans un fichier .json
-     *  @param type
-     *  @param nom ID du formulaire
+     * @param type
+     * @param name
+     * @param location
+     * @param form_save
      */
     function saveForm(type, name, location, form_save) {
         const form_values = {
@@ -4111,6 +4220,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
      * puis crée le formulaire
      * @param name Nom du formulaire (sans le .json)
+     * @param form_values
+     * @param older_save
      */
     function writeDataThenForm(name, form_values, older_save) {
         function saveBlobToFile(resolve, reject, filename, input_name, blob) {
@@ -4233,6 +4344,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * Fonction qui va faire attendre l'arrivée du formulaire,
      * puis charger la page
      * @param base
+     * @param edition_mode
      */
     function initFormPage(base, edition_mode) {
         if (edition_mode) {
@@ -4255,6 +4367,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     /**
      * Charge la page de formulaire (point d'entrée)
      * @param base Element dans lequel écrire la page
+     * @param current_form
+     * @param edition_mode
      */
     function loadFormPage(base, current_form, edition_mode) {
         base.innerHTML = "";
@@ -4746,7 +4860,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             instance.close();
             PageManager_4.PageManager.reload();
         })
-            .catch((error) => {
+            .catch(() => {
             helpers_10.showToast("Impossible d'actualiser les schémas.");
             instance.close();
         });
@@ -5230,7 +5344,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 if (sync_icon) {
                     sync_icon.innerText = "sync";
                     sync_icon.className = "material-icons grey-text turn-anim";
-                    SyncManager_6.SyncManager.sync(false, false, undefined, [id_without_json])
+                    SyncManager_6.SyncManager.sync(false, false, [id_without_json])
                         .then(() => {
                         // La synchro a réussi
                         sync_icon.className = "material-icons green-text";
@@ -5560,6 +5674,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 if (window.history) {
                     window.history.pushState({}, "", "?" + pagename);
                 }
+                //// help linter
+                page = page;
                 // Si on a demandé à fermer le sidenav, on le ferme
                 if (!page.not_sidenav_close) {
                     exports.SIDENAV_OBJ.close();

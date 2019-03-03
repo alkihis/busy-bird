@@ -6,7 +6,7 @@ export function talk(sentence: string) : Promise<void> {
     u.text = sentence;
     u.lang = 'fr-FR';
 
-    return new Promise((resolve, _) => {
+    return new Promise((resolve) => {
         u.onend = () => { resolve() };
 
         speechSynthesis.speak(u);

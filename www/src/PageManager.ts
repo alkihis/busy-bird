@@ -152,12 +152,15 @@ export const PageManager = new class {
             if (window.history) {
                 window.history.pushState({}, "", "?" + pagename);
             }
-    
+
+            //// help linter
+            page = page as AppPageObj;
+
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
                 SIDENAV_OBJ.close();
             }
-    
+
             this.actual_page = page;
             this._should_wait = page.ask_change;
             this.lock_return_button = false;

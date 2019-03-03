@@ -128,7 +128,7 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
             sync_icon.innerText = "sync";
             sync_icon.className = "material-icons grey-text turn-anim";
 
-            SyncManager.sync(false, false, undefined, [id_without_json])
+            SyncManager.sync(false, false, [id_without_json])
                 .then(() => {
                     // La synchro a réussi
                     sync_icon.className = "material-icons green-text";

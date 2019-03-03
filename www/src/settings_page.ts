@@ -24,7 +24,7 @@ function formActualisationModal() : void {
             instance.close();
             PageManager.reload();
         })
-        .catch((error) => {
+        .catch(() => {
             showToast("Impossible d'actualiser les schémas.");
             instance.close();
         })

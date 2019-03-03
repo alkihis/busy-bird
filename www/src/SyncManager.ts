@@ -55,11 +55,7 @@ const SyncList = new class {
     public has(id: string) : Promise<boolean> {
         return this.get(id)
             .then(item => {
-                if (item) {
-                    return true;
-                }
-                
-                return false;
+                return !!item;
             });
     }
 }
@@ -369,7 +365,7 @@ export const SyncManager = new class {
                 }
 
                 return Promise.all(promises)
-                    .then(res => {
+                    .then(() => {
                         return;
                     });
             });
@@ -407,7 +403,19 @@ export const SyncManager = new class {
                 text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
         }
 
-        return this.sync(force_all, clear_cache, text)
+        const receiver = new EventTarget();
+
+        // Actualise le texte avec des events
+        receiver.addEventListener('begin', () => {
+            text.innerText = "Lecture des données à synchroniser";
+        });
+
+        receiver.addEventListener('send', (event: Event) => {
+            const detail = (event as CustomEvent).detail;
+            text.innerHTML = `Envoi des données au serveur\n(Formulaire ${detail.number}/${detail.total})`;
+        });
+
+        return this.sync(force_all, clear_cache, undefined, receiver)
             .then(data => {
                 showToast("Synchronisation réussie");
 
@@ -518,59 +526,79 @@ export const SyncManager = new class {
             });
     }
 
-    public inlineSync() : Promise<any> {
-        return this.sync(undefined, undefined, undefined, undefined, true)
-            .then(data => {
-                showToast("Synchronisation réussie");
+    public async inlineSync() : Promise<any> {
+        const receiver = new EventTarget;
 
-                return data;
-            })
-            .catch(reason => {
-                if (reason && typeof reason === 'object') {
-                    Logger.error("Sync fail:", reason);
+        // Définit les évènements qui vont se passer lors d'une synchro
+        receiver.addEventListener('send', (event: Event) => {
+            const id = (event as CustomEvent).detail.id; /** detail: { id, data: value, number: i+position, total: entries.length } */
+            changeInlineSyncStatus([id], "running");
+        });
 
-                    // Si jamais la syncho a été refusée parce qu'une est déjà en cours
-                    if (reason.code === "already") {
-                        showToast('Une synchronisation est déjà en cours.');
-                    }
-                    else if (typeof reason.code === "string") {
-                        let cause = (function(reason) {
-                            switch (reason) {
-                                case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
-                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
-                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
-                                default: return "Erreur inconnue.";
-                            }
-                        })(reason.code);
+        receiver.addEventListener('sended', (event: Event) => {
+            const id = (event as CustomEvent).detail; /** detail: string */
+            changeInlineSyncStatus([id], "synced");
+        });
 
-                        // Modifie le texte du modal
-                        showToast("Impossible de synchroniser: " + cause);
-                    }
+        receiver.addEventListener('groupsenderror', (event: Event) => {
+            const subset = (event as CustomEvent).detail; /** detail: string[] */
+            changeInlineSyncStatus(subset, "unsynced");
+        });
+
+        receiver.addEventListener('senderrorfailer', (event: Event) => {
+            const id = (event as CustomEvent).detail; /** detail: string */
+            changeInlineSyncStatus([id], "error");
+        });
+
+        try {
+            const data = await this.sync(undefined, undefined, undefined, receiver);
+            showToast("Synchronisation réussie");
+
+            return data;
+        }
+        catch (reason) {
+            if (reason && typeof reason === 'object') {
+                Logger.error("Sync fail:", reason);
+                // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                if (reason.code === "already") {
+                    showToast('Une synchronisation est déjà en cours.');
                 }
-                else {
-                    showToast("Une erreur est survenue lors de la synchronisation");
+                else if (typeof reason.code === "string") {
+                    let cause = (function (reason_1) {
+                        switch (reason_1) {
+                            case "aborted": return "La synchonisation a été annulée.";
+                            case "json_send": return "Un formulaire n'a pas pu être envoyé.";
+                            case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                            case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
+                            case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
+                            default: return "Erreur inconnue.";
+                        }
+                    })(reason.code);
+                    // Modifie le texte du modal
+                    showToast("Impossible de synchroniser: " + cause);
                 }
+            }
+            else {
+                showToast("Une erreur est survenue lors de la synchronisation");
+            }
 
-                return Promise.reject(reason);
-            });
+            throw reason;
+        }
     }
 
     /**
      * Divise le nombre d'éléments à envoyer par requête.
      * @param id_getter Fonction pour récupérer un ID depuis la BDD
      * @param entries Tableau des IDs à envoyer
-     * @param text_element Élément HTML dans lequel écrire l'avancement de l'envoi
-     * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
+     * @param receiver Récepteur aux événements lancés par la synchro
      */
-    protected async subSyncDivider(id_getter: Function, entries: string[], text_element?: HTMLElement, inline_sync = false) : Promise<void> {    
+    protected async subSyncDivider(id_getter: Function, entries: string[], receiver: EventTarget) : Promise<void> {    
         for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
+            // Itère par groupe de formulaire. Group de taille PROMISE_BY_SYNC_STEP
             const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
             const promises: Promise<any>[] = [];
 
-            if (inline_sync)
-                this.changeInlineSyncStatus(subset, "running");
+            receiver.dispatchEvent(eventCreator("groupsend", subset));
     
             let i = 1;
             let error_id: string;
@@ -584,12 +612,13 @@ export const SyncManager = new class {
                             return Promise.reject({code: "id_getter", error});
                         })
                         .then(value => {
-                            if (text_element) {
-                                text_element.innerHTML = `Envoi des données au serveur\n(Formulaire ${i+position}/${entries.length})`;
-                            }
+                            receiver.dispatchEvent(eventCreator("send", { id, data: value, number: i+position, total: entries.length }));
                             i++;
     
                             return this.sendForm(id, value)
+                                .then(() => {
+                                    receiver.dispatchEvent(eventCreator("sended", id));
+                                })
                                 .catch(error => {
                                     error_id = id;
                                     return Promise.reject(error);
@@ -600,49 +629,16 @@ export const SyncManager = new class {
     
             await Promise.all(promises)
                 .then(val => {
-                    if (inline_sync)
-                        this.changeInlineSyncStatus(subset, "synced");
+                    receiver.dispatchEvent(eventCreator("groupsended", subset));
 
                     return val;
                 })
                 .catch(error => {
-                    if (inline_sync) {
-                        this.changeInlineSyncStatus(subset, "unsynced");
-                        this.changeInlineSyncStatus([error_id], "error");
-                    }
+                    receiver.dispatchEvent(eventCreator("groupsenderror", subset));
+                    receiver.dispatchEvent(eventCreator("senderrorfailer", error_id));
 
                     return Promise.reject(error);
                 });
-        }
-    }
-
-    protected changeInlineSyncStatus(entries: string[], status = "running") : void {
-        for (const e of entries) {
-            // On fait tourner le bouton
-            const sync_icon = document.querySelector(`div[data-formid="${e}"] .sync-icon i`) as HTMLElement;
-
-            if (sync_icon) {
-                const container = sync_icon.parentElement.parentElement;
-                if (status === "running") {
-                    sync_icon.innerText = "sync";
-                    sync_icon.className = "material-icons grey-text turn-anim";
-                }
-                else if (status === "synced") {
-                    sync_icon.className = "material-icons green-text";
-                    container.dataset.synced = "true";
-                }
-                else if (status === "error") {
-                    sync_icon.className = "material-icons red-text";
-                    sync_icon.innerText = "sync_problem";
-                    container.dataset.synced = "false";
-                }
-                else {
-                    // Unsynced
-                    sync_icon.className = "material-icons grey-text";
-                    sync_icon.innerText = "sync_disabled";
-                    container.dataset.synced = "false";
-                }
-            }
         }
     }
 
@@ -660,12 +656,12 @@ export const SyncManager = new class {
      * Synchronise les formulaires courants avec la BDD distante
      * @param force_all Forcer l'envoi de tous les formulaires
      * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
-     * @param text_element Élément HTML dans lequel écrire l'avancement
      * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
-     * @param inline_sync Tente d'actualiser les éléments inline sur la page (roue qui tourne)
+     * @param receiver EventTarget qui recevra les événements lancés par la synchronisation
      */
-    public sync(force_all = false, clear_cache = false, text_element?: HTMLElement, force_specific_elements?: string[], inline_sync = false) : Promise<any> {
+    public sync(force_all = false, clear_cache = false, force_specific_elements?: string[], receiver = new EventTarget) : Promise<any> {
         if (this.in_sync) {
+            receiver.dispatchEvent(eventCreator("error", {code: 'already'}));
             return Promise.reject({code: 'already'});
         }
 
@@ -674,9 +670,7 @@ export const SyncManager = new class {
         let use_cache = false;
 
         return new Promise((resolve, reject) => {
-            if (text_element) {
-                text_element.innerText = "Lecture des données à synchroniser";
-            }
+            receiver.dispatchEvent(eventCreator("begin"));
 
             let entries_promise: Promise<string[]>;
 
@@ -704,7 +698,7 @@ export const SyncManager = new class {
             }
 
             // Utilisé pour soit lire depuis le cache, soit lire depuis this.list
-            const id_getter = (id) => {
+            const id_getter = (id: string): Promise<SList> => {
                 if (use_cache) {
                     return Promise.resolve(data_cache[id]);
                 }
@@ -727,12 +721,15 @@ export const SyncManager = new class {
             entries_promise
                 .then(entries => {   
                     if (!this.in_sync) {
+                        receiver.dispatchEvent(eventCreator("abort"));
                         reject({code: "aborted"});
                         return;
                     }
+                    
+                    receiver.dispatchEvent(eventCreator("beforesend", entries));
 
-                    return this.subSyncDivider(id_getter, entries, text_element, inline_sync)
-                        .then(v => {
+                    return this.subSyncDivider(id_getter, entries, receiver)
+                        .then(() => {
                             if (!force_specific_elements)
                                 this.list.clear();
                             
@@ -740,10 +737,12 @@ export const SyncManager = new class {
                             this.running_fetchs = [];
 
                             // La synchro a réussi !
+                            receiver.dispatchEvent(eventCreator("complete"));
                             resolve();
                         });
                 })
                 .catch(r => {
+                    receiver.dispatchEvent(eventCreator("error", r));
                     this.in_sync = false;
                     Logger.info("Synchronisation échouée:", r);
                     reject(r);
@@ -777,4 +776,48 @@ export const SyncManager = new class {
 interface SList {
     type: string;
     metadata: {[fieldName: string]: string};
+}
+
+/**
+ * Crée un événement personnalisé
+ * @param type Type de l'événement
+ * @param detail Données à ajouter
+ */
+function eventCreator(type: string, detail?: any) : CustomEvent {
+    return new CustomEvent(type, { detail });
+}
+
+/**
+ * Changer l'état des spinners sur la page des entrées
+ * @param entries ID des entrées à actualiser
+ * @param status Status à donner à ces entrées
+ */
+function changeInlineSyncStatus(entries: string[], status = "running") : void {
+    for (const e of entries) {
+        // On fait tourner le bouton
+        const sync_icon = document.querySelector(`div[data-formid="${e}"] .sync-icon i`) as HTMLElement;
+
+        if (sync_icon) {
+            const container = sync_icon.parentElement.parentElement;
+            if (status === "running") {
+                sync_icon.innerText = "sync";
+                sync_icon.className = "material-icons grey-text turn-anim";
+            }
+            else if (status === "synced") {
+                sync_icon.className = "material-icons green-text";
+                container.dataset.synced = "true";
+            }
+            else if (status === "error") {
+                sync_icon.className = "material-icons red-text";
+                sync_icon.innerText = "sync_problem";
+                container.dataset.synced = "false";
+            }
+            else {
+                // Unsynced
+                sync_icon.className = "material-icons grey-text";
+                sync_icon.innerText = "sync_disabled";
+                container.dataset.synced = "false";
+            }
+        }
+    }
 }

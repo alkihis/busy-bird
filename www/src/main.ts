@@ -33,10 +33,10 @@ export const app = {
     // The scope of 'this' is the event. In order to call the 'receivedEvent'
     // function, we must explicitly call 'app.receivedEvent(...);'
     onDeviceReady: function () {
-        app.receivedEvent('deviceready');
+        // app.receivedEvent('deviceready');
     },
     // Update DOM on a Received Event
-    receivedEvent: function (id) {
+    receivedEvent: function () {
         // var parentElement = document.getElementById(id);
         // var listeningElement = parentElement.querySelector('.listening');
         // var receivedElement = parentElement.querySelector('.received');
@@ -64,7 +64,7 @@ function initApp() {
 
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
-    permissions.requestPermission(permissions.RECORD_AUDIO, status => {
+    permissions.requestPermission(permissions.RECORD_AUDIO, () => {
         // console.log(status);
     }, e => {console.log(e)});
 

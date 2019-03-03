@@ -1,6 +1,6 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast, dateFormatter } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
@@ -92,6 +92,7 @@ function validConstraints(constraints: string, e: HTMLInputElement | HTMLSelect
 /**
  * Classe le champ comme valide.
  * @param e Element input
+ * @param force_element
  */
 function setValid(e: HTMLElement, force_element?: HTMLElement) : void {
     e.classList.add('valid');
@@ -103,6 +104,7 @@ function setValid(e: HTMLElement, force_element?: HTMLElement) : void {
 /**
  * Classe le champ comme invalide.
  * @param e Element input
+ * @param force_element
  */
 function setInvalid(e: HTMLElement, force_element?: HTMLElement) : void {
     if ((e as HTMLInputElement).value === "" && !(e as HTMLInputElement).required) {
@@ -583,7 +585,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             if (htmle.multiple || ele.external_constraints) {
                 // Création du tip
                 createTip(wrapper, ele);
-                htmle.addEventListener('change', function(this: HTMLSelectElement, e: Event) {
+                htmle.addEventListener('change', function(this: HTMLSelectElement) {
                     let valid = true;
                     if (this.multiple && this.required && ($(this).val() as string[]).length === 0) {
                         valid = false;
@@ -656,6 +658,62 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
                 const date_str = date_plus_timezone.toISOString();
                 input.value = date_str.substring(0, date_str.length-8);
+            }
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
+            element_to_add = wrapper;
+        }
+
+        else if (ele.type === FormEntityType.date) {
+            const wrapper = createInputWrapper();
+            const input = document.createElement('input');
+            const label = document.createElement('label');
+
+            // Pour que le label ne recouvre pas le texte du champ
+            label.classList.add('active');
+            input.type = "date";
+            input.classList.add('input-form-element');
+
+            fillStandardInputValues(input, ele, label);
+
+            // les date sont TOUJOURS valides, si ils sont pleins
+            input.dataset.valid = "1";
+
+            if (filled_form && ele.name in filled_form.fields) {
+                input.value = filled_form.fields[ele.name] as string;
+            }
+            else {
+                // Définition de la valeur par défaut = date actuelle
+                input.value = dateFormatter("Y-m-d");
+            }
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
+            element_to_add = wrapper;
+        }
+
+        else if (ele.type === FormEntityType.time) {
+            const wrapper = createInputWrapper();
+            const input = document.createElement('input');
+            const label = document.createElement('label');
+
+            // Pour que le label ne recouvre pas le texte du champ
+            label.classList.add('active');
+            input.type = "time";
+            input.classList.add('input-form-element');
+
+            fillStandardInputValues(input, ele, label);
+
+            // les date sont TOUJOURS valides, si ils sont pleins
+            input.dataset.valid = "1";
+
+            if (filled_form && ele.name in filled_form.fields) {
+                input.value = filled_form.fields[ele.name] as string;
+            }
+            else {
+                // Définition de la valeur par défaut = date actuelle
+                input.value = dateFormatter("h:i");
             }
 
             wrapper.appendChild(label);
@@ -830,6 +888,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 /**
  * Lance la vérification des champs pour ensuite sauvegarder le formulaire
  * @param type Type de formulaire (ex: cincle_plongeur)
+ * @param current_form
  * @param force_name? Force un identifiant pour le form à enregistrer
  * @param form_save? Précédente sauvegarde du formulaire
  */
@@ -1137,8 +1196,10 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
 
 /**
  * Sauvegarde le formulaire actuel dans un fichier .json
- *  @param type
- *  @param nom ID du formulaire
+ * @param type
+ * @param name
+ * @param location
+ * @param form_save
  */
 export function saveForm(type: string, name: string, location: string, form_save?: FormSave) : Promise<FormSave> {
     const form_values: FormSave = {
@@ -1180,6 +1241,8 @@ export function saveForm(type: string, name: string, location: string, form_save
  * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
  * puis crée le formulaire
  * @param name Nom du formulaire (sans le .json)
+ * @param form_values
+ * @param older_save
  */
 function writeDataThenForm(name: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
     function saveBlobToFile(resolve, reject, filename: string, input_name: string, blob: Blob) : void {
@@ -1328,6 +1391,7 @@ function writeDataThenForm(name: string, form_values: FormSave, older_save?: For
  * Fonction qui va faire attendre l'arrivée du formulaire,
  * puis charger la page
  * @param base
+ * @param edition_mode
  */
 export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, name: string, form: Form}) {
     if (edition_mode) {
@@ -1353,6 +1417,8 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
 /**
  * Charge la page de formulaire (point d'entrée)
  * @param base Element dans lequel écrire la page
+ * @param current_form
+ * @param edition_mode
  */
 export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode?: {save: FormSave, name: string}) {
     base.innerHTML = "";

@@ -47,12 +47,14 @@ const FORM_TYPES = {
     select: {label: "Liste de choix", props: ["allow_voice_control", "tip_on_invalid", "external_constraints", "select_options"]}, 
     checkbox: {label: "Case à cocher", info: "La valeur par défaut est le statut décoché.", props: []},
     datetime: {label: "Date et heure", props: []},
+    date: {label: "Date", props: []},
+    time: {label: "Heure et minutes", props: []},
     file: {label: "Fichier", props: ["file_type"]},
     audio: {label: "Enregistrement audio", props: []}
 };
 
 const EMPTY_CHILDRENS = new Set(["divider", "checkbox", "slider"]); // > No default value & no possibility of require it
-const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "file", "select"]); // > No default value
+const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "date", "time", "file", "select"]); // > No default value
 
 // dec2hex :: Integer -> String
 function dec2hex(dec) {

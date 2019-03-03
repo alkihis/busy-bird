@@ -32,8 +32,8 @@ export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Pr
                         reject();
                     }
                 }, 
-                function(error) {
-                    // @ts-ignore Polyfill pour le navigateur web
+                function() {
+                    // Polyfill pour le navigateur web
                     if (device.platform === "browser") {
                         // @ts-ignore
                         const speech_reco = window.webkitSpeechRecognition || window.SpeechRecognition;

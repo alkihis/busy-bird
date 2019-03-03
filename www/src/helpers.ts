@@ -96,24 +96,25 @@ export function getBottomModalInstance() : M.Modal {
  */
 export function getPreloader(text: string) : string {
     return `
-    <center style="margin-top: 35vh;">
+    <div style="margin-top: 35vh; text-align: center;">
         ${PRELOADER}
-    </center>
-    <center class="flow-text" style="margin-top: 10px">${text}</center>
+    </div>
+    <div class="flow-text" style="margin-top: 10px; text-align: center;">${text}</div>
     `;
 }
 
 /**
  * Génère un spinner adapté à un modal avec un message d'attente
  * @param text Texte à insérer comme message de chargement
+ * @param footer HTML du footer à injecter (doit contenir le tag .modal-footer)
  * @returns string HTML à insérer dans la racine d'un modal
  */
 export function getModalPreloader(text: string, footer: string = "") : string {
     return `<div class="modal-content">
-    <center>
+    <div style="text-align: center;">
         ${SMALL_PRELOADER}
-    </center>
-    <center class="flow-text pre-wrapper" id="${MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px">${text}</center>
+    </div>
+    <div class="flow-text pre-wrapper" id="${MODAL_PRELOADER_TEXT_ID}" style="margin-top: 10px; text-align: center;">${text}</div>
     </div>
     ${footer}
     `;
@@ -176,7 +177,7 @@ export function readFromFile(fileName: string, callback: Function, callbackIfFai
         (fileEntry as FileEntry).file(function (file) {
             const reader = new FileReader();
 
-            reader.onloadend = function (e) {
+            reader.onloadend = function () {
                 callback(this.result);
             };
 
@@ -228,7 +229,7 @@ export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLD
             (fileEntry as FileEntry).file(function (file) {
                 const reader = new FileReader();
     
-                reader.onloadend = function (e) {
+                reader.onloadend = function () {
                     resolve(this.result as string);
                 };
     
@@ -255,7 +256,7 @@ export function readFileFromEntry(fileEntry, asBase64 = false) : Promise<string>
         fileEntry.file(function (file) {
             const reader = new FileReader();
     
-            reader.onloadend = function (e) {
+            reader.onloadend = function () {
                 resolve(this.result as string);
             };
     
@@ -419,7 +420,7 @@ export function listDir(path: string = "") : void {
 }
 
 export function sleep(ms: number) : Promise<void> {
-    return new Promise((resolve, _) => {
+    return new Promise(resolve => {
         setTimeout(resolve, ms);
     });
 }
@@ -790,9 +791,7 @@ export function informalBottomModal(title: string, info: string, text_close = "F
 
 /**
  * Ouvre un modal informant l'utilisateur, mais sans possiblité de le fermer. Il devra être fermé via JS
- * @param title string Titre affiché sur le modal
- * @param question string Question complète / détails sur l'action qui sera réalisée
- * @param text_close string Texte affiché sur le bouton de fermeture
+ * @param content Texte affiché
  * @returns {M.Modal} Instance du modal généré
  */
 export function unclosableBottomModal(content: string) : M.Modal {
@@ -816,7 +815,8 @@ export function unclosableBottomModal(content: string) : M.Modal {
  * @param question string Question complète / détails sur l'action qui sera réalisée
  * @param text_yes string Texte affiché sur le bouton de validation
  * @param text_no string Texte affiché sur le bouton d'annulation
- * @returns Promise<void | boolean> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
+ * @param checkbox Texte d'une checkbox
+ * @returns {Promise<void | boolean>} Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
  * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
  */
 export function askModal(title: string, question: string, text_yes = "Oui", text_no = "Non", checkbox?: string) : Promise<any> {
@@ -931,6 +931,13 @@ export function displayErrorMessage(title: string, message: string = "") : strin
 export function hasGoodConnection() : boolean {
     const networkState = navigator.connection.type;
     return networkState !== Connection.NONE && networkState !== Connection.CELL && networkState !== Connection.CELL_2G;
+}
+
+/**
+ * Renvoie vrai si l'utilisateur est en ligne.
+ */
+export function hasConnection() : boolean {
+    return navigator.connection.type !== Connection.NONE;
 }
 
 export function convertHTMLToElement(htmlString: string) : HTMLElement {
