@@ -44,7 +44,7 @@ export async function initHomePage(base: HTMLElement) {
             if (remaining_count > 15) {
                 home_container.innerHTML = createCardPanel(
                     `<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
-                    <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`,
+                    <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`,
                     "Synchronisation"
                 );
             }

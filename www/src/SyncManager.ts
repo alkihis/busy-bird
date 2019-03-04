@@ -539,7 +539,11 @@ export const SyncManager = new class {
             });
     }
 
-    public async inlineSync() : Promise<any> {
+    /**
+     * Lance un synchronisation silencieuse, mais qui fait tourner des spinners sur la page des entrées
+     * @param force_specific_elements Forcer la synchronisation d'éléments spécifiques
+     */
+    public async inlineSync(force_specific_elements: string[] = undefined) : Promise<any> {
         const receiver = new SyncEvent;
 
         // Définit les évènements qui vont se passer lors d'une synchro
@@ -564,7 +568,7 @@ export const SyncManager = new class {
         });
 
         try {
-            const data = await this.sync(undefined, undefined, undefined, receiver);
+            const data = await this.sync(undefined, undefined, force_specific_elements, receiver);
             showToast("Synchronisation réussie");
 
             return data;

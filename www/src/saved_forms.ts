@@ -1,4 +1,4 @@
-import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast, askModalList, removeContentOfDirectory, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
+import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast, askModalList, removeContentOfDirectory, unclosableBottomModal, SMALL_PRELOADER, getSdCardDir, getSdCardFile } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
@@ -31,6 +31,32 @@ async function deleteAll() : Promise<any> {
     try {
         // On veut supprimer tous les fichiers
         await removeContentOfDirectory('forms');
+        await removeContentOfDirectory('form_data');
+
+        if (device.platform === "Android") {
+            const sddir = await getSdCardDir("forms");
+
+            if (sddir) {
+                await new Promise((resolve, reject) => {
+                    sddir.removeRecursively(resolve, reject);
+                }).catch(() => {});
+
+                // Recrée le répertoire
+                await getSdCardDir("forms");
+            }
+            
+            
+            const sddir2 = await getSdCardDir("form_data");
+
+            if (sddir2) {
+                await new Promise((resolve, reject) => {
+                    sddir2.removeRecursively(resolve, reject);
+                }).catch(() => {});
+
+                // Recrée le répertoire
+                await getSdCardDir("form_data");
+            }
+        }
 
         await SyncManager.clear();
 
@@ -118,35 +144,6 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
         modalDeleteForm(json[0].name);
     }
 
-    let sync_element: Function = null;
-    
-    sync_element = () => {
-        // On fait tourner le bouton
-        const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`) as HTMLElement;
-
-        if (sync_icon) {
-            sync_icon.innerText = "sync";
-            sync_icon.className = "material-icons grey-text turn-anim";
-
-            SyncManager.sync(false, false, [id_without_json])
-                .then(() => {
-                    // La synchro a réussi
-                    sync_icon.className = "material-icons green-text";
-                    container.dataset.synced = "true";
-                })
-                .catch(() => {
-                    showToast("La synchronisation a échoué");
-                    // La synchronisation a échoué
-                    sync_icon.className = "material-icons red-text";
-                    sync_icon.innerText = "sync_problem";
-                    container.dataset.synced = "false";
-                });
-        }
-        else {
-            console.log("L'élément a disparu");
-        }
-    };
-
     // Définit l'événement de clic sur le formulaire
     selector.addEventListener('click', function() {
         const list = ["Modifier"];
@@ -160,7 +157,7 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
                     modify_element();
                 }
                 else if (index === 1) {
-                    sync_element();
+                    SyncManager.inlineSync([id_without_json]);
                 }
                 else {
                     delete_element();
@@ -254,6 +251,19 @@ function deleteForm(id: string) : Promise<void> {
     }
 
     SyncManager.remove(id);
+
+    if (device.platform === 'Android') {
+        // Tente de supprimer depuis la carte SD
+        getSdCardDir("form_data/" + id)
+            .then(dir => {
+                dir.removeRecursively(() => {});
+            });
+
+        getSdCardFile("forms/" + id + '.json')
+            .then(entry => {
+                entry.remove(() => {});
+            });
+    }
 
     return new Promise(function(resolve, reject) {
         if (id) {

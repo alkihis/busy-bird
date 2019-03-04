@@ -81,6 +81,9 @@
     },
     "cordova-plugin-background-fetch": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "cordova.plugins.diagnostic": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {}

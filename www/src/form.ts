@@ -1,6 +1,6 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast, dateFormatter } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast, dateFormatter, writeFileP, readFileAsArrayBuffer, removeSdCardFile, writeSdCardFile } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
@@ -1244,147 +1244,136 @@ export function saveForm(type: string, name: string, location: string, form_save
  * @param form_values
  * @param older_save
  */
-function writeDataThenForm(name: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
-    function saveBlobToFile(resolve: Function, reject: Function, filename: string, input_name: string, blob: Blob) : void {
-        writeFile('form_data/' + name, filename, blob, function() {
-            // Enregistre le nom du fichier sauvegardé dans le formulaire,
-            // dans la valeur du champ field
-            form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
-            form_values.metadata[input_name] = filename;
+async function writeDataThenForm(name: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
+    function saveBlobToFile(filename: string, input_name: string, blob: Blob) : Promise<void> {
+        const full_path = 'form_data/' + name + '/' + filename;
 
-            if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                // Si une image était déjà présente
-                if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                    // Si le fichier enregistré est différent du fichier actuel
-                    // Suppression de l'ancienne image
-                    const parts = (older_save.fields[input_name] as string).split('/');
-                    const file_name = parts.pop();
-                    const dir_name = parts.join('/');
-                    removeFileByName(dir_name, file_name);
+        return writeFileP('form_data/' + name, filename, blob)
+            .then(() => {
+                if (device.platform === 'Android') {
+                    return writeSdCardFile(full_path, blob).catch(e => console.log(e));
                 }
-            }
+            })
+            .then(() => {
+                // Enregistre le nom du fichier sauvegardé dans le formulaire,
+                // dans la valeur du champ field
+                form_values.fields[input_name] = full_path;
+                form_values.metadata[input_name] = filename;
 
-            // Résout la promise
-            resolve();
-        }, function(error: FileError) {
-            // Erreur d'écriture du fichier => on rejette
-            showToast("Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage.");
-            reject(error);
-        });
+                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                    // Si une image était déjà présente
+                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                        // Si le fichier enregistré est différent du fichier actuel
+                        // Suppression de l'ancienne image
+                        const parts = (older_save.fields[input_name] as string).split('/');
+                        const file_name = parts.pop();
+                        const dir_name = parts.join('/');
+                        removeFileByName(dir_name, file_name);
+                        removeSdCardFile(older_save.fields[input_name] as string);
+                    }
+                }
+            })
+            .catch((error: FileError) => {
+                showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                return Promise.reject(error);
+            });
     }
 
-    return getDirP('form_data')
-        .then(() => {
-            // Crée le dossier form_data si besoin
+    // Crée le dossier form_data si besoin
+    await getDirP('form_data');
 
-            // Récupère les images du formulaire
-            const images_from_form = document.getElementsByClassName('input-image-element');
+    // Récupère les images du formulaire
+    const images_from_form = document.getElementsByClassName('input-image-element');
 
-            // Sauvegarde les images !
-            const promises = [];
+    // Sauvegarde les images !
+    const promises = [];
 
-            for (const img of images_from_form) {
-                promises.push(
-                    new Promise(function(resolve, reject) {
-                        const file = (img as HTMLInputElement).files[0];
-                        const input_name = (img as HTMLInputElement).name;
+    for (const img of images_from_form) {
+        const file = (img as HTMLInputElement).files[0];
+        const input_name = (img as HTMLInputElement).name;
 
-                        if (file) {
-                            const filename = file.name;
+        if (file) {
+            const filename = file.name;
 
-                            const r = new FileReader();
-
-                            r.onload = function() {
-                                saveBlobToFile(resolve, reject, filename, input_name, new Blob([this.result]));
-                            }
-
-                            r.onerror = function(error) {
-                                // Erreur de lecture du fichier => on rejette
-                                reject(error);
-                            }
-
-                            r.readAsArrayBuffer(file);
-                        }
-                        else {
-                            if (older_save && input_name in older_save.fields) {
-                                form_values.fields[input_name] = older_save.fields[input_name];
-
-                                if (typeof older_save.fields[input_name] === 'string') {
-                                    const parts = (older_save.fields[input_name] as string).split('/');
-                                    form_values.metadata[input_name] = parts[parts.length - 1];
-                                }
-                                else {
-                                    form_values.metadata[input_name] = null;
-                                }
-                            }
-                            else {
-                                form_values.fields[input_name] = null;
-                                form_values.metadata[input_name] = null;
-                            }
-
-                            resolve();
-                        }
+            promises.push(
+                readFileAsArrayBuffer(file)
+                    .then(buffer => {
+                        return saveBlobToFile(filename, input_name, new Blob([buffer]));
                     })
-                );
+            )
+        }
+        else {
+            if (older_save && input_name in older_save.fields) {
+                form_values.fields[input_name] = older_save.fields[input_name];
+
+                if (typeof older_save.fields[input_name] === 'string') {
+                    const parts = (older_save.fields[input_name] as string).split('/');
+                    form_values.metadata[input_name] = parts[parts.length - 1];
+                }
+                else {
+                    form_values.metadata[input_name] = null;
+                }
             }
-
-            // Récupère les données audio du formulaire
-            const audio_from_form = document.getElementsByClassName('input-audio-element');
-
-            for (const audio of audio_from_form) {
-                promises.push(
-                    new Promise(function(resolve, reject) {
-                        const file = (audio as HTMLInputElement).value;
-                        const input_name = (audio as HTMLInputElement).name;
-
-                        if (file) {
-                            const filename = generateId(ID_COMPLEXITY) + '.mp3';
-
-                            urlToBlob(file).then(function(blob) {
-                                saveBlobToFile(resolve, reject, filename, input_name, blob);
-                            });
-                        }
-                        else {
-                            if (older_save && input_name in older_save.fields) {
-                                form_values.fields[input_name] = older_save.fields[input_name];
-
-                                if (typeof older_save.fields[input_name] === 'string') {
-                                    const parts = (older_save.fields[input_name] as string).split('/');
-                                    form_values.metadata[input_name] = parts[parts.length - 1];
-                                }
-                                else {
-                                    form_values.metadata[input_name] = null;
-                                }
-                            }
-                            else {
-                                form_values.fields[input_name] = null;
-                                form_values.metadata[input_name] = null;
-                            }
-
-                            resolve();
-                        }
-                    })
-                );
+            else {
+                form_values.fields[input_name] = null;
+                form_values.metadata[input_name] = null;
             }
+        }
+    }
 
-            return Promise.all(promises)
-                .then(function() {
-                    // On supprime les metadonnées vides du form
-                    for (const n in form_values.metadata) {
-                        if (form_values.metadata[n] === null) {
-                            delete form_values.metadata[n];
-                        }
-                    }
+    // Récupère les données audio du formulaire
+    const audio_from_form = document.getElementsByClassName('input-audio-element');
 
-                    return new Promise((resolve, reject) => {
-                        // On écrit enfin le formulaire !
-                        writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function() {
-                            console.log(form_values);
-                            resolve(form_values);
-                        }, reject);
-                    }) as Promise<FormSave>;
+    for (const audio of audio_from_form) {
+        const file = (audio as HTMLInputElement).value;
+        const input_name = (audio as HTMLInputElement).name;
+
+        if (file) {
+            const filename = generateId(ID_COMPLEXITY) + '.mp3';
+
+            promises.push(
+                urlToBlob(file).then(function(blob) {
+                    return saveBlobToFile(filename, input_name, blob);
                 })
-        });
+            );
+        }
+        else {
+            if (older_save && input_name in older_save.fields) {
+                form_values.fields[input_name] = older_save.fields[input_name];
+
+                if (typeof older_save.fields[input_name] === 'string') {
+                    const parts = (older_save.fields[input_name] as string).split('/');
+                    form_values.metadata[input_name] = parts[parts.length - 1];
+                }
+                else {
+                    form_values.metadata[input_name] = null;
+                }
+            }
+            else {
+                form_values.fields[input_name] = null;
+                form_values.metadata[input_name] = null;
+            }
+        }
+    }
+
+    await Promise.all(promises);
+
+    // On supprime les metadonnées vides du form
+    for (const n in form_values.metadata) {
+        if (form_values.metadata[n] === null) {
+            delete form_values.metadata[n];
+        }
+    }
+
+    const json_blob = new Blob([JSON.stringify(form_values)]);
+    await writeFileP('forms', name + '.json', json_blob);
+
+    if (device.platform === 'Android') {
+        await writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
+    }
+
+    console.log(form_values);
+    return form_values;
 }
 
 /**
@@ -1398,7 +1387,7 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
         loadFormPage(base, edition_mode.form, edition_mode);
     }
     else {
-        Forms.onReady(function(available, current) {
+        Forms.onReady(function(_, current) {
             if (Forms.current_key === null) {
                 // Aucun formulaire n'est chargé !
                 base.innerHTML = displayErrorMessage(

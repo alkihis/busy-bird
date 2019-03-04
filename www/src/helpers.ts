@@ -1,6 +1,7 @@
 import { PageManager } from "./PageManager";
 import { Forms, FormSave, FormEntityType } from "./form_schema";
 import { SyncManager } from "./SyncManager";
+import { SDCARD_PATH } from "./main";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -215,6 +216,23 @@ export function toValidUrl() : string {
     return cordova.file.applicationDirectory + 'www/';
 }
 
+export function readFileAsArrayBuffer(file: File) : Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+
+        r.onload = function() {
+            resolve(this.result as ArrayBuffer);
+        }
+
+        r.onerror = function(error) {
+            // Erreur de lecture du fichier => on rejette
+            reject(error);
+        }
+
+        r.readAsArrayBuffer(file);
+    });
+}
+
 /**
  * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
  * @param fileName Nom du fichier
@@ -328,6 +346,12 @@ export function getDir(callback: (dirEntry: DirectoryEntry) => void, dirName: st
     }
 }
 
+export function writeFileP(dirName: string, fileName: string, blob: Blob) : Promise<any> {
+    return new Promise((resolve, reject) => {
+        writeFile(dirName, fileName, blob, resolve, reject);
+    });
+}
+
 /**
  * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
  * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
@@ -340,48 +364,45 @@ export function getDir(callback: (dirEntry: DirectoryEntry) => void, dirName: st
 export function writeFile(dirName: string, fileName: string, blob: Blob, callback?, onFailure?) {
     getDir(function(dirEntry) {
         dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-            write(fileEntry, blob).then(function(){
+            writeFileFromEntry(fileEntry, blob).then(function(){
                 if (callback) {
                     callback();
                 }
             }).catch(error => { if (onFailure) onFailure(error); });
         }, function(err) { console.log("Error in writing file", err.code); if (onFailure) { onFailure(err); } });
     }, dirName);
+}
 
-    function write(fileEntry, dataObj) {
-        // Prend l'entry du fichier et son blob à écrire en paramètre
-
-        return new Promise(function (resolve, reject) {
-            // Fonction pour écrire le fichier après vidage
-            function finally_write() {
-                fileEntry.createWriter(function (fileWriter) {
-                    fileWriter.onerror = function (e) {
-                        reject(e);
-                    };
-    
-                    fileWriter.onwriteend = null;
-                    fileWriter.write(dataObj);
-
-                    fileWriter.onwriteend = function () {
-                        resolve();
-                    };
-                });
-            }
-
-            // Vide le fichier
-            fileEntry.createWriter(function (fileWriter) {
+export function writeFileFromEntry(file: FileEntry, content: Blob) : Promise<void> {
+    // Prend l'entry du fichier et son blob à écrire en paramètre
+    return new Promise(function (resolve, reject) {
+        // Fonction pour écrire le fichier après vidage
+        function finally_write() {
+            file.createWriter(function (fileWriter) {
                 fileWriter.onerror = function (e) {
                     reject(e);
                 };
 
-                // Vide le fichier
-                fileWriter.truncate(0);
+                fileWriter.onwriteend = null;
+                fileWriter.write(content);
 
-                // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
-                fileWriter.onwriteend = finally_write;
+                fileWriter.onwriteend = resolve as () => void;
             });
+        }
+
+        // Vide le fichier
+        file.createWriter(function (fileWriter) {
+            fileWriter.onerror = function (e) {
+                reject(e);
+            };
+
+            // Vide le fichier
+            fileWriter.truncate(0);
+
+            // Quand le fichier est vidé, on écrit finalement dedans
+            fileWriter.onwriteend = finally_write;
         });
-    }
+    });
 }
 
 /**
@@ -417,6 +438,20 @@ export function listDir(path: string = "") : void {
             }
         );
     }, path);
+}
+
+export async function listSdCard(path: string = "", prefix: string = SDCARD_PATH) : Promise<void> {
+    const dir = await getSdCardDir(path, prefix) as DirectoryEntry;
+
+    const reader = dir.createReader();
+    reader.readEntries(
+        function (entries) {
+            console.log(entries);
+        },
+        function (err) {
+            console.log(err);
+        }
+    );
 }
 
 export function sleep(ms: number) : Promise<void> {
@@ -1066,6 +1101,9 @@ export async function createRandomForms(count: 50) : Promise<void> {
                 }, reject);
             })
         );
+
+        writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
+            .catch(error => console.log(error));
     }
 
     await Promise.all(promises);
@@ -1080,4 +1118,81 @@ export async function removeContentOfDirectory(name: string) {
     
     // Recrée le répertoire
     await getDirP(name);
+}
+
+export function resolveFSURL(url: string) : Promise<Entry> {
+    return new Promise((resolve, reject) => {
+        window.resolveLocalFileSystemURL(url, resolve, reject);
+    });
+}
+
+export function getDirectoryFromEntry(entry: DirectoryEntry, name: string, create = true) : Promise<DirectoryEntry> {
+    return new Promise((resolve, reject) => {
+        entry.getDirectory(name, { create, exclusive: false }, resolve, reject);
+    });
+}
+
+export function getFileFromEntry(entry: DirectoryEntry, name: string, create = true) : Promise<FileEntry> {
+    return new Promise((resolve, reject) => {
+        entry.getFile(name, { create, exclusive: false }, resolve, reject);
+    });
+}
+
+export async function getSdCardDir(name: string = "", root: string = SDCARD_PATH) : Promise<DirectoryEntry> {
+    let folder: DirectoryEntry;
+
+    try {
+        folder = await resolveFSURL(root) as DirectoryEntry;
+    } catch (e) {
+        return null;
+    }
+    
+    if (folder === null) {
+        return null;
+    }
+
+    if (name) {
+        return getDirectoryFromEntry(folder, name);
+    }
+    else {
+        return folder;
+    }
+}
+
+export async function getSdCardFile(name: string) : Promise<FileEntry> {
+    const path = name.split('/');
+    name = path.pop();
+    const foldername = path.join('/');
+
+    const folder = await getSdCardDir(foldername);
+
+    if (folder === null || !name) {
+        return null;
+    }
+
+    return getFileFromEntry(folder, name);
+}
+
+export async function writeSdCardFile(path: string, content: Blob) : Promise<void> {
+    const file = await getSdCardFile(path);
+
+    console.log(file);
+    if (file) {
+        return writeFileFromEntry(file, content);
+    }
+}
+
+export async function removeSdCardFile(path: string) : Promise<void> {
+    const file = await getSdCardFile(path);
+
+    return new Promise((resolve, reject) => {
+        file.remove(resolve, reject);
+    });
+}
+
+export function getSdCardFolder() : Promise<{path: string, filePath: string, canWrite: boolean}[]> {
+    return new Promise((resolve, reject) => {
+        // @ts-ignore
+        cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
+    });
 }

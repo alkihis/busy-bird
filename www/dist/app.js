@@ -1095,7 +1095,11 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 return Promise.reject(reason);
             });
         }
-        inlineSync() {
+        /**
+         * Lance un synchronisation silencieuse, mais qui fait tourner des spinners sur la page des entrées
+         * @param force_specific_elements Forcer la synchronisation d'éléments spécifiques
+         */
+        inlineSync(force_specific_elements = undefined) {
             return __awaiter(this, void 0, void 0, function* () {
                 const receiver = new SyncEvent;
                 // Définit les évènements qui vont se passer lors d'une synchro
@@ -1116,7 +1120,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     changeInlineSyncStatus([id], "error");
                 });
                 try {
-                    const data = yield this.sync(undefined, undefined, undefined, receiver);
+                    const data = yield this.sync(undefined, undefined, force_specific_elements, receiver);
                     helpers_3.showToast("Synchronisation réussie");
                     return data;
                 }
@@ -1515,6 +1519,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.APP_VERSION = 0.6;
     exports.MP3_BITRATE = 256; /** En kb/s */
     exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
+    exports.SDCARD_PATH = null;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -1545,60 +1550,76 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         }
     };
     function initApp() {
-        // Change le répertoire de données
-        // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
-        // Sinon, si mobile, on passe sur dataDirectory
-        helpers_4.changeDir();
-        logger_3.Logger.init();
-        form_schema_1.Forms.init();
-        SyncManager_1.SyncManager.init();
-        // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
-        if (window.MobileAccessibility) {
-            // @ts-ignore
-            window.MobileAccessibility.usePreferredTextZoom(false);
-        }
-        // @ts-ignore Force à demander la permission pour enregistrer du son
-        const permissions = cordova.plugins.permissions;
-        permissions.requestPermission(permissions.RECORD_AUDIO, () => {
-            // console.log(status);
-        }, e => { console.log(e); });
-        // Initialise le bouton retour
-        document.addEventListener("backbutton", function () {
-            PageManager_1.PageManager.goBack();
-        }, false);
-        exports.app.initialize();
-        initDebug();
-        helpers_4.initModal();
-        // Check si on est à une page spéciale
-        let href = "";
-        if (window.location) {
-            const tmp = location.href.split('#')[0].split('?');
-            // Récupère la partie de l'URL après la query string et avant le #
-            href = tmp[tmp.length - 1];
-        }
-        // Quand les forms sont prêts, on affiche l'app !
-        form_schema_1.Forms.onReady(function () {
-            let prom;
-            if (href && PageManager_1.PageManager.pageExists(href)) {
-                prom = PageManager_1.PageManager.changePage(href);
-            }
-            else {
-                prom = PageManager_1.PageManager.changePage(PageManager_1.AppPageName.home);
-            }
-            prom
-                .then(() => {
-                // On montre l'écran quand tout est chargé
-                navigator.splashscreen.hide();
-            })
-                .catch(err => {
-                // On montre l'écran et on affiche l'erreur
-                navigator.splashscreen.hide();
-                // Bloque le sidenav pour empêcher de naviguer
-                try {
-                    PageManager_1.SIDENAV_OBJ.destroy();
+        return __awaiter(this, void 0, void 0, function* () {
+            // Change le répertoire de données
+            // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
+            // Sinon, si mobile, on passe sur dataDirectory
+            helpers_4.changeDir();
+            // @ts-ignore Force à demander la permission pour enregistrer du son
+            const permissions = cordova.plugins.permissions;
+            permissions.requestPermission(permissions.RECORD_AUDIO, () => {
+                // console.log(status);
+            }, e => { console.log(e); });
+            // @ts-ignore Force à demander la permission pour accéder à la SD
+            permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, () => {
+                // console.log(status);
+            }, e => { console.log(e); });
+            try {
+                const folders = yield helpers_4.getSdCardFolder();
+                for (const f of folders) {
+                    if (f.canWrite) {
+                        exports.SDCARD_PATH = f.filePath;
+                        break;
+                    }
                 }
-                catch (e) { }
-                helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+            }
+            catch (e) { }
+            logger_3.Logger.init();
+            form_schema_1.Forms.init();
+            SyncManager_1.SyncManager.init();
+            // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
+            if (window.MobileAccessibility) {
+                // @ts-ignore
+                window.MobileAccessibility.usePreferredTextZoom(false);
+            }
+            // Initialise le bouton retour
+            document.addEventListener("backbutton", function () {
+                PageManager_1.PageManager.goBack();
+            }, false);
+            exports.app.initialize();
+            initDebug();
+            helpers_4.initModal();
+            // Check si on est à une page spéciale
+            let href = "";
+            if (window.location) {
+                const tmp = location.href.split('#')[0].split('?');
+                // Récupère la partie de l'URL après la query string et avant le #
+                href = tmp[tmp.length - 1];
+            }
+            // Quand les forms sont prêts, on affiche l'app !
+            form_schema_1.Forms.onReady(function () {
+                let prom;
+                if (href && PageManager_1.PageManager.pageExists(href)) {
+                    prom = PageManager_1.PageManager.changePage(href);
+                }
+                else {
+                    prom = PageManager_1.PageManager.changePage(PageManager_1.AppPageName.home);
+                }
+                prom
+                    .then(() => {
+                    // On montre l'écran quand tout est chargé
+                    navigator.splashscreen.hide();
+                })
+                    .catch(err => {
+                    // On montre l'écran et on affiche l'erreur
+                    navigator.splashscreen.hide();
+                    // Bloque le sidenav pour empêcher de naviguer
+                    try {
+                        PageManager_1.SIDENAV_OBJ.destroy();
+                    }
+                    catch (e) { }
+                    helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+                });
             });
         });
     }
@@ -1616,7 +1637,9 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             rmrfPromise: helpers_4.rmrfPromise,
             Logger: logger_3.Logger,
             Forms: form_schema_1.Forms,
+            listSdCard: helpers_4.listSdCard,
             SyncEvent: SyncManager_1.SyncEvent,
+            getSdCardDir: helpers_4.getSdCardDir,
             askModalList: helpers_4.askModalList,
             createRandomForms: helpers_4.createRandomForms,
             recorder: function () {
@@ -2156,7 +2179,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
-define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager"], function (require, exports, PageManager_2, form_schema_3, SyncManager_2) {
+define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "main"], function (require, exports, PageManager_2, form_schema_3, SyncManager_2, main_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -2362,6 +2385,20 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         return cordova.file.applicationDirectory + 'www/';
     }
     exports.toValidUrl = toValidUrl;
+    function readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = function () {
+                resolve(this.result);
+            };
+            r.onerror = function (error) {
+                // Erreur de lecture du fichier => on rejette
+                reject(error);
+            };
+            r.readAsArrayBuffer(file);
+        });
+    }
+    exports.readFileAsArrayBuffer = readFileAsArrayBuffer;
     /**
      * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
      * @param fileName Nom du fichier
@@ -2466,6 +2503,12 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         }
     }
     exports.getDir = getDir;
+    function writeFileP(dirName, fileName, blob) {
+        return new Promise((resolve, reject) => {
+            writeFile(dirName, fileName, blob, resolve, reject);
+        });
+    }
+    exports.writeFileP = writeFileP;
     /**
      * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
      * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
@@ -2478,7 +2521,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     function writeFile(dirName, fileName, blob, callback, onFailure) {
         getDir(function (dirEntry) {
             dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                write(fileEntry, blob).then(function () {
+                writeFileFromEntry(fileEntry, blob).then(function () {
                     if (callback) {
                         callback();
                     }
@@ -2488,36 +2531,35 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
                 onFailure(err);
             } });
         }, dirName);
-        function write(fileEntry, dataObj) {
-            // Prend l'entry du fichier et son blob à écrire en paramètre
-            return new Promise(function (resolve, reject) {
-                // Fonction pour écrire le fichier après vidage
-                function finally_write() {
-                    fileEntry.createWriter(function (fileWriter) {
-                        fileWriter.onerror = function (e) {
-                            reject(e);
-                        };
-                        fileWriter.onwriteend = null;
-                        fileWriter.write(dataObj);
-                        fileWriter.onwriteend = function () {
-                            resolve();
-                        };
-                    });
-                }
-                // Vide le fichier
-                fileEntry.createWriter(function (fileWriter) {
+    }
+    exports.writeFile = writeFile;
+    function writeFileFromEntry(file, content) {
+        // Prend l'entry du fichier et son blob à écrire en paramètre
+        return new Promise(function (resolve, reject) {
+            // Fonction pour écrire le fichier après vidage
+            function finally_write() {
+                file.createWriter(function (fileWriter) {
                     fileWriter.onerror = function (e) {
                         reject(e);
                     };
-                    // Vide le fichier
-                    fileWriter.truncate(0);
-                    // Quand le fichier est vidé, on écrit finalement... enfin.. dedans
-                    fileWriter.onwriteend = finally_write;
+                    fileWriter.onwriteend = null;
+                    fileWriter.write(content);
+                    fileWriter.onwriteend = resolve;
                 });
+            }
+            // Vide le fichier
+            file.createWriter(function (fileWriter) {
+                fileWriter.onerror = function (e) {
+                    reject(e);
+                };
+                // Vide le fichier
+                fileWriter.truncate(0);
+                // Quand le fichier est vidé, on écrit finalement dedans
+                fileWriter.onwriteend = finally_write;
             });
-        }
+        });
     }
-    exports.writeFile = writeFile;
+    exports.writeFileFromEntry = writeFileFromEntry;
     /**
      * Crée un dossier name dans la racine du système de fichiers.
      * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
@@ -2550,6 +2592,18 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         }, path);
     }
     exports.listDir = listDir;
+    function listSdCard(path = "", prefix = main_5.SDCARD_PATH) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const dir = yield getSdCardDir(path, prefix);
+            const reader = dir.createReader();
+            reader.readEntries(function (entries) {
+                console.log(entries);
+            }, function (err) {
+                console.log(err);
+            });
+        });
+    }
+    exports.listSdCard = listSdCard;
     function sleep(ms) {
         return new Promise(resolve => {
             setTimeout(resolve, ms);
@@ -3141,6 +3195,8 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
                         SyncManager_2.SyncManager.add(id, save).then(resolve).catch(reject);
                     }, reject);
                 }));
+                writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
+                    .catch(error => console.log(error));
             }
             yield Promise.all(promises);
         });
@@ -3157,6 +3213,84 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         });
     }
     exports.removeContentOfDirectory = removeContentOfDirectory;
+    function resolveFSURL(url) {
+        return new Promise((resolve, reject) => {
+            window.resolveLocalFileSystemURL(url, resolve, reject);
+        });
+    }
+    exports.resolveFSURL = resolveFSURL;
+    function getDirectoryFromEntry(entry, name, create = true) {
+        return new Promise((resolve, reject) => {
+            entry.getDirectory(name, { create, exclusive: false }, resolve, reject);
+        });
+    }
+    exports.getDirectoryFromEntry = getDirectoryFromEntry;
+    function getFileFromEntry(entry, name, create = true) {
+        return new Promise((resolve, reject) => {
+            entry.getFile(name, { create, exclusive: false }, resolve, reject);
+        });
+    }
+    exports.getFileFromEntry = getFileFromEntry;
+    function getSdCardDir(name = "", root = main_5.SDCARD_PATH) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let folder;
+            try {
+                folder = (yield resolveFSURL(root));
+            }
+            catch (e) {
+                return null;
+            }
+            if (folder === null) {
+                return null;
+            }
+            if (name) {
+                return getDirectoryFromEntry(folder, name);
+            }
+            else {
+                return folder;
+            }
+        });
+    }
+    exports.getSdCardDir = getSdCardDir;
+    function getSdCardFile(name) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const path = name.split('/');
+            name = path.pop();
+            const foldername = path.join('/');
+            const folder = yield getSdCardDir(foldername);
+            if (folder === null || !name) {
+                return null;
+            }
+            return getFileFromEntry(folder, name);
+        });
+    }
+    exports.getSdCardFile = getSdCardFile;
+    function writeSdCardFile(path, content) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const file = yield getSdCardFile(path);
+            console.log(file);
+            if (file) {
+                return writeFileFromEntry(file, content);
+            }
+        });
+    }
+    exports.writeSdCardFile = writeSdCardFile;
+    function removeSdCardFile(path) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const file = yield getSdCardFile(path);
+            return new Promise((resolve, reject) => {
+                file.remove(resolve, reject);
+            });
+        });
+    }
+    exports.removeSdCardFile = removeSdCardFile;
+    function getSdCardFolder() {
+        return new Promise((resolve, reject) => {
+            // @ts-ignore
+            cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
+        });
+    }
+    exports.getSdCardFolder = getSdCardFolder;
 });
 define("location", ["require", "exports", "helpers"], function (require, exports, helpers_7) {
     "use strict";
@@ -3215,7 +3349,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_4, helpers_8, main_5, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_3, location_1) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_4, helpers_8, main_6, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_3, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3883,7 +4017,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
-                        const duration = ((base64.length * 0.7) / (main_5.MP3_BITRATE * 1000)) * 8;
+                        const duration = ((base64.length * 0.7) / (main_6.MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                     }, function (fail) {
                         logger_4.Logger.warn("Impossible de charger le fichier", fail);
@@ -4124,7 +4258,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 save_btn.onclick = function () {
                     modal.innerHTML = helpers_8.getModalPreloader("Sauvegarde en cours");
                     modal.classList.remove('modal-fixed-footer');
-                    const unique_id = force_name || helpers_8.generateId(main_5.ID_COMPLEXITY);
+                    const unique_id = force_name || helpers_8.generateId(main_6.ID_COMPLEXITY);
                     PageManager_3.PageManager.lock_return_button = true;
                     saveForm(type, unique_id, location_str, form_save)
                         .then((form_values) => {
@@ -4238,120 +4372,113 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * @param older_save
      */
     function writeDataThenForm(name, form_values, older_save) {
-        function saveBlobToFile(resolve, reject, filename, input_name, blob) {
-            helpers_8.writeFile('form_data/' + name, filename, blob, function () {
-                // Enregistre le nom du fichier sauvegardé dans le formulaire,
-                // dans la valeur du champ field
-                form_values.fields[input_name] = 'form_data/' + name + '/' + filename;
-                form_values.metadata[input_name] = filename;
-                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                    // Si une image était déjà présente
-                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                        // Si le fichier enregistré est différent du fichier actuel
-                        // Suppression de l'ancienne image
-                        const parts = older_save.fields[input_name].split('/');
-                        const file_name = parts.pop();
-                        const dir_name = parts.join('/');
-                        helpers_8.removeFileByName(dir_name, file_name);
+        return __awaiter(this, void 0, void 0, function* () {
+            function saveBlobToFile(filename, input_name, blob) {
+                const full_path = 'form_data/' + name + '/' + filename;
+                return helpers_8.writeFileP('form_data/' + name, filename, blob)
+                    .then(() => {
+                    if (device.platform === 'Android') {
+                        return helpers_8.writeSdCardFile(full_path, blob).catch(e => console.log(e));
                     }
-                }
-                // Résout la promise
-                resolve();
-            }, function (error) {
-                // Erreur d'écriture du fichier => on rejette
-                helpers_8.showToast("Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage.");
-                reject(error);
-            });
-        }
-        return helpers_8.getDirP('form_data')
-            .then(() => {
+                })
+                    .then(() => {
+                    // Enregistre le nom du fichier sauvegardé dans le formulaire,
+                    // dans la valeur du champ field
+                    form_values.fields[input_name] = full_path;
+                    form_values.metadata[input_name] = filename;
+                    if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                        // Si une image était déjà présente
+                        if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                            // Si le fichier enregistré est différent du fichier actuel
+                            // Suppression de l'ancienne image
+                            const parts = older_save.fields[input_name].split('/');
+                            const file_name = parts.pop();
+                            const dir_name = parts.join('/');
+                            helpers_8.removeFileByName(dir_name, file_name);
+                            helpers_8.removeSdCardFile(older_save.fields[input_name]);
+                        }
+                    }
+                })
+                    .catch((error) => {
+                    helpers_8.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                    return Promise.reject(error);
+                });
+            }
             // Crée le dossier form_data si besoin
+            yield helpers_8.getDirP('form_data');
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
             // Sauvegarde les images !
             const promises = [];
             for (const img of images_from_form) {
-                promises.push(new Promise(function (resolve, reject) {
-                    const file = img.files[0];
-                    const input_name = img.name;
-                    if (file) {
-                        const filename = file.name;
-                        const r = new FileReader();
-                        r.onload = function () {
-                            saveBlobToFile(resolve, reject, filename, input_name, new Blob([this.result]));
-                        };
-                        r.onerror = function (error) {
-                            // Erreur de lecture du fichier => on rejette
-                            reject(error);
-                        };
-                        r.readAsArrayBuffer(file);
-                    }
-                    else {
-                        if (older_save && input_name in older_save.fields) {
-                            form_values.fields[input_name] = older_save.fields[input_name];
-                            if (typeof older_save.fields[input_name] === 'string') {
-                                const parts = older_save.fields[input_name].split('/');
-                                form_values.metadata[input_name] = parts[parts.length - 1];
-                            }
-                            else {
-                                form_values.metadata[input_name] = null;
-                            }
+                const file = img.files[0];
+                const input_name = img.name;
+                if (file) {
+                    const filename = file.name;
+                    promises.push(helpers_8.readFileAsArrayBuffer(file)
+                        .then(buffer => {
+                        return saveBlobToFile(filename, input_name, new Blob([buffer]));
+                    }));
+                }
+                else {
+                    if (older_save && input_name in older_save.fields) {
+                        form_values.fields[input_name] = older_save.fields[input_name];
+                        if (typeof older_save.fields[input_name] === 'string') {
+                            const parts = older_save.fields[input_name].split('/');
+                            form_values.metadata[input_name] = parts[parts.length - 1];
                         }
                         else {
-                            form_values.fields[input_name] = null;
                             form_values.metadata[input_name] = null;
                         }
-                        resolve();
                     }
-                }));
+                    else {
+                        form_values.fields[input_name] = null;
+                        form_values.metadata[input_name] = null;
+                    }
+                }
             }
             // Récupère les données audio du formulaire
             const audio_from_form = document.getElementsByClassName('input-audio-element');
             for (const audio of audio_from_form) {
-                promises.push(new Promise(function (resolve, reject) {
-                    const file = audio.value;
-                    const input_name = audio.name;
-                    if (file) {
-                        const filename = helpers_8.generateId(main_5.ID_COMPLEXITY) + '.mp3';
-                        helpers_8.urlToBlob(file).then(function (blob) {
-                            saveBlobToFile(resolve, reject, filename, input_name, blob);
-                        });
-                    }
-                    else {
-                        if (older_save && input_name in older_save.fields) {
-                            form_values.fields[input_name] = older_save.fields[input_name];
-                            if (typeof older_save.fields[input_name] === 'string') {
-                                const parts = older_save.fields[input_name].split('/');
-                                form_values.metadata[input_name] = parts[parts.length - 1];
-                            }
-                            else {
-                                form_values.metadata[input_name] = null;
-                            }
+                const file = audio.value;
+                const input_name = audio.name;
+                if (file) {
+                    const filename = helpers_8.generateId(main_6.ID_COMPLEXITY) + '.mp3';
+                    promises.push(helpers_8.urlToBlob(file).then(function (blob) {
+                        return saveBlobToFile(filename, input_name, blob);
+                    }));
+                }
+                else {
+                    if (older_save && input_name in older_save.fields) {
+                        form_values.fields[input_name] = older_save.fields[input_name];
+                        if (typeof older_save.fields[input_name] === 'string') {
+                            const parts = older_save.fields[input_name].split('/');
+                            form_values.metadata[input_name] = parts[parts.length - 1];
                         }
                         else {
-                            form_values.fields[input_name] = null;
                             form_values.metadata[input_name] = null;
                         }
-                        resolve();
                     }
-                }));
-            }
-            return Promise.all(promises)
-                .then(function () {
-                // On supprime les metadonnées vides du form
-                for (const n in form_values.metadata) {
-                    if (form_values.metadata[n] === null) {
-                        delete form_values.metadata[n];
+                    else {
+                        form_values.fields[input_name] = null;
+                        form_values.metadata[input_name] = null;
                     }
                 }
-                return new Promise((resolve, reject) => {
-                    // On écrit enfin le formulaire !
-                    helpers_8.writeFile('forms', name + '.json', new Blob([JSON.stringify(form_values)]), function () {
-                        console.log(form_values);
-                        resolve(form_values);
-                    }, reject);
-                });
-            });
+            }
+            yield Promise.all(promises);
+            // On supprime les metadonnées vides du form
+            for (const n in form_values.metadata) {
+                if (form_values.metadata[n] === null) {
+                    delete form_values.metadata[n];
+                }
+            }
+            const json_blob = new Blob([JSON.stringify(form_values)]);
+            yield helpers_8.writeFileP('forms', name + '.json', json_blob);
+            if (device.platform === 'Android') {
+                yield helpers_8.writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
+            }
+            console.log(form_values);
+            return form_values;
         });
     }
     /**
@@ -4365,7 +4492,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             loadFormPage(base, edition_mode.form, edition_mode);
         }
         else {
-            form_schema_4.Forms.onReady(function (available, current) {
+            form_schema_4.Forms.onReady(function (_, current) {
                 if (form_schema_4.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
                     base.innerHTML = helpers_8.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
@@ -4550,7 +4677,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_5.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_6.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -4612,7 +4739,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_4, helpers_9, main_6, form_schema_5, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_4, helpers_9, main_7, form_schema_5, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4623,7 +4750,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_6.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_7.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
             sur le terrain !
@@ -4648,7 +4775,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
                 if (helpers_9.hasGoodConnection()) {
                     if (remaining_count > 15) {
                         home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
-                    <span class="blue-text text-darken-2">Rendez-vous dans les paramètres pour lancer la synchronisation.</span>`, "Synchronisation");
+                    <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`, "Synchronisation");
                     }
                     else if (remaining_count > 0) {
                         home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">
@@ -4856,7 +4983,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_6, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_7, home_1, Settings_2) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_6, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_8, home_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -5022,7 +5149,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         // Select pour choisir la fréquence de synchro
         const select_field = helpers_10.convertHTMLToElement('<div class="input-field col s12"></div>');
         const select_input = document.createElement('select');
-        for (const minutes of main_7.SYNC_FREQUENCY_POSSIBILITIES) {
+        for (const minutes of main_8.SYNC_FREQUENCY_POSSIBILITIES) {
             const opt = document.createElement('option');
             opt.value = String(minutes);
             opt.innerText = helpers_10.convertMinutesToText(minutes);
@@ -5087,7 +5214,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     exports.initSettingsPage = initSettingsPage;
     function getSubscriptions() {
         return __awaiter(this, void 0, void 0, function* () {
-            return fetch_timeout_3.default(main_7.API_URL + "schemas/available.json", {
+            return fetch_timeout_3.default(main_8.API_URL + "schemas/available.json", {
                 headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
                 method: "GET",
                 mode: "cors"
@@ -5102,7 +5229,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             if (!fetch_subs) {
                 form_data.append('trim_subs', 'true');
             }
-            return fetch_timeout_3.default(main_7.API_URL + "schemas/subscribe.json", {
+            return fetch_timeout_3.default(main_8.API_URL + "schemas/subscribe.json", {
                 headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
                 method: "POST",
                 mode: "cors",
@@ -5118,7 +5245,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             if (!fetch_subs) {
                 form_data.append('trim_subs', 'true');
             }
-            return fetch_timeout_3.default(main_7.API_URL + "schemas/unsubscribe.json", {
+            return fetch_timeout_3.default(main_8.API_URL + "schemas/unsubscribe.json", {
                 headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
                 method: "POST",
                 mode: "cors",
@@ -5278,6 +5405,25 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             try {
                 // On veut supprimer tous les fichiers
                 yield helpers_11.removeContentOfDirectory('forms');
+                yield helpers_11.removeContentOfDirectory('form_data');
+                if (device.platform === "Android") {
+                    const sddir = yield helpers_11.getSdCardDir("forms");
+                    if (sddir) {
+                        yield new Promise((resolve, reject) => {
+                            sddir.removeRecursively(resolve, reject);
+                        }).catch(() => { });
+                        // Recrée le répertoire
+                        yield helpers_11.getSdCardDir("forms");
+                    }
+                    const sddir2 = yield helpers_11.getSdCardDir("form_data");
+                    if (sddir2) {
+                        yield new Promise((resolve, reject) => {
+                            sddir2.removeRecursively(resolve, reject);
+                        }).catch(() => { });
+                        // Recrée le répertoire
+                        yield helpers_11.getSdCardDir("form_data");
+                    }
+                }
                 yield SyncManager_6.SyncManager.clear();
                 helpers_11.showToast("Fichiers supprimés avec succès");
                 PageManager_5.PageManager.lock_return_button = false;
@@ -5351,31 +5497,6 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             const delete_element = () => {
                 modalDeleteForm(json[0].name);
             };
-            let sync_element = null;
-            sync_element = () => {
-                // On fait tourner le bouton
-                const sync_icon = document.querySelector(`div[data-formid="${id_without_json}"] .sync-icon i`);
-                if (sync_icon) {
-                    sync_icon.innerText = "sync";
-                    sync_icon.className = "material-icons grey-text turn-anim";
-                    SyncManager_6.SyncManager.sync(false, false, [id_without_json])
-                        .then(() => {
-                        // La synchro a réussi
-                        sync_icon.className = "material-icons green-text";
-                        container.dataset.synced = "true";
-                    })
-                        .catch(() => {
-                        helpers_11.showToast("La synchronisation a échoué");
-                        // La synchronisation a échoué
-                        sync_icon.className = "material-icons red-text";
-                        sync_icon.innerText = "sync_problem";
-                        container.dataset.synced = "false";
-                    });
-                }
-                else {
-                    console.log("L'élément a disparu");
-                }
-            };
             // Définit l'événement de clic sur le formulaire
             selector.addEventListener('click', function () {
                 const list = ["Modifier"];
@@ -5387,7 +5508,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                         modify_element();
                     }
                     else if (index === 1) {
-                        sync_element();
+                        SyncManager_6.SyncManager.inlineSync([id_without_json]);
                     }
                     else {
                         delete_element();
@@ -5467,6 +5588,17 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             id = id.substring(0, id.length - 5);
         }
         SyncManager_6.SyncManager.remove(id);
+        if (device.platform === 'Android') {
+            // Tente de supprimer depuis la carte SD
+            helpers_11.getSdCardDir("form_data/" + id)
+                .then(dir => {
+                dir.removeRecursively(() => { });
+            });
+            helpers_11.getSdCardFile("forms/" + id + '.json')
+                .then(entry => {
+                entry.remove(() => { });
+            });
+        }
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire

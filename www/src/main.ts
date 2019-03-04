@@ -1,5 +1,5 @@
 import { PageManager, AppPageName, SIDENAV_OBJ } from './PageManager';
-import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage, createRandomForms } from "./helpers";
+import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage, createRandomForms, listSdCard, getSdCardFolder, getSdCardDir } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
@@ -15,6 +15,7 @@ export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un I
 export const APP_VERSION = 0.6;
 export const MP3_BITRATE = 256; /** En kb/s */
 export const SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
+export let SDCARD_PATH = null;
 
 export const app = {
     // Application Constructor
@@ -46,11 +47,33 @@ export const app = {
     }
 };
 
-function initApp() {
+async function initApp() {
     // Change le répertoire de données
     // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
     // Sinon, si mobile, on passe sur dataDirectory
     changeDir();
+
+    // @ts-ignore Force à demander la permission pour enregistrer du son
+    const permissions = cordova.plugins.permissions;
+    permissions.requestPermission(permissions.RECORD_AUDIO, () => {
+        // console.log(status);
+    }, e => {console.log(e)});
+
+    // @ts-ignore Force à demander la permission pour accéder à la SD
+    permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, () => {
+        // console.log(status);
+    }, e => {console.log(e)});
+    
+    try {
+        const folders = await getSdCardFolder();
+
+        for (const f of folders) {
+            if (f.canWrite) {
+                SDCARD_PATH = f.filePath;
+                break;
+            }
+        }
+    } catch (e) {}
 
     Logger.init();
     Forms.init(); 
@@ -61,12 +84,6 @@ function initApp() {
         // @ts-ignore
         window.MobileAccessibility.usePreferredTextZoom(false);
     }
-
-    // @ts-ignore Force à demander la permission pour enregistrer du son
-    const permissions = cordova.plugins.permissions;
-    permissions.requestPermission(permissions.RECORD_AUDIO, () => {
-        // console.log(status);
-    }, e => {console.log(e)});
 
     // Initialise le bouton retour
     document.addEventListener("backbutton", function() {
@@ -117,6 +134,7 @@ function initApp() {
 }
 
 function initDebug() {
+    
     window["DEBUG"] = {
         launchQuizz,
         PageManager,
@@ -130,7 +148,9 @@ function initDebug() {
         rmrfPromise,
         Logger,
         Forms,
+        listSdCard,
         SyncEvent,
+        getSdCardDir,
         askModalList,
         createRandomForms,
         recorder: function() {
