@@ -1,6 +1,6 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, writeFile, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast, dateFormatter, writeFileP, readFileAsArrayBuffer, removeSdCardFile, writeSdCardFile } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast, dateFormatter, writeFileP, readFileAsArrayBuffer } from "./helpers";
 import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
@@ -8,6 +8,7 @@ import { newModalRecord } from "./audio_listener";
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
 import { createLocationInputSelector } from "./location";
+import { writeSdCardFile, removeSdCardFile } from "./sdcard_file";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');

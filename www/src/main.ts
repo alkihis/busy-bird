@@ -1,5 +1,5 @@
 import { PageManager, AppPageName, SIDENAV_OBJ } from './PageManager';
-import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage, createRandomForms, listSdCard, getSdCardFolder, getSdCardDir } from "./helpers";
+import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage, createRandomForms } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
@@ -7,6 +7,7 @@ import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager, SyncEvent } from "./SyncManager";
 import { launchQuizz } from './test_vocal_reco';
+import { getSdCardFolder, listSdCard, getSdCardDir } from './sdcard_file';
 
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
 export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
@@ -134,7 +135,7 @@ async function initApp() {
 }
 
 function initDebug() {
-    
+
     window["DEBUG"] = {
         launchQuizz,
         PageManager,

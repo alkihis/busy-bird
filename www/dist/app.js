@@ -1509,7 +1509,101 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
     }
     exports.launchQuizz = launchQuizz;
 });
-define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco"], function (require, exports, PageManager_1, helpers_4, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1) {
+define("sdcard_file", ["require", "exports", "main", "helpers"], function (require, exports, main_3, helpers_4) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function listSdCard(path = "", prefix = main_3.SDCARD_PATH) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const dir = yield getSdCardDir(path, prefix);
+            const reader = dir.createReader();
+            reader.readEntries(function (entries) {
+                console.log(entries);
+            }, function (err) {
+                console.log(err);
+            });
+        });
+    }
+    exports.listSdCard = listSdCard;
+    function resolveFSURL(url) {
+        return new Promise((resolve, reject) => {
+            window.resolveLocalFileSystemURL(url, resolve, reject);
+        });
+    }
+    exports.resolveFSURL = resolveFSURL;
+    function getDirectoryFromEntry(entry, name, create = true) {
+        return new Promise((resolve, reject) => {
+            entry.getDirectory(name, { create, exclusive: false }, resolve, reject);
+        });
+    }
+    exports.getDirectoryFromEntry = getDirectoryFromEntry;
+    function getFileFromEntry(entry, name, create = true) {
+        return new Promise((resolve, reject) => {
+            entry.getFile(name, { create, exclusive: false }, resolve, reject);
+        });
+    }
+    exports.getFileFromEntry = getFileFromEntry;
+    function getSdCardDir(name = "", root = main_3.SDCARD_PATH) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let folder;
+            try {
+                folder = (yield resolveFSURL(root));
+            }
+            catch (e) {
+                return null;
+            }
+            if (folder === null) {
+                return null;
+            }
+            if (name) {
+                return getDirectoryFromEntry(folder, name);
+            }
+            else {
+                return folder;
+            }
+        });
+    }
+    exports.getSdCardDir = getSdCardDir;
+    function getSdCardFile(name) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const path = name.split('/');
+            name = path.pop();
+            const foldername = path.join('/');
+            const folder = yield getSdCardDir(foldername);
+            if (folder === null || !name) {
+                return null;
+            }
+            return getFileFromEntry(folder, name);
+        });
+    }
+    exports.getSdCardFile = getSdCardFile;
+    function writeSdCardFile(path, content) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const file = yield getSdCardFile(path);
+            console.log(file);
+            if (file) {
+                return helpers_4.writeFileFromEntry(file, content);
+            }
+        });
+    }
+    exports.writeSdCardFile = writeSdCardFile;
+    function removeSdCardFile(path) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const file = yield getSdCardFile(path);
+            return new Promise((resolve, reject) => {
+                file.remove(resolve, reject);
+            });
+        });
+    }
+    exports.removeSdCardFile = removeSdCardFile;
+    function getSdCardFolder() {
+        return new Promise((resolve, reject) => {
+            // @ts-ignore
+            cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
+        });
+    }
+    exports.getSdCardFolder = getSdCardFolder;
+});
+define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco", "sdcard_file"], function (require, exports, PageManager_1, helpers_5, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1, sdcard_file_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
@@ -1554,7 +1648,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             // Change le répertoire de données
             // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
             // Sinon, si mobile, on passe sur dataDirectory
-            helpers_4.changeDir();
+            helpers_5.changeDir();
             // @ts-ignore Force à demander la permission pour enregistrer du son
             const permissions = cordova.plugins.permissions;
             permissions.requestPermission(permissions.RECORD_AUDIO, () => {
@@ -1565,7 +1659,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
                 // console.log(status);
             }, e => { console.log(e); });
             try {
-                const folders = yield helpers_4.getSdCardFolder();
+                const folders = yield sdcard_file_1.getSdCardFolder();
                 for (const f of folders) {
                     if (f.canWrite) {
                         exports.SDCARD_PATH = f.filePath;
@@ -1588,7 +1682,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             }, false);
             exports.app.initialize();
             initDebug();
-            helpers_4.initModal();
+            helpers_5.initModal();
             // Check si on est à une page spéciale
             let href = "";
             if (window.location) {
@@ -1618,7 +1712,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
                         PageManager_1.SIDENAV_OBJ.destroy();
                     }
                     catch (e) { }
-                    helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+                    helpers_5.getBase().innerHTML = helpers_5.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
                 });
             });
         });
@@ -1627,21 +1721,21 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         window["DEBUG"] = {
             launchQuizz: test_vocal_reco_1.launchQuizz,
             PageManager: PageManager_1.PageManager,
-            readFromFile: helpers_4.readFromFile,
-            listDir: helpers_4.listDir,
-            saveDefaultForm: helpers_4.saveDefaultForm,
-            createDir: helpers_4.createDir,
-            getLocation: helpers_4.getLocation,
-            testDistance: helpers_4.testDistance,
-            rmrf: helpers_4.rmrf,
-            rmrfPromise: helpers_4.rmrfPromise,
+            readFromFile: helpers_5.readFromFile,
+            listDir: helpers_5.listDir,
+            saveDefaultForm: helpers_5.saveDefaultForm,
+            createDir: helpers_5.createDir,
+            getLocation: helpers_5.getLocation,
+            testDistance: helpers_5.testDistance,
+            rmrf: helpers_5.rmrf,
+            rmrfPromise: helpers_5.rmrfPromise,
             Logger: logger_3.Logger,
             Forms: form_schema_1.Forms,
-            listSdCard: helpers_4.listSdCard,
+            listSdCard: sdcard_file_1.listSdCard,
             SyncEvent: SyncManager_1.SyncEvent,
-            getSdCardDir: helpers_4.getSdCardDir,
-            askModalList: helpers_4.askModalList,
-            createRandomForms: helpers_4.createRandomForms,
+            getSdCardDir: sdcard_file_1.getSdCardDir,
+            askModalList: helpers_5.askModalList,
+            createRandomForms: helpers_5.createRandomForms,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
                     name: "__test__",
@@ -1649,7 +1743,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
                     type: form_schema_1.FormEntityType.audio
                 });
             },
-            dateFormatter: helpers_4.dateFormatter,
+            dateFormatter: helpers_5.dateFormatter,
             prompt: vocal_recognition_2.prompt,
             createNewUser: user_manager_2.createNewUser,
             UserManager: user_manager_2.UserManager,
@@ -1658,7 +1752,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_3, helpers_5, form_schema_2) {
+define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_4, helpers_6, form_schema_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.UserManager = new class {
@@ -1683,7 +1777,7 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
                 let data = new FormData();
                 data.append("username", username);
                 data.append('password', password);
-                fetch(main_3.API_URL + "users/login.json", { body: data, method: 'POST' })
+                fetch(main_4.API_URL + "users/login.json", { body: data, method: 'POST' })
                     .then((response) => {
                     return response.json();
                 })
@@ -1724,7 +1818,7 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
             data.append("password", password);
             data.append("admin_password", admin_password);
             return new Promise((resolve, reject) => {
-                fetch(main_3.API_URL + "users/create.json", {
+                fetch(main_4.API_URL + "users/create.json", {
                     method: "POST",
                     body: data
                 }).then((response) => {
@@ -1741,8 +1835,8 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
         }
     };
     function createNewUser() {
-        const modal = helpers_5.getModal();
-        const instance = helpers_5.initModal({ dismissible: false });
+        const modal = helpers_6.getModal();
+        const instance = helpers_6.initModal({ dismissible: false });
         modal.classList.add('modal-fixed-footer');
         modal.innerHTML = `
     <div class="modal-content">
@@ -1793,20 +1887,20 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
             const psw_r = form.user_psw_r.value.trim();
             const psw_a = form.user_psw_a.value.trim();
             if (!name) {
-                helpers_5.showToast("Le nom ne peut pas être vide.");
-                helpers_5.showToast("Le nom ne peut pas être vide.");
+                helpers_6.showToast("Le nom ne peut pas être vide.");
+                helpers_6.showToast("Le nom ne peut pas être vide.");
                 return;
             }
             if (!psw) {
-                helpers_5.showToast("Le mot de passe ne peut pas être vide.");
+                helpers_6.showToast("Le mot de passe ne peut pas être vide.");
                 return;
             }
             if (psw !== psw_r) {
-                helpers_5.showToast("Mot de passe et confirmation doivent correspondre.");
+                helpers_6.showToast("Mot de passe et confirmation doivent correspondre.");
                 return;
             }
             if (!psw_a) {
-                helpers_5.showToast("Le mot de passe administrateur est nécessaire.");
+                helpers_6.showToast("Le mot de passe administrateur est nécessaire.");
                 return;
             }
             modal_save = document.createDocumentFragment();
@@ -1814,22 +1908,22 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
             while (child = modal.firstChild) {
                 modal_save.appendChild(child);
             }
-            modal.innerHTML = helpers_5.getModalPreloader("Création de l'utilisateur...");
+            modal.innerHTML = helpers_6.getModalPreloader("Création de l'utilisateur...");
             exports.UserManager.createUser(name, psw, psw_a)
                 .then(function () {
-                helpers_5.showToast("Utilisateur créé avec succès.");
+                helpers_6.showToast("Utilisateur créé avec succès.");
                 instance.close();
             }).catch(function (error) {
                 console.log(error);
                 if (typeof error === 'number') {
                     if (error === 6) {
-                        helpers_5.showToast("Le mot de passe administrateur est invalide.");
+                        helpers_6.showToast("Le mot de passe administrateur est invalide.");
                     }
                     else if (error === 12) {
-                        helpers_5.showToast("Cet utilisateur existe déjà.");
+                        helpers_6.showToast("Cet utilisateur existe déjà.");
                     }
                     else {
-                        helpers_5.showToast("Une erreur inconnue est survenue.");
+                        helpers_6.showToast("Une erreur inconnue est survenue.");
                     }
                 }
                 modal.innerHTML = "";
@@ -1843,8 +1937,8 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
     exports.createNewUser = createNewUser;
     function loginUser() {
         return new Promise(function (resolve, reject) {
-            const modal = helpers_5.getModal();
-            const instance = helpers_5.initModal({ dismissible: false });
+            const modal = helpers_6.getModal();
+            const instance = helpers_6.initModal({ dismissible: false });
             modal.innerHTML = `
         <div class="modal-content">
             <h5 class="no-margin-top">Connexion</h5>
@@ -1876,11 +1970,11 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
                 const name = form.user_new.value.trim();
                 const psw = form.user_psw.value.trim();
                 if (!name) {
-                    helpers_5.showToast("Le nom ne peut pas être vide.");
+                    helpers_6.showToast("Le nom ne peut pas être vide.");
                     return;
                 }
                 if (!psw) {
-                    helpers_5.showToast("Le mot de passe ne peut pas être vide.");
+                    helpers_6.showToast("Le mot de passe ne peut pas être vide.");
                     return;
                 }
                 modal_save = document.createDocumentFragment();
@@ -1888,27 +1982,27 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
                 while (child = modal.firstChild) {
                     modal_save.appendChild(child);
                 }
-                modal.innerHTML = helpers_5.getModalPreloader("Connexion");
+                modal.innerHTML = helpers_6.getModalPreloader("Connexion");
                 exports.UserManager.login(name, psw)
                     .then(function () {
-                    helpers_5.showToast("Vous avez été connecté-e avec succès.");
+                    helpers_6.showToast("Vous avez été connecté-e avec succès.");
                     instance.close();
                     // RESOLUTION DE LA PROMESSE
                     resolve();
                 }).catch(function (error) {
                     if (typeof error === 'number') {
                         if (error === 10) {
-                            helpers_5.showToast("Cet utilisateur n'existe pas.");
+                            helpers_6.showToast("Cet utilisateur n'existe pas.");
                         }
                         else if (error === 11) {
-                            helpers_5.showToast("Votre mot de passe est invalide.");
+                            helpers_6.showToast("Votre mot de passe est invalide.");
                         }
                         else {
-                            helpers_5.showToast("Une erreur inconnue est survenue.");
+                            helpers_6.showToast("Une erreur inconnue est survenue.");
                         }
                     }
                     else {
-                        helpers_5.showToast(error.message || JSON.stringify(error));
+                        helpers_6.showToast(error.message || JSON.stringify(error));
                     }
                     modal.innerHTML = "";
                     let e;
@@ -1942,7 +2036,7 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
             });
         });
  */ 
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_6, user_manager_3, main_4, fetch_timeout_2) {
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_7, user_manager_3, main_5, fetch_timeout_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_2 = __importDefault(fetch_timeout_2);
@@ -1985,7 +2079,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
         saveForms() {
             if (this.available_forms) {
-                helpers_6.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+                helpers_7.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
             }
         }
         /**
@@ -2021,7 +2115,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             };
             const readStandardForm = () => {
                 // On vérifie si le fichier loaded_forms.json existe
-                helpers_6.readFile(this.FORM_LOCATION)
+                helpers_7.readFile(this.FORM_LOCATION)
                     .then((string) => {
                     loadJSONInObject(JSON.parse(string));
                 })
@@ -2032,12 +2126,12 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                     }, 'json')
                         .fail(function () {
                         // Essaie de lire le fichier sur le périphérique
-                        helpers_6.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                        helpers_7.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
                             .then(string => {
                             loadJSONInObject(JSON.parse(string));
                         })
                             .catch(() => {
-                            helpers_6.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
+                            helpers_7.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                         });
                     });
                 });
@@ -2047,10 +2141,10 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 init_text.innerText = "Mise à jour des formulaires";
             }
             // noinspection OverlyComplexBooleanExpressionJS
-            if ((main_4.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && helpers_6.hasConnection() && user_manager_3.UserManager.logged) {
+            if ((main_5.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && helpers_7.hasConnection() && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
-                return fetch_timeout_2.default(main_4.API_URL + "schemas/subscribed.json", {
+                return fetch_timeout_2.default(main_5.API_URL + "schemas/subscribed.json", {
                     headers: new Headers({ "Authorization": "Bearer " + user_manager_3.UserManager.token }),
                     method: "GET"
                 }, crash_if_not_form_download ? 30000 : 5000)
@@ -2179,7 +2273,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
-define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "main"], function (require, exports, PageManager_2, form_schema_3, SyncManager_2, main_5) {
+define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "sdcard_file"], function (require, exports, PageManager_2, form_schema_3, SyncManager_2, sdcard_file_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -2592,18 +2686,6 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         }, path);
     }
     exports.listDir = listDir;
-    function listSdCard(path = "", prefix = main_5.SDCARD_PATH) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const dir = yield getSdCardDir(path, prefix);
-            const reader = dir.createReader();
-            reader.readEntries(function (entries) {
-                console.log(entries);
-            }, function (err) {
-                console.log(err);
-            });
-        });
-    }
-    exports.listSdCard = listSdCard;
     function sleep(ms) {
         return new Promise(resolve => {
             setTimeout(resolve, ms);
@@ -3195,7 +3277,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
                         SyncManager_2.SyncManager.add(id, save).then(resolve).catch(reject);
                     }, reject);
                 }));
-                writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
+                sdcard_file_2.writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
                     .catch(error => console.log(error));
             }
             yield Promise.all(promises);
@@ -3213,86 +3295,8 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         });
     }
     exports.removeContentOfDirectory = removeContentOfDirectory;
-    function resolveFSURL(url) {
-        return new Promise((resolve, reject) => {
-            window.resolveLocalFileSystemURL(url, resolve, reject);
-        });
-    }
-    exports.resolveFSURL = resolveFSURL;
-    function getDirectoryFromEntry(entry, name, create = true) {
-        return new Promise((resolve, reject) => {
-            entry.getDirectory(name, { create, exclusive: false }, resolve, reject);
-        });
-    }
-    exports.getDirectoryFromEntry = getDirectoryFromEntry;
-    function getFileFromEntry(entry, name, create = true) {
-        return new Promise((resolve, reject) => {
-            entry.getFile(name, { create, exclusive: false }, resolve, reject);
-        });
-    }
-    exports.getFileFromEntry = getFileFromEntry;
-    function getSdCardDir(name = "", root = main_5.SDCARD_PATH) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let folder;
-            try {
-                folder = (yield resolveFSURL(root));
-            }
-            catch (e) {
-                return null;
-            }
-            if (folder === null) {
-                return null;
-            }
-            if (name) {
-                return getDirectoryFromEntry(folder, name);
-            }
-            else {
-                return folder;
-            }
-        });
-    }
-    exports.getSdCardDir = getSdCardDir;
-    function getSdCardFile(name) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const path = name.split('/');
-            name = path.pop();
-            const foldername = path.join('/');
-            const folder = yield getSdCardDir(foldername);
-            if (folder === null || !name) {
-                return null;
-            }
-            return getFileFromEntry(folder, name);
-        });
-    }
-    exports.getSdCardFile = getSdCardFile;
-    function writeSdCardFile(path, content) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const file = yield getSdCardFile(path);
-            console.log(file);
-            if (file) {
-                return writeFileFromEntry(file, content);
-            }
-        });
-    }
-    exports.writeSdCardFile = writeSdCardFile;
-    function removeSdCardFile(path) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const file = yield getSdCardFile(path);
-            return new Promise((resolve, reject) => {
-                file.remove(resolve, reject);
-            });
-        });
-    }
-    exports.removeSdCardFile = removeSdCardFile;
-    function getSdCardFolder() {
-        return new Promise((resolve, reject) => {
-            // @ts-ignore
-            cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
-        });
-    }
-    exports.getSdCardFolder = getSdCardFolder;
 });
-define("location", ["require", "exports", "helpers"], function (require, exports, helpers_7) {
+define("location", ["require", "exports", "helpers"], function (require, exports, helpers_8) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createLocationInputSelector(container, input, locations, open_on_complete = false) {
@@ -3341,7 +3345,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
                     }
                 }
                 else {
-                    helpers_7.showToast("Ce lieu n'existe pas.");
+                    helpers_8.showToast("Ce lieu n'existe pas.");
                 }
             }
         });
@@ -3349,7 +3353,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location"], function (require, exports, vocal_recognition_3, form_schema_4, helpers_8, main_6, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_3, location_1) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location", "sdcard_file"], function (require, exports, vocal_recognition_3, form_schema_4, helpers_9, main_6, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_3, location_1, sdcard_file_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3505,7 +3509,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     location.value = `${filled_form.location} - ${label_location.label}`;
                 }
                 else if (filled_form.location !== null) {
-                    helpers_8.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
+                    helpers_9.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
                 }
             }
             loc_wrapper.appendChild(location);
@@ -3910,7 +3914,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // Définition de la valeur par défaut = date actuelle
-                    input.value = helpers_8.dateFormatter("Y-m-d");
+                    input.value = helpers_9.dateFormatter("Y-m-d");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -3932,7 +3936,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // Définition de la valeur par défaut = date actuelle
-                    input.value = helpers_8.dateFormatter("h:i");
+                    input.value = helpers_9.dateFormatter("h:i");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -3953,7 +3957,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_8.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_9.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -4013,7 +4017,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    helpers_8.readFromFile(filled_form.fields[ele.name], function (base64) {
+                    helpers_9.readFromFile(filled_form.fields[ele.name], function (base64) {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
@@ -4074,13 +4078,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     function beginFormSave(type, current_form, force_name, form_save) {
         return __awaiter(this, void 0, void 0, function* () {
             // Ouverture du modal de verification
-            const modal = helpers_8.getModal();
-            const instance = helpers_8.initModal({ dismissible: false, outDuration: 100 }, helpers_8.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
+            const modal = helpers_9.getModal();
+            const instance = helpers_9.initModal({ dismissible: false, outDuration: 100 }, helpers_9.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
             <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
         </div>`));
             instance.open();
             // Attend que le modal s'ouvre proprement (ralentissements sinon)
-            yield helpers_8.sleep(300);
+            yield helpers_9.sleep(300);
             modal.classList.add('modal-fixed-footer');
             // Recherche des éléments à vérifier
             const elements_failed = [];
@@ -4256,16 +4260,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 save_btn.classList.add('btn-flat', 'right', 'green-text');
                 save_btn.innerText = "Sauvegarder";
                 save_btn.onclick = function () {
-                    modal.innerHTML = helpers_8.getModalPreloader("Sauvegarde en cours");
+                    modal.innerHTML = helpers_9.getModalPreloader("Sauvegarde en cours");
                     modal.classList.remove('modal-fixed-footer');
-                    const unique_id = force_name || helpers_8.generateId(main_6.ID_COMPLEXITY);
+                    const unique_id = force_name || helpers_9.generateId(main_6.ID_COMPLEXITY);
                     PageManager_3.PageManager.lock_return_button = true;
                     saveForm(type, unique_id, location_str, form_save)
                         .then((form_values) => {
                         SyncManager_3.SyncManager.add(unique_id, form_values);
                         if (form_save) {
                             instance.close();
-                            helpers_8.showToast("Écriture du formulaire et de ses données réussie.");
+                            helpers_9.showToast("Écriture du formulaire et de ses données réussie.");
                             // On vient de la page d'édition de formulaire déjà créés
                             PageManager_3.PageManager.popPage();
                             // PageManager.reload(); la page se recharge toute seule au pop
@@ -4375,10 +4379,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         return __awaiter(this, void 0, void 0, function* () {
             function saveBlobToFile(filename, input_name, blob) {
                 const full_path = 'form_data/' + name + '/' + filename;
-                return helpers_8.writeFileP('form_data/' + name, filename, blob)
+                return helpers_9.writeFileP('form_data/' + name, filename, blob)
                     .then(() => {
                     if (device.platform === 'Android') {
-                        return helpers_8.writeSdCardFile(full_path, blob).catch(e => console.log(e));
+                        return sdcard_file_3.writeSdCardFile(full_path, blob).catch(e => console.log(e));
                     }
                 })
                     .then(() => {
@@ -4394,18 +4398,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                             const parts = older_save.fields[input_name].split('/');
                             const file_name = parts.pop();
                             const dir_name = parts.join('/');
-                            helpers_8.removeFileByName(dir_name, file_name);
-                            helpers_8.removeSdCardFile(older_save.fields[input_name]);
+                            helpers_9.removeFileByName(dir_name, file_name);
+                            sdcard_file_3.removeSdCardFile(older_save.fields[input_name]);
                         }
                     }
                 })
                     .catch((error) => {
-                    helpers_8.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                    helpers_9.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
                     return Promise.reject(error);
                 });
             }
             // Crée le dossier form_data si besoin
-            yield helpers_8.getDirP('form_data');
+            yield helpers_9.getDirP('form_data');
             // Récupère les images du formulaire
             const images_from_form = document.getElementsByClassName('input-image-element');
             // Sauvegarde les images !
@@ -4415,7 +4419,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const input_name = img.name;
                 if (file) {
                     const filename = file.name;
-                    promises.push(helpers_8.readFileAsArrayBuffer(file)
+                    promises.push(helpers_9.readFileAsArrayBuffer(file)
                         .then(buffer => {
                         return saveBlobToFile(filename, input_name, new Blob([buffer]));
                     }));
@@ -4443,8 +4447,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const file = audio.value;
                 const input_name = audio.name;
                 if (file) {
-                    const filename = helpers_8.generateId(main_6.ID_COMPLEXITY) + '.mp3';
-                    promises.push(helpers_8.urlToBlob(file).then(function (blob) {
+                    const filename = helpers_9.generateId(main_6.ID_COMPLEXITY) + '.mp3';
+                    promises.push(helpers_9.urlToBlob(file).then(function (blob) {
                         return saveBlobToFile(filename, input_name, blob);
                     }));
                 }
@@ -4473,9 +4477,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
             }
             const json_blob = new Blob([JSON.stringify(form_values)]);
-            yield helpers_8.writeFileP('forms', name + '.json', json_blob);
+            yield helpers_9.writeFileP('forms', name + '.json', json_blob);
             if (device.platform === 'Android') {
-                yield helpers_8.writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
+                yield sdcard_file_3.writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
             }
             console.log(form_values);
             return form_values;
@@ -4495,7 +4499,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             form_schema_4.Forms.onReady(function (_, current) {
                 if (form_schema_4.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_8.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
+                    base.innerHTML = helpers_9.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
                 }
                 else {
@@ -4515,7 +4519,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base.innerHTML = "";
         if (!edition_mode && !user_manager_4.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = base.innerHTML = helpers_8.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
+            base.innerHTML = base.innerHTML = helpers_9.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
             PageManager_3.PageManager.should_wait = false;
             return;
         }
@@ -4581,8 +4585,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Sinon, on ramène à la page précédente
             PageManager_3.PageManager.goBack();
         }
-        helpers_8.getModalInstance().close();
-        helpers_8.getModal().classList.remove('modal-fixed-footer');
+        helpers_9.getModalInstance().close();
+        helpers_9.getModal().classList.remove('modal-fixed-footer');
     }
     /**
      * Charge le sélecteur de localisation depuis un schéma de formulaire
@@ -4590,13 +4594,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_8.getModal();
-        const instance = helpers_8.initModal({
+        const modal = helpers_9.getModal();
+        const instance = helpers_9.initModal({
             dismissible: false, preventScrolling: true
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
-        modal.innerHTML = helpers_8.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        modal.innerHTML = helpers_9.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -4611,7 +4615,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             locationSelector(modal, current_form.locations, false, !current_form.skip_location);
         };
         // Cherche la localisation et remplit le modal
-        helpers_8.getLocation(function (coords) {
+        helpers_9.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords, !current_form.skip_location);
         }, function () {
@@ -4666,7 +4670,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 lieux_dispo.push({
                     name: lieu,
                     label: locations[lieu].label,
-                    distance: helpers_8.calculateDistance(current_location.coords, locations[lieu])
+                    distance: helpers_9.calculateDistance(current_location.coords, locations[lieu])
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -4714,18 +4718,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         ok.classList.add("btn-flat", "green-text", "right");
         ok.addEventListener('click', function () {
             if (input.value.trim() === "") {
-                helpers_8.showToast("Vous devez préciser un lieu.");
+                helpers_9.showToast("Vous devez préciser un lieu.");
             }
             else if (input.value in labels_to_name) {
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 // On stocke la clé de la localisation dans reallocation
                 loc_input.dataset.reallocation = labels_to_name[input.value][0];
-                helpers_8.getModalInstance().close();
+                helpers_9.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
-                helpers_8.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
+                helpers_9.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
             }
         });
         footer.appendChild(ok);
@@ -4739,7 +4743,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_4, helpers_9, main_7, form_schema_5, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_4, helpers_10, main_7, form_schema_5, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4772,7 +4776,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             // Calcul du nombre de formulaires en attente de synchronisation
             try {
                 const remaining_count = yield SyncManager_4.SyncManager.remainingToSync();
-                if (helpers_9.hasGoodConnection()) {
+                if (helpers_10.hasGoodConnection()) {
                     if (remaining_count > 15) {
                         home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
                     <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`, "Synchronisation");
@@ -4802,7 +4806,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             }
             // Nombre de formulaires enregistrés sur l'appareil
             try {
-                const nb_files = (yield helpers_9.getDirP('forms').then(helpers_9.dirEntries)).length;
+                const nb_files = (yield helpers_10.getDirP('forms').then(helpers_10.dirEntries)).length;
                 home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
             }
@@ -4864,7 +4868,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             event.preventDefault();
             event.stopPropagation();
             if (allow_to_click_to_terrain) {
-                test_vocal_reco_2.launchQuizz(helpers_9.getBase());
+                test_vocal_reco_2.launchQuizz(helpers_10.getBase());
             }
         };
     }
@@ -4983,7 +4987,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_6, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_8, home_1, Settings_2) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_6, helpers_11, SyncManager_5, PageManager_4, fetch_timeout_3, main_8, home_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -4993,16 +4997,16 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             : "Vous n'êtes pas connecté-e"}.`;
     }
     function formActualisationModal() {
-        const instance = helpers_10.initModal({ dismissible: false }, helpers_10.getModalPreloader("Actualisation..."));
+        const instance = helpers_11.initModal({ dismissible: false }, helpers_11.getModalPreloader("Actualisation..."));
         instance.open();
         form_schema_6.Forms.init(true)
             .then(() => {
-            helpers_10.showToast("Actualisation terminée.");
+            helpers_11.showToast("Actualisation terminée.");
             instance.close();
             PageManager_4.PageManager.reload();
         })
             .catch(() => {
-            helpers_10.showToast("Impossible d'actualiser les schémas.");
+            helpers_11.showToast("Impossible d'actualiser les schémas.");
             instance.close();
         });
     }
@@ -5024,7 +5028,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.remove('blue');
             button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
             button.onclick = function () {
-                helpers_10.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+                helpers_11.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
                     .then(function () {
                     // L'utilisateur veut se déconnecter
                     user_manager_6.UserManager.unlog();
@@ -5106,7 +5110,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 subscriptionsModal();
             }
             else {
-                helpers_10.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
+                helpers_11.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
             }
         };
         container.appendChild(subs_btn);
@@ -5125,13 +5129,13 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         formbtn.innerHTML = "Actualiser schémas formulaire";
         formbtn.onclick = function () {
             if (user_manager_6.UserManager.logged) {
-                helpers_10.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
+                helpers_11.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
                     // L'utilisateur a dit oui
                     formActualisationModal();
                 });
             }
             else {
-                helpers_10.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+                helpers_11.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
             }
         };
         container.appendChild(formbtn);
@@ -5147,12 +5151,12 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     </p>
     `);
         // Select pour choisir la fréquence de synchro
-        const select_field = helpers_10.convertHTMLToElement('<div class="input-field col s12"></div>');
+        const select_field = helpers_11.convertHTMLToElement('<div class="input-field col s12"></div>');
         const select_input = document.createElement('select');
         for (const minutes of main_8.SYNC_FREQUENCY_POSSIBILITIES) {
             const opt = document.createElement('option');
             opt.value = String(minutes);
-            opt.innerText = helpers_10.convertMinutesToText(minutes);
+            opt.innerText = helpers_11.convertMinutesToText(minutes);
             opt.selected = minutes === Settings_2.Settings.sync_freq;
             select_input.appendChild(opt);
         }
@@ -5199,14 +5203,14 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn.innerHTML = "Tout resynchroniser";
         syncbtn.onclick = function () {
             if (user_manager_6.UserManager.logged) {
-                helpers_10.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
+                helpers_11.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
                 Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.", "Oui", "Non", "Vider cache de synchronisation").then(checked_val => {
                     // L'utilisateur a dit oui
                     SyncManager_5.SyncManager.graphicalSync(true, checked_val);
                 });
             }
             else {
-                helpers_10.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
+                helpers_11.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
             }
         };
         container.appendChild(syncbtn);
@@ -5256,8 +5260,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     }
     function subscriptionsModal() {
         return __awaiter(this, void 0, void 0, function* () {
-            const modal = helpers_10.getModal();
-            const instance = helpers_10.initModal({ inDuration: 200, outDuration: 150 }, helpers_10.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+            const modal = helpers_11.getModal();
+            const instance = helpers_11.initModal({ inDuration: 200, outDuration: 150 }, helpers_11.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
             instance.open();
             const content = document.createElement('div');
             content.classList.add('modal-content');
@@ -5336,7 +5340,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                             to_uncheck.push(ch.dataset.id);
                         }
                     }
-                    modal.innerHTML = helpers_10.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
+                    modal.innerHTML = helpers_11.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
                     modal.classList.remove('modal-fixed-footer');
                     try {
                         // Appel à unsubscribe
@@ -5353,7 +5357,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                         if (to_check.length > 0) {
                             subs = (yield subscribe(to_check, true));
                         }
-                        helpers_10.showToast("Mise à jour des souscriptions réussie");
+                        helpers_11.showToast("Mise à jour des souscriptions réussie");
                         instance.close();
                         // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
                         if (subs) {
@@ -5361,7 +5365,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                         }
                     }
                     catch (e) {
-                        helpers_10.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
+                        helpers_11.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
                         instance.close();
                     }
                     PageManager_4.PageManager.reload();
@@ -5376,7 +5380,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         });
     }
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger"], function (require, exports, helpers_11, form_schema_7, PageManager_5, SyncManager_6, logger_5) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger", "sdcard_file"], function (require, exports, helpers_12, form_schema_7, PageManager_5, SyncManager_6, logger_5, sdcard_file_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var SaveState;
@@ -5389,7 +5393,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
         if (form.type === null || !form_schema_7.Forms.formExists(form.type)) {
-            helpers_11.showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type + "'.", 10000);
+            helpers_12.showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type + "'.", 10000);
             return;
         }
         const current_form = form_schema_7.Forms.getForm(form.type);
@@ -5397,35 +5401,35 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     function deleteAll() {
         return __awaiter(this, void 0, void 0, function* () {
-            const instance = helpers_11.unclosableBottomModal(`
-        ${helpers_11.SMALL_PRELOADER}
+            const instance = helpers_12.unclosableBottomModal(`
+        ${helpers_12.SMALL_PRELOADER}
         <p class="flow-text">Suppression en cours</p>
     `);
             PageManager_5.PageManager.lock_return_button = true;
             try {
                 // On veut supprimer tous les fichiers
-                yield helpers_11.removeContentOfDirectory('forms');
-                yield helpers_11.removeContentOfDirectory('form_data');
+                yield helpers_12.removeContentOfDirectory('forms');
+                yield helpers_12.removeContentOfDirectory('form_data');
                 if (device.platform === "Android") {
-                    const sddir = yield helpers_11.getSdCardDir("forms");
+                    const sddir = yield sdcard_file_4.getSdCardDir("forms");
                     if (sddir) {
                         yield new Promise((resolve, reject) => {
                             sddir.removeRecursively(resolve, reject);
                         }).catch(() => { });
                         // Recrée le répertoire
-                        yield helpers_11.getSdCardDir("forms");
+                        yield sdcard_file_4.getSdCardDir("forms");
                     }
-                    const sddir2 = yield helpers_11.getSdCardDir("form_data");
+                    const sddir2 = yield sdcard_file_4.getSdCardDir("form_data");
                     if (sddir2) {
                         yield new Promise((resolve, reject) => {
                             sddir2.removeRecursively(resolve, reject);
                         }).catch(() => { });
                         // Recrée le répertoire
-                        yield helpers_11.getSdCardDir("form_data");
+                        yield sdcard_file_4.getSdCardDir("form_data");
                     }
                 }
                 yield SyncManager_6.SyncManager.clear();
-                helpers_11.showToast("Fichiers supprimés avec succès");
+                helpers_12.showToast("Fichiers supprimés avec succès");
                 PageManager_5.PageManager.lock_return_button = false;
                 instance.close();
                 PageManager_5.PageManager.reload();
@@ -5480,14 +5484,14 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             else if (state === SaveState.waiting) {
                 sync_str = `<i class="material-icons grey-text">sync_disabled</i>`;
             }
-            const sync_btn = helpers_11.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
+            const sync_btn = helpers_12.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
             container.innerHTML = "";
             container.appendChild(sync_btn);
             // Ajoute le texte de l'élément
             container.insertAdjacentHTML('beforeend', `
         <div class="left">
             [${type}] ${id} <br> 
-            Modifié le ${helpers_11.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_12.formatDate(new Date(json[0].lastModified), true)}
         </div>`);
             // Ajout des actions de l'élément
             //// ACTION 1: Modifier
@@ -5502,7 +5506,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 const list = ["Modifier"];
                 list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
                 list.push("Supprimer");
-                helpers_11.askModalList(list)
+                helpers_12.askModalList(list)
                     .then(index => {
                     if (index === 0) {
                         modify_element();
@@ -5525,7 +5529,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     function readAllFilesOfDirectory(dirName) {
         const dirreader = new Promise(function (resolve, reject) {
-            helpers_11.getDir(function (dirEntry) {
+            helpers_12.getDir(function (dirEntry) {
                 // Lecture de tous les fichiers du répertoire
                 const reader = dirEntry.createReader();
                 reader.readEntries(function (entries) {
@@ -5567,16 +5571,16 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return dirreader;
     }
     function modalDeleteForm(id) {
-        helpers_11.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+        helpers_12.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
             .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
                 .then(function () {
-                helpers_11.showToast("Entrée supprimée.");
+                helpers_12.showToast("Entrée supprimée.");
                 PageManager_5.PageManager.reload();
             })
                 .catch(function (err) {
-                helpers_11.showToast("Impossible de supprimer: " + err);
+                helpers_12.showToast("Impossible de supprimer: " + err);
             });
         })
             .catch(() => {
@@ -5590,11 +5594,11 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         SyncManager_6.SyncManager.remove(id);
         if (device.platform === 'Android') {
             // Tente de supprimer depuis la carte SD
-            helpers_11.getSdCardDir("form_data/" + id)
+            sdcard_file_4.getSdCardDir("form_data/" + id)
                 .then(dir => {
                 dir.removeRecursively(() => { });
             });
-            helpers_11.getSdCardFile("forms/" + id + '.json')
+            sdcard_file_4.getSdCardFile("forms/" + id + '.json')
                 .then(entry => {
                 entry.remove(() => { });
             });
@@ -5602,10 +5606,10 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return new Promise(function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
-                helpers_11.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
-                    helpers_11.getDir(function (dirEntry) {
+                helpers_12.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
+                    helpers_12.getDir(function (dirEntry) {
                         dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                            helpers_11.removeFilePromise(fileEntry).then(function () {
+                            helpers_12.removeFilePromise(fileEntry).then(function () {
                                 resolve();
                             }).catch(reject);
                         }, function () {
@@ -5638,18 +5642,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                     /// place en bas, pour les boutons
                     base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
                     if (files.length === 0) {
-                        base.innerHTML = helpers_11.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                        base.innerHTML = helpers_12.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
                     }
                     else {
                         //// Bouton de synchronisation
-                        const syncbtn = helpers_11.convertHTMLToElement(`
+                        const syncbtn = helpers_12.convertHTMLToElement(`
                             <div class="fixed-action-btn" style="margin-right: 50px;">
                                 <a class="btn-floating waves-effect waves-light green">
                                     <i class="material-icons">sync</i>
                                 </a>
                             </div>`);
                         syncbtn.onclick = function () {
-                            helpers_11.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
+                            helpers_12.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
                                 .then(() => {
                                 return SyncManager_6.SyncManager.inlineSync();
                             })
@@ -5660,18 +5664,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                         };
                         base.appendChild(syncbtn);
                         // Bouton de suppression globale
-                        const delete_btn = helpers_11.convertHTMLToElement(`
+                        const delete_btn = helpers_12.convertHTMLToElement(`
                             <div class="fixed-action-btn">
                                 <a class="btn-floating waves-effect waves-light red">
                                     <i class="material-icons">delete_sweep</i>
                                 </a>
                             </div>`);
                         delete_btn.addEventListener('click', () => {
-                            helpers_11.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
+                            helpers_12.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
                                 .then(() => {
                                 setTimeout(function () {
                                     // Attend que le modal précédent se ferme
-                                    helpers_11.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
+                                    helpers_12.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
                                         .then(() => {
                                         // Annulation
                                     })
@@ -5687,13 +5691,13 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 });
             })).catch(function (err) {
                 logger_5.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
-                base.innerHTML = helpers_11.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+                base.innerHTML = helpers_12.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             });
         });
     }
     exports.initSavedForm = initSavedForm;
 });
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_2, logger_6) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_13, form_1, settings_page_1, saved_forms_1, home_2, logger_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -5815,8 +5819,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                     this.pages_holder = [];
                 }
                 // On écrit le preloader dans la base et on change l'historique
-                const base = helpers_12.getBase();
-                base.innerHTML = helpers_12.getPreloader("Chargement");
+                const base = helpers_13.getBase();
+                base.innerHTML = helpers_13.getPreloader("Chargement");
                 if (window.history) {
                     window.history.pushState({}, "", "?" + pagename);
                 }
@@ -5868,7 +5872,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_12.getBase();
+            const actual_base = helpers_13.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -5902,7 +5906,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            const main = helpers_12.getBase();
+            const main = helpers_13.getBase();
             cleanElement(main);
             main.parentElement.removeChild(main);
             const new_main = last_page.save.firstElementChild;
@@ -5934,11 +5938,11 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
-                    helpers_12.getModalInstance().close();
+                    helpers_13.getModalInstance().close();
                 }
                 catch (e) { }
                 try {
-                    helpers_12.getBottomModalInstance().close();
+                    helpers_13.getBottomModalInstance().close();
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
@@ -5950,7 +5954,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             };
             if (this.should_wait || force_asking) {
-                helpers_12.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
+                helpers_13.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
                     .then(stepBack)
                     .catch(() => { });
             }

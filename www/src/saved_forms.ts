@@ -1,8 +1,9 @@
-import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, getDirP, dirEntries, convertHTMLToElement, showToast, askModalList, removeContentOfDirectory, unclosableBottomModal, SMALL_PRELOADER, getSdCardDir, getSdCardFile } from "./helpers";
+import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, removeContentOfDirectory, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
 import { Logger } from "./logger";
+import { getSdCardDir, getSdCardFile } from "./sdcard_file";
 
 enum SaveState {
     saved, waiting, error
