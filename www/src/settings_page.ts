@@ -326,7 +326,7 @@ async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | 
 async function subscriptionsModal() : Promise<void> {
     const modal = getModal();
     const instance = initModal(
-        undefined, 
+        { inDuration: 200, outDuration: 150 }, 
         getModalPreloader(
             "Récupération des souscriptions", 
             `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`

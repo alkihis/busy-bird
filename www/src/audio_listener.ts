@@ -4,13 +4,13 @@ import { Logger } from "./logger";
 import { MP3_BITRATE } from "./main";
 
 export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElement, ele: FormEntity) {
-    let recorder = null;
+    let recorder: any = null;
 
     const modal = getModal();
     const instance = initModal({}, getModalPreloader("Chargement", ''));
 
     instance.open();
-    let audioContent = null;
+    let audioContent: string | null = null;
     let blobSize = 0;
 
     modal.innerHTML = `
@@ -89,7 +89,7 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
                 Enregistrement en cours
             </p>`;
             btn_stop.classList.remove('hide');
-        }).catch((e) => {
+        }).catch((e: Error) => {
             Logger.error("Impossible de lancer l'écoute.", e);
             player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
         });
@@ -103,7 +103,7 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
         recorder
             .stop()
             .getMp3()
-            .then(([buffer, blob]) => {
+            .then(([buffer, blob]: [ArrayBuffer, Blob]) => {
                 blobSize = blob.size;
 
                 return blobToBase64(blob);
@@ -119,7 +119,7 @@ export function newModalRecord(button: HTMLButtonElement, input: HTMLInputElemen
     
                 btn_start.classList.remove('hide');
             })
-            .catch((e) => {
+            .catch((e: Error) => {
                 M.toast({html:'Impossible de lire votre enregistrement'});
                 Logger.error("Enregistrement échoué:", e.message);
             });

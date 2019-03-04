@@ -3193,7 +3193,6 @@ $jscomp.polyfill = function (e, r, p, m) {
 
         if (this.options.preventScrolling) {
           document.body.style.overflow = 'hidden';
-          document.body.style.touchAction = 'none';
         }
 
         this.el.classList.add('open');

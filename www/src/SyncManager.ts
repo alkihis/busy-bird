@@ -60,6 +60,19 @@ const SyncList = new class {
     }
 }
 
+////// Polyfill si l'application est portée sur iOS: Safari ne supporte pas le constructeur EventTarget()
+export class SyncEvent extends EventTarget {
+    constructor() {
+        try {
+            super();
+        } catch (e) {
+            return document.createTextNode("");
+        }
+    }
+}
+////// Fin polyfill
+
+
 export const SyncManager = new class {
     protected in_sync = false;
     protected list = SyncList;
@@ -403,7 +416,7 @@ export const SyncManager = new class {
                 text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
         }
 
-        const receiver = new EventTarget();
+        const receiver = new SyncEvent;
 
         // Actualise le texte avec des events
         receiver.addEventListener('begin', () => {
@@ -527,7 +540,7 @@ export const SyncManager = new class {
     }
 
     public async inlineSync() : Promise<any> {
-        const receiver = new EventTarget;
+        const receiver = new SyncEvent;
 
         // Définit les évènements qui vont se passer lors d'une synchro
         receiver.addEventListener('send', (event: Event) => {
@@ -592,7 +605,7 @@ export const SyncManager = new class {
      * @param entries Tableau des IDs à envoyer
      * @param receiver Récepteur aux événements lancés par la synchro
      */
-    protected async subSyncDivider(id_getter: Function, entries: string[], receiver: EventTarget) : Promise<void> {    
+    protected async subSyncDivider(id_getter: Function, entries: string[], receiver: SyncEvent) : Promise<void> {    
         for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
             // Itère par groupe de formulaire. Group de taille PROMISE_BY_SYNC_STEP
             const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
@@ -657,9 +670,9 @@ export const SyncManager = new class {
      * @param force_all Forcer l'envoi de tous les formulaires
      * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
      * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
-     * @param receiver EventTarget qui recevra les événements lancés par la synchronisation
+     * @param receiver SyncEvent qui recevra les événements lancés par la synchronisation
      */
-    public sync(force_all = false, clear_cache = false, force_specific_elements?: string[], receiver = new EventTarget) : Promise<any> {
+    public sync(force_all = false, clear_cache = false, force_specific_elements?: string[], receiver = new SyncEvent) : Promise<any> {
         if (this.in_sync) {
             receiver.dispatchEvent(eventCreator("error", {code: 'already'}));
             return Promise.reject({code: 'already'});

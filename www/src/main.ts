@@ -5,7 +5,7 @@ import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
 import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
-import { SyncManager } from "./SyncManager";
+import { SyncManager, SyncEvent } from "./SyncManager";
 import { launchQuizz } from './test_vocal_reco';
 
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
@@ -117,7 +117,6 @@ function initApp() {
 }
 
 function initDebug() {
-
     window["DEBUG"] = {
         launchQuizz,
         PageManager,
@@ -131,6 +130,7 @@ function initDebug() {
         rmrfPromise,
         Logger,
         Forms,
+        SyncEvent,
         askModalList,
         createRandomForms,
         recorder: function() {

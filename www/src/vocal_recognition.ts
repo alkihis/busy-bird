@@ -42,7 +42,7 @@ export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Pr
                         recognition.onresult = (event) => {
                             if (event.results && event.results.length > 0) {
                                 if (as_array) {
-                                    const array = [];
+                                    const array: string[] = [];
                                     for (const r of event.results) {
                                         for (const e of r) {
                                             array.push(e.transcript);

@@ -1,4 +1,4 @@
-export default function (url, options, timeout = 10000) {
+export default function (url: string, options: any, timeout = 10000) {
     let controller: AbortController;
 
     if ("AbortController" in window) {

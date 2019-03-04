@@ -47,7 +47,7 @@ function validConstraints(constraints: string, e: HTMLInputElement | HTMLSelect
         const actual = c.split('=');
         // Supprime le possible ! à la fin de actual[0]
         const name = actual[0].replace(/!$/, '');
-        const champ = form.elements[name] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+        const champ = form.elements[name as any] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
         if (!champ) { // Le champ n'existe pas
             console.log('field does not exists');
@@ -261,7 +261,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             }
 
             // Attachage de l'évènement de vérification
-            const num_verif = function() {
+            const num_verif = function(this: HTMLInputElement) {
                 let valid = true;
 
                 let value: number;
@@ -818,14 +818,14 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                 readFromFile(
                     filled_form.fields[ele.name] as string,
-                    function(base64) {
+                    function(base64: string) {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
                         const duration = ((base64.length * 0.7) / (MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                     },
-                    function(fail) {
+                    function(fail: FileError) {
                         Logger.warn("Impossible de charger le fichier", fail);
                     },
                     true
@@ -918,7 +918,7 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
 
     const location_element = document.getElementById('__location__id') as HTMLInputElement;
 
-    let location_str = null;
+    let location_str: string | null = null;
     if (location_element) {
         location_str = location_element.dataset.reallocation;
     }
@@ -1245,7 +1245,7 @@ export function saveForm(type: string, name: string, location: string, form_save
  * @param older_save
  */
 function writeDataThenForm(name: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
-    function saveBlobToFile(resolve, reject, filename: string, input_name: string, blob: Blob) : void {
+    function saveBlobToFile(resolve: Function, reject: Function, filename: string, input_name: string, blob: Blob) : void {
         writeFile('form_data/' + name, filename, blob, function() {
             // Enregistre le nom du fichier sauvegardé dans le formulaire,
             // dans la valeur du champ field
@@ -1266,7 +1266,7 @@ function writeDataThenForm(name: string, form_values: FormSave, older_save?: For
 
             // Résout la promise
             resolve();
-        }, function(error) {
+        }, function(error: FileError) {
             // Erreur d'écriture du fichier => on rejette
             showToast("Un fichier n'a pas pu être sauvegardée. Vérifiez votre espace de stockage.");
             reject(error);

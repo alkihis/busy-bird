@@ -685,6 +685,19 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             });
         }
     };
+    ////// Polyfill si l'application est portée sur iOS: Safari ne supporte pas le constructeur EventTarget()
+    class SyncEvent extends EventTarget {
+        constructor() {
+            try {
+                super();
+            }
+            catch (e) {
+                return document.createTextNode("");
+            }
+        }
+    }
+    exports.SyncEvent = SyncEvent;
+    ////// Fin polyfill
     exports.SyncManager = new class {
         constructor() {
             this.in_sync = false;
@@ -973,7 +986,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 if (text)
                     text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
             };
-            const receiver = new EventTarget();
+            const receiver = new SyncEvent;
             // Actualise le texte avec des events
             receiver.addEventListener('begin', () => {
                 text.innerText = "Lecture des données à synchroniser";
@@ -1084,7 +1097,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         }
         inlineSync() {
             return __awaiter(this, void 0, void 0, function* () {
-                const receiver = new EventTarget;
+                const receiver = new SyncEvent;
                 // Définit les évènements qui vont se passer lors d'une synchro
                 receiver.addEventListener('send', (event) => {
                     const id = event.detail.id; /** detail: { id, data: value, number: i+position, total: entries.length } */
@@ -1198,9 +1211,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * @param force_all Forcer l'envoi de tous les formulaires
          * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
          * @param force_specific_elements Tableau d'identifiants de formulaire (string[]) à utiliser pour la synchronisation
-         * @param receiver EventTarget qui recevra les événements lancés par la synchronisation
+         * @param receiver SyncEvent qui recevra les événements lancés par la synchronisation
          */
-        sync(force_all = false, clear_cache = false, force_specific_elements, receiver = new EventTarget) {
+        sync(force_all = false, clear_cache = false, force_specific_elements, receiver = new SyncEvent) {
             if (this.in_sync) {
                 receiver.dispatchEvent(eventCreator("error", { code: 'already' }));
                 return Promise.reject({ code: 'already' });
@@ -1603,6 +1616,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             rmrfPromise: helpers_4.rmrfPromise,
             Logger: logger_3.Logger,
             Forms: form_schema_1.Forms,
+            SyncEvent: SyncManager_1.SyncEvent,
             askModalList: helpers_4.askModalList,
             createRandomForms: helpers_4.createRandomForms,
             recorder: function () {
@@ -5116,7 +5130,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     function subscriptionsModal() {
         return __awaiter(this, void 0, void 0, function* () {
             const modal = helpers_10.getModal();
-            const instance = helpers_10.initModal(undefined, helpers_10.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+            const instance = helpers_10.initModal({ inDuration: 200, outDuration: 150 }, helpers_10.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
             instance.open();
             const content = document.createElement('div');
             content.classList.add('modal-content');
