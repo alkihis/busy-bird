@@ -1,12 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -793,127 +785,123 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         remove(id) {
             return this.list.remove(id);
         }
-        sendForm(id, data) {
-            return __awaiter(this, void 0, void 0, function* () {
-                // Renvoie une promise réussie si l'envoi du formulaire 
-                // et de ses métadonnées a réussi.
-                let content;
-                try {
-                    content = yield helpers_3.readFile('forms/' + id + ".json");
+        async sendForm(id, data) {
+            // Renvoie une promise réussie si l'envoi du formulaire 
+            // et de ses métadonnées a réussi.
+            let content;
+            try {
+                content = await helpers_3.readFile('forms/' + id + ".json");
+            }
+            catch (error) {
+                logger_2.Logger.info("Impossible de lire le fichier", error.message);
+                throw { code: "file_read", error };
+            }
+            if (!this.in_sync) {
+                throw { code: "aborted" };
+            }
+            const d = new FormData();
+            d.append("id", id);
+            d.append("form", content);
+            let json;
+            try {
+                // Contrôleur pour arrêter les fetch si abort
+                let controller;
+                if ("AbortController" in window) {
+                    controller = new AbortController();
+                    this.running_fetchs.push(controller);
                 }
-                catch (error) {
-                    logger_2.Logger.info("Impossible de lire le fichier", error.message);
-                    throw { code: "file_read", error };
-                }
-                if (!this.in_sync) {
-                    throw { code: "aborted" };
-                }
-                const d = new FormData();
-                d.append("id", id);
-                d.append("form", content);
-                let json;
-                try {
-                    // Contrôleur pour arrêter les fetch si abort
-                    let controller;
-                    if ("AbortController" in window) {
-                        controller = new AbortController();
-                        this.running_fetchs.push(controller);
+                let signal = controller ? controller.signal : undefined;
+                const response = await fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
+                    method: "POST",
+                    body: d,
+                    signal,
+                    headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
+                }, MAX_TIMEOUT_FOR_FORM);
+                json = await response.json();
+            }
+            catch (error) {
+                throw { code: "json_send", error };
+            }
+            if (json.error_code) {
+                throw { code: "json_treatement", error_code: json.error_code, "message": json.message };
+            }
+            // On peut envoyer les métadonnées du json !
+            if (!this.in_sync) {
+                throw { code: "aborted" };
+            }
+            // Le JSON du form est envoyé !
+            if (json.status && json.send_metadata) {
+                // Si on doit envoyer les fichiers en plus
+                const base_path = "form_data/" + id + "/";
+                // json.send_metadata est un tableau de fichiers à envoyer
+                for (const metadata in data.metadata) {
+                    if (json.send_metadata.indexOf(metadata) === -1) {
+                        // La donnée actuelle n'est pas demandée par le serveur
+                        continue;
                     }
-                    let signal = controller ? controller.signal : undefined;
-                    const response = yield fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
-                        method: "POST",
-                        body: d,
-                        signal,
-                        headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
-                    }, MAX_TIMEOUT_FOR_FORM);
-                    json = yield response.json();
-                }
-                catch (error) {
-                    throw { code: "json_send", error };
-                }
-                if (json.error_code) {
-                    throw { code: "json_treatement", error_code: json.error_code, "message": json.message };
-                }
-                // On peut envoyer les métadonnées du json !
-                if (!this.in_sync) {
-                    throw { code: "aborted" };
-                }
-                // Le JSON du form est envoyé !
-                if (json.status && json.send_metadata) {
-                    // Si on doit envoyer les fichiers en plus
-                    const base_path = "form_data/" + id + "/";
-                    // json.send_metadata est un tableau de fichiers à envoyer
-                    for (const metadata in data.metadata) {
-                        if (json.send_metadata.indexOf(metadata) === -1) {
-                            // La donnée actuelle n'est pas demandée par le serveur
-                            continue;
+                    const file = base_path + data.metadata[metadata];
+                    const basename = data.metadata[metadata];
+                    // Envoi de tous les fichiers associés un à un
+                    // Pour des raisons de charge réseau, on envoie les fichiers un par un.
+                    let base64;
+                    try {
+                        base64 = await helpers_3.readFile(file, true);
+                    }
+                    catch (e) {
+                        // Le fichier n'existe pas en local. On passe.
+                        continue;
+                    }
+                    // On récupère la partie base64 qui nous intéresse
+                    base64 = base64.split(',')[1];
+                    // On construit le formdata à envoyer
+                    const md = new FormData();
+                    md.append("id", id);
+                    md.append("type", data.type);
+                    md.append("filename", basename);
+                    md.append("data", base64);
+                    try {
+                        // Contrôleur pour arrêter les fetch si abort
+                        let controller;
+                        if ("AbortController" in window) {
+                            controller = new AbortController();
+                            this.running_fetchs.push(controller);
                         }
-                        const file = base_path + data.metadata[metadata];
-                        const basename = data.metadata[metadata];
-                        // Envoi de tous les fichiers associés un à un
-                        // Pour des raisons de charge réseau, on envoie les fichiers un par un.
-                        let base64;
-                        try {
-                            base64 = yield helpers_3.readFile(file, true);
+                        let signal = controller ? controller.signal : undefined;
+                        const resp = await fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
+                            method: "POST",
+                            body: md,
+                            signal,
+                            headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
+                        }, MAX_TIMEOUT_FOR_METADATA);
+                        const json = await resp.json();
+                        if (json.error_code) {
+                            throw { code: "metadata_treatement", error_code: json.error_code, "message": json.message };
                         }
-                        catch (e) {
-                            // Le fichier n'existe pas en local. On passe.
-                            continue;
-                        }
-                        // On récupère la partie base64 qui nous intéresse
-                        base64 = base64.split(',')[1];
-                        // On construit le formdata à envoyer
-                        const md = new FormData();
-                        md.append("id", id);
-                        md.append("type", data.type);
-                        md.append("filename", basename);
-                        md.append("data", base64);
-                        try {
-                            // Contrôleur pour arrêter les fetch si abort
-                            let controller;
-                            if ("AbortController" in window) {
-                                controller = new AbortController();
-                                this.running_fetchs.push(controller);
-                            }
-                            let signal = controller ? controller.signal : undefined;
-                            const resp = yield fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
-                                method: "POST",
-                                body: md,
-                                signal,
-                                headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
-                            }, MAX_TIMEOUT_FOR_METADATA);
-                            const json = yield resp.json();
-                            if (json.error_code) {
-                                throw { code: "metadata_treatement", error_code: json.error_code, "message": json.message };
-                            }
-                            // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
-                        }
-                        catch (error) {
-                            helpers_3.showToast("Impossible d'envoyer " + basename + ".");
-                            throw { code: "metadata_send", error };
-                        }
-                    } // end for in
-                }
-                this.list.remove(id);
-            });
+                        // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
+                    }
+                    catch (error) {
+                        helpers_3.showToast("Impossible d'envoyer " + basename + ".");
+                        throw { code: "metadata_send", error };
+                    }
+                } // end for in
+            }
+            this.list.remove(id);
         }
         available() {
             return this.list.listSaved();
         }
-        getSpecificFile(id) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const entries = yield helpers_3.getDirP('forms').then(helpers_3.dirEntries);
-                const filename = id + ".json";
-                for (const entry of entries) {
-                    if (entry.name === filename) {
-                        const text = yield helpers_3.readFileFromEntry(entry);
-                        const json = JSON.parse(text);
-                        return { type: json.type, metadata: json.metadata };
-                    }
+        async getSpecificFile(id) {
+            const entries = await helpers_3.getDirP('forms').then(helpers_3.dirEntries);
+            const filename = id + ".json";
+            for (const entry of entries) {
+                if (entry.name === filename) {
+                    const text = await helpers_3.readFileFromEntry(entry);
+                    const json = JSON.parse(text);
+                    return { type: json.type, metadata: json.metadata };
                 }
-                // On a pas trouvé, on rejette
-                throw "";
-            });
+            }
+            // On a pas trouvé, on rejette
+            throw "";
         }
         /**
          * Obtient tous les fichiers JSON disponibles sur l'appareil
@@ -1099,59 +1087,57 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * Lance un synchronisation silencieuse, mais qui fait tourner des spinners sur la page des entrées
          * @param force_specific_elements Forcer la synchronisation d'éléments spécifiques
          */
-        inlineSync(force_specific_elements = undefined) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const receiver = new SyncEvent;
-                // Définit les évènements qui vont se passer lors d'une synchro
-                receiver.addEventListener('send', (event) => {
-                    const id = event.detail.id; /** detail: { id, data: value, number: i+position, total: entries.length } */
-                    changeInlineSyncStatus([id], "running");
-                });
-                receiver.addEventListener('sended', (event) => {
-                    const id = event.detail; /** detail: string */
-                    changeInlineSyncStatus([id], "synced");
-                });
-                receiver.addEventListener('groupsenderror', (event) => {
-                    const subset = event.detail; /** detail: string[] */
-                    changeInlineSyncStatus(subset, "unsynced");
-                });
-                receiver.addEventListener('senderrorfailer', (event) => {
-                    const id = event.detail; /** detail: string */
-                    changeInlineSyncStatus([id], "error");
-                });
-                try {
-                    const data = yield this.sync(undefined, undefined, force_specific_elements, receiver);
-                    helpers_3.showToast("Synchronisation réussie");
-                    return data;
-                }
-                catch (reason) {
-                    if (reason && typeof reason === 'object') {
-                        logger_2.Logger.error("Sync fail:", reason);
-                        // Si jamais la syncho a été refusée parce qu'une est déjà en cours
-                        if (reason.code === "already") {
-                            helpers_3.showToast('Une synchronisation est déjà en cours.');
-                        }
-                        else if (typeof reason.code === "string") {
-                            let cause = (function (reason_1) {
-                                switch (reason_1) {
-                                    case "aborted": return "La synchonisation a été annulée.";
-                                    case "json_send": return "Un formulaire n'a pas pu être envoyé.";
-                                    case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
-                                    case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
-                                    case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
-                                    default: return "Erreur inconnue.";
-                                }
-                            })(reason.code);
-                            // Modifie le texte du modal
-                            helpers_3.showToast("Impossible de synchroniser: " + cause);
-                        }
-                    }
-                    else {
-                        helpers_3.showToast("Une erreur est survenue lors de la synchronisation");
-                    }
-                    throw reason;
-                }
+        async inlineSync(force_specific_elements = undefined) {
+            const receiver = new SyncEvent;
+            // Définit les évènements qui vont se passer lors d'une synchro
+            receiver.addEventListener('send', (event) => {
+                const id = event.detail.id; /** detail: { id, data: value, number: i+position, total: entries.length } */
+                changeInlineSyncStatus([id], "running");
             });
+            receiver.addEventListener('sended', (event) => {
+                const id = event.detail; /** detail: string */
+                changeInlineSyncStatus([id], "synced");
+            });
+            receiver.addEventListener('groupsenderror', (event) => {
+                const subset = event.detail; /** detail: string[] */
+                changeInlineSyncStatus(subset, "unsynced");
+            });
+            receiver.addEventListener('senderrorfailer', (event) => {
+                const id = event.detail; /** detail: string */
+                changeInlineSyncStatus([id], "error");
+            });
+            try {
+                const data = await this.sync(undefined, undefined, force_specific_elements, receiver);
+                helpers_3.showToast("Synchronisation réussie");
+                return data;
+            }
+            catch (reason) {
+                if (reason && typeof reason === 'object') {
+                    logger_2.Logger.error("Sync fail:", reason);
+                    // Si jamais la syncho a été refusée parce qu'une est déjà en cours
+                    if (reason.code === "already") {
+                        helpers_3.showToast('Une synchronisation est déjà en cours.');
+                    }
+                    else if (typeof reason.code === "string") {
+                        let cause = (function (reason_1) {
+                            switch (reason_1) {
+                                case "aborted": return "La synchonisation a été annulée.";
+                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
+                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
+                                default: return "Erreur inconnue.";
+                            }
+                        })(reason.code);
+                        // Modifie le texte du modal
+                        helpers_3.showToast("Impossible de synchroniser: " + cause);
+                    }
+                }
+                else {
+                    helpers_3.showToast("Une erreur est survenue lors de la synchronisation");
+                }
+                throw reason;
+            }
         }
         /**
          * Divise le nombre d'éléments à envoyer par requête.
@@ -1159,47 +1145,45 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * @param entries Tableau des IDs à envoyer
          * @param receiver Récepteur aux événements lancés par la synchro
          */
-        subSyncDivider(id_getter, entries, receiver) {
-            return __awaiter(this, void 0, void 0, function* () {
-                for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
-                    // Itère par groupe de formulaire. Group de taille PROMISE_BY_SYNC_STEP
-                    const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
-                    const promises = [];
-                    receiver.dispatchEvent(eventCreator("groupsend", subset));
-                    let i = 1;
-                    let error_id;
-                    for (const id of subset) {
-                        // Pour chaque clé disponible
-                        promises.push(id_getter(id)
+        async subSyncDivider(id_getter, entries, receiver) {
+            for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
+                // Itère par groupe de formulaire. Group de taille PROMISE_BY_SYNC_STEP
+                const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
+                const promises = [];
+                receiver.dispatchEvent(eventCreator("groupsend", subset));
+                let i = 1;
+                let error_id;
+                for (const id of subset) {
+                    // Pour chaque clé disponible
+                    promises.push(id_getter(id)
+                        .catch(error => {
+                        error_id = id;
+                        return Promise.reject({ code: "id_getter", error });
+                    })
+                        .then(value => {
+                        receiver.dispatchEvent(eventCreator("send", { id, data: value, number: i + position, total: entries.length }));
+                        i++;
+                        return this.sendForm(id, value)
+                            .then(() => {
+                            receiver.dispatchEvent(eventCreator("sended", id));
+                        })
                             .catch(error => {
                             error_id = id;
-                            return Promise.reject({ code: "id_getter", error });
-                        })
-                            .then(value => {
-                            receiver.dispatchEvent(eventCreator("send", { id, data: value, number: i + position, total: entries.length }));
-                            i++;
-                            return this.sendForm(id, value)
-                                .then(() => {
-                                receiver.dispatchEvent(eventCreator("sended", id));
-                            })
-                                .catch(error => {
-                                error_id = id;
-                                return Promise.reject(error);
-                            });
-                        }));
-                    }
-                    yield Promise.all(promises)
-                        .then(val => {
-                        receiver.dispatchEvent(eventCreator("groupsended", subset));
-                        return val;
-                    })
-                        .catch(error => {
-                        receiver.dispatchEvent(eventCreator("groupsenderror", subset));
-                        receiver.dispatchEvent(eventCreator("senderrorfailer", error_id));
-                        return Promise.reject(error);
-                    });
+                            return Promise.reject(error);
+                        });
+                    }));
                 }
-            });
+                await Promise.all(promises)
+                    .then(val => {
+                    receiver.dispatchEvent(eventCreator("groupsended", subset));
+                    return val;
+                })
+                    .catch(error => {
+                    receiver.dispatchEvent(eventCreator("groupsenderror", subset));
+                    receiver.dispatchEvent(eventCreator("senderrorfailer", error_id));
+                    return Promise.reject(error);
+                });
+            }
         }
         /**
          * Lance la synchronisation en arrière plan
@@ -1512,89 +1496,121 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
 define("sdcard_file", ["require", "exports", "main", "helpers"], function (require, exports, main_3, helpers_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function listSdCard(path = "", prefix = main_3.SDCARD_PATH) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const dir = yield getSdCardDir(path, prefix);
-            const reader = dir.createReader();
-            reader.readEntries(function (entries) {
-                console.log(entries);
-            }, function (err) {
-                console.log(err);
-            });
+    /**
+     * Fonction de test
+     * @param path Répertoire à lister
+     * @param prefix Base / racine
+     */
+    async function listSdCard(path = "", prefix = main_3.SDCARD_PATH) {
+        const dir = await getSdCardDir(path, prefix);
+        const reader = dir.createReader();
+        reader.readEntries(function (entries) {
+            console.log(entries);
+        }, function (err) {
+            console.log(err);
         });
     }
     exports.listSdCard = listSdCard;
+    /**
+     * resolveLocalFileSystemURL version Promise
+     * @param url URL à résoudre
+     */
     function resolveFSURL(url) {
         return new Promise((resolve, reject) => {
             window.resolveLocalFileSystemURL(url, resolve, reject);
         });
     }
     exports.resolveFSURL = resolveFSURL;
+    /**
+     * Obtient un répertoire depuis une entrée. Le crée si besoin.
+     * @param entry Entrée de répertoire parent
+     * @param name Nom du répertoire à obtenir
+     * @param create Créer le répertoire
+     */
     function getDirectoryFromEntry(entry, name, create = true) {
         return new Promise((resolve, reject) => {
             entry.getDirectory(name, { create, exclusive: false }, resolve, reject);
         });
     }
     exports.getDirectoryFromEntry = getDirectoryFromEntry;
+    /**
+     * Obtient un fichier depuis une entrée de répertoire. Le crée si besoin
+     * @param entry Entrée du répertoire parent
+     * @param name Nom du fichier
+     * @param create Créer le fichier
+     */
     function getFileFromEntry(entry, name, create = true) {
         return new Promise((resolve, reject) => {
             entry.getFile(name, { create, exclusive: false }, resolve, reject);
         });
     }
     exports.getFileFromEntry = getFileFromEntry;
-    function getSdCardDir(name = "", root = main_3.SDCARD_PATH) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let folder;
-            try {
-                folder = (yield resolveFSURL(root));
-            }
-            catch (e) {
-                return null;
-            }
-            if (folder === null) {
-                return null;
-            }
-            if (name) {
-                return getDirectoryFromEntry(folder, name);
-            }
-            else {
-                return folder;
-            }
-        });
+    /**
+     * Obtenir un répertoire. Retourne null si le répertoire ne peut pas être atteint (pas une promesse rompue !)
+     * @param name Nom du répertoire à récupérer
+     * @param root Racine de la carte SD (automatiquement définie par défaut)
+     */
+    async function getSdCardDir(name = "", root = main_3.SDCARD_PATH) {
+        let folder;
+        try {
+            folder = await resolveFSURL(root);
+        }
+        catch (e) {
+            return null;
+        }
+        if (folder === null) {
+            return null;
+        }
+        if (name) {
+            return getDirectoryFromEntry(folder, name);
+        }
+        else {
+            return folder;
+        }
     }
     exports.getSdCardDir = getSdCardDir;
-    function getSdCardFile(name) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const path = name.split('/');
-            name = path.pop();
-            const foldername = path.join('/');
-            const folder = yield getSdCardDir(foldername);
-            if (folder === null || !name) {
-                return null;
-            }
-            return getFileFromEntry(folder, name);
-        });
+    /**
+     * Obtient un fichier présent dans la carte SD
+     * @param name Nom complet du fichier (répertoire compris)
+     */
+    async function getSdCardFile(name) {
+        const path = name.split('/');
+        name = path.pop();
+        const foldername = path.join('/');
+        const folder = await getSdCardDir(foldername);
+        if (folder === null || !name) {
+            return null;
+        }
+        return getFileFromEntry(folder, name);
     }
     exports.getSdCardFile = getSdCardFile;
-    function writeSdCardFile(path, content) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const file = yield getSdCardFile(path);
-            console.log(file);
-            if (file) {
-                return helpers_4.writeFileFromEntry(file, content);
-            }
-        });
+    /**
+     * Ecrit un fichier sur la carte SD. Le crée si besoin.
+     * @param path Chemin du fichier
+     * @param content Contenu du fichier
+     */
+    async function writeSdCardFile(path, content) {
+        const file = await getSdCardFile(path);
+        if (file) {
+            return helpers_4.writeFileFromEntry(file, content);
+        }
     }
     exports.writeSdCardFile = writeSdCardFile;
-    function removeSdCardFile(path) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const file = yield getSdCardFile(path);
-            return new Promise((resolve, reject) => {
-                file.remove(resolve, reject);
-            });
+    /**
+     * Supprime un fichier de la carte SD
+     * @param path Chemin du fichier
+     */
+    async function removeSdCardFile(path) {
+        const file = await getSdCardFile(path);
+        return new Promise((resolve, reject) => {
+            file.remove(resolve, reject);
         });
     }
     exports.removeSdCardFile = removeSdCardFile;
+    /**
+     * Obtient les répertoires sur cartes SD montés.
+     * Attention, depuis KitKat, la racine de la carte SD n'est PAS accessible en écriture !
+     */
     function getSdCardFolder() {
         return new Promise((resolve, reject) => {
             // @ts-ignore
@@ -1603,7 +1619,276 @@ define("sdcard_file", ["require", "exports", "main", "helpers"], function (requi
     }
     exports.getSdCardFolder = getSdCardFolder;
 });
-define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco", "sdcard_file"], function (require, exports, PageManager_1, helpers_5, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1, sdcard_file_1) {
+define("file_helper", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var FileHelperReadMode;
+    (function (FileHelperReadMode) {
+        FileHelperReadMode[FileHelperReadMode["text"] = 0] = "text";
+        FileHelperReadMode[FileHelperReadMode["array"] = 1] = "array";
+        FileHelperReadMode[FileHelperReadMode["url"] = 2] = "url";
+        FileHelperReadMode[FileHelperReadMode["binarystr"] = 3] = "binarystr";
+    })(FileHelperReadMode = exports.FileHelperReadMode || (exports.FileHelperReadMode = {}));
+    class FileHelper {
+        constructor(root = undefined) {
+            /** CHECK IF FH IS READY WITH waitInit(). */
+            this.ready = null;
+            this.root = null;
+            this.ready = new Promise((resolve, reject) => {
+                document.addEventListener('deviceready', async () => {
+                    try {
+                        await this.cd(root, false);
+                        resolve();
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+        }
+        waitInit() {
+            if (this.ready === null) {
+                return Promise.reject(new Error("File Helper constructor not called"));
+            }
+            else {
+                return this.ready;
+            }
+        }
+        getDirUrlOfPath(path) {
+            const a = path.split('/');
+            a.pop();
+            return a.join('/');
+        }
+        getBasenameOfPath(path) {
+            return path.split('/').pop();
+        }
+        exists(path) {
+            return this.get(path)
+                .then(() => true)
+                .catch(() => false);
+        }
+        async isFile(path) {
+            return (await this.get(path)).isFile;
+        }
+        async isDir(path) {
+            return (await this.get(path)).isDirectory;
+        }
+        /**
+         * Rename entry / Move file or directory to another directory.
+         *
+         * @param path Path of the actual entry
+         * @param dest Destination directory. Keep it undefined if you want to keep the same directory
+         * @param new_name New name of the entry. Keep it undefined if you want to keep the same name
+         */
+        async move(path, dest, new_name) {
+            const entry = await this.get(path);
+            path = entry.isDirectory ? path.replace(/\/$/, '') : path;
+            const dir_dest = dest ? await this.mkdir(dest) : await this.get(this.getDirUrlOfPath(path));
+            entry.moveTo(dir_dest, new_name || this.getBasenameOfPath(path));
+        }
+        /**
+         * Copy file or directory to another directory.
+         *
+         * @param path Path of the actual entry
+         * @param dest Destination directory
+         * @param new_name New name, after copy, of the entry. Keep it undefined if you want to keep the same name
+         */
+        async copy(path, dest, new_name) {
+            const entry = await this.get(path);
+            path = entry.isDirectory ? path.replace(/\/$/, '') : path;
+            const dir_dest = await this.mkdir(dest);
+            entry.copyTo(dir_dest, new_name || this.getBasenameOfPath(path));
+        }
+        async mkdir(path) {
+            const steps = path.split('/');
+            let cur_entry = await this.get();
+            for (const step of steps) {
+                cur_entry = await new Promise((resolve, reject) => {
+                    cur_entry.getDirectory(step, {
+                        create: true,
+                        exclusive: false
+                    }, resolve, reject);
+                });
+            }
+            return cur_entry;
+        }
+        async write(path, content, append = false) {
+            const dirname = this.getDirUrlOfPath(path);
+            const filename = this.getBasenameOfPath(path);
+            const entry = await this.getFileEntryOfDirEntry(await this.mkdir(dirname), filename);
+            return new Promise((resolve, reject) => {
+                // Fonction pour écrire le fichier après vidage
+                const finally_write = () => {
+                    entry.createWriter((fileWriter) => {
+                        fileWriter.onerror = function (e) {
+                            reject(e);
+                        };
+                        fileWriter.onwriteend = null;
+                        fileWriter.write(content);
+                        fileWriter.onwriteend = () => {
+                            resolve(entry);
+                        };
+                    });
+                };
+                if (append) {
+                    finally_write();
+                }
+                else {
+                    // Vide le fichier
+                    entry.createWriter((fileWriter) => {
+                        fileWriter.onerror = function (e) {
+                            reject(e);
+                        };
+                        // Vide le fichier
+                        fileWriter.truncate(0);
+                        // Quand le fichier est vidé, on écrit finalement dedans
+                        fileWriter.onwriteend = finally_write;
+                    });
+                }
+            });
+        }
+        async read(path, mode = FileHelperReadMode.text) {
+            const file = await this.getFileOfEntry(await this.get(path));
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = function () {
+                    if (mode === FileHelperReadMode.array) {
+                        resolve(this.result);
+                    }
+                    else {
+                        resolve(this.result);
+                    }
+                };
+                r.onerror = function (error) {
+                    // Erreur de lecture du fichier => on rejette
+                    reject(error);
+                };
+                if (mode === FileHelperReadMode.array) {
+                    r.readAsArrayBuffer(file);
+                }
+                else if (mode === FileHelperReadMode.text) {
+                    r.readAsText(file);
+                }
+                else if (mode === FileHelperReadMode.url) {
+                    r.readAsDataURL(file);
+                }
+                else if (mode === FileHelperReadMode.binarystr) {
+                    r.readAsBinaryString(file);
+                }
+            });
+        }
+        absoluteGet(path) {
+            return new Promise((resolve, reject) => {
+                window.resolveLocalFileSystemURL(path, resolve, reject);
+            });
+        }
+        get(path = "") {
+            return this.absoluteGet(this.root + "/" + path);
+        }
+        /**
+         * Get content of a directory.
+         *
+         * @param path Path of thing to explore
+         * @param l Equivalent of -l parameter of ls command. Command will return FileStats[] instead of string[] with -l.
+         */
+        async ls(path = "", l = false) {
+            const entry = await this.get(path);
+            if (entry.isFile) {
+                return [path];
+            }
+            path = path.replace(/\/$/, '');
+            const entries = await new Promise((resolve, reject) => {
+                const reader = entry.createReader();
+                reader.readEntries(resolve, reject);
+            });
+            if (l) {
+                const paths = [];
+                for (const e of entries) {
+                    if (e.isDirectory) {
+                        paths.push({
+                            name: e.name,
+                            mdate: undefined,
+                            mtime: undefined,
+                            size: 4096
+                        });
+                    }
+                    else {
+                        const entry = await this.getFileOfEntry(e);
+                        paths.push(this.getStatsFromFile(entry));
+                    }
+                }
+                return paths;
+            }
+            else {
+                const paths = [];
+                for (const e of entries) {
+                    paths.push(e.name);
+                }
+                return paths;
+            }
+        }
+        async remove(path) {
+            const entry = await this.get(path);
+            if (entry.isDirectory) {
+                return new Promise((resolve, reject) => {
+                    entry.removeRecursively(resolve, reject);
+                });
+            }
+            else {
+                return new Promise((resolve, reject) => {
+                    entry.remove(resolve, reject);
+                });
+            }
+        }
+        async stats(path) {
+            const entry = await this.getFileOfEntry(await this.get(path));
+            return this.getStatsFromFile(entry);
+        }
+        async cd(path, relative = true) {
+            if (!path) {
+                if (device.platform === "browser") {
+                    path = "cdvfile://localhost/temporary/";
+                }
+                else {
+                    path = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
+                }
+            }
+            // Teste si le chemin est valide (échouera sinon)
+            const new_root = await (relative ? this.get(path) : this.absoluteGet(path));
+            this.root = new_root.toInternalURL().replace(/\/$/, '');
+        }
+        pwd() {
+            return this.root;
+        }
+        /****** FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
+        getFileEntryOfDirEntry(dir, filename) {
+            return new Promise((resolve, reject) => {
+                dir.getFile(filename, { create: true, exclusive: false }, resolve, reject);
+            });
+        }
+        getFileOfEntry(file) {
+            return new Promise((resolve, reject) => {
+                file.file(resolve, reject);
+            });
+        }
+        getStatsFromFile(entry) {
+            return {
+                mtime: entry.lastModified,
+                mdate: new Date(entry.lastModified),
+                size: entry.size,
+                name: entry.name
+            };
+        }
+        /****** HELPERS */
+        stringToBlob(s) {
+            return new Blob([s]);
+        }
+    }
+    exports.FileHelper = FileHelper;
+    ;
+    exports.fs = new FileHelper;
+});
+define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco", "sdcard_file", "file_helper"], function (require, exports, PageManager_1, helpers_5, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1, sdcard_file_1, file_helper_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
@@ -1643,77 +1928,75 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             // console.log('Received Event: ' + id);
         }
     };
-    function initApp() {
-        return __awaiter(this, void 0, void 0, function* () {
-            // Change le répertoire de données
-            // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
-            // Sinon, si mobile, on passe sur dataDirectory
-            helpers_5.changeDir();
-            // @ts-ignore Force à demander la permission pour enregistrer du son
-            const permissions = cordova.plugins.permissions;
-            permissions.requestPermission(permissions.RECORD_AUDIO, () => {
-                // console.log(status);
-            }, e => { console.log(e); });
-            // @ts-ignore Force à demander la permission pour accéder à la SD
-            permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, () => {
-                // console.log(status);
-            }, e => { console.log(e); });
-            try {
-                const folders = yield sdcard_file_1.getSdCardFolder();
-                for (const f of folders) {
-                    if (f.canWrite) {
-                        exports.SDCARD_PATH = f.filePath;
-                        break;
-                    }
+    async function initApp() {
+        // Change le répertoire de données
+        // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
+        // Sinon, si mobile, on passe sur dataDirectory
+        helpers_5.changeDir();
+        // @ts-ignore Force à demander la permission pour enregistrer du son
+        const permissions = cordova.plugins.permissions;
+        permissions.requestPermission(permissions.RECORD_AUDIO, () => {
+            // console.log(status);
+        }, e => { console.log(e); });
+        // @ts-ignore Force à demander la permission pour accéder à la SD
+        permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, () => {
+            // console.log(status);
+        }, e => { console.log(e); });
+        try {
+            const folders = await sdcard_file_1.getSdCardFolder();
+            for (const f of folders) {
+                if (f.canWrite) {
+                    exports.SDCARD_PATH = f.filePath;
+                    break;
                 }
             }
-            catch (e) { }
-            logger_3.Logger.init();
-            form_schema_1.Forms.init();
-            SyncManager_1.SyncManager.init();
-            // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
-            if (window.MobileAccessibility) {
-                // @ts-ignore
-                window.MobileAccessibility.usePreferredTextZoom(false);
+        }
+        catch (e) { }
+        logger_3.Logger.init();
+        form_schema_1.Forms.init();
+        SyncManager_1.SyncManager.init();
+        // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
+        if (window.MobileAccessibility) {
+            // @ts-ignore
+            window.MobileAccessibility.usePreferredTextZoom(false);
+        }
+        // Initialise le bouton retour
+        document.addEventListener("backbutton", function () {
+            PageManager_1.PageManager.goBack();
+        }, false);
+        exports.app.initialize();
+        initDebug();
+        helpers_5.initModal();
+        // Check si on est à une page spéciale
+        let href = "";
+        if (window.location) {
+            const tmp = location.href.split('#')[0].split('?');
+            // Récupère la partie de l'URL après la query string et avant le #
+            href = tmp[tmp.length - 1];
+        }
+        // Quand les forms sont prêts, on affiche l'app !
+        form_schema_1.Forms.onReady(function () {
+            let prom;
+            if (href && PageManager_1.PageManager.pageExists(href)) {
+                prom = PageManager_1.PageManager.changePage(href);
             }
-            // Initialise le bouton retour
-            document.addEventListener("backbutton", function () {
-                PageManager_1.PageManager.goBack();
-            }, false);
-            exports.app.initialize();
-            initDebug();
-            helpers_5.initModal();
-            // Check si on est à une page spéciale
-            let href = "";
-            if (window.location) {
-                const tmp = location.href.split('#')[0].split('?');
-                // Récupère la partie de l'URL après la query string et avant le #
-                href = tmp[tmp.length - 1];
+            else {
+                prom = PageManager_1.PageManager.changePage(PageManager_1.AppPageName.home);
             }
-            // Quand les forms sont prêts, on affiche l'app !
-            form_schema_1.Forms.onReady(function () {
-                let prom;
-                if (href && PageManager_1.PageManager.pageExists(href)) {
-                    prom = PageManager_1.PageManager.changePage(href);
+            prom
+                .then(() => {
+                // On montre l'écran quand tout est chargé
+                navigator.splashscreen.hide();
+            })
+                .catch(err => {
+                // On montre l'écran et on affiche l'erreur
+                navigator.splashscreen.hide();
+                // Bloque le sidenav pour empêcher de naviguer
+                try {
+                    PageManager_1.SIDENAV_OBJ.destroy();
                 }
-                else {
-                    prom = PageManager_1.PageManager.changePage(PageManager_1.AppPageName.home);
-                }
-                prom
-                    .then(() => {
-                    // On montre l'écran quand tout est chargé
-                    navigator.splashscreen.hide();
-                })
-                    .catch(err => {
-                    // On montre l'écran et on affiche l'erreur
-                    navigator.splashscreen.hide();
-                    // Bloque le sidenav pour empêcher de naviguer
-                    try {
-                        PageManager_1.SIDENAV_OBJ.destroy();
-                    }
-                    catch (e) { }
-                    helpers_5.getBase().innerHTML = helpers_5.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
-                });
+                catch (e) { }
+                helpers_5.getBase().innerHTML = helpers_5.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
             });
         });
     }
@@ -1735,6 +2018,8 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             SyncEvent: SyncManager_1.SyncEvent,
             getSdCardDir: sdcard_file_1.getSdCardDir,
             askModalList: helpers_5.askModalList,
+            FileHelper: file_helper_1.FileHelper,
+            FileHelperReadMode: file_helper_1.FileHelperReadMode,
             createRandomForms: helpers_5.createRandomForms,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
@@ -3231,68 +3516,64 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         });
     }
     exports.askModalList = askModalList;
-    function createRandomForms(count) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (form_schema_3.Forms.current_key === null) {
-                throw "Impossible de créer des formulaires sans base";
-            }
-            const current = form_schema_3.Forms.getForm(form_schema_3.Forms.current_key);
-            const promises = [];
-            for (let i = 0; i < count; i++) {
-                const save = {
-                    fields: {},
-                    location: "",
-                    type: form_schema_3.Forms.current_key,
-                    owner: "randomizer",
-                    metadata: {}
-                };
-                for (const field of current.fields) {
-                    switch (field.type) {
-                        case form_schema_3.FormEntityType.bigstring:
-                        case form_schema_3.FormEntityType.string:
-                        case form_schema_3.FormEntityType.datetime:
-                        case form_schema_3.FormEntityType.select:
-                        case form_schema_3.FormEntityType.slider:
-                            save.fields[field.name] = generateId(25);
-                            break;
-                        case form_schema_3.FormEntityType.integer:
-                            save.fields[field.name] = Math.trunc(Math.random() * 1000);
-                            break;
-                        case form_schema_3.FormEntityType.float:
-                            save.fields[field.name] = Math.random();
-                            break;
-                        case form_schema_3.FormEntityType.file:
-                        case form_schema_3.FormEntityType.audio:
-                            save.fields[field.name] = null;
-                            break;
-                        case form_schema_3.FormEntityType.checkbox:
-                            save.fields[field.name] = Math.random() > 0.5;
-                            break;
-                    }
+    async function createRandomForms(count) {
+        if (form_schema_3.Forms.current_key === null) {
+            throw "Impossible de créer des formulaires sans base";
+        }
+        const current = form_schema_3.Forms.getForm(form_schema_3.Forms.current_key);
+        const promises = [];
+        for (let i = 0; i < count; i++) {
+            const save = {
+                fields: {},
+                location: "",
+                type: form_schema_3.Forms.current_key,
+                owner: "randomizer",
+                metadata: {}
+            };
+            for (const field of current.fields) {
+                switch (field.type) {
+                    case form_schema_3.FormEntityType.bigstring:
+                    case form_schema_3.FormEntityType.string:
+                    case form_schema_3.FormEntityType.datetime:
+                    case form_schema_3.FormEntityType.select:
+                    case form_schema_3.FormEntityType.slider:
+                        save.fields[field.name] = generateId(25);
+                        break;
+                    case form_schema_3.FormEntityType.integer:
+                        save.fields[field.name] = Math.trunc(Math.random() * 1000);
+                        break;
+                    case form_schema_3.FormEntityType.float:
+                        save.fields[field.name] = Math.random();
+                        break;
+                    case form_schema_3.FormEntityType.file:
+                    case form_schema_3.FormEntityType.audio:
+                        save.fields[field.name] = null;
+                        break;
+                    case form_schema_3.FormEntityType.checkbox:
+                        save.fields[field.name] = Math.random() > 0.5;
+                        break;
                 }
-                // Sauvegarde du formulaire
-                promises.push(new Promise((resolve, reject) => {
-                    const id = generateId(20);
-                    writeFile('forms', id + '.json', new Blob([JSON.stringify(save)]), function () {
-                        SyncManager_2.SyncManager.add(id, save).then(resolve).catch(reject);
-                    }, reject);
-                }));
-                sdcard_file_2.writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
-                    .catch(error => console.log(error));
             }
-            yield Promise.all(promises);
-        });
+            // Sauvegarde du formulaire
+            promises.push(new Promise((resolve, reject) => {
+                const id = generateId(20);
+                writeFile('forms', id + '.json', new Blob([JSON.stringify(save)]), function () {
+                    SyncManager_2.SyncManager.add(id, save).then(resolve).catch(reject);
+                }, reject);
+            }));
+            sdcard_file_2.writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
+                .catch(error => console.log(error));
+        }
+        await Promise.all(promises);
     }
     exports.createRandomForms = createRandomForms;
-    function removeContentOfDirectory(name) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const entry = yield getDirP(name);
-            yield new Promise((resolve, reject) => {
-                entry.removeRecursively(resolve, reject);
-            });
-            // Recrée le répertoire
-            yield getDirP(name);
+    async function removeContentOfDirectory(name) {
+        const entry = await getDirP(name);
+        await new Promise((resolve, reject) => {
+            entry.removeRecursively(resolve, reject);
         });
+        // Recrée le répertoire
+        await getDirP(name);
     }
     exports.removeContentOfDirectory = removeContentOfDirectory;
 });
@@ -4075,51 +4356,99 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * @param force_name? Force un identifiant pour le form à enregistrer
      * @param form_save? Précédente sauvegarde du formulaire
      */
-    function beginFormSave(type, current_form, force_name, form_save) {
-        return __awaiter(this, void 0, void 0, function* () {
-            // Ouverture du modal de verification
-            const modal = helpers_9.getModal();
-            const instance = helpers_9.initModal({ dismissible: false, outDuration: 100 }, helpers_9.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
+    async function beginFormSave(type, current_form, force_name, form_save) {
+        // Ouverture du modal de verification
+        const modal = helpers_9.getModal();
+        const instance = helpers_9.initModal({ dismissible: false, outDuration: 100 }, helpers_9.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
             <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
         </div>`));
-            instance.open();
-            // Attend que le modal s'ouvre proprement (ralentissements sinon)
-            yield helpers_9.sleep(300);
-            modal.classList.add('modal-fixed-footer');
-            // Recherche des éléments à vérifier
-            const elements_failed = [];
-            const elements_warn = [];
-            const location_element = document.getElementById('__location__id');
-            let location_str = null;
-            if (location_element) {
-                location_str = location_element.dataset.reallocation;
+        instance.open();
+        // Attend que le modal s'ouvre proprement (ralentissements sinon)
+        await helpers_9.sleep(300);
+        modal.classList.add('modal-fixed-footer');
+        // Recherche des éléments à vérifier
+        const elements_failed = [];
+        const elements_warn = [];
+        const location_element = document.getElementById('__location__id');
+        let location_str = null;
+        if (location_element) {
+            location_str = location_element.dataset.reallocation;
+        }
+        // Vérifie le lieu si le lieu est défini 
+        // (si il n'est pas requis, affiche un warning, sinon une erreur)
+        if (!current_form.no_location && !location_str) {
+            if (current_form.skip_location)
+                elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+            else
+                elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+        }
+        // Input classiques: checkbox/slider, text, textarea, select, number
+        for (const e of document.getElementsByClassName('input-form-element')) {
+            const element = e;
+            const label = document.querySelector(`label[for="${element.id}"]`);
+            let name = element.name;
+            if (label) {
+                name = label.textContent;
             }
-            // Vérifie le lieu si le lieu est défini 
-            // (si il n'est pas requis, affiche un warning, sinon une erreur)
-            if (!current_form.no_location && !location_str) {
-                if (current_form.skip_location)
-                    elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
-                else
-                    elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+            const contraintes = {};
+            if (element.dataset.constraints) {
+                element.dataset.constraints.split(';').map((e) => {
+                    const [name, value] = e.split('=');
+                    contraintes[name] = value;
+                });
             }
-            // Input classiques: checkbox/slider, text, textarea, select, number
-            for (const e of document.getElementsByClassName('input-form-element')) {
-                const element = e;
-                const label = document.querySelector(`label[for="${element.id}"]`);
-                let name = element.name;
-                if (label) {
-                    name = label.textContent;
+            // Valide des contraintes externes si jamais l'élément a une valeur
+            if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
+                const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
+                if (element.required) {
+                    elements_failed.push([name, str, element]);
                 }
-                const contraintes = {};
-                if (element.dataset.constraints) {
-                    element.dataset.constraints.split(';').map((e) => {
-                        const [name, value] = e.split('=');
-                        contraintes[name] = value;
-                    });
+                else {
+                    elements_warn.push([name, str, element]);
                 }
-                // Valide des contraintes externes si jamais l'élément a une valeur
-                if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
-                    const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
+            }
+            else if (element.required && !element.value) {
+                if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
+                    elements_failed.push([name, "Champ requis", element]);
+                }
+            }
+            else {
+                let str = "";
+                // Si le champ est requis et a une valeur, on recherche ses contraintes
+                if (Object.keys(contraintes).length > 0 || element.type === "number") {
+                    if (element.type === "text" || element.tagName === "textarea") {
+                        if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                            str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
+                        }
+                        if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                            str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
+                        }
+                    }
+                    else if (element.type === "number" && element.value !== "") {
+                        if (element.validity.rangeUnderflow) {
+                            str += "Le nombre doit être égal ou supérieur à " + element.min + ". ";
+                        }
+                        if (element.validity.rangeOverflow) {
+                            str += "Le nombre doit être égal ou inférieur à " + element.max + ". ";
+                        }
+                        // Vérification de la précision
+                        if (element.step) {
+                            if (element.validity.stepMismatch) {
+                                str += "Le nombre doit avoir une précision de " + element.step + ". ";
+                            }
+                            else if (element.value.indexOf('.') === -1) {
+                                str += "Le nombre doit être à virgule. ";
+                            }
+                        }
+                    }
+                }
+                // On vérifie que le champ n'a pas un "suggested_not_blank"
+                // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
+                // sont vides, la vérification lève une erreur fatale.
+                if (contraintes.suggest && !element.required && element.value === "") {
+                    str += "Cet élément ne devrait pas être vide. ";
+                }
+                if (str) {
                     if (element.required) {
                         elements_failed.push([name, str, element]);
                     }
@@ -4127,156 +4456,107 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         elements_warn.push([name, str, element]);
                     }
                 }
-                else if (element.required && !element.value) {
-                    if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
-                        elements_failed.push([name, "Champ requis", element]);
-                    }
-                }
-                else {
-                    let str = "";
-                    // Si le champ est requis et a une valeur, on recherche ses contraintes
-                    if (Object.keys(contraintes).length > 0 || element.type === "number") {
-                        if (element.type === "text" || element.tagName === "textarea") {
-                            if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
-                                str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
-                            }
-                            if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
-                                str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
-                            }
-                        }
-                        else if (element.type === "number" && element.value !== "") {
-                            if (element.validity.rangeUnderflow) {
-                                str += "Le nombre doit être égal ou supérieur à " + element.min + ". ";
-                            }
-                            if (element.validity.rangeOverflow) {
-                                str += "Le nombre doit être égal ou inférieur à " + element.max + ". ";
-                            }
-                            // Vérification de la précision
-                            if (element.step) {
-                                if (element.validity.stepMismatch) {
-                                    str += "Le nombre doit avoir une précision de " + element.step + ". ";
-                                }
-                                else if (element.value.indexOf('.') === -1) {
-                                    str += "Le nombre doit être à virgule. ";
-                                }
-                            }
-                        }
-                    }
-                    // On vérifie que le champ n'a pas un "suggested_not_blank"
-                    // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
-                    // sont vides, la vérification lève une erreur fatale.
-                    if (contraintes.suggest && !element.required && element.value === "") {
-                        str += "Cet élément ne devrait pas être vide. ";
-                    }
-                    if (str) {
-                        if (element.required) {
-                            elements_failed.push([name, str, element]);
-                        }
-                        else {
-                            elements_warn.push([name, str, element]);
-                        }
-                    }
-                    // Si c'est autre chose, l'élément est forcément valide
-                }
+                // Si c'est autre chose, l'élément est forcément valide
             }
-            // Éléments FILE (ici, possiblement que des images)
-            for (const e of document.querySelectorAll('.input-image-element[required]')) {
-                const filei = e;
-                if (filei.files.length === 0) {
-                    const label = document.querySelector(`input[data-for="${filei.id}"]`);
-                    let name = filei.name;
-                    if (label) {
-                        name = label.dataset.label;
-                    }
-                    elements_failed.push([name, "Fichier requis", filei]);
+        }
+        // Éléments FILE (ici, possiblement que des images)
+        for (const e of document.querySelectorAll('.input-image-element[required]')) {
+            const filei = e;
+            if (filei.files.length === 0) {
+                const label = document.querySelector(`input[data-for="${filei.id}"]`);
+                let name = filei.name;
+                if (label) {
+                    name = label.dataset.label;
                 }
+                elements_failed.push([name, "Fichier requis", filei]);
             }
-            // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
-            for (const e of document.querySelectorAll('.input-audio-element[required]')) {
-                const hiddeni = e;
-                if (!hiddeni.value) {
-                    elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
-                }
+        }
+        // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
+        for (const e of document.querySelectorAll('.input-audio-element[required]')) {
+            const hiddeni = e;
+            if (!hiddeni.value) {
+                elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
             }
-            // Construit les éléments dans le modal
-            const container = document.createElement('div');
-            container.classList.add('modal-content');
-            if (elements_warn.length > 0 || elements_failed.length > 0) {
-                const par = document.createElement('p');
-                par.classList.add('flow-text', 'no-margin-top');
-                par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
-                container.appendChild(par);
-                if (!elements_failed.length) {
-                    const tinypar = document.createElement('p');
-                    tinypar.style.marginTop = "-15px";
-                    tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
-                    container.appendChild(tinypar);
-                }
-                const list = document.createElement('ul');
-                list.classList.add('collection');
-                for (const error of elements_failed) {
-                    const li = document.createElement('li');
-                    li.classList.add("collection-item");
-                    li.innerHTML = `
+        }
+        // Construit les éléments dans le modal
+        const container = document.createElement('div');
+        container.classList.add('modal-content');
+        if (elements_warn.length > 0 || elements_failed.length > 0) {
+            const par = document.createElement('p');
+            par.classList.add('flow-text', 'no-margin-top');
+            par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
+            container.appendChild(par);
+            if (!elements_failed.length) {
+                const tinypar = document.createElement('p');
+                tinypar.style.marginTop = "-15px";
+                tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
+                container.appendChild(tinypar);
+            }
+            const list = document.createElement('ul');
+            list.classList.add('collection');
+            for (const error of elements_failed) {
+                const li = document.createElement('li');
+                li.classList.add("collection-item");
+                li.innerHTML = `
                 <span class="red-text bold">${error[0]}</span>: 
                 <span>${error[1]}</span>
             `;
-                    list.appendChild(li);
-                }
-                for (const warning of elements_warn) {
-                    const li = document.createElement('li');
-                    li.classList.add("collection-item");
-                    li.innerHTML = `
+                list.appendChild(li);
+            }
+            for (const warning of elements_warn) {
+                const li = document.createElement('li');
+                li.classList.add("collection-item");
+                li.innerHTML = `
                 <span class="bold">${warning[0]}</span>: 
                 <span>${warning[1]}</span>
             `;
-                    list.appendChild(li);
-                }
-                container.appendChild(list);
+                list.appendChild(li);
             }
-            else {
-                // On affiche un message de succès
-                const title = document.createElement('h5');
-                title.classList.add('no-margin-top');
-                title.innerText = "Résumé";
-                container.appendChild(title);
-                const par = document.createElement('p');
-                par.classList.add('flow-text');
-                par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
-                container.appendChild(par);
-            }
-            // Footer
-            const footer = document.createElement('div');
-            footer.classList.add('modal-footer');
-            const cancel_btn = document.createElement('a');
-            cancel_btn.href = "#!";
-            cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
-            cancel_btn.innerText = "Corriger";
-            footer.appendChild(cancel_btn);
-            // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
-            if (elements_failed.length === 0) {
-                const save_btn = document.createElement('a');
-                save_btn.href = "#!";
-                save_btn.classList.add('btn-flat', 'right', 'green-text');
-                save_btn.innerText = "Sauvegarder";
-                save_btn.onclick = function () {
-                    modal.innerHTML = helpers_9.getModalPreloader("Sauvegarde en cours");
-                    modal.classList.remove('modal-fixed-footer');
-                    const unique_id = force_name || helpers_9.generateId(main_6.ID_COMPLEXITY);
-                    PageManager_3.PageManager.lock_return_button = true;
-                    saveForm(type, unique_id, location_str, form_save)
-                        .then((form_values) => {
-                        SyncManager_3.SyncManager.add(unique_id, form_values);
-                        if (form_save) {
-                            instance.close();
-                            helpers_9.showToast("Écriture du formulaire et de ses données réussie.");
-                            // On vient de la page d'édition de formulaire déjà créés
-                            PageManager_3.PageManager.popPage();
-                            // PageManager.reload(); la page se recharge toute seule au pop
-                        }
-                        else {
-                            // On demande si on veut faire une nouvelle entrée
-                            modal.innerHTML = `
+            container.appendChild(list);
+        }
+        else {
+            // On affiche un message de succès
+            const title = document.createElement('h5');
+            title.classList.add('no-margin-top');
+            title.innerText = "Résumé";
+            container.appendChild(title);
+            const par = document.createElement('p');
+            par.classList.add('flow-text');
+            par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
+            container.appendChild(par);
+        }
+        // Footer
+        const footer = document.createElement('div');
+        footer.classList.add('modal-footer');
+        const cancel_btn = document.createElement('a');
+        cancel_btn.href = "#!";
+        cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
+        cancel_btn.innerText = "Corriger";
+        footer.appendChild(cancel_btn);
+        // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
+        if (elements_failed.length === 0) {
+            const save_btn = document.createElement('a');
+            save_btn.href = "#!";
+            save_btn.classList.add('btn-flat', 'right', 'green-text');
+            save_btn.innerText = "Sauvegarder";
+            save_btn.onclick = function () {
+                modal.innerHTML = helpers_9.getModalPreloader("Sauvegarde en cours");
+                modal.classList.remove('modal-fixed-footer');
+                const unique_id = force_name || helpers_9.generateId(main_6.ID_COMPLEXITY);
+                PageManager_3.PageManager.lock_return_button = true;
+                saveForm(type, unique_id, location_str, form_save)
+                    .then((form_values) => {
+                    SyncManager_3.SyncManager.add(unique_id, form_values);
+                    if (form_save) {
+                        instance.close();
+                        helpers_9.showToast("Écriture du formulaire et de ses données réussie.");
+                        // On vient de la page d'édition de formulaire déjà créés
+                        PageManager_3.PageManager.popPage();
+                        // PageManager.reload(); la page se recharge toute seule au pop
+                    }
+                    else {
+                        // On demande si on veut faire une nouvelle entrée
+                        modal.innerHTML = `
                         <div class="modal-content">
                             <h5 class="no-margin-top">Saisir une nouvelle entrée ?</h5>
                             <p class="flow-text">
@@ -4289,18 +4569,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                             <div class="clearb"></div>
                         </div>
                         `;
-                            document.getElementById('__after_save_entries').onclick = function () {
-                                PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
-                            };
-                            document.getElementById('__after_save_new').onclick = function () {
-                                setTimeout(() => {
-                                    PageManager_3.PageManager.reload(undefined, true);
-                                }, 150);
-                            };
-                        }
-                    })
-                        .catch((error) => {
-                        modal.innerHTML = `
+                        document.getElementById('__after_save_entries').onclick = function () {
+                            PageManager_3.PageManager.changePage(PageManager_3.AppPageName.saved, false);
+                        };
+                        document.getElementById('__after_save_new').onclick = function () {
+                            setTimeout(() => {
+                                PageManager_3.PageManager.reload(undefined, true);
+                            }, 150);
+                        };
+                    }
+                })
+                    .catch((error) => {
+                    modal.innerHTML = `
                     <div class="modal-content">
                         <h5 class="no-margin-top red-text">Erreur</h5>
                         <p class="flow-text">
@@ -4313,19 +4593,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         <div class="clearb"></div>
                     </div>
                     `;
-                        PageManager_3.PageManager.lock_return_button = false;
-                        logger_4.Logger.error(error, error.message, error.stack);
-                    });
-                };
-                footer.appendChild(save_btn);
-            }
-            const clearb = document.createElement('div');
-            clearb.classList.add('clearb');
-            footer.appendChild(clearb);
-            modal.innerHTML = "";
-            modal.appendChild(container);
-            modal.appendChild(footer);
-        });
+                    PageManager_3.PageManager.lock_return_button = false;
+                    logger_4.Logger.error(error, error.message, error.stack);
+                });
+            };
+            footer.appendChild(save_btn);
+        }
+        const clearb = document.createElement('div');
+        clearb.classList.add('clearb');
+        footer.appendChild(clearb);
+        modal.innerHTML = "";
+        modal.appendChild(container);
+        modal.appendChild(footer);
     }
     /**
      * Sauvegarde le formulaire actuel dans un fichier .json
@@ -4375,115 +4654,113 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      * @param form_values
      * @param older_save
      */
-    function writeDataThenForm(name, form_values, older_save) {
-        return __awaiter(this, void 0, void 0, function* () {
-            function saveBlobToFile(filename, input_name, blob) {
-                const full_path = 'form_data/' + name + '/' + filename;
-                return helpers_9.writeFileP('form_data/' + name, filename, blob)
-                    .then(() => {
-                    if (device.platform === 'Android') {
-                        return sdcard_file_3.writeSdCardFile(full_path, blob).catch(e => console.log(e));
-                    }
-                })
-                    .then(() => {
-                    // Enregistre le nom du fichier sauvegardé dans le formulaire,
-                    // dans la valeur du champ field
-                    form_values.fields[input_name] = full_path;
-                    form_values.metadata[input_name] = filename;
-                    if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                        // Si une image était déjà présente
-                        if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                            // Si le fichier enregistré est différent du fichier actuel
-                            // Suppression de l'ancienne image
-                            const parts = older_save.fields[input_name].split('/');
-                            const file_name = parts.pop();
-                            const dir_name = parts.join('/');
-                            helpers_9.removeFileByName(dir_name, file_name);
-                            sdcard_file_3.removeSdCardFile(older_save.fields[input_name]);
-                        }
-                    }
-                })
-                    .catch((error) => {
-                    helpers_9.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
-                    return Promise.reject(error);
-                });
-            }
-            // Crée le dossier form_data si besoin
-            yield helpers_9.getDirP('form_data');
-            // Récupère les images du formulaire
-            const images_from_form = document.getElementsByClassName('input-image-element');
-            // Sauvegarde les images !
-            const promises = [];
-            for (const img of images_from_form) {
-                const file = img.files[0];
-                const input_name = img.name;
-                if (file) {
-                    const filename = file.name;
-                    promises.push(helpers_9.readFileAsArrayBuffer(file)
-                        .then(buffer => {
-                        return saveBlobToFile(filename, input_name, new Blob([buffer]));
-                    }));
+    async function writeDataThenForm(name, form_values, older_save) {
+        function saveBlobToFile(filename, input_name, blob) {
+            const full_path = 'form_data/' + name + '/' + filename;
+            return helpers_9.writeFileP('form_data/' + name, filename, blob)
+                .then(() => {
+                if (device.platform === 'Android') {
+                    return sdcard_file_3.writeSdCardFile(full_path, blob).catch(e => console.log(e));
                 }
-                else {
-                    if (older_save && input_name in older_save.fields) {
-                        form_values.fields[input_name] = older_save.fields[input_name];
-                        if (typeof older_save.fields[input_name] === 'string') {
-                            const parts = older_save.fields[input_name].split('/');
-                            form_values.metadata[input_name] = parts[parts.length - 1];
-                        }
-                        else {
-                            form_values.metadata[input_name] = null;
-                        }
+            })
+                .then(() => {
+                // Enregistre le nom du fichier sauvegardé dans le formulaire,
+                // dans la valeur du champ field
+                form_values.fields[input_name] = full_path;
+                form_values.metadata[input_name] = filename;
+                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                    // Si une image était déjà présente
+                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                        // Si le fichier enregistré est différent du fichier actuel
+                        // Suppression de l'ancienne image
+                        const parts = older_save.fields[input_name].split('/');
+                        const file_name = parts.pop();
+                        const dir_name = parts.join('/');
+                        helpers_9.removeFileByName(dir_name, file_name);
+                        sdcard_file_3.removeSdCardFile(older_save.fields[input_name]);
+                    }
+                }
+            })
+                .catch((error) => {
+                helpers_9.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                return Promise.reject(error);
+            });
+        }
+        // Crée le dossier form_data si besoin
+        await helpers_9.getDirP('form_data');
+        // Récupère les images du formulaire
+        const images_from_form = document.getElementsByClassName('input-image-element');
+        // Sauvegarde les images !
+        const promises = [];
+        for (const img of images_from_form) {
+            const file = img.files[0];
+            const input_name = img.name;
+            if (file) {
+                const filename = file.name;
+                promises.push(helpers_9.readFileAsArrayBuffer(file)
+                    .then(buffer => {
+                    return saveBlobToFile(filename, input_name, new Blob([buffer]));
+                }));
+            }
+            else {
+                if (older_save && input_name in older_save.fields) {
+                    form_values.fields[input_name] = older_save.fields[input_name];
+                    if (typeof older_save.fields[input_name] === 'string') {
+                        const parts = older_save.fields[input_name].split('/');
+                        form_values.metadata[input_name] = parts[parts.length - 1];
                     }
                     else {
-                        form_values.fields[input_name] = null;
                         form_values.metadata[input_name] = null;
                     }
                 }
-            }
-            // Récupère les données audio du formulaire
-            const audio_from_form = document.getElementsByClassName('input-audio-element');
-            for (const audio of audio_from_form) {
-                const file = audio.value;
-                const input_name = audio.name;
-                if (file) {
-                    const filename = helpers_9.generateId(main_6.ID_COMPLEXITY) + '.mp3';
-                    promises.push(helpers_9.urlToBlob(file).then(function (blob) {
-                        return saveBlobToFile(filename, input_name, blob);
-                    }));
-                }
                 else {
-                    if (older_save && input_name in older_save.fields) {
-                        form_values.fields[input_name] = older_save.fields[input_name];
-                        if (typeof older_save.fields[input_name] === 'string') {
-                            const parts = older_save.fields[input_name].split('/');
-                            form_values.metadata[input_name] = parts[parts.length - 1];
-                        }
-                        else {
-                            form_values.metadata[input_name] = null;
-                        }
+                    form_values.fields[input_name] = null;
+                    form_values.metadata[input_name] = null;
+                }
+            }
+        }
+        // Récupère les données audio du formulaire
+        const audio_from_form = document.getElementsByClassName('input-audio-element');
+        for (const audio of audio_from_form) {
+            const file = audio.value;
+            const input_name = audio.name;
+            if (file) {
+                const filename = helpers_9.generateId(main_6.ID_COMPLEXITY) + '.mp3';
+                promises.push(helpers_9.urlToBlob(file).then(function (blob) {
+                    return saveBlobToFile(filename, input_name, blob);
+                }));
+            }
+            else {
+                if (older_save && input_name in older_save.fields) {
+                    form_values.fields[input_name] = older_save.fields[input_name];
+                    if (typeof older_save.fields[input_name] === 'string') {
+                        const parts = older_save.fields[input_name].split('/');
+                        form_values.metadata[input_name] = parts[parts.length - 1];
                     }
                     else {
-                        form_values.fields[input_name] = null;
                         form_values.metadata[input_name] = null;
                     }
                 }
-            }
-            yield Promise.all(promises);
-            // On supprime les metadonnées vides du form
-            for (const n in form_values.metadata) {
-                if (form_values.metadata[n] === null) {
-                    delete form_values.metadata[n];
+                else {
+                    form_values.fields[input_name] = null;
+                    form_values.metadata[input_name] = null;
                 }
             }
-            const json_blob = new Blob([JSON.stringify(form_values)]);
-            yield helpers_9.writeFileP('forms', name + '.json', json_blob);
-            if (device.platform === 'Android') {
-                yield sdcard_file_3.writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
+        }
+        await Promise.all(promises);
+        // On supprime les metadonnées vides du form
+        for (const n in form_values.metadata) {
+            if (form_values.metadata[n] === null) {
+                delete form_values.metadata[n];
             }
-            console.log(form_values);
-            return form_values;
-        });
+        }
+        const json_blob = new Blob([JSON.stringify(form_values)]);
+        await helpers_9.writeFileP('forms', name + '.json', json_blob);
+        if (device.platform === 'Android') {
+            await sdcard_file_3.writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
+        }
+        console.log(form_values);
+        return form_values;
     }
     /**
      * Fonction qui va faire attendre l'arrivée du formulaire,
@@ -4747,9 +5024,8 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
-    function initHomePage(base) {
-        return __awaiter(this, void 0, void 0, function* () {
-            base.innerHTML = `
+    async function initHomePage(base) {
+        base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
@@ -4769,67 +5045,66 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <div id="__home_container"></div>
     </div>
     `;
-            //////// TEST ////////
-            createTestHome();
-            //////// ENDTEST ////////
-            const home_container = document.getElementById('__home_container');
-            // Calcul du nombre de formulaires en attente de synchronisation
-            try {
-                const remaining_count = yield SyncManager_4.SyncManager.remainingToSync();
-                if (helpers_10.hasGoodConnection()) {
-                    if (remaining_count > 15) {
-                        home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
+        //////// TEST ////////
+        createTestHome();
+        //////// ENDTEST ////////
+        const home_container = document.getElementById('__home_container');
+        // Calcul du nombre de formulaires en attente de synchronisation
+        try {
+            const remaining_count = await SyncManager_4.SyncManager.remainingToSync();
+            if (helpers_10.hasGoodConnection()) {
+                if (remaining_count > 15) {
+                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
                     <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`, "Synchronisation");
-                    }
-                    else if (remaining_count > 0) {
-                        home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">
-                        Vous avez ${remaining_count} entrée${remaining_count > 1 ? 's' : ''} en attente de synchronisation.
-                    </span>`);
-                    }
                 }
                 else if (remaining_count > 0) {
-                    home_container.innerHTML = createCardPanel(`
+                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">
+                        Vous avez ${remaining_count} entrée${remaining_count > 1 ? 's' : ''} en attente de synchronisation.
+                    </span>`);
+                }
+            }
+            else if (remaining_count > 0) {
+                home_container.innerHTML = createCardPanel(`
                 <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
                 <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
                 <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`);
-                }
             }
-            catch (e) {
-                home_container.innerHTML = createCardPanel(`<span class="red-text text-darken-2">Impossible de relever les entrées disponibles.</span><br>
+        }
+        catch (e) {
+            home_container.innerHTML = createCardPanel(`<span class="red-text text-darken-2">Impossible de relever les entrées disponibles.</span><br>
             <span class="red-text text-darken-2">Cette erreur est possiblement grave. 
             Nous vous conseillons de ne pas enregistrer de formulaire.</span>`, "Erreur");
-            }
-            // Montre l'utilisateur connecté
-            if (user_manager_5.UserManager.logged) {
-                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="grey-text text-darken-1">${user_manager_5.UserManager.username}</span>
+        }
+        // Montre l'utilisateur connecté
+        if (user_manager_5.UserManager.logged) {
+            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="grey-text text-darken-1">${user_manager_5.UserManager.username}</span>
             <span class="blue-text text-darken-2">est connecté-e.</span>`));
-            }
-            // Nombre de formulaires enregistrés sur l'appareil
-            try {
-                const nb_files = (yield helpers_10.getDirP('forms').then(helpers_10.dirEntries)).length;
-                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
+        }
+        // Nombre de formulaires enregistrés sur l'appareil
+        try {
+            const nb_files = (await helpers_10.getDirP('forms').then(helpers_10.dirEntries)).length;
+            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
-            }
-            catch (e) {
-                // Impossible d'obtenir les fichiers
-                home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span><br>
+        }
+        catch (e) {
+            // Impossible d'obtenir les fichiers
+            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span><br>
             <span class="red-text text-darken-2">Cette erreur est probablement grave. 
             Nous vous conseillons de ne pas tenter d'enregistrer un formulaire et de vérifier votre stockage interne.</span>`));
+        }
+        form_schema_5.Forms.onReady(function (available, current) {
+            if (form_schema_5.Forms.current_key === null) {
+                return;
             }
-            form_schema_5.Forms.onReady(function (available, current) {
-                if (form_schema_5.Forms.current_key === null) {
-                    return;
-                }
-                const locations = current.locations;
-                // Navigation vers nichoir
-                home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
+            const locations = current.locations;
+            // Navigation vers nichoir
+            home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
             <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${current.name.toLowerCase()}</h6>`);
-                location_2.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
-            });
-            // Initialise les champs materialize et le select
-            M.updateTextFields();
-            $('select').formSelect();
+            location_2.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
         });
+        // Initialise les champs materialize et le select
+        M.updateTextFields();
+        $('select').formSelect();
     }
     exports.initHomePage = initHomePage;
     function createCardPanel(html_text, title) {
@@ -5216,168 +5491,158 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         container.appendChild(syncbtn);
     }
     exports.initSettingsPage = initSettingsPage;
-    function getSubscriptions() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return fetch_timeout_3.default(main_8.API_URL + "schemas/available.json", {
-                headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
-                method: "GET",
-                mode: "cors"
-            }, 30000)
-                .then(response => response.json());
-        });
+    async function getSubscriptions() {
+        return fetch_timeout_3.default(main_8.API_URL + "schemas/available.json", {
+            headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
+            method: "GET",
+            mode: "cors"
+        }, 30000)
+            .then(response => response.json());
     }
-    function subscribe(ids, fetch_subs) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const form_data = new FormData();
-            form_data.append('ids', ids.join(','));
-            if (!fetch_subs) {
-                form_data.append('trim_subs', 'true');
-            }
-            return fetch_timeout_3.default(main_8.API_URL + "schemas/subscribe.json", {
-                headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
-                method: "POST",
-                mode: "cors",
-                body: form_data
-            }, 60000)
-                .then(response => response.json());
-        });
+    async function subscribe(ids, fetch_subs) {
+        const form_data = new FormData();
+        form_data.append('ids', ids.join(','));
+        if (!fetch_subs) {
+            form_data.append('trim_subs', 'true');
+        }
+        return fetch_timeout_3.default(main_8.API_URL + "schemas/subscribe.json", {
+            headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
+            method: "POST",
+            mode: "cors",
+            body: form_data
+        }, 60000)
+            .then(response => response.json());
     }
-    function unsubscribe(ids, fetch_subs) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const form_data = new FormData();
-            form_data.append('ids', ids.join(','));
-            if (!fetch_subs) {
-                form_data.append('trim_subs', 'true');
-            }
-            return fetch_timeout_3.default(main_8.API_URL + "schemas/unsubscribe.json", {
-                headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
-                method: "POST",
-                mode: "cors",
-                body: form_data
-            }, 60000)
-                .then(response => response.json());
-        });
+    async function unsubscribe(ids, fetch_subs) {
+        const form_data = new FormData();
+        form_data.append('ids', ids.join(','));
+        if (!fetch_subs) {
+            form_data.append('trim_subs', 'true');
+        }
+        return fetch_timeout_3.default(main_8.API_URL + "schemas/unsubscribe.json", {
+            headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
+            method: "POST",
+            mode: "cors",
+            body: form_data
+        }, 60000)
+            .then(response => response.json());
     }
-    function subscriptionsModal() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const modal = helpers_11.getModal();
-            const instance = helpers_11.initModal({ inDuration: 200, outDuration: 150 }, helpers_11.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
-            instance.open();
-            const content = document.createElement('div');
-            content.classList.add('modal-content');
-            let subscriptions;
-            try {
-                subscriptions = yield getSubscriptions();
-            }
-            catch (e) {
-                modal.innerHTML = `
+    async function subscriptionsModal() {
+        const modal = helpers_11.getModal();
+        const instance = helpers_11.initModal({ inDuration: 200, outDuration: 150 }, helpers_11.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+        instance.open();
+        const content = document.createElement('div');
+        content.classList.add('modal-content');
+        let subscriptions;
+        try {
+            subscriptions = await getSubscriptions();
+        }
+        catch (e) {
+            modal.innerHTML = `
         <div class="modal-content">
             <h5 class="red-text no-margin-top">Erreur</h5>
             <p class="flow-text">Impossible d'obtenir les souscriptions.</p>
         </div>
         <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Fermer</a></div>
         `;
-                return;
-            }
-            // Construction du contenu du modal
-            // <p>
-            //   <label>
-            //     <input type="checkbox" />
-            //     <span>LABEL</span>
-            //   </label>
-            // </p>
-            content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Souscriptions</h5>`);
-            content.insertAdjacentHTML('beforeend', `
+            return;
+        }
+        // Construction du contenu du modal
+        // <p>
+        //   <label>
+        //     <input type="checkbox" />
+        //     <span>LABEL</span>
+        //   </label>
+        // </p>
+        content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Souscriptions</h5>`);
+        content.insertAdjacentHTML('beforeend', `
         <p class="flow-text">
             Gérez vos souscriptions et abonnez-vous à des nouveaux schémas de formulaire ici.
             Cochez pour vous abonner.
         </p>
     `);
-            const row = document.createElement('div');
-            row.classList.add('row');
-            content.appendChild(row);
-            const first_checked = {};
-            for (const form_id in subscriptions) {
-                const p = document.createElement('p');
-                const label = document.createElement('label');
-                p.appendChild(label);
-                const checkbox = document.createElement('input');
-                checkbox.type = "checkbox";
-                checkbox.checked = subscriptions[form_id][1];
-                checkbox.classList.add('input-subscription-element');
-                checkbox.dataset.id = form_id;
-                if (checkbox.checked) {
-                    first_checked[form_id] = true;
-                }
-                const span = document.createElement('span');
-                span.innerText = subscriptions[form_id][0];
-                label.appendChild(checkbox);
-                label.appendChild(span);
-                row.appendChild(p);
+        const row = document.createElement('div');
+        row.classList.add('row');
+        content.appendChild(row);
+        const first_checked = {};
+        for (const form_id in subscriptions) {
+            const p = document.createElement('p');
+            const label = document.createElement('label');
+            p.appendChild(label);
+            const checkbox = document.createElement('input');
+            checkbox.type = "checkbox";
+            checkbox.checked = subscriptions[form_id][1];
+            checkbox.classList.add('input-subscription-element');
+            checkbox.dataset.id = form_id;
+            if (checkbox.checked) {
+                first_checked[form_id] = true;
             }
-            const footer = document.createElement('div');
-            footer.classList.add('modal-footer');
-            footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Annuler</a>`);
-            const valid_btn = document.createElement('a');
-            valid_btn.classList.add('btn-flat', 'right', 'green-text');
-            valid_btn.href = "#!";
-            valid_btn.innerText = "Enregistrer";
-            // Si demande d'enregistrement > lance la procédure
-            valid_btn.onclick = function () {
-                return __awaiter(this, void 0, void 0, function* () {
-                    // Récupération des checkbox; cochées et non cochées
-                    const checkboxes = document.getElementsByClassName('input-subscription-element');
-                    const to_check = [];
-                    const to_uncheck = [];
-                    for (const c of checkboxes) {
-                        const ch = c;
-                        // Si l'élément est coché et il n'est pas présent dans la liste originale d'éléments cochés
-                        if (ch.checked && !(ch.dataset.id in first_checked)) {
-                            to_check.push(ch.dataset.id);
-                        }
-                        // Si l'élément est décoché mais il est présent dans la liste originale d'éléments cochés
-                        else if (!ch.checked && ch.dataset.id in first_checked) {
-                            to_uncheck.push(ch.dataset.id);
-                        }
+            const span = document.createElement('span');
+            span.innerText = subscriptions[form_id][0];
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            row.appendChild(p);
+        }
+        const footer = document.createElement('div');
+        footer.classList.add('modal-footer');
+        footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Annuler</a>`);
+        const valid_btn = document.createElement('a');
+        valid_btn.classList.add('btn-flat', 'right', 'green-text');
+        valid_btn.href = "#!";
+        valid_btn.innerText = "Enregistrer";
+        // Si demande d'enregistrement > lance la procédure
+        valid_btn.onclick = async function () {
+            // Récupération des checkbox; cochées et non cochées
+            const checkboxes = document.getElementsByClassName('input-subscription-element');
+            const to_check = [];
+            const to_uncheck = [];
+            for (const c of checkboxes) {
+                const ch = c;
+                // Si l'élément est coché et il n'est pas présent dans la liste originale d'éléments cochés
+                if (ch.checked && !(ch.dataset.id in first_checked)) {
+                    to_check.push(ch.dataset.id);
+                }
+                // Si l'élément est décoché mais il est présent dans la liste originale d'éléments cochés
+                else if (!ch.checked && ch.dataset.id in first_checked) {
+                    to_uncheck.push(ch.dataset.id);
+                }
+            }
+            modal.innerHTML = helpers_11.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
+            modal.classList.remove('modal-fixed-footer');
+            try {
+                // Appel à unsubscribe
+                if (to_uncheck.length > 0) {
+                    await unsubscribe(to_uncheck, false);
+                    // Suppression des formulaires demandés à être unsub
+                    for (const f of to_uncheck) {
+                        form_schema_6.Forms.deleteForm(f);
                     }
-                    modal.innerHTML = helpers_11.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
-                    modal.classList.remove('modal-fixed-footer');
-                    try {
-                        // Appel à unsubscribe
-                        if (to_uncheck.length > 0) {
-                            yield unsubscribe(to_uncheck, false);
-                            // Suppression des formulaires demandés à être unsub
-                            for (const f of to_uncheck) {
-                                form_schema_6.Forms.deleteForm(f);
-                            }
-                            form_schema_6.Forms.saveForms();
-                        }
-                        let subs = undefined;
-                        // Appel à subscribe
-                        if (to_check.length > 0) {
-                            subs = (yield subscribe(to_check, true));
-                        }
-                        helpers_11.showToast("Mise à jour des souscriptions réussie");
-                        instance.close();
-                        // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
-                        if (subs) {
-                            form_schema_6.Forms.schemas = subs;
-                        }
-                    }
-                    catch (e) {
-                        helpers_11.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
-                        instance.close();
-                    }
-                    PageManager_4.PageManager.reload();
-                });
-            };
-            footer.appendChild(valid_btn);
-            footer.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
-            modal.classList.add('modal-fixed-footer');
-            modal.innerHTML = "";
-            modal.appendChild(content);
-            modal.appendChild(footer);
-        });
+                    form_schema_6.Forms.saveForms();
+                }
+                let subs = undefined;
+                // Appel à subscribe
+                if (to_check.length > 0) {
+                    subs = await subscribe(to_check, true);
+                }
+                helpers_11.showToast("Mise à jour des souscriptions réussie");
+                instance.close();
+                // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
+                if (subs) {
+                    form_schema_6.Forms.schemas = subs;
+                }
+            }
+            catch (e) {
+                helpers_11.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
+                instance.close();
+            }
+            PageManager_4.PageManager.reload();
+        };
+        footer.appendChild(valid_btn);
+        footer.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
+        modal.classList.add('modal-fixed-footer');
+        modal.innerHTML = "";
+        modal.appendChild(content);
+        modal.appendChild(footer);
     }
 });
 define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger", "sdcard_file"], function (require, exports, helpers_12, form_schema_7, PageManager_5, SyncManager_6, logger_5, sdcard_file_4) {
@@ -5399,133 +5664,129 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         const current_form = form_schema_7.Forms.getForm(form.type);
         PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
-    function deleteAll() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const instance = helpers_12.unclosableBottomModal(`
+    async function deleteAll() {
+        const instance = helpers_12.unclosableBottomModal(`
         ${helpers_12.SMALL_PRELOADER}
         <p class="flow-text">Suppression en cours</p>
     `);
-            PageManager_5.PageManager.lock_return_button = true;
-            try {
-                // On veut supprimer tous les fichiers
-                yield helpers_12.removeContentOfDirectory('forms');
-                yield helpers_12.removeContentOfDirectory('form_data');
-                if (device.platform === "Android") {
-                    const sddir = yield sdcard_file_4.getSdCardDir("forms");
-                    if (sddir) {
-                        yield new Promise((resolve, reject) => {
-                            sddir.removeRecursively(resolve, reject);
-                        }).catch(() => { });
-                        // Recrée le répertoire
-                        yield sdcard_file_4.getSdCardDir("forms");
-                    }
-                    const sddir2 = yield sdcard_file_4.getSdCardDir("form_data");
-                    if (sddir2) {
-                        yield new Promise((resolve, reject) => {
-                            sddir2.removeRecursively(resolve, reject);
-                        }).catch(() => { });
-                        // Recrée le répertoire
-                        yield sdcard_file_4.getSdCardDir("form_data");
-                    }
+        PageManager_5.PageManager.lock_return_button = true;
+        try {
+            // On veut supprimer tous les fichiers
+            await helpers_12.removeContentOfDirectory('forms');
+            await helpers_12.removeContentOfDirectory('form_data');
+            if (device.platform === "Android") {
+                const sddir = await sdcard_file_4.getSdCardDir("forms");
+                if (sddir) {
+                    await new Promise((resolve, reject) => {
+                        sddir.removeRecursively(resolve, reject);
+                    }).catch(() => { });
+                    // Recrée le répertoire
+                    await sdcard_file_4.getSdCardDir("forms");
                 }
-                yield SyncManager_6.SyncManager.clear();
-                helpers_12.showToast("Fichiers supprimés avec succès");
-                PageManager_5.PageManager.lock_return_button = false;
-                instance.close();
-                PageManager_5.PageManager.reload();
+                const sddir2 = await sdcard_file_4.getSdCardDir("form_data");
+                if (sddir2) {
+                    await new Promise((resolve, reject) => {
+                        sddir2.removeRecursively(resolve, reject);
+                    }).catch(() => { });
+                    // Recrée le répertoire
+                    await sdcard_file_4.getSdCardDir("form_data");
+                }
             }
-            catch (e) {
-                PageManager_5.PageManager.lock_return_button = false;
-                instance.close();
-                throw e;
-            }
-        });
+            await SyncManager_6.SyncManager.clear();
+            helpers_12.showToast("Fichiers supprimés avec succès");
+            PageManager_5.PageManager.lock_return_button = false;
+            instance.close();
+            PageManager_5.PageManager.reload();
+        }
+        catch (e) {
+            PageManager_5.PageManager.lock_return_button = false;
+            instance.close();
+            throw e;
+        }
     }
-    function appendFileEntry(json, ph) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const save = json[1];
-            const selector = document.createElement('li');
-            selector.classList.add('collection-item');
-            const container = document.createElement('div');
-            container.classList.add('saved-form-item');
-            let id = json[0].name;
-            let id_without_json = id.split('.json')[0];
-            container.dataset.formid = id_without_json;
-            let state = SaveState.error;
-            let type = "Type inconnu";
-            if (save.type !== null && form_schema_7.Forms.formExists(save.type)) {
-                const form = form_schema_7.Forms.getForm(save.type);
-                type = form.name;
-                if (form.id_field) {
-                    // Si un champ existe pour ce formulaire
-                    id = save.fields[form.id_field] || json[0].name;
-                }
+    async function appendFileEntry(json, ph) {
+        const save = json[1];
+        const selector = document.createElement('li');
+        selector.classList.add('collection-item');
+        const container = document.createElement('div');
+        container.classList.add('saved-form-item');
+        let id = json[0].name;
+        let id_without_json = id.split('.json')[0];
+        container.dataset.formid = id_without_json;
+        let state = SaveState.error;
+        let type = "Type inconnu";
+        if (save.type !== null && form_schema_7.Forms.formExists(save.type)) {
+            const form = form_schema_7.Forms.getForm(save.type);
+            type = form.name;
+            if (form.id_field) {
+                // Si un champ existe pour ce formulaire
+                id = save.fields[form.id_field] || json[0].name;
             }
-            // Recherche si il y a déjà eu synchronisation
-            try {
-                const present = yield SyncManager_6.SyncManager.has(id_without_json);
-                if (present) {
-                    state = SaveState.waiting;
-                }
-                else {
-                    state = SaveState.saved;
-                }
+        }
+        // Recherche si il y a déjà eu synchronisation
+        try {
+            const present = await SyncManager_6.SyncManager.has(id_without_json);
+            if (present) {
+                state = SaveState.waiting;
             }
-            catch (e) {
-                state = SaveState.error;
+            else {
+                state = SaveState.saved;
             }
-            // Ajoute de l'icône indiquant si l'élément a été synchronisé
-            let sync_str = `<i class="material-icons red-text">sync_problem</i>`;
-            container.dataset.synced = "false";
-            if (state === SaveState.saved) {
-                sync_str = `<i class="material-icons green-text">sync</i>`;
-                container.dataset.synced = "true";
-            }
-            else if (state === SaveState.waiting) {
-                sync_str = `<i class="material-icons grey-text">sync_disabled</i>`;
-            }
-            const sync_btn = helpers_12.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
-            container.innerHTML = "";
-            container.appendChild(sync_btn);
-            // Ajoute le texte de l'élément
-            container.insertAdjacentHTML('beforeend', `
+        }
+        catch (e) {
+            state = SaveState.error;
+        }
+        // Ajoute de l'icône indiquant si l'élément a été synchronisé
+        let sync_str = `<i class="material-icons red-text">sync_problem</i>`;
+        container.dataset.synced = "false";
+        if (state === SaveState.saved) {
+            sync_str = `<i class="material-icons green-text">sync</i>`;
+            container.dataset.synced = "true";
+        }
+        else if (state === SaveState.waiting) {
+            sync_str = `<i class="material-icons grey-text">sync_disabled</i>`;
+        }
+        const sync_btn = helpers_12.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
+        container.innerHTML = "";
+        container.appendChild(sync_btn);
+        // Ajoute le texte de l'élément
+        container.insertAdjacentHTML('beforeend', `
         <div class="left">
             [${type}] ${id} <br> 
             Modifié le ${helpers_12.formatDate(new Date(json[0].lastModified), true)}
         </div>`);
-            // Ajout des actions de l'élément
-            //// ACTION 1: Modifier
-            const modify_element = () => {
-                editAForm(json[1], json[0].name.split(/\.json$/)[0]);
-            };
-            const delete_element = () => {
-                modalDeleteForm(json[0].name);
-            };
-            // Définit l'événement de clic sur le formulaire
-            selector.addEventListener('click', function () {
-                const list = ["Modifier"];
-                list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
-                list.push("Supprimer");
-                helpers_12.askModalList(list)
-                    .then(index => {
-                    if (index === 0) {
-                        modify_element();
-                    }
-                    else if (index === 1) {
-                        SyncManager_6.SyncManager.inlineSync([id_without_json]);
-                    }
-                    else {
-                        delete_element();
-                    }
-                })
-                    .catch(() => { });
-            });
-            // Clear le float
-            container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
-            // Ajoute les éléments dans le conteneur final
-            selector.appendChild(container);
-            ph.appendChild(selector);
+        // Ajout des actions de l'élément
+        //// ACTION 1: Modifier
+        const modify_element = () => {
+            editAForm(json[1], json[0].name.split(/\.json$/)[0]);
+        };
+        const delete_element = () => {
+            modalDeleteForm(json[0].name);
+        };
+        // Définit l'événement de clic sur le formulaire
+        selector.addEventListener('click', function () {
+            const list = ["Modifier"];
+            list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
+            list.push("Supprimer");
+            helpers_12.askModalList(list)
+                .then(index => {
+                if (index === 0) {
+                    modify_element();
+                }
+                else if (index === 1) {
+                    SyncManager_6.SyncManager.inlineSync([id_without_json]);
+                }
+                else {
+                    delete_element();
+                }
+            })
+                .catch(() => { });
         });
+        // Clear le float
+        container.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
+        // Ajoute les éléments dans le conteneur final
+        selector.appendChild(container);
+        ph.appendChild(selector);
     }
     function readAllFilesOfDirectory(dirName) {
         const dirreader = new Promise(function (resolve, reject) {
@@ -5629,66 +5890,64 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         placeholder.classList.add('collection', 'no-margin-top');
         form_schema_7.Forms.onReady(function () {
             readAllFilesOfDirectory('forms').then(all_promises => Promise.all(all_promises)
-                .then(function (files) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    // Tri des fichiers; le plus récent en premier
-                    files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
-                    for (const f of files) {
-                        yield appendFileEntry(f, placeholder);
-                    }
-                    base.innerHTML = "";
-                    base.appendChild(placeholder);
-                    /// Insère un div avec une margin pour forcer de la
-                    /// place en bas, pour les boutons
-                    base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
-                    if (files.length === 0) {
-                        base.innerHTML = helpers_12.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
-                    }
-                    else {
-                        //// Bouton de synchronisation
-                        const syncbtn = helpers_12.convertHTMLToElement(`
+                .then(async function (files) {
+                // Tri des fichiers; le plus récent en premier
+                files = files.sort((a, b) => b[0].lastModified - a[0].lastModified);
+                for (const f of files) {
+                    await appendFileEntry(f, placeholder);
+                }
+                base.innerHTML = "";
+                base.appendChild(placeholder);
+                /// Insère un div avec une margin pour forcer de la
+                /// place en bas, pour les boutons
+                base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
+                if (files.length === 0) {
+                    base.innerHTML = helpers_12.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                }
+                else {
+                    //// Bouton de synchronisation
+                    const syncbtn = helpers_12.convertHTMLToElement(`
                             <div class="fixed-action-btn" style="margin-right: 50px;">
                                 <a class="btn-floating waves-effect waves-light green">
                                     <i class="material-icons">sync</i>
                                 </a>
                             </div>`);
-                        syncbtn.onclick = function () {
-                            helpers_12.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
-                                .then(() => {
-                                return SyncManager_6.SyncManager.inlineSync();
-                            })
-                                .then(() => {
-                                // PageManager.reload();
-                            })
-                                .catch(() => { });
-                        };
-                        base.appendChild(syncbtn);
-                        // Bouton de suppression globale
-                        const delete_btn = helpers_12.convertHTMLToElement(`
+                    syncbtn.onclick = function () {
+                        helpers_12.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
+                            .then(() => {
+                            return SyncManager_6.SyncManager.inlineSync();
+                        })
+                            .then(() => {
+                            // PageManager.reload();
+                        })
+                            .catch(() => { });
+                    };
+                    base.appendChild(syncbtn);
+                    // Bouton de suppression globale
+                    const delete_btn = helpers_12.convertHTMLToElement(`
                             <div class="fixed-action-btn">
                                 <a class="btn-floating waves-effect waves-light red">
                                     <i class="material-icons">delete_sweep</i>
                                 </a>
                             </div>`);
-                        delete_btn.addEventListener('click', () => {
-                            helpers_12.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
-                                .then(() => {
-                                setTimeout(function () {
-                                    // Attend que le modal précédent se ferme
-                                    helpers_12.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
-                                        .then(() => {
-                                        // Annulation
-                                    })
-                                        .catch(() => {
-                                        deleteAll();
-                                    });
-                                }, 150);
-                            })
-                                .catch(() => { });
-                        });
-                        base.insertAdjacentElement('beforeend', delete_btn);
-                    }
-                });
+                    delete_btn.addEventListener('click', () => {
+                        helpers_12.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
+                            .then(() => {
+                            setTimeout(function () {
+                                // Attend que le modal précédent se ferme
+                                helpers_12.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
+                                    .then(() => {
+                                    // Annulation
+                                })
+                                    .catch(() => {
+                                    deleteAll();
+                                });
+                            }, 150);
+                        })
+                            .catch(() => { });
+                    });
+                    base.insertAdjacentElement('beforeend', delete_btn);
+                }
             })).catch(function (err) {
                 logger_5.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
                 base.innerHTML = helpers_12.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
