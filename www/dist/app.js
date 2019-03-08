@@ -2,279 +2,13 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-define("logger", ["require", "exports", "helpers"], function (require, exports, helpers_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    // Objet Logger
-    // Sert à écrire dans un fichier de log formaté
-    // à la racine du système de fichiers
-    var LogLevel;
-    (function (LogLevel) {
-        LogLevel["debug"] = "debug";
-        LogLevel["info"] = "info";
-        LogLevel["warn"] = "warn";
-        LogLevel["error"] = "error";
-    })(LogLevel = exports.LogLevel || (exports.LogLevel = {}));
-    /**
-     * Logger
-     * Permet de logger dans un fichier texte des messages.
-     */
-    exports.Logger = new class {
-        constructor() {
-            this._onWrite = false;
-            this.delayed = [];
-            this.waiting_callee = [];
-            this.init_done = false;
-            this.init_waiting_callee = [];
-            this.tries = 5;
-        }
-        /**
-         * Initialise le logger. Doit être réalisé après app.init() et changeDir().
-         * Pour vérifier si le logger est initialisé, utilisez onReady().
-         */
-        init() {
-            this.init_done = false;
-            if (this.tries === 0) {
-                console.error("Too many init tries. Logger stays uninitialized.");
-                return;
-            }
-            this.tries--;
-            helpers_1.getDir((dirEntry) => {
-                // Creates a new file or returns the file if it already exists.
-                dirEntry.getFile("log.txt", { create: true }, (fileEntry) => {
-                    this.fileEntry = fileEntry;
-                    this.init_done = true;
-                    this.onWrite = false;
-                    this.tries = 5;
-                    let func;
-                    while (func = this.init_waiting_callee.pop()) {
-                        func();
-                    }
-                }, function (err) {
-                    console.log("Unable to create file log.", err);
-                });
-            }, null, function (err) {
-                console.log("Unable to enable log.", err);
-            });
-        }
-        /**
-         * Vrai si le logger est prêt à écrire / lire dans le fichier de log.
-         */
-        isInit() {
-            return this.init_done;
-        }
-        /**
-         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
-         * le logger est prêt à recevoir des instructions.
-         * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
-         */
-        onReady(callback) {
-            const oninit = new Promise((resolve) => {
-                if (this.isInit()) {
-                    resolve();
-                }
-                else {
-                    this.init_waiting_callee.push(resolve);
-                }
-            });
-            if (callback) {
-                oninit.then(callback);
-            }
-            else {
-                return oninit;
-            }
-        }
-        get onWrite() {
-            return this._onWrite;
-        }
-        set onWrite(value) {
-            this._onWrite = value;
-            if (!value && this.delayed.length) {
-                // On lance une tâche "delayed" avec le premier élément de la liste (le premier inséré)
-                this.write(...this.delayed.shift());
-            }
-            else if (!value && this.waiting_callee.length) {
-                // Si il n'y a aucune tâche en attente, on peut lancer les waiting function
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func();
-                }
-            }
-        }
-        /**
-         * Écrit dans le fichier de log le contenu de text avec le niveau level.
-         * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
-         * Si level vaut debug, rien ne sera affiché dans la console.
-         * @param data
-         * @param level Niveau de log
-         */
-        write(data, level = LogLevel.warn) {
-            if (!Array.isArray(data)) {
-                data = [data];
-            }
-            if (!this.isInit()) {
-                this.delayWrite(data, level);
-                return;
-            }
-            // En debug, on écrit dans dans le fichier
-            if (level === LogLevel.debug) {
-                console.log(...data);
-                return;
-            }
-            // Create a FileWriter object for our FileEntry (log.txt).
-            this.fileEntry.createWriter((fileWriter) => {
-                fileWriter.onwriteend = () => {
-                    this.onWrite = false;
-                };
-                fileWriter.onerror = (e) => {
-                    console.log("Logger: Failed file write: " + e.toString());
-                    this.onWrite = false;
-                };
-                // Append to file
-                try {
-                    fileWriter.seek(fileWriter.length);
-                }
-                catch (e) {
-                    console.log("Logger: File doesn't exist!", e);
-                    return;
-                }
-                if (!this.onWrite) {
-                    if (level === LogLevel.info) {
-                        console.log(...data);
-                    }
-                    else if (level === LogLevel.warn) {
-                        console.warn(...data);
-                    }
-                    else if (level === LogLevel.error) {
-                        console.error(...data);
-                    }
-                    let final = this.createDateHeader(level) + " ";
-                    for (const e of data) {
-                        final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
-                    }
-                    this.onWrite = true;
-                    fileWriter.write(new Blob([final]));
-                }
-                else {
-                    this.delayWrite(data, level);
-                }
-            }, (error) => {
-                console.error("Impossible d'écrire: ", error.message);
-                this.delayWrite(data, level);
-                this.init();
-            });
-        }
-        /**
-         * Crée une date formatée
-         * @param level
-         */
-        createDateHeader(level) {
-            const date = new Date();
-            const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
-            const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
-            const hour = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
-            const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
-            const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
-            return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
-        }
-        delayWrite(data, level) {
-            this.delayed.push([data, level]);
-        }
-        /**
-         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
-         * le logger a fini toutes ses opérations d'écriture.
-         * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
-         */
-        onWriteEnd(callbackSuccess) {
-            const onwriteend = new Promise((resolve) => {
-                if (!this.onWrite && this.isInit()) {
-                    resolve();
-                }
-                else {
-                    this.waiting_callee.push(resolve);
-                }
-            });
-            if (callbackSuccess) {
-                onwriteend.then(callbackSuccess);
-            }
-            else {
-                return onwriteend;
-            }
-        }
-        /**
-         * Vide le fichier de log.
-         * @returns Promise La promesse est résolue quand le fichier est vidé, rompue si échec
-         */
-        clearLog() {
-            return new Promise((resolve, reject) => {
-                if (!this.isInit()) {
-                    reject("Logger must be initialized");
-                }
-                this.fileEntry.createWriter((fileWriter) => {
-                    fileWriter.onwriteend = () => {
-                        this.onWrite = false;
-                        resolve();
-                    };
-                    fileWriter.onerror = () => {
-                        console.log("Logger: Failed to truncate.");
-                        this.onWrite = false;
-                        reject();
-                    };
-                    if (!this.onWrite) {
-                        fileWriter.truncate(0);
-                    }
-                    else {
-                        console.log("Please call this function when log is not writing.");
-                        reject();
-                    }
-                });
-            });
-        }
-        /**
-         * Affiche tout le contenu du fichier de log dans la console via console.log()
-         * @returns Promise La promesse est résolue avec le contenu du fichier si lecture réussie, rompue si échec
-         */
-        consoleLogLog() {
-            return new Promise((resolve, reject) => {
-                if (!this.isInit()) {
-                    reject("Logger must be initialized");
-                }
-                this.fileEntry.file(function (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = function () {
-                        console.log(this.result);
-                        resolve(this.result);
-                    };
-                    reader.readAsText(file);
-                }, () => {
-                    console.log("Logger: Unable to open file.");
-                    this.init();
-                    reject();
-                });
-            });
-        }
-        /// Méthodes d'accès rapide
-        debug(...data) {
-            this.write(data, LogLevel.debug);
-        }
-        info(...data) {
-            this.write(data, LogLevel.info);
-        }
-        warn(...data) {
-            this.write(data, LogLevel.warn);
-        }
-        error(...data) {
-            this.write(data, LogLevel.error);
-        }
-    };
-});
-define("audio_listener", ["require", "exports", "helpers", "logger", "main"], function (require, exports, helpers_2, logger_1, main_1) {
+define("audio_listener", ["require", "exports", "helpers", "logger", "main"], function (require, exports, helpers_1, logger_1, main_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function newModalRecord(button, input, ele) {
         let recorder = null;
-        const modal = helpers_2.getModal();
-        const instance = helpers_2.initModal({}, helpers_2.getModalPreloader("Chargement", ''));
+        const modal = helpers_1.getModal();
+        const instance = helpers_1.initModal({}, helpers_1.getModalPreloader("Chargement", ''));
         instance.open();
         let audioContent = null;
         let blobSize = 0;
@@ -359,7 +93,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger", "main"], fu
                 .getMp3()
                 .then(([buffer, blob]) => {
                 blobSize = blob.size;
-                return helpers_2.blobToBase64(blob);
+                return helpers_1.blobToBase64(blob);
             })
                 .then((base64) => {
                 audioContent = base64;
@@ -495,6 +229,290 @@ define("vocal_recognition", ["require", "exports"], function (require, exports) 
     }
     exports.testMultipleOptionsVesusExpected = testMultipleOptionsVesusExpected;
 });
+define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_2, helpers_2, form_schema_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.UserManager = new class {
+        constructor() {
+            this._username = null;
+            this._token = null;
+            const usr = localStorage.getItem('__username_manager');
+            const tkn = localStorage.getItem('__token_manager');
+            if (usr && tkn) {
+                this._username = usr;
+                this._token = tkn;
+            }
+        }
+        get username() {
+            return this._username;
+        }
+        get token() {
+            return this._token;
+        }
+        login(username, password) {
+            return new Promise((resolve, reject) => {
+                let data = new FormData();
+                data.append("username", username);
+                data.append('password', password);
+                fetch(main_2.API_URL + "users/login.json", { body: data, method: 'POST' })
+                    .then((response) => {
+                    return response.json();
+                })
+                    .then((json) => {
+                    if (json.error_code)
+                        throw json.error_code;
+                    this.logSomeone(username, json.access_token);
+                    // On sauvegarde les schémas envoyés
+                    if (Array.isArray(json.subscriptions)) {
+                        json.subscriptions = {};
+                    }
+                    form_schema_1.Forms.schemas = json.subscriptions;
+                    resolve();
+                })
+                    .catch((error) => {
+                    reject(error);
+                });
+            });
+        }
+        logSomeone(username, token) {
+            this._token = token;
+            this._username = username;
+            localStorage.setItem('__username_manager', username);
+            localStorage.setItem('__token_manager', token);
+        }
+        unlog() {
+            localStorage.removeItem('__username_manager');
+            localStorage.removeItem('__token_manager');
+            this._username = null;
+            this._token = null;
+        }
+        get logged() {
+            return this._username !== null;
+        }
+        createUser(username, password, admin_password) {
+            const data = new FormData();
+            data.append("username", username);
+            data.append("password", password);
+            data.append("admin_password", admin_password);
+            return new Promise((resolve, reject) => {
+                fetch(main_2.API_URL + "users/create.json", {
+                    method: "POST",
+                    body: data
+                }).then((response) => {
+                    return response.json();
+                }).then((json) => {
+                    if (json.error_code)
+                        throw json.error_code;
+                    this.logSomeone(username, json.access_token);
+                    resolve();
+                }).catch((error) => {
+                    reject(error);
+                });
+            });
+        }
+    };
+    function createNewUser() {
+        const modal = helpers_2.getModal();
+        const instance = helpers_2.initModal({ dismissible: false });
+        modal.classList.add('modal-fixed-footer');
+        modal.innerHTML = `
+    <div class="modal-content">
+        <h5 class="no-margin-top">Créer un utilisateur</h5>
+        <form class="row" id="__modal_form_new_user">
+            <div class="row col s12 input-field">
+                <label for="__user_new">Nom d'utilisateur</label>
+                <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
+            </div>
+            <div class="row col s12 input-field">
+                <label for="__user_psw">Mot de passe</label>
+                <input type="password" class="validate" required id="__user_psw" name="user_psw">
+            </div>
+            <div class="row col s12 input-field">
+                <label for="__user_psw_r">Mot de passe (confirmation)</label>
+                <input type="password" class="validate" required id="__user_psw_r" name="user_psw_r">
+            </div>
+            <div class="row col s12 input-field">
+                <label for="__user_psw_a">Mot de passe administrateur</label>
+                <input type="password" class="validate" required id="__user_psw_a" name="user_psw_a">
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="btn-flat red-text left modal-close">Annuler</a>
+        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Créer utilisateur</a>
+        <div class="clearb"></div>
+    </div>
+    `;
+        instance.open();
+        const orig_psw = document.getElementById('__user_psw');
+        document.getElementById('__user_psw_r').onchange = function () {
+            const e = this;
+            if (e.value !== orig_psw.value) {
+                e.classList.add('invalid');
+                e.classList.remove('valid');
+            }
+            else {
+                e.classList.add('valid');
+                e.classList.remove('invalid');
+            }
+        };
+        let modal_save = null;
+        document.getElementById('__modal_create_new_user').onclick = function () {
+            const form = document.getElementById('__modal_form_new_user');
+            const name = form.user_new.value.trim();
+            const psw = form.user_psw.value.trim();
+            const psw_r = form.user_psw_r.value.trim();
+            const psw_a = form.user_psw_a.value.trim();
+            if (!name) {
+                helpers_2.showToast("Le nom ne peut pas être vide.");
+                helpers_2.showToast("Le nom ne peut pas être vide.");
+                return;
+            }
+            if (!psw) {
+                helpers_2.showToast("Le mot de passe ne peut pas être vide.");
+                return;
+            }
+            if (psw !== psw_r) {
+                helpers_2.showToast("Mot de passe et confirmation doivent correspondre.");
+                return;
+            }
+            if (!psw_a) {
+                helpers_2.showToast("Le mot de passe administrateur est nécessaire.");
+                return;
+            }
+            modal_save = document.createDocumentFragment();
+            let child;
+            while (child = modal.firstChild) {
+                modal_save.appendChild(child);
+            }
+            modal.innerHTML = helpers_2.getModalPreloader("Création de l'utilisateur...");
+            exports.UserManager.createUser(name, psw, psw_a)
+                .then(function () {
+                helpers_2.showToast("Utilisateur créé avec succès.");
+                instance.close();
+            }).catch(function (error) {
+                console.log(error);
+                if (typeof error === 'number') {
+                    if (error === 6) {
+                        helpers_2.showToast("Le mot de passe administrateur est invalide.");
+                    }
+                    else if (error === 12) {
+                        helpers_2.showToast("Cet utilisateur existe déjà.");
+                    }
+                    else {
+                        helpers_2.showToast("Une erreur inconnue est survenue.");
+                    }
+                }
+                modal.innerHTML = "";
+                let e;
+                while (e = modal_save.firstChild) {
+                    modal.appendChild(e);
+                }
+            });
+        };
+    }
+    exports.createNewUser = createNewUser;
+    function loginUser() {
+        return new Promise(function (resolve, reject) {
+            const modal = helpers_2.getModal();
+            const instance = helpers_2.initModal({ dismissible: false });
+            modal.innerHTML = `
+        <div class="modal-content">
+            <h5 class="no-margin-top">Connexion</h5>
+            <form class="row" id="__modal_form_new_user">
+                <div class="row col s12 input-field">
+                    <label for="__user_new">Nom d'utilisateur</label>
+                    <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
+                </div>
+                <div class="row col s12 input-field">
+                    <label for="__user_psw">Mot de passe</label>
+                    <input type="password" autocomplete="off" class="validate" required id="__user_psw" name="user_psw">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" id="__modal_cancel_user" class="btn-flat red-text left">Annuler</a>
+            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Connexion</a>
+            <div class="clearb"></div>
+        </div>
+        `;
+            instance.open();
+            let modal_save = null;
+            document.getElementById('__modal_cancel_user').onclick = function () {
+                instance.close();
+                reject();
+            };
+            document.getElementById('__modal_create_new_user').onclick = function () {
+                const form = document.getElementById('__modal_form_new_user');
+                const name = form.user_new.value.trim();
+                const psw = form.user_psw.value.trim();
+                if (!name) {
+                    helpers_2.showToast("Le nom ne peut pas être vide.");
+                    return;
+                }
+                if (!psw) {
+                    helpers_2.showToast("Le mot de passe ne peut pas être vide.");
+                    return;
+                }
+                modal_save = document.createDocumentFragment();
+                let child;
+                while (child = modal.firstChild) {
+                    modal_save.appendChild(child);
+                }
+                modal.innerHTML = helpers_2.getModalPreloader("Connexion");
+                exports.UserManager.login(name, psw)
+                    .then(function () {
+                    helpers_2.showToast("Vous avez été connecté-e avec succès.");
+                    instance.close();
+                    // RESOLUTION DE LA PROMESSE
+                    resolve();
+                }).catch(function (error) {
+                    if (typeof error === 'number') {
+                        if (error === 10) {
+                            helpers_2.showToast("Cet utilisateur n'existe pas.");
+                        }
+                        else if (error === 11) {
+                            helpers_2.showToast("Votre mot de passe est invalide.");
+                        }
+                        else {
+                            helpers_2.showToast("Une erreur inconnue est survenue.");
+                        }
+                    }
+                    else {
+                        helpers_2.showToast(error.message || JSON.stringify(error));
+                    }
+                    modal.innerHTML = "";
+                    let e;
+                    while (e = modal_save.firstChild) {
+                        modal.appendChild(e);
+                    }
+                });
+            };
+        });
+    }
+    exports.loginUser = loginUser;
+});
+/**
+ *
+ * const data = new FormData();
+        data.append("username", username);
+        data.append("password", password);
+ * return new Promise((resolve, reject) => {
+            fetch(API_URL + "/users/login.json", {
+                method: "POST",
+                body: data
+            }).then((response) => {
+                return response.json();
+            }).then((json) => {
+                this._token = json.access_token;
+                this._username = username;
+
+                resolve();
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+ */ 
 define("fetch_timeout", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -629,7 +647,536 @@ define("Settings", ["require", "exports"], function (require, exports) {
         }
     };
 });
-define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout", "Settings"], function (require, exports, logger_2, localforage_1, main_2, helpers_3, user_manager_1, fetch_timeout_1, Settings_1) {
+define("file_helper", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var FileHelperReadMode;
+    (function (FileHelperReadMode) {
+        FileHelperReadMode[FileHelperReadMode["text"] = 0] = "text";
+        FileHelperReadMode[FileHelperReadMode["array"] = 1] = "array";
+        FileHelperReadMode[FileHelperReadMode["url"] = 2] = "url";
+        FileHelperReadMode[FileHelperReadMode["binarystr"] = 3] = "binarystr";
+        FileHelperReadMode[FileHelperReadMode["json"] = 4] = "json";
+        FileHelperReadMode[FileHelperReadMode["internalURL"] = 5] = "internalURL";
+    })(FileHelperReadMode = exports.FileHelperReadMode || (exports.FileHelperReadMode = {}));
+    /**
+     * Simplify file access and directory navigation with native Promise support
+     */
+    class FileHelper {
+        /**
+         * Create a new FileHelper object using a root path.
+         * Root are automatically setted to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
+         * and to "cdvfile://localhost/temporary/" on browser.
+         *
+         * You can create a new FileHelper instance using a FileHelper instance, working directory will be used as root.
+         *
+         * You can also create a new FileHelper instance using a DirectoryEntry,
+         * returned by cordova-plugin-file's callbacks or by FileHelper.mkdir().
+         * DirectoryEntry's URL will be used as root.
+         *
+         * @param root Root directory of the new instance
+         */
+        constructor(root = "") {
+            this.ready = null;
+            this.root = null;
+            /** CHECK IF FH IS READY WITH waitInit(). */
+            this.ready = new Promise((resolve, reject) => {
+                document.addEventListener('deviceready', async () => {
+                    if (root instanceof FileHelper) {
+                        root = root.pwd();
+                    }
+                    else if (typeof root.isDirectory !== 'undefined') {
+                        // C'est une DirectoryEntry
+                        root = root.toInternalURL();
+                    }
+                    try {
+                        await this.cd(root, false);
+                        resolve();
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+        }
+        /**
+         * Returns a resolved promise when FileHelper is ready.
+         */
+        waitInit() {
+            if (this.ready === null) {
+                return Promise.reject(new Error("File Helper constructor not called"));
+            }
+            else {
+                return this.ready;
+            }
+        }
+        /**
+         * Return parent directory of current path. Must NOT have trailing slash !
+         * @param path
+         */
+        getDirUrlOfPath(path) {
+            const a = path.split('/');
+            a.pop();
+            return a.join('/');
+        }
+        /**
+         * Return basename (filename or foldername) of current path. Must NOT have trailing slash !
+         */
+        getBasenameOfPath(path) {
+            const basename = path.split('/').pop();
+            if (basename === undefined) {
+                return path;
+            }
+            else {
+                return basename;
+            }
+        }
+        /**
+         * Check if path exists (either a file or a directory)
+         * @param path
+         */
+        exists(path) {
+            return this.get(path)
+                .then(() => true)
+                .catch(() => false);
+        }
+        /**
+         * Check if path exists and is a file
+         * @param path
+         */
+        async isFile(path) {
+            const exists = await this.exists(path);
+            if (!exists) {
+                return false;
+            }
+            return (await this.get(path)).isFile;
+        }
+        /**
+         * Check if path exists and is a directory
+         * @param path
+         */
+        async isDir(path) {
+            const exists = await this.exists(path);
+            if (!exists) {
+                return false;
+            }
+            return (await this.get(path)).isDirectory;
+        }
+        /**
+         * Rename entry / Move file or directory to another directory.
+         *
+         * @param path Path of the actual entry
+         * @param dest Destination directory. Keep it undefined if you want to keep the same directory.
+         * Can be a string-path, a FileHelper instance, or a DirectoryEntry
+         *
+         * @param new_name New name of the entry. Keep it undefined if you want to keep the same name
+         */
+        async mv(path, dest, new_name) {
+            const entry = await this.get(path);
+            path = entry.isDirectory ? path.replace(/\/$/, '') : path;
+            let dir_dest = dest;
+            if (typeof dest === 'string') {
+                dir_dest = await this.mkdir(dest);
+            }
+            else if (dest instanceof FileHelper) {
+                dir_dest = await this.absoluteGet(dest.pwd());
+            }
+            else if (dest === undefined) {
+                dir_dest = await this.get(this.getDirUrlOfPath(path));
+            }
+            // Sinon, c'est bien un DirectoryEntry
+            entry.moveTo(dir_dest, new_name || this.getBasenameOfPath(path));
+        }
+        /**
+         * Copy file or directory to another directory.
+         *
+         * @param path Path of the actual entry
+         * @param dest Destination directory. Keep it undefined if you want to keep the same directory.
+         * Can be a string-path, a FileHelper instance, or a DirectoryEntry
+         *
+         * @param new_name New name, after copy, of the entry. Keep it undefined if you want to keep the same name
+         */
+        async cp(path, dest, new_name) {
+            const entry = await this.get(path);
+            path = entry.isDirectory ? path.replace(/\/$/, '') : path;
+            let dir_dest = dest;
+            if (typeof dest === 'string') {
+                dir_dest = await this.mkdir(dest);
+            }
+            else if (dest instanceof FileHelper) {
+                dir_dest = await this.absoluteGet(dest.pwd());
+            }
+            else if (dest === undefined) {
+                dir_dest = await this.get(this.getDirUrlOfPath(path));
+            }
+            // Sinon, c'est bien un DirectoryEntry
+            entry.copyTo(dir_dest, new_name || this.getBasenameOfPath(path));
+        }
+        /**
+         * Create a directory. Automatically create all the parent directories needed.
+         * @param path Path to the new directory
+         */
+        async mkdir(path) {
+            const steps = path.split('/');
+            let cur_entry = await this.get();
+            for (const step of steps) {
+                if (step.trim() === ".") {
+                    continue;
+                }
+                cur_entry = await new Promise((resolve, reject) => {
+                    cur_entry.getDirectory(step, {
+                        create: true,
+                        exclusive: false
+                    }, resolve, reject);
+                });
+            }
+            return cur_entry;
+        }
+        /**
+         * Write a file containing content.
+         * File and containing folder(s) are created automatically.
+         * If file already exists, by default, file content are truncated and replaced by content.
+         *
+         * @param path Path of the file relative to working directory
+         * @param content Content of the file. Can be a string, File instance, Blob or ArrayBuffer.
+         * Other types will be serialized automatically using JSON.stringify()
+         *
+         * @param append Determine that the function should write at the end of the file.
+         */
+        async write(path, content, append = false) {
+            content = this.toBlob(content);
+            let entry = path;
+            if (typeof path === 'string') {
+                const dirname = this.getDirUrlOfPath(path);
+                const filename = this.getBasenameOfPath(path);
+                entry = await this.getFileEntryOfDirEntry(dirname ? await this.mkdir(dirname) : await this.get(), filename);
+            }
+            return new Promise((resolve, reject) => {
+                // Fonction pour écrire le fichier après vidage
+                const finally_write = () => {
+                    entry.createWriter((fileWriter) => {
+                        fileWriter.onerror = function (e) {
+                            reject(e);
+                        };
+                        if (append) {
+                            fileWriter.seek(fileWriter.length);
+                        }
+                        // @ts-ignore
+                        fileWriter.onwriteend = null;
+                        fileWriter.write(content);
+                        fileWriter.onwriteend = () => {
+                            resolve(entry);
+                        };
+                    });
+                };
+                if (append) {
+                    finally_write();
+                }
+                else {
+                    // Vide le fichier
+                    entry.createWriter((fileWriter) => {
+                        fileWriter.onerror = function (e) {
+                            reject(e);
+                        };
+                        // Vide le fichier
+                        fileWriter.truncate(0);
+                        // Quand le fichier est vidé, on écrit finalement dedans
+                        fileWriter.onwriteend = finally_write;
+                    });
+                }
+            });
+        }
+        /**
+         * Read a existing file located in path
+         * @param path Path to the file or file via FileEntry
+         * @param mode Read mode. Should be a FileHelperReadMode instance. By default, read as classic text.
+         */
+        async read(path, mode = FileHelperReadMode.text) {
+            if (mode === FileHelperReadMode.internalURL) {
+                return (typeof path === 'string' ?
+                    (await this.get(path)).toInternalURL() :
+                    path.toInternalURL());
+            }
+            let file = await this.getFileOfEntry(typeof path === 'string' ? await this.get(path) : path);
+            return this.readFileAs(file, mode);
+        }
+        readJSON(path) {
+            return this.read(path, FileHelperReadMode.json);
+        }
+        toInternalURL(path) {
+            return this.read(path, FileHelperReadMode.internalURL);
+        }
+        readDataURL(path) {
+            return this.read(path, FileHelperReadMode.url);
+        }
+        /**
+         * Get an existing file or directory using an absolute path
+         * @param path Complete path
+         */
+        absoluteGet(path) {
+            return new Promise((resolve, reject) => {
+                window.resolveLocalFileSystemURL(path, resolve, reject);
+            });
+        }
+        /**
+         * Get an entry from a path.
+         * If you want to read a file, use read() instead.
+         * @param path Path to file or directory
+         */
+        get(path = "") {
+            return this.absoluteGet(this.pwd() + "/" + path);
+        }
+        /**
+         * Create / get a file and return FileEntry of it. Autocreate need parent directories.
+         * @param path Path to file
+         */
+        async touch(path) {
+            const dirname = this.getDirUrlOfPath(path);
+            const filename = this.getBasenameOfPath(path);
+            const dir = dirname ? await this.mkdir(dirname) : await this.get();
+            return this.getFileEntryOfDirEntry(dir, filename);
+        }
+        /**
+         * Get content of a directory.
+         *
+         * @param path Path of thing to explore
+         * @param option_string Options. Can be e, l, d or f. See docs.
+         */
+        async ls(path = "", option_string = "") {
+            const entry = await this.get(path);
+            if (entry.isFile) {
+                return [path];
+            }
+            const e = option_string.includes("e");
+            const l = option_string.includes("l");
+            const f = option_string.includes("f");
+            const d = option_string.includes("d");
+            path = path.replace(/\/$/, '');
+            if (path) {
+                path += "/";
+            }
+            let entries = await new Promise((resolve, reject) => {
+                const reader = entry.createReader();
+                reader.readEntries(resolve, reject);
+            });
+            entries = entries.filter(ele => {
+                if (f) {
+                    return ele.isFile;
+                }
+                else if (d) {
+                    return ele.isDirectory;
+                }
+                return true;
+            });
+            if (e) {
+                return entries;
+            }
+            if (l) {
+                const paths = [];
+                for (const e of entries) {
+                    if (e.isDirectory) {
+                        paths.push({
+                            name: path + e.name,
+                            mdate: undefined,
+                            mtime: undefined,
+                            size: 4096
+                        });
+                    }
+                    else {
+                        const entry = await this.getFileOfEntry(e);
+                        paths.push(this.getStatsFromFile(entry));
+                    }
+                }
+                return paths;
+            }
+            else {
+                const paths = [];
+                for (const e of entries) {
+                    paths.push(path + e.name);
+                }
+                return paths;
+            }
+        }
+        /**
+         * Remove a file or a directory.
+         * @param path Path of the file to remove. Do **NOT** remove root, use empty() !
+         * @param r Make rm recursive.
+         * If r = false and path contains a directory that is not empty, remove will fail
+         */
+        async rm(path, r = false) {
+            const entry = await this.get(path);
+            if (entry.toInternalURL().replace(/\/$/, '') === this.pwd()) {
+                return Promise.reject(new Error("Can't remove root directory !"));
+            }
+            if (entry.isDirectory && r) {
+                return new Promise((resolve, reject) => {
+                    entry.removeRecursively(resolve, reject);
+                });
+            }
+            else {
+                return new Promise((resolve, reject) => {
+                    entry.remove(resolve, reject);
+                });
+            }
+        }
+        /**
+         * Remove all content of a directory.
+         * @param path Path of the directory
+         * @param r Make empty recursive.
+         * If r = false and path contains a directory that is not empty, empty will fail
+         */
+        async empty(path, r = false) {
+            const entries = await this.ls(path);
+            for (const e of entries) {
+                const entry = await this.get(e);
+                if (entry.isDirectory && r) {
+                    await new Promise((resolve, reject) => {
+                        entry.removeRecursively(resolve, reject);
+                    });
+                }
+                else {
+                    await new Promise((resolve, reject) => {
+                        entry.remove(resolve, reject);
+                    });
+                }
+            }
+        }
+        /**
+         * Get information about a file
+         * @param path Path to a file
+         */
+        async stats(path) {
+            const entry = await this.getFileOfEntry(await this.get(path));
+            return this.getStatsFromFile(entry);
+        }
+        /**
+         * Change current instance root to another directory
+         * @param path **DIRECTORY** path (must NOT be a file)
+         * @param relative Specify if path is relative to current directory
+         */
+        async cd(path, relative = true) {
+            if (!path) {
+                if (device.platform === "browser") {
+                    path = "cdvfile://localhost/temporary/";
+                }
+                else {
+                    path = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
+                }
+            }
+            // Teste si le chemin est valide (échouera sinon)
+            const new_root = await (relative ? this.get(path) : this.absoluteGet(path));
+            if (new_root.isFile) {
+                throw new Error("New root can't be a file !");
+            }
+            this.root = new_root.toInternalURL().replace(/\/$/, '');
+        }
+        /**
+         * Get current root directory of this instance
+         */
+        pwd() {
+            if (this.root === null) {
+                throw new Error("Object is not initialized");
+            }
+            return this.root;
+        }
+        /**
+         * see pwd()
+         */
+        toString() {
+            return this.pwd();
+        }
+        /* FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
+        /**
+         * Get a FileEntry from a DirectoryEntry. File will be created if "filename" does not exists in DirectoryEntry
+         * @param dir DirectoryEntry
+         * @param filename Name a the file to get
+         */
+        getFileEntryOfDirEntry(dir, filename) {
+            return new Promise((resolve, reject) => {
+                dir.getFile(filename, { create: true, exclusive: false }, resolve, reject);
+            });
+        }
+        /**
+         * Get a File object from a FileEntry
+         * @param file FileEntry
+         */
+        getFileOfEntry(file) {
+            return new Promise((resolve, reject) => {
+                file.file(resolve, reject);
+            });
+        }
+        /**
+         * Read a file object as selected mode
+         * @param file File obj
+         * @param mode Mode
+         */
+        readFileAs(file, mode = FileHelperReadMode.text) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = function () {
+                    if (mode === FileHelperReadMode.array) {
+                        resolve(this.result);
+                    }
+                    if (mode === FileHelperReadMode.json) {
+                        resolve(JSON.parse(this.result));
+                    }
+                    else {
+                        resolve(this.result);
+                    }
+                };
+                r.onerror = function (error) {
+                    // Erreur de lecture du fichier => on rejette
+                    reject(error);
+                };
+                if (mode === FileHelperReadMode.array) {
+                    r.readAsArrayBuffer(file);
+                }
+                else if (mode === FileHelperReadMode.text) {
+                    r.readAsText(file);
+                }
+                else if (mode === FileHelperReadMode.url) {
+                    r.readAsDataURL(file);
+                }
+                else if (mode === FileHelperReadMode.binarystr) {
+                    r.readAsBinaryString(file);
+                }
+            });
+        }
+        /**
+         * Get informations about a single file using a File instance
+         * @param entry File
+         */
+        getStatsFromFile(entry) {
+            return {
+                mtime: entry.lastModified,
+                mdate: new Date(entry.lastModified),
+                size: entry.size,
+                name: entry.name
+            };
+        }
+        /* HELPERS */
+        /**
+         * Convert string, ArrayBuffer, File, classic objects to a Blob instance
+         * @param s
+         */
+        toBlob(s) {
+            if (s instanceof Blob || s instanceof File) {
+                return s;
+            }
+            else if (typeof s === 'string' || s instanceof ArrayBuffer) {
+                return new Blob([s]);
+            }
+            else if (typeof s === "object") {
+                return this.toBlob(JSON.stringify(s));
+            }
+            else {
+                return this.toBlob(String(s));
+            }
+        }
+    }
+    exports.FileHelper = FileHelper;
+});
+define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout", "Settings", "file_helper"], function (require, exports, logger_2, localforage_1, main_3, helpers_3, user_manager_1, fetch_timeout_1, Settings_1, file_helper_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
@@ -790,7 +1337,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             // et de ses métadonnées a réussi.
             let content;
             try {
-                content = await helpers_3.readFile('forms/' + id + ".json");
+                content = await main_3.FILE_HELPER.read('forms/' + id + ".json");
             }
             catch (error) {
                 logger_2.Logger.info("Impossible de lire le fichier", error.message);
@@ -811,7 +1358,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     this.running_fetchs.push(controller);
                 }
                 let signal = controller ? controller.signal : undefined;
-                const response = await fetch_timeout_1.default(main_2.API_URL + "forms/send.json", {
+                const response = await fetch_timeout_1.default(main_3.API_URL + "forms/send.json", {
                     method: "POST",
                     body: d,
                     signal,
@@ -845,7 +1392,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     // Pour des raisons de charge réseau, on envoie les fichiers un par un.
                     let base64;
                     try {
-                        base64 = await helpers_3.readFile(file, true);
+                        base64 = await main_3.FILE_HELPER.read(file, file_helper_1.FileHelperReadMode.url);
                     }
                     catch (e) {
                         // Le fichier n'existe pas en local. On passe.
@@ -867,7 +1414,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                             this.running_fetchs.push(controller);
                         }
                         let signal = controller ? controller.signal : undefined;
-                        const resp = await fetch_timeout_1.default(main_2.API_URL + "forms/metadata_send.json", {
+                        const resp = await fetch_timeout_1.default(main_3.API_URL + "forms/metadata_send.json", {
                             method: "POST",
                             body: md,
                             signal,
@@ -891,12 +1438,11 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             return this.list.listSaved();
         }
         async getSpecificFile(id) {
-            const entries = await helpers_3.getDirP('forms').then(helpers_3.dirEntries);
+            const entries = await main_3.FILE_HELPER.ls('forms', "e");
             const filename = id + ".json";
             for (const entry of entries) {
                 if (entry.name === filename) {
-                    const text = await helpers_3.readFileFromEntry(entry);
-                    const json = JSON.parse(text);
+                    const json = JSON.parse(await main_3.FILE_HELPER.read(entry));
                     return { type: json.type, metadata: json.metadata };
                 }
             }
@@ -906,27 +1452,18 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         /**
          * Obtient tous les fichiers JSON disponibles sur l'appareil
          */
-        getAllCurrentFiles() {
-            return helpers_3.getDirP('forms')
-                .then(helpers_3.dirEntries)
-                .then(entries => {
-                // On a les différents JSON situés dans le dossier 'forms', désormais,
-                // sous forme de FileEntry
-                const promises = [];
-                // On ajoute chaque entrée
-                for (const entry of entries) {
-                    promises.push(helpers_3.readFileFromEntry(entry)
-                        .then(text => {
-                        const json = JSON.parse(text);
-                        return [
-                            entry.name.split('.json')[0],
-                            { type: json.type, metadata: json.metadata }
-                        ];
-                    }));
-                }
-                // On attend que tout soit OK
-                return Promise.all(promises);
-            });
+        async getAllCurrentFiles() {
+            const entries = await main_3.FILE_HELPER.ls("forms", "e");
+            const promises = [];
+            // On ajoute chaque entrée
+            for (const entry of entries) {
+                promises.push(new Promise(async (resolve) => {
+                    const json = JSON.parse(await main_3.FILE_HELPER.read(entry));
+                    resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
+                }));
+            }
+            // On attend que tout soit OK
+            return Promise.all(promises);
         }
         /**
          * Supprime le cache de sauvegarde et ajoute tous les fichiers JSON disponibles dans celui-ci
@@ -1493,594 +2030,7 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
     }
     exports.launchQuizz = launchQuizz;
 });
-define("sdcard_file", ["require", "exports", "main", "helpers"], function (require, exports, main_3, helpers_4) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Fonction de test
-     * @param path Répertoire à lister
-     * @param prefix Base / racine
-     */
-    async function listSdCard(path = "", prefix = main_3.SDCARD_PATH) {
-        const dir = await getSdCardDir(path, prefix);
-        const reader = dir.createReader();
-        reader.readEntries(function (entries) {
-            console.log(entries);
-        }, function (err) {
-            console.log(err);
-        });
-    }
-    exports.listSdCard = listSdCard;
-    /**
-     * resolveLocalFileSystemURL version Promise
-     * @param url URL à résoudre
-     */
-    function resolveFSURL(url) {
-        return new Promise((resolve, reject) => {
-            window.resolveLocalFileSystemURL(url, resolve, reject);
-        });
-    }
-    exports.resolveFSURL = resolveFSURL;
-    /**
-     * Obtient un répertoire depuis une entrée. Le crée si besoin.
-     * @param entry Entrée de répertoire parent
-     * @param name Nom du répertoire à obtenir
-     * @param create Créer le répertoire
-     */
-    function getDirectoryFromEntry(entry, name, create = true) {
-        return new Promise((resolve, reject) => {
-            entry.getDirectory(name, { create, exclusive: false }, resolve, reject);
-        });
-    }
-    exports.getDirectoryFromEntry = getDirectoryFromEntry;
-    /**
-     * Obtient un fichier depuis une entrée de répertoire. Le crée si besoin
-     * @param entry Entrée du répertoire parent
-     * @param name Nom du fichier
-     * @param create Créer le fichier
-     */
-    function getFileFromEntry(entry, name, create = true) {
-        return new Promise((resolve, reject) => {
-            entry.getFile(name, { create, exclusive: false }, resolve, reject);
-        });
-    }
-    exports.getFileFromEntry = getFileFromEntry;
-    /**
-     * Obtenir un répertoire. Retourne null si le répertoire ne peut pas être atteint (pas une promesse rompue !)
-     * @param name Nom du répertoire à récupérer
-     * @param root Racine de la carte SD (automatiquement définie par défaut)
-     */
-    async function getSdCardDir(name = "", root = main_3.SDCARD_PATH) {
-        let folder;
-        try {
-            folder = await resolveFSURL(root);
-        }
-        catch (e) {
-            return null;
-        }
-        if (folder === null) {
-            return null;
-        }
-        if (name) {
-            return getDirectoryFromEntry(folder, name);
-        }
-        else {
-            return folder;
-        }
-    }
-    exports.getSdCardDir = getSdCardDir;
-    /**
-     * Obtient un fichier présent dans la carte SD
-     * @param name Nom complet du fichier (répertoire compris)
-     */
-    async function getSdCardFile(name) {
-        const path = name.split('/');
-        name = path.pop();
-        const foldername = path.join('/');
-        const folder = await getSdCardDir(foldername);
-        if (folder === null || !name) {
-            return null;
-        }
-        return getFileFromEntry(folder, name);
-    }
-    exports.getSdCardFile = getSdCardFile;
-    /**
-     * Ecrit un fichier sur la carte SD. Le crée si besoin.
-     * @param path Chemin du fichier
-     * @param content Contenu du fichier
-     */
-    async function writeSdCardFile(path, content) {
-        const file = await getSdCardFile(path);
-        if (file) {
-            return helpers_4.writeFileFromEntry(file, content);
-        }
-    }
-    exports.writeSdCardFile = writeSdCardFile;
-    /**
-     * Supprime un fichier de la carte SD
-     * @param path Chemin du fichier
-     */
-    async function removeSdCardFile(path) {
-        const file = await getSdCardFile(path);
-        return new Promise((resolve, reject) => {
-            file.remove(resolve, reject);
-        });
-    }
-    exports.removeSdCardFile = removeSdCardFile;
-    /**
-     * Obtient les répertoires sur cartes SD montés.
-     * Attention, depuis KitKat, la racine de la carte SD n'est PAS accessible en écriture !
-     */
-    function getSdCardFolder() {
-        return new Promise((resolve, reject) => {
-            // @ts-ignore
-            cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
-        });
-    }
-    exports.getSdCardFolder = getSdCardFolder;
-});
-define("file_helper", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var FileHelperReadMode;
-    (function (FileHelperReadMode) {
-        FileHelperReadMode[FileHelperReadMode["text"] = 0] = "text";
-        FileHelperReadMode[FileHelperReadMode["array"] = 1] = "array";
-        FileHelperReadMode[FileHelperReadMode["url"] = 2] = "url";
-        FileHelperReadMode[FileHelperReadMode["binarystr"] = 3] = "binarystr";
-    })(FileHelperReadMode = exports.FileHelperReadMode || (exports.FileHelperReadMode = {}));
-    /**
-     * Simplify file access and directory navigation with native Promise support
-     */
-    class FileHelper {
-        /**
-         * Create a new FileHelper object using a root path.
-         * Root are automatically setted to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
-         * and to "cdvfile://localhost/temporary/" on browser.
-         *
-         * You can create a new FileHelper instance using a FileHelper instance, working directory will be used as root.
-         *
-         * You can also create a new FileHelper instance using a DirectoryEntry,
-         * returned by cordova-plugin-file's callbacks or by FileHelper.mkdir().
-         * DirectoryEntry's URL will be used as root.
-         *
-         * @param root Root directory of the new instance
-         */
-        constructor(root = "") {
-            /** CHECK IF FH IS READY WITH waitInit(). */
-            this.ready = null;
-            this.root = null;
-            this.ready = new Promise((resolve, reject) => {
-                document.addEventListener('deviceready', async () => {
-                    if (root instanceof FileHelper) {
-                        root = root.pwd();
-                    }
-                    else if (typeof root.isDirectory !== 'undefined') {
-                        // C'est une DirectoryEntry
-                        root = root.toInternalURL();
-                    }
-                    try {
-                        await this.cd(root, false);
-                        resolve();
-                    }
-                    catch (e) {
-                        reject(e);
-                    }
-                });
-            });
-        }
-        /**
-         * Returns a resolved promise when FileHelper is ready.
-         */
-        waitInit() {
-            if (this.ready === null) {
-                return Promise.reject(new Error("File Helper constructor not called"));
-            }
-            else {
-                return this.ready;
-            }
-        }
-        /**
-         * Return parent directory of current path. Must NOT have trailing slash !
-         * @param path
-         */
-        getDirUrlOfPath(path) {
-            const a = path.split('/');
-            a.pop();
-            return a.join('/');
-        }
-        /**
-         * Return basename (filename or foldername) of current path. Must NOT have trailing slash !
-         */
-        getBasenameOfPath(path) {
-            const basename = path.split('/').pop();
-            if (basename === undefined) {
-                return path;
-            }
-            else {
-                return basename;
-            }
-        }
-        /**
-         * Check if path exists (either a file or a directory)
-         * @param path
-         */
-        exists(path) {
-            return this.get(path)
-                .then(() => true)
-                .catch(() => false);
-        }
-        /**
-         * Check if path exists and is a file
-         * @param path
-         */
-        async isFile(path) {
-            return (await this.get(path)).isFile;
-        }
-        /**
-         * Check if path exists and is a directory
-         * @param path
-         */
-        async isDir(path) {
-            return (await this.get(path)).isDirectory;
-        }
-        /**
-         * Rename entry / Move file or directory to another directory.
-         *
-         * @param path Path of the actual entry
-         * @param dest Destination directory. Keep it undefined if you want to keep the same directory.
-         * Can be a string-path, a FileHelper instance, or a DirectoryEntry
-         *
-         * @param new_name New name of the entry. Keep it undefined if you want to keep the same name
-         */
-        async move(path, dest, new_name) {
-            const entry = await this.get(path);
-            path = entry.isDirectory ? path.replace(/\/$/, '') : path;
-            let dir_dest = dest;
-            if (typeof dest === 'string') {
-                dir_dest = await this.mkdir(dest);
-            }
-            else if (dest instanceof FileHelper) {
-                dir_dest = await this.absoluteGet(dest.pwd());
-            }
-            else if (dest === undefined) {
-                dir_dest = await this.get(this.getDirUrlOfPath(path));
-            }
-            // Sinon, c'est bien un DirectoryEntry
-            entry.moveTo(dir_dest, new_name || this.getBasenameOfPath(path));
-        }
-        /**
-         * Copy file or directory to another directory.
-         *
-         * @param path Path of the actual entry
-         * @param dest Destination directory. Keep it undefined if you want to keep the same directory.
-         * Can be a string-path, a FileHelper instance, or a DirectoryEntry
-         *
-         * @param new_name New name, after copy, of the entry. Keep it undefined if you want to keep the same name
-         */
-        async copy(path, dest, new_name) {
-            const entry = await this.get(path);
-            path = entry.isDirectory ? path.replace(/\/$/, '') : path;
-            let dir_dest = dest;
-            if (typeof dest === 'string') {
-                dir_dest = await this.mkdir(dest);
-            }
-            else if (dest instanceof FileHelper) {
-                dir_dest = await this.absoluteGet(dest.pwd());
-            }
-            else if (dest === undefined) {
-                dir_dest = await this.get(this.getDirUrlOfPath(path));
-            }
-            // Sinon, c'est bien un DirectoryEntry
-            entry.copyTo(dir_dest, new_name || this.getBasenameOfPath(path));
-        }
-        /**
-         * Create a directory. Automatically create all the parent directories needed.
-         * @param path Path to the new directory
-         */
-        async mkdir(path) {
-            const steps = path.split('/');
-            let cur_entry = await this.get();
-            for (const step of steps) {
-                cur_entry = await new Promise((resolve, reject) => {
-                    cur_entry.getDirectory(step, {
-                        create: true,
-                        exclusive: false
-                    }, resolve, reject);
-                });
-            }
-            return cur_entry;
-        }
-        /**
-         * Write a file containing content.
-         * File and containing folder(s) are created automatically.
-         * If file already exists, by default, file content are truncated and replaced by content.
-         *
-         * @param path Path of the file relative to working directory
-         * @param content Content of the file. Can be a string, File instance, Blob or ArrayBuffer.
-         * Other types will be serialized automatically using JSON.stringify()
-         *
-         * @param append Determine that the function should write at the end of the file.
-         */
-        async write(path, content, append = false) {
-            content = this.toBlob(content);
-            const dirname = this.getDirUrlOfPath(path);
-            const filename = this.getBasenameOfPath(path);
-            const entry = await this.getFileEntryOfDirEntry(dirname ? await this.mkdir(dirname) : await this.get(), filename);
-            return new Promise((resolve, reject) => {
-                // Fonction pour écrire le fichier après vidage
-                const finally_write = () => {
-                    entry.createWriter((fileWriter) => {
-                        fileWriter.onerror = function (e) {
-                            reject(e);
-                        };
-                        if (append) {
-                            fileWriter.seek(fileWriter.length);
-                        }
-                        // @ts-ignore
-                        fileWriter.onwriteend = null;
-                        fileWriter.write(content);
-                        fileWriter.onwriteend = () => {
-                            resolve(entry);
-                        };
-                    });
-                };
-                if (append) {
-                    finally_write();
-                }
-                else {
-                    // Vide le fichier
-                    entry.createWriter((fileWriter) => {
-                        fileWriter.onerror = function (e) {
-                            reject(e);
-                        };
-                        // Vide le fichier
-                        fileWriter.truncate(0);
-                        // Quand le fichier est vidé, on écrit finalement dedans
-                        fileWriter.onwriteend = finally_write;
-                    });
-                }
-            });
-        }
-        /**
-         * Read a existing file located in path
-         * @param path Path to the file
-         * @param mode Read mode. Should be a FileHelperReadMode instance. By default, read as classic text.
-         */
-        async read(path, mode = FileHelperReadMode.text) {
-            const file = await this.getFileOfEntry(await this.get(path));
-            return new Promise((resolve, reject) => {
-                const r = new FileReader();
-                r.onload = function () {
-                    if (mode === FileHelperReadMode.array) {
-                        resolve(this.result);
-                    }
-                    else {
-                        resolve(this.result);
-                    }
-                };
-                r.onerror = function (error) {
-                    // Erreur de lecture du fichier => on rejette
-                    reject(error);
-                };
-                if (mode === FileHelperReadMode.array) {
-                    r.readAsArrayBuffer(file);
-                }
-                else if (mode === FileHelperReadMode.text) {
-                    r.readAsText(file);
-                }
-                else if (mode === FileHelperReadMode.url) {
-                    r.readAsDataURL(file);
-                }
-                else if (mode === FileHelperReadMode.binarystr) {
-                    r.readAsBinaryString(file);
-                }
-            });
-        }
-        /**
-         * Get an existing file or directory using an absolute path
-         * @param path Complete path
-         */
-        absoluteGet(path) {
-            return new Promise((resolve, reject) => {
-                window.resolveLocalFileSystemURL(path, resolve, reject);
-            });
-        }
-        /**
-         * Get an entry from a path.
-         * If you want to read a file, use read() instead.
-         * @param path Path to file or directory
-         */
-        get(path = "") {
-            return this.absoluteGet(this.pwd() + "/" + path);
-        }
-        /**
-         * Get content of a directory.
-         *
-         * @param path Path of thing to explore
-         * @param l Equivalent of -l parameter of ls command. Command will return FileStats[] instead of string[] with -l.
-         */
-        async ls(path = "", l = false) {
-            const entry = await this.get(path);
-            if (entry.isFile) {
-                return [path];
-            }
-            path = path.replace(/\/$/, '');
-            const entries = await new Promise((resolve, reject) => {
-                const reader = entry.createReader();
-                reader.readEntries(resolve, reject);
-            });
-            if (l) {
-                const paths = [];
-                for (const e of entries) {
-                    if (e.isDirectory) {
-                        paths.push({
-                            name: e.name,
-                            mdate: undefined,
-                            mtime: undefined,
-                            size: 4096
-                        });
-                    }
-                    else {
-                        const entry = await this.getFileOfEntry(e);
-                        paths.push(this.getStatsFromFile(entry));
-                    }
-                }
-                return paths;
-            }
-            else {
-                const paths = [];
-                for (const e of entries) {
-                    paths.push(e.name);
-                }
-                return paths;
-            }
-        }
-        /**
-         * Remove a file or a directory.
-         * @param path Path of the file to remove. Do **NOT** remove root, use empty() !
-         * @param r Make rm recursive.
-         * If r = false and path contains a directory that is not empty, remove will fail
-         */
-        async rm(path, r = false) {
-            const entry = await this.get(path);
-            if (entry.toInternalURL().replace(/\/$/, '') === this.pwd()) {
-                return Promise.reject(new Error("Can't remove root directory !"));
-            }
-            if (entry.isDirectory && r) {
-                return new Promise((resolve, reject) => {
-                    entry.removeRecursively(resolve, reject);
-                });
-            }
-            else {
-                return new Promise((resolve, reject) => {
-                    entry.remove(resolve, reject);
-                });
-            }
-        }
-        /**
-         * Remove all content of a directory.
-         * @param path Path of the directory
-         * @param r Make empty recursive.
-         * If r = false and path contains a directory that is not empty, empty will fail
-         */
-        async empty(path, r = false) {
-            const entries = await this.ls(path);
-            for (const e of entries) {
-                const entry = await this.get(path + "/" + e);
-                if (entry.isDirectory && r) {
-                    await new Promise((resolve, reject) => {
-                        entry.removeRecursively(resolve, reject);
-                    });
-                }
-                else {
-                    await new Promise((resolve, reject) => {
-                        entry.remove(resolve, reject);
-                    });
-                }
-            }
-        }
-        /**
-         * Get information about a file
-         * @param path Path to a file
-         */
-        async stats(path) {
-            const entry = await this.getFileOfEntry(await this.get(path));
-            return this.getStatsFromFile(entry);
-        }
-        /**
-         * Change current instance root to another directory
-         * @param path **DIRECTORY** path (must NOT be a file)
-         * @param relative Specify if path is relative to current directory
-         */
-        async cd(path, relative = true) {
-            if (!path) {
-                if (device.platform === "browser") {
-                    path = "cdvfile://localhost/temporary/";
-                }
-                else {
-                    path = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
-                }
-            }
-            // Teste si le chemin est valide (échouera sinon)
-            const new_root = await (relative ? this.get(path) : this.absoluteGet(path));
-            if (new_root.isFile) {
-                throw new Error("New root can't be a file !");
-            }
-            this.root = new_root.toInternalURL().replace(/\/$/, '');
-        }
-        /**
-         * Get current root directory of this instance
-         */
-        pwd() {
-            if (this.root === null) {
-                throw new Error("Object is not initialized");
-            }
-            return this.root;
-        }
-        /**
-         * see pwd()
-         */
-        toString() {
-            return this.pwd();
-        }
-        /****** FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
-        /**
-         * Get a FileEntry from a DirectoryEntry. File will be created if "filename" does not exists in DirectoryEntry
-         * @param dir DirectoryEntry
-         * @param filename Name a the file to get
-         */
-        getFileEntryOfDirEntry(dir, filename) {
-            return new Promise((resolve, reject) => {
-                dir.getFile(filename, { create: true, exclusive: false }, resolve, reject);
-            });
-        }
-        /**
-         * Get a File object from a FileEntry
-         * @param file FileEntry
-         */
-        getFileOfEntry(file) {
-            return new Promise((resolve, reject) => {
-                file.file(resolve, reject);
-            });
-        }
-        /**
-         * Get informations about a single file using a File instance
-         * @param entry File
-         */
-        getStatsFromFile(entry) {
-            return {
-                mtime: entry.lastModified,
-                mdate: new Date(entry.lastModified),
-                size: entry.size,
-                name: entry.name
-            };
-        }
-        /****** HELPERS */
-        /**
-         * Convert string, ArrayBuffer, File, classic objects to a Blob instance
-         * @param s
-         */
-        toBlob(s) {
-            if (s instanceof Blob || s instanceof File) {
-                return s;
-            }
-            else if (typeof s === 'string' || s instanceof ArrayBuffer) {
-                return new Blob([s]);
-            }
-            else if (typeof s === "object") {
-                return this.toBlob(JSON.stringify(s));
-            }
-            else {
-                return this.toBlob(String(s));
-            }
-        }
-    }
-    exports.FileHelper = FileHelper;
-    ;
-    exports.fs = new FileHelper;
-});
-define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco", "sdcard_file", "file_helper"], function (require, exports, PageManager_1, helpers_5, logger_3, audio_listener_1, form_schema_1, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1, sdcard_file_1, file_helper_1) {
+define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco", "file_helper"], function (require, exports, PageManager_1, helpers_4, logger_3, audio_listener_1, form_schema_2, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1, file_helper_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
@@ -2091,6 +2041,8 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.MP3_BITRATE = 256; /** En kb/s */
     exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
     exports.SDCARD_PATH = null;
+    exports.SD_FILE_HELPER = null;
+    exports.FILE_HELPER = new file_helper_2.FileHelper;
     exports.app = {
         // Application Constructor
         initialize: function () {
@@ -2124,7 +2076,8 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         // Change le répertoire de données
         // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
         // Sinon, si mobile, on passe sur dataDirectory
-        helpers_5.changeDir();
+        helpers_4.changeDir();
+        await exports.FILE_HELPER.waitInit();
         // @ts-ignore Force à demander la permission pour enregistrer du son
         const permissions = cordova.plugins.permissions;
         permissions.requestPermission(permissions.RECORD_AUDIO, () => {
@@ -2135,17 +2088,24 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             // console.log(status);
         }, e => { console.log(e); });
         try {
-            const folders = await sdcard_file_1.getSdCardFolder();
+            const folders = await helpers_4.getSdCardFolder();
             for (const f of folders) {
                 if (f.canWrite) {
                     exports.SDCARD_PATH = f.filePath;
+                    exports.SD_FILE_HELPER = new file_helper_2.FileHelper(f.filePath);
+                    try {
+                        await exports.SD_FILE_HELPER.waitInit();
+                    }
+                    catch (e) {
+                        exports.SD_FILE_HELPER = null;
+                    }
                     break;
                 }
             }
         }
         catch (e) { }
         logger_3.Logger.init();
-        form_schema_1.Forms.init();
+        form_schema_2.Forms.init();
         SyncManager_1.SyncManager.init();
         // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
         if (window.MobileAccessibility) {
@@ -2158,7 +2118,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         }, false);
         exports.app.initialize();
         initDebug();
-        helpers_5.initModal();
+        helpers_4.initModal();
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
@@ -2167,7 +2127,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             href = tmp[tmp.length - 1];
         }
         // Quand les forms sont prêts, on affiche l'app !
-        form_schema_1.Forms.onReady(function () {
+        form_schema_2.Forms.onReady(function () {
             let prom;
             if (href && PageManager_1.PageManager.pageExists(href)) {
                 prom = PageManager_1.PageManager.changePage(href);
@@ -2188,7 +2148,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
                     PageManager_1.SIDENAV_OBJ.destroy();
                 }
                 catch (e) { }
-                helpers_5.getBase().innerHTML = helpers_5.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+                helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
             });
         });
     }
@@ -2196,31 +2156,24 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         window["DEBUG"] = {
             launchQuizz: test_vocal_reco_1.launchQuizz,
             PageManager: PageManager_1.PageManager,
-            readFromFile: helpers_5.readFromFile,
-            listDir: helpers_5.listDir,
-            saveDefaultForm: helpers_5.saveDefaultForm,
-            createDir: helpers_5.createDir,
-            getLocation: helpers_5.getLocation,
-            testDistance: helpers_5.testDistance,
-            rmrf: helpers_5.rmrf,
-            rmrfPromise: helpers_5.rmrfPromise,
+            saveDefaultForm: helpers_4.saveDefaultForm,
+            getLocation: helpers_4.getLocation,
+            testDistance: helpers_4.testDistance,
             Logger: logger_3.Logger,
-            Forms: form_schema_1.Forms,
-            listSdCard: sdcard_file_1.listSdCard,
+            Forms: form_schema_2.Forms,
             SyncEvent: SyncManager_1.SyncEvent,
-            getSdCardDir: sdcard_file_1.getSdCardDir,
-            askModalList: helpers_5.askModalList,
-            FileHelper: file_helper_1.FileHelper,
-            FileHelperReadMode: file_helper_1.FileHelperReadMode,
-            createRandomForms: helpers_5.createRandomForms,
+            askModalList: helpers_4.askModalList,
+            FileHelper: file_helper_2.FileHelper,
+            FileHelperReadMode: file_helper_2.FileHelperReadMode,
+            createRandomForms: helpers_4.createRandomForms,
             recorder: function () {
                 audio_listener_1.newModalRecord(document.createElement('button'), document.createElement('input'), {
                     name: "__test__",
                     label: "Test",
-                    type: form_schema_1.FormEntityType.audio
+                    type: form_schema_2.FormEntityType.audio
                 });
             },
-            dateFormatter: helpers_5.dateFormatter,
+            dateFormatter: helpers_4.dateFormatter,
             prompt: vocal_recognition_2.prompt,
             createNewUser: user_manager_2.createNewUser,
             UserManager: user_manager_2.UserManager,
@@ -2229,291 +2182,270 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     }
     document.addEventListener('deviceready', initApp, false);
 });
-define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_4, helpers_6, form_schema_2) {
+define("logger", ["require", "exports", "main"], function (require, exports, main_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.UserManager = new class {
+    // Objet Logger
+    // Sert à écrire dans un fichier de log formaté
+    // à la racine du système de fichiers
+    var LogLevel;
+    (function (LogLevel) {
+        LogLevel["debug"] = "debug";
+        LogLevel["info"] = "info";
+        LogLevel["warn"] = "warn";
+        LogLevel["error"] = "error";
+    })(LogLevel = exports.LogLevel || (exports.LogLevel = {}));
+    /**
+     * Logger
+     * Permet de logger dans un fichier texte des messages.
+     */
+    exports.Logger = new class {
         constructor() {
-            this._username = null;
-            this._token = null;
-            const usr = localStorage.getItem('__username_manager');
-            const tkn = localStorage.getItem('__token_manager');
-            if (usr && tkn) {
-                this._username = usr;
-                this._token = tkn;
+            this._onWrite = false;
+            this.delayed = [];
+            this.waiting_callee = [];
+            this.init_done = false;
+            this.init_waiting_callee = [];
+            this.tries = 5;
+        }
+        /**
+         * Initialise le logger. Doit être réalisé après app.init() et changeDir().
+         * Pour vérifier si le logger est initialisé, utilisez onReady().
+         */
+        init() {
+            this.init_done = false;
+            if (this.tries === 0) {
+                console.error("Too many init tries. Logger stays uninitialized.");
+                return;
             }
-        }
-        get username() {
-            return this._username;
-        }
-        get token() {
-            return this._token;
-        }
-        login(username, password) {
-            return new Promise((resolve, reject) => {
-                let data = new FormData();
-                data.append("username", username);
-                data.append('password', password);
-                fetch(main_4.API_URL + "users/login.json", { body: data, method: 'POST' })
-                    .then((response) => {
-                    return response.json();
-                })
-                    .then((json) => {
-                    if (json.error_code)
-                        throw json.error_code;
-                    this.logSomeone(username, json.access_token);
-                    // On sauvegarde les schémas envoyés
-                    if (Array.isArray(json.subscriptions)) {
-                        json.subscriptions = {};
-                    }
-                    form_schema_2.Forms.schemas = json.subscriptions;
-                    resolve();
-                })
-                    .catch((error) => {
-                    reject(error);
-                });
+            this.tries--;
+            main_4.FILE_HELPER.touch("log.txt")
+                .then(entry => {
+                this.fileEntry = entry;
+                this.init_done = true;
+                this.onWrite = false;
+                this.tries = 5;
+                let func;
+                while (func = this.init_waiting_callee.pop()) {
+                    func();
+                }
+            })
+                .catch(err => {
+                console.log("Unable to create file log.", err);
             });
         }
-        logSomeone(username, token) {
-            this._token = token;
-            this._username = username;
-            localStorage.setItem('__username_manager', username);
-            localStorage.setItem('__token_manager', token);
+        /**
+         * Vrai si le logger est prêt à écrire / lire dans le fichier de log.
+         */
+        isInit() {
+            return this.init_done;
         }
-        unlog() {
-            localStorage.removeItem('__username_manager');
-            localStorage.removeItem('__token_manager');
-            this._username = null;
-            this._token = null;
-        }
-        get logged() {
-            return this._username !== null;
-        }
-        createUser(username, password, admin_password) {
-            const data = new FormData();
-            data.append("username", username);
-            data.append("password", password);
-            data.append("admin_password", admin_password);
-            return new Promise((resolve, reject) => {
-                fetch(main_4.API_URL + "users/create.json", {
-                    method: "POST",
-                    body: data
-                }).then((response) => {
-                    return response.json();
-                }).then((json) => {
-                    if (json.error_code)
-                        throw json.error_code;
-                    this.logSomeone(username, json.access_token);
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger est prêt à recevoir des instructions.
+         * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
+         */
+        onReady(callback) {
+            const oninit = new Promise((resolve) => {
+                if (this.isInit()) {
                     resolve();
-                }).catch((error) => {
-                    reject(error);
-                });
+                }
+                else {
+                    this.init_waiting_callee.push(resolve);
+                }
             });
-        }
-    };
-    function createNewUser() {
-        const modal = helpers_6.getModal();
-        const instance = helpers_6.initModal({ dismissible: false });
-        modal.classList.add('modal-fixed-footer');
-        modal.innerHTML = `
-    <div class="modal-content">
-        <h5 class="no-margin-top">Créer un utilisateur</h5>
-        <form class="row" id="__modal_form_new_user">
-            <div class="row col s12 input-field">
-                <label for="__user_new">Nom d'utilisateur</label>
-                <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
-            </div>
-            <div class="row col s12 input-field">
-                <label for="__user_psw">Mot de passe</label>
-                <input type="password" class="validate" required id="__user_psw" name="user_psw">
-            </div>
-            <div class="row col s12 input-field">
-                <label for="__user_psw_r">Mot de passe (confirmation)</label>
-                <input type="password" class="validate" required id="__user_psw_r" name="user_psw_r">
-            </div>
-            <div class="row col s12 input-field">
-                <label for="__user_psw_a">Mot de passe administrateur</label>
-                <input type="password" class="validate" required id="__user_psw_a" name="user_psw_a">
-            </div>
-        </form>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" class="btn-flat red-text left modal-close">Annuler</a>
-        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Créer utilisateur</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-        instance.open();
-        const orig_psw = document.getElementById('__user_psw');
-        document.getElementById('__user_psw_r').onchange = function () {
-            const e = this;
-            if (e.value !== orig_psw.value) {
-                e.classList.add('invalid');
-                e.classList.remove('valid');
+            if (callback) {
+                oninit.then(callback);
             }
             else {
-                e.classList.add('valid');
-                e.classList.remove('invalid');
+                return oninit;
             }
-        };
-        let modal_save = null;
-        document.getElementById('__modal_create_new_user').onclick = function () {
-            const form = document.getElementById('__modal_form_new_user');
-            const name = form.user_new.value.trim();
-            const psw = form.user_psw.value.trim();
-            const psw_r = form.user_psw_r.value.trim();
-            const psw_a = form.user_psw_a.value.trim();
-            if (!name) {
-                helpers_6.showToast("Le nom ne peut pas être vide.");
-                helpers_6.showToast("Le nom ne peut pas être vide.");
-                return;
+        }
+        get onWrite() {
+            return this._onWrite;
+        }
+        set onWrite(value) {
+            this._onWrite = value;
+            if (!value && this.delayed.length) {
+                // On lance une tâche "delayed" avec le premier élément de la liste (le premier inséré)
+                this.write(...this.delayed.shift());
             }
-            if (!psw) {
-                helpers_6.showToast("Le mot de passe ne peut pas être vide.");
-                return;
-            }
-            if (psw !== psw_r) {
-                helpers_6.showToast("Mot de passe et confirmation doivent correspondre.");
-                return;
-            }
-            if (!psw_a) {
-                helpers_6.showToast("Le mot de passe administrateur est nécessaire.");
-                return;
-            }
-            modal_save = document.createDocumentFragment();
-            let child;
-            while (child = modal.firstChild) {
-                modal_save.appendChild(child);
-            }
-            modal.innerHTML = helpers_6.getModalPreloader("Création de l'utilisateur...");
-            exports.UserManager.createUser(name, psw, psw_a)
-                .then(function () {
-                helpers_6.showToast("Utilisateur créé avec succès.");
-                instance.close();
-            }).catch(function (error) {
-                console.log(error);
-                if (typeof error === 'number') {
-                    if (error === 6) {
-                        helpers_6.showToast("Le mot de passe administrateur est invalide.");
-                    }
-                    else if (error === 12) {
-                        helpers_6.showToast("Cet utilisateur existe déjà.");
-                    }
-                    else {
-                        helpers_6.showToast("Une erreur inconnue est survenue.");
-                    }
+            else if (!value && this.waiting_callee.length) {
+                // Si il n'y a aucune tâche en attente, on peut lancer les waiting function
+                let func;
+                while (func = this.waiting_callee.pop()) {
+                    func();
                 }
-                modal.innerHTML = "";
-                let e;
-                while (e = modal_save.firstChild) {
-                    modal.appendChild(e);
+            }
+        }
+        /**
+         * Écrit dans le fichier de log le contenu de text avec le niveau level.
+         * Ajoute automatique date et heure au message ainsi qu'un saut de ligne à la fin.
+         * Si level vaut debug, rien ne sera affiché dans la console.
+         * @param data
+         * @param level Niveau de log
+         */
+        write(data, level = LogLevel.warn) {
+            if (!Array.isArray(data)) {
+                data = [data];
+            }
+            if (!this.isInit()) {
+                this.delayWrite(data, level);
+                return;
+            }
+            // En debug, on écrit dans dans le fichier
+            if (level === LogLevel.debug) {
+                console.log(...data);
+                return;
+            }
+            // Create a FileWriter object for our FileEntry (log.txt).
+            this.fileEntry.createWriter((fileWriter) => {
+                fileWriter.onwriteend = () => {
+                    this.onWrite = false;
+                };
+                fileWriter.onerror = (e) => {
+                    console.log("Logger: Failed file write: " + e.toString());
+                    this.onWrite = false;
+                };
+                // Append to file
+                try {
+                    fileWriter.seek(fileWriter.length);
+                }
+                catch (e) {
+                    console.log("Logger: File doesn't exist!", e);
+                    return;
+                }
+                if (!this.onWrite) {
+                    if (level === LogLevel.info) {
+                        console.log(...data);
+                    }
+                    else if (level === LogLevel.warn) {
+                        console.warn(...data);
+                    }
+                    else if (level === LogLevel.error) {
+                        console.error(...data);
+                    }
+                    let final = this.createDateHeader(level) + " ";
+                    for (const e of data) {
+                        final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
+                    }
+                    this.onWrite = true;
+                    fileWriter.write(new Blob([final]));
+                }
+                else {
+                    this.delayWrite(data, level);
+                }
+            }, (error) => {
+                console.error("Impossible d'écrire: ", error.message);
+                this.delayWrite(data, level);
+                this.init();
+            });
+        }
+        /**
+         * Crée une date formatée
+         * @param level
+         */
+        createDateHeader(level) {
+            const date = new Date();
+            const m = ((date.getMonth() + 1) < 10 ? "0" : "") + String(date.getMonth() + 1);
+            const d = ((date.getDate()) < 10 ? "0" : "") + String(date.getDate());
+            const hour = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
+            const min = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
+            const sec = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
+            return `[${level}] [${d}/${m}/${date.getFullYear()} ${hour}:${min}:${sec}]`;
+        }
+        delayWrite(data, level) {
+            this.delayed.push([data, level]);
+        }
+        /**
+         * Si aucun callback n'est précisé, renvoie une Promise qui se résout quand
+         * le logger a fini toutes ses opérations d'écriture.
+         * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
+         */
+        onWriteEnd(callbackSuccess) {
+            const onwriteend = new Promise((resolve) => {
+                if (!this.onWrite && this.isInit()) {
+                    resolve();
+                }
+                else {
+                    this.waiting_callee.push(resolve);
                 }
             });
-        };
-    }
-    exports.createNewUser = createNewUser;
-    function loginUser() {
-        return new Promise(function (resolve, reject) {
-            const modal = helpers_6.getModal();
-            const instance = helpers_6.initModal({ dismissible: false });
-            modal.innerHTML = `
-        <div class="modal-content">
-            <h5 class="no-margin-top">Connexion</h5>
-            <form class="row" id="__modal_form_new_user">
-                <div class="row col s12 input-field">
-                    <label for="__user_new">Nom d'utilisateur</label>
-                    <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
-                </div>
-                <div class="row col s12 input-field">
-                    <label for="__user_psw">Mot de passe</label>
-                    <input type="password" autocomplete="off" class="validate" required id="__user_psw" name="user_psw">
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <a href="#!" id="__modal_cancel_user" class="btn-flat red-text left">Annuler</a>
-            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Connexion</a>
-            <div class="clearb"></div>
-        </div>
-        `;
-            instance.open();
-            let modal_save = null;
-            document.getElementById('__modal_cancel_user').onclick = function () {
-                instance.close();
-                reject();
-            };
-            document.getElementById('__modal_create_new_user').onclick = function () {
-                const form = document.getElementById('__modal_form_new_user');
-                const name = form.user_new.value.trim();
-                const psw = form.user_psw.value.trim();
-                if (!name) {
-                    helpers_6.showToast("Le nom ne peut pas être vide.");
-                    return;
+            if (callbackSuccess) {
+                onwriteend.then(callbackSuccess);
+            }
+            else {
+                return onwriteend;
+            }
+        }
+        /**
+         * Vide le fichier de log.
+         * @returns Promise La promesse est résolue quand le fichier est vidé, rompue si échec
+         */
+        clearLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
                 }
-                if (!psw) {
-                    helpers_6.showToast("Le mot de passe ne peut pas être vide.");
-                    return;
-                }
-                modal_save = document.createDocumentFragment();
-                let child;
-                while (child = modal.firstChild) {
-                    modal_save.appendChild(child);
-                }
-                modal.innerHTML = helpers_6.getModalPreloader("Connexion");
-                exports.UserManager.login(name, psw)
-                    .then(function () {
-                    helpers_6.showToast("Vous avez été connecté-e avec succès.");
-                    instance.close();
-                    // RESOLUTION DE LA PROMESSE
-                    resolve();
-                }).catch(function (error) {
-                    if (typeof error === 'number') {
-                        if (error === 10) {
-                            helpers_6.showToast("Cet utilisateur n'existe pas.");
-                        }
-                        else if (error === 11) {
-                            helpers_6.showToast("Votre mot de passe est invalide.");
-                        }
-                        else {
-                            helpers_6.showToast("Une erreur inconnue est survenue.");
-                        }
+                this.fileEntry.createWriter((fileWriter) => {
+                    fileWriter.onwriteend = () => {
+                        this.onWrite = false;
+                        resolve();
+                    };
+                    fileWriter.onerror = () => {
+                        console.log("Logger: Failed to truncate.");
+                        this.onWrite = false;
+                        reject();
+                    };
+                    if (!this.onWrite) {
+                        fileWriter.truncate(0);
                     }
                     else {
-                        helpers_6.showToast(error.message || JSON.stringify(error));
-                    }
-                    modal.innerHTML = "";
-                    let e;
-                    while (e = modal_save.firstChild) {
-                        modal.appendChild(e);
+                        console.log("Please call this function when log is not writing.");
+                        reject();
                     }
                 });
-            };
-        });
-    }
-    exports.loginUser = loginUser;
-});
-/**
- *
- * const data = new FormData();
-        data.append("username", username);
-        data.append("password", password);
- * return new Promise((resolve, reject) => {
-            fetch(API_URL + "/users/login.json", {
-                method: "POST",
-                body: data
-            }).then((response) => {
-                return response.json();
-            }).then((json) => {
-                this._token = json.access_token;
-                this._username = username;
-
-                resolve();
-            }).catch((error) => {
-                reject(error);
             });
-        });
- */ 
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout"], function (require, exports, helpers_7, user_manager_3, main_5, fetch_timeout_2) {
+        }
+        /**
+         * Affiche tout le contenu du fichier de log dans la console via console.log()
+         * @returns Promise La promesse est résolue avec le contenu du fichier si lecture réussie, rompue si échec
+         */
+        consoleLogLog() {
+            return new Promise((resolve, reject) => {
+                if (!this.isInit()) {
+                    reject("Logger must be initialized");
+                }
+                this.fileEntry.file(function (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = function () {
+                        console.log(this.result);
+                        resolve(this.result);
+                    };
+                    reader.readAsText(file);
+                }, () => {
+                    console.log("Logger: Unable to open file.");
+                    this.init();
+                    reject();
+                });
+            });
+        }
+        /// Méthodes d'accès rapide
+        debug(...data) {
+            this.write(data, LogLevel.debug);
+        }
+        info(...data) {
+            this.write(data, LogLevel.info);
+        }
+        warn(...data) {
+            this.write(data, LogLevel.warn);
+        }
+        error(...data) {
+            this.write(data, LogLevel.error);
+        }
+    };
+});
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout", "file_helper"], function (require, exports, helpers_5, user_manager_3, main_5, fetch_timeout_2, file_helper_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_2 = __importDefault(fetch_timeout_2);
@@ -2556,7 +2488,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
         saveForms() {
             if (this.available_forms) {
-                helpers_7.writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+                main_5.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
             }
         }
         /**
@@ -2592,7 +2524,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             };
             const readStandardForm = () => {
                 // On vérifie si le fichier loaded_forms.json existe
-                helpers_7.readFile(this.FORM_LOCATION)
+                main_5.FILE_HELPER.read(this.FORM_LOCATION)
                     .then((string) => {
                     loadJSONInObject(JSON.parse(string));
                 })
@@ -2601,14 +2533,16 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                     $.get('assets/form.json', {}, (json) => {
                         loadJSONInObject(json, true);
                     }, 'json')
-                        .fail(function () {
+                        .fail(async function () {
                         // Essaie de lire le fichier sur le périphérique
-                        helpers_7.readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                        const application = new file_helper_3.FileHelper(cordova.file.applicationDirectory + 'www/');
+                        await application.waitInit();
+                        application.read('assets/form.json')
                             .then(string => {
                             loadJSONInObject(JSON.parse(string));
                         })
                             .catch(() => {
-                            helpers_7.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
+                            helpers_5.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                         });
                     });
                 });
@@ -2618,7 +2552,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 init_text.innerText = "Mise à jour des formulaires";
             }
             // noinspection OverlyComplexBooleanExpressionJS
-            if ((main_5.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && helpers_7.hasConnection() && user_manager_3.UserManager.logged) {
+            if ((main_5.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && helpers_5.hasConnection() && user_manager_3.UserManager.logged) {
                 // On tente d'actualiser les formulaires disponibles
                 // On attend au max 20 secondes
                 return fetch_timeout_2.default(main_5.API_URL + "schemas/subscribed.json", {
@@ -2750,7 +2684,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
-define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "sdcard_file"], function (require, exports, PageManager_2, form_schema_3, SyncManager_2, sdcard_file_2) {
+define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "main"], function (require, exports, PageManager_2, form_schema_3, SyncManager_2, main_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -2914,7 +2848,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
      * @param callbackIfFailed Fonction appelée en cas d'échec
      * @param asBase64 true si le fichier doit être passé encodé en base64
      */
-    function readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
+    function __readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
         const pathToFile = FOLDER + fileName;
         window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
             fileEntry.file(function (file) {
@@ -2945,7 +2879,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             }
         });
     }
-    exports.readFromFile = readFromFile;
+    exports.__readFromFile = __readFromFile;
     /**
      * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
      */
@@ -2956,7 +2890,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         return cordova.file.applicationDirectory + 'www/';
     }
     exports.toValidUrl = toValidUrl;
-    function readFileAsArrayBuffer(file) {
+    function __readFileAsArrayBuffer(file) {
         return new Promise((resolve, reject) => {
             const r = new FileReader();
             r.onload = function () {
@@ -2969,14 +2903,14 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             r.readAsArrayBuffer(file);
         });
     }
-    exports.readFileAsArrayBuffer = readFileAsArrayBuffer;
+    exports.__readFileAsArrayBuffer = __readFileAsArrayBuffer;
     /**
      * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
      * @param fileName Nom du fichier
      * @param asBase64 true si fichier passé en base64 dans la promesse
      * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
      */
-    function readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
+    function __readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
         const pathToFile = forceBaseDir + fileName;
         return new Promise(function (resolve, reject) {
             window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
@@ -2997,13 +2931,13 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             });
         });
     }
-    exports.readFile = readFile;
+    exports.__readFile = __readFile;
     /**
      * Lit un fichier en texte ou base64 depuis son FileEntry et envoie son résultat dans une Promise
      * @param fileEntry FileEntry
      * @param asBase64 true si fichier passé en base64 à la Promise
      */
-    function readFileFromEntry(fileEntry, asBase64 = false) {
+    function __readFileFromEntry(fileEntry, asBase64 = false) {
         return new Promise(function (resolve, reject) {
             fileEntry.file(function (file) {
                 const reader = new FileReader();
@@ -3019,167 +2953,13 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             }, reject);
         });
     }
-    exports.readFileFromEntry = readFileFromEntry;
-    /**
-     * Version Promise de getDir.
-     * Voir getDir().
-     * @param dirName string Nom du répertoire
-     * @return Promise<DirectoryEntry>
-     */
-    function getDirP(dirName) {
-        return new Promise((resolve, reject) => {
-            getDir(resolve, dirName, reject);
-        });
-    }
-    exports.getDirP = getDirP;
-    /**
-     * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
-     * Sans dirName, renvoie la racine du système de fichiers.
-     * @param callback Function(dirEntry) => void
-     * @param dirName string
-     * @param onError Function(error) => void
-     */
-    function getDir(callback, dirName = "", onError) {
-        function callGetDirEntry(dirEntry) {
-            DIR_ENTRY = dirEntry;
-            if (dirName) {
-                dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry) => {
-                    if (callback) {
-                        callback(newEntry);
-                    }
-                }, (err) => {
-                    console.log("Unable to create dir");
-                    if (onError) {
-                        onError(err);
-                    }
-                });
-            }
-            else if (callback) {
-                callback(dirEntry);
-            }
-        }
-        // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
-        if (DIR_ENTRY === null) {
-            window.resolveLocalFileSystemURL(FOLDER, (dirEntry) => {
-                callGetDirEntry(dirEntry);
-            }, (err) => {
-                console.log("Persistent not available", err.code);
-                if (onError) {
-                    onError(err);
-                }
-            });
-        }
-        else {
-            callGetDirEntry(DIR_ENTRY);
-        }
-    }
-    exports.getDir = getDir;
-    function writeFileP(dirName, fileName, blob) {
-        return new Promise((resolve, reject) => {
-            writeFile(dirName, fileName, blob, resolve, reject);
-        });
-    }
-    exports.writeFileP = writeFileP;
-    /**
-     * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
-     * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
-     * @param dirName string
-     * @param fileName string
-     * @param blob Blob
-     * @param callback Function() => void
-     * @param onFailure Function(error) => void | Généralement, error est une FileError
-     */
-    function writeFile(dirName, fileName, blob, callback, onFailure) {
-        getDir(function (dirEntry) {
-            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                writeFileFromEntry(fileEntry, blob).then(function () {
-                    if (callback) {
-                        callback();
-                    }
-                }).catch(error => { if (onFailure)
-                    onFailure(error); });
-            }, function (err) { console.log("Error in writing file", err.code); if (onFailure) {
-                onFailure(err);
-            } });
-        }, dirName);
-    }
-    exports.writeFile = writeFile;
-    function writeFileFromEntry(file, content) {
-        // Prend l'entry du fichier et son blob à écrire en paramètre
-        return new Promise(function (resolve, reject) {
-            // Fonction pour écrire le fichier après vidage
-            function finally_write() {
-                file.createWriter(function (fileWriter) {
-                    fileWriter.onerror = function (e) {
-                        reject(e);
-                    };
-                    fileWriter.onwriteend = null;
-                    fileWriter.write(content);
-                    fileWriter.onwriteend = resolve;
-                });
-            }
-            // Vide le fichier
-            file.createWriter(function (fileWriter) {
-                fileWriter.onerror = function (e) {
-                    reject(e);
-                };
-                // Vide le fichier
-                fileWriter.truncate(0);
-                // Quand le fichier est vidé, on écrit finalement dedans
-                fileWriter.onwriteend = finally_write;
-            });
-        });
-    }
-    exports.writeFileFromEntry = writeFileFromEntry;
-    /**
-     * Crée un dossier name dans la racine du système de fichiers.
-     * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
-     * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
-     * Si échec, appelle onError avec l'erreur
-     * @param name string
-     * @param onSuccess Function(dirEntry) => void
-     * @param onError Function(error: FileError) => void
-     */
-    function createDir(name, onSuccess, onError) {
-        getDir(function (dirEntry) {
-            dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
-        });
-    }
-    exports.createDir = createDir;
-    /**
-     * Fonction de test.
-     * Affiche les entrées du répertoire path dans la console.
-     * Par défaut, affiche la racine du système de fichiers.
-     * @param path string
-     */
-    function listDir(path = "") {
-        getDir(function (fileSystem) {
-            const reader = fileSystem.createReader();
-            reader.readEntries(function (entries) {
-                console.log(entries);
-            }, function (err) {
-                console.log(err);
-            });
-        }, path);
-    }
-    exports.listDir = listDir;
+    exports.__readFileFromEntry = __readFileFromEntry;
     function sleep(ms) {
         return new Promise(resolve => {
             setTimeout(resolve, ms);
         });
     }
     exports.sleep = sleep;
-    function dirEntries(dirEntry) {
-        return new Promise(function (resolve, reject) {
-            const reader = dirEntry.createReader();
-            reader.readEntries(function (entries) {
-                resolve(entries);
-            }, function (err) {
-                reject(err);
-            });
-        });
-    }
-    exports.dirEntries = dirEntries;
     /**
      * Fonction de test.
      * Écrit l'objet obj sérialisé en JSON à la fin de l'élément HTML ele.
@@ -3224,157 +3004,6 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         });
     }
     exports.testDistance = testDistance;
-    /**
-     * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
-     * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
-     * @param dirName string
-     * @param fileName string
-     * @param callback Function() => void Fonction appelée quand le fichier est supprimé
-     */
-    function removeFileByName(dirName, fileName, callback) {
-        getDir(function (dirEntry) {
-            dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-                removeFile(fileEntry, callback);
-            });
-        }, dirName);
-    }
-    exports.removeFileByName = removeFileByName;
-    /**
-     * Supprime un fichier via son fileEntry
-     * @param entry fileEntry
-     * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
-     */
-    function removeFile(entry, callback) {
-        entry.remove(function () {
-            // Fichier supprimé !
-            if (callback)
-                callback();
-        }, function (err) {
-            console.log("error", err);
-            if (callback)
-                callback(err);
-        }, function () {
-            console.log("file not found");
-            if (callback)
-                callback(false);
-        });
-    }
-    exports.removeFile = removeFile;
-    /**
-     * Supprime un fichier via son fileEntry
-     * @param entry fileEntry
-     * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
-     */
-    function removeFilePromise(entry) {
-        return new Promise(function (resolve, reject) {
-            entry.remove(function () {
-                // Fichier supprimé !
-                resolve();
-            }, function (err) {
-                reject(err);
-            }, function () {
-                resolve();
-            });
-        });
-    }
-    exports.removeFilePromise = removeFilePromise;
-    /**
-     * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
-     * @param dirName string Chemin du répertoire
-     * @param callback NE PAS UTILISER. USAGE INTERNE.
-     * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
-     */
-    function rmrf(dirName, callback, dirEntry) {
-        // Récupère le dossier dirName (ou la racine du système de fichiers)
-        function readDirEntry(dirEntry) {
-            const reader = dirEntry.createReader();
-            // Itère sur les entrées du répertoire via readEntries
-            reader.readEntries(function (entries) {
-                // Pour chaque entrée du dossier
-                for (const entry of entries) {
-                    if (entry.isDirectory) {
-                        // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                        rmrf(entry.fullPath, function () {
-                            // Puis on le supprime lui-même
-                            removeFile(entry, callback);
-                        });
-                    }
-                    else {
-                        // Si c'est un fichier, on le supprime
-                        removeFile(entry, callback);
-                    }
-                }
-            });
-        }
-        if (dirEntry) {
-            readDirEntry(dirEntry);
-        }
-        else {
-            getDir(readDirEntry, dirName, function () {
-                if (callback)
-                    callback();
-            });
-        }
-    }
-    exports.rmrf = rmrf;
-    /**
-     * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
-     * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
-     * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
-     * @param dirName string Chemin du dossier à supprimer
-     * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
-     * @returns Promise Promesse tenue si suppression réussie, rompue sinon
-     */
-    function rmrfPromise(dirName, deleteSelf = false) {
-        function rmrfFromEntry(dirEntry) {
-            return new Promise(function (resolve, reject) {
-                const reader = dirEntry.createReader();
-                // Itère sur les entrées du répertoire via readEntries
-                reader.readEntries(function (entries) {
-                    // Pour chaque entrée du dossier
-                    const promises = [];
-                    for (const entry of entries) {
-                        promises.push(new Promise(function (resolve, reject) {
-                            if (entry.isDirectory) {
-                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                                rmrfFromEntry(entry).then(function () {
-                                    // Quand c'est fini, on supprime le répertoire lui-même
-                                    // Puis on résout
-                                    removeFilePromise(entry).then(resolve).catch(reject);
-                                });
-                            }
-                            else {
-                                // Si c'est un fichier, on le supprime
-                                removeFilePromise(entry).then(resolve).catch(reject);
-                            }
-                        }));
-                    }
-                    // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
-                    Promise.all(promises).then(function () {
-                        // Quand ils le sont, résout la promesse
-                        resolve();
-                    }).catch(reject);
-                });
-            });
-        }
-        return new Promise(function (resolve, reject) {
-            getDir(function (dirEntry) {
-                // Attends que tous les dossiers soient supprimés sous ce répertoire
-                rmrfFromEntry(dirEntry).then(function () {
-                    // Si on doit supprimer le dossier et que ce n'est pas la racine
-                    if (deleteSelf && dirName !== "") {
-                        // On supprime puis on résout
-                        removeFilePromise(dirEntry).then(resolve).catch(reject);
-                    }
-                    // On résout immédiatement
-                    else {
-                        resolve();
-                    }
-                }).catch(reject);
-            }, dirName, reject);
-        });
-    }
-    exports.rmrfPromise = rmrfPromise;
     /**
      * Formate un objet Date en chaîne de caractères potable.
      * @param date Date
@@ -3442,15 +3071,9 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
      * @param path string
      * @param element HTMLImageElement
      */
-    function createImgSrc(path, element) {
-        const parts = path.split('/');
-        const file_name = parts.pop();
-        const dir_name = parts.join('/');
-        getDir(function (dirEntry) {
-            dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
-                element.src = fileEntry.toURL();
-            });
-        }, dir_name);
+    async function createImgSrc(path, element) {
+        const file = await main_6.FILE_HELPER.get(path);
+        element.src = file.toURL();
     }
     exports.createImgSrc = createImgSrc;
     /**
@@ -3747,29 +3370,31 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
                 }
             }
             // Sauvegarde du formulaire
-            promises.push(new Promise((resolve, reject) => {
-                const id = generateId(20);
-                writeFile('forms', id + '.json', new Blob([JSON.stringify(save)]), function () {
-                    SyncManager_2.SyncManager.add(id, save).then(resolve).catch(reject);
-                }, reject);
+            const id = generateId(20);
+            promises.push(main_6.FILE_HELPER.write("forms/" + id + ".json", save)
+                .then(() => {
+                return SyncManager_2.SyncManager.add(id, save);
             }));
-            sdcard_file_2.writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
-                .catch(error => console.log(error));
+            if (main_6.SD_FILE_HELPER) {
+                main_6.SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
+            }
         }
         await Promise.all(promises);
     }
     exports.createRandomForms = createRandomForms;
-    async function removeContentOfDirectory(name) {
-        const entry = await getDirP(name);
-        await new Promise((resolve, reject) => {
-            entry.removeRecursively(resolve, reject);
+    /**
+     * Obtient les répertoires sur cartes SD montés.
+     * Attention, depuis KitKat, la racine de la carte SD n'est PAS accessible en écriture !
+     */
+    function getSdCardFolder() {
+        return new Promise((resolve, reject) => {
+            // @ts-ignore
+            cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
         });
-        // Recrée le répertoire
-        await getDirP(name);
     }
-    exports.removeContentOfDirectory = removeContentOfDirectory;
+    exports.getSdCardFolder = getSdCardFolder;
 });
-define("location", ["require", "exports", "helpers"], function (require, exports, helpers_8) {
+define("location", ["require", "exports", "helpers"], function (require, exports, helpers_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createLocationInputSelector(container, input, locations, open_on_complete = false) {
@@ -3818,7 +3443,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
                     }
                 }
                 else {
-                    helpers_8.showToast("Ce lieu n'existe pas.");
+                    helpers_6.showToast("Ce lieu n'existe pas.");
                 }
             }
         });
@@ -3826,7 +3451,7 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location", "sdcard_file"], function (require, exports, vocal_recognition_3, form_schema_4, helpers_9, main_6, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_3, location_1, sdcard_file_3) {
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location", "file_helper"], function (require, exports, vocal_recognition_3, form_schema_4, helpers_7, main_7, PageManager_3, logger_4, audio_listener_2, user_manager_4, SyncManager_3, location_1, file_helper_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function createInputWrapper() {
@@ -3982,7 +3607,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     location.value = `${filled_form.location} - ${label_location.label}`;
                 }
                 else if (filled_form.location !== null) {
-                    helpers_9.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
+                    helpers_7.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
                 }
             }
             loc_wrapper.appendChild(location);
@@ -4387,7 +4012,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // Définition de la valeur par défaut = date actuelle
-                    input.value = helpers_9.dateFormatter("Y-m-d");
+                    input.value = helpers_7.dateFormatter("Y-m-d");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -4409,7 +4034,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // Définition de la valeur par défaut = date actuelle
-                    input.value = helpers_9.dateFormatter("h:i");
+                    input.value = helpers_7.dateFormatter("h:i");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -4430,7 +4055,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_9.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_7.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -4490,15 +4115,17 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    helpers_9.readFromFile(filled_form.fields[ele.name], function (base64) {
+                    main_7.FILE_HELPER.read(filled_form.fields[ele.name], file_helper_4.FileHelperReadMode.url)
+                        .then(base64 => {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
-                        const duration = ((base64.length * 0.7) / (main_6.MP3_BITRATE * 1000)) * 8;
+                        const duration = ((base64.length * 0.7) / (main_7.MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
-                    }, function (fail) {
-                        logger_4.Logger.warn("Impossible de charger le fichier", fail);
-                    }, true);
+                    })
+                        .catch(err => {
+                        logger_4.Logger.warn("Impossible de charger le fichier", err);
+                    });
                 }
                 ////// Fin
                 button.addEventListener('click', function () {
@@ -4550,13 +4177,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     async function beginFormSave(type, current_form, force_name, form_save) {
         // Ouverture du modal de verification
-        const modal = helpers_9.getModal();
-        const instance = helpers_9.initModal({ dismissible: false, outDuration: 100 }, helpers_9.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
+        const modal = helpers_7.getModal();
+        const instance = helpers_7.initModal({ dismissible: false, outDuration: 100 }, helpers_7.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
             <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
         </div>`));
         instance.open();
         // Attend que le modal s'ouvre proprement (ralentissements sinon)
-        await helpers_9.sleep(300);
+        await helpers_7.sleep(300);
         modal.classList.add('modal-fixed-footer');
         // Recherche des éléments à vérifier
         const elements_failed = [];
@@ -4732,16 +4359,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             save_btn.classList.add('btn-flat', 'right', 'green-text');
             save_btn.innerText = "Sauvegarder";
             save_btn.onclick = function () {
-                modal.innerHTML = helpers_9.getModalPreloader("Sauvegarde en cours");
+                modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
                 modal.classList.remove('modal-fixed-footer');
-                const unique_id = force_name || helpers_9.generateId(main_6.ID_COMPLEXITY);
+                const unique_id = force_name || helpers_7.generateId(main_7.ID_COMPLEXITY);
                 PageManager_3.PageManager.lock_return_button = true;
                 saveForm(type, unique_id, location_str, form_save)
                     .then((form_values) => {
                     SyncManager_3.SyncManager.add(unique_id, form_values);
                     if (form_save) {
                         instance.close();
-                        helpers_9.showToast("Écriture du formulaire et de ses données réussie.");
+                        helpers_7.showToast("Écriture du formulaire et de ses données réussie.");
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager_3.PageManager.popPage();
                         // PageManager.reload(); la page se recharge toute seule au pop
@@ -4849,10 +4476,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     async function writeDataThenForm(name, form_values, older_save) {
         function saveBlobToFile(filename, input_name, blob) {
             const full_path = 'form_data/' + name + '/' + filename;
-            return helpers_9.writeFileP('form_data/' + name, filename, blob)
+            return main_7.FILE_HELPER.write(full_path, blob)
                 .then(() => {
-                if (device.platform === 'Android') {
-                    return sdcard_file_3.writeSdCardFile(full_path, blob).catch(e => console.log(e));
+                if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
+                    return main_7.SD_FILE_HELPER.write(full_path, blob).catch(e => console.log(e));
                 }
             })
                 .then(() => {
@@ -4865,21 +4492,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     if (older_save.fields[input_name] !== form_values.fields[input_name]) {
                         // Si le fichier enregistré est différent du fichier actuel
                         // Suppression de l'ancienne image
-                        const parts = older_save.fields[input_name].split('/');
-                        const file_name = parts.pop();
-                        const dir_name = parts.join('/');
-                        helpers_9.removeFileByName(dir_name, file_name);
-                        sdcard_file_3.removeSdCardFile(older_save.fields[input_name]);
+                        if (main_7.SD_FILE_HELPER) {
+                            main_7.SD_FILE_HELPER.rm(older_save.fields[input_name]);
+                        }
+                        main_7.FILE_HELPER.rm(older_save.fields[input_name]);
                     }
                 }
             })
                 .catch((error) => {
-                helpers_9.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                helpers_7.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
                 return Promise.reject(error);
             });
         }
-        // Crée le dossier form_data si besoin
-        await helpers_9.getDirP('form_data');
         // Récupère les images du formulaire
         const images_from_form = document.getElementsByClassName('input-image-element');
         // Sauvegarde les images !
@@ -4889,10 +4513,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             const input_name = img.name;
             if (file) {
                 const filename = file.name;
-                promises.push(helpers_9.readFileAsArrayBuffer(file)
-                    .then(buffer => {
-                    return saveBlobToFile(filename, input_name, new Blob([buffer]));
-                }));
+                promises.push(saveBlobToFile(filename, input_name, file));
             }
             else {
                 if (older_save && input_name in older_save.fields) {
@@ -4917,8 +4538,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             const file = audio.value;
             const input_name = audio.name;
             if (file) {
-                const filename = helpers_9.generateId(main_6.ID_COMPLEXITY) + '.mp3';
-                promises.push(helpers_9.urlToBlob(file).then(function (blob) {
+                const filename = helpers_7.generateId(main_7.ID_COMPLEXITY) + '.mp3';
+                promises.push(helpers_7.urlToBlob(file).then(function (blob) {
                     return saveBlobToFile(filename, input_name, blob);
                 }));
             }
@@ -4946,10 +4567,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 delete form_values.metadata[n];
             }
         }
-        const json_blob = new Blob([JSON.stringify(form_values)]);
-        await helpers_9.writeFileP('forms', name + '.json', json_blob);
-        if (device.platform === 'Android') {
-            await sdcard_file_3.writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
+        await main_7.FILE_HELPER.write('forms/' + name + '.json', form_values);
+        if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
+            main_7.SD_FILE_HELPER.write('forms/' + name + '.json', form_values).catch((e) => console.log(e));
         }
         console.log(form_values);
         return form_values;
@@ -4968,7 +4588,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             form_schema_4.Forms.onReady(function (_, current) {
                 if (form_schema_4.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_9.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
+                    base.innerHTML = helpers_7.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
                 }
                 else {
@@ -4988,7 +4608,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         base.innerHTML = "";
         if (!edition_mode && !user_manager_4.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = base.innerHTML = helpers_9.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
+            base.innerHTML = base.innerHTML = helpers_7.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
             PageManager_3.PageManager.should_wait = false;
             return;
         }
@@ -5054,8 +4674,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Sinon, on ramène à la page précédente
             PageManager_3.PageManager.goBack();
         }
-        helpers_9.getModalInstance().close();
-        helpers_9.getModal().classList.remove('modal-fixed-footer');
+        helpers_7.getModalInstance().close();
+        helpers_7.getModal().classList.remove('modal-fixed-footer');
     }
     /**
      * Charge le sélecteur de localisation depuis un schéma de formulaire
@@ -5063,13 +4683,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_9.getModal();
-        const instance = helpers_9.initModal({
+        const modal = helpers_7.getModal();
+        const instance = helpers_7.initModal({
             dismissible: false, preventScrolling: true
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
-        modal.innerHTML = helpers_9.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        modal.innerHTML = helpers_7.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -5084,7 +4704,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             locationSelector(modal, current_form.locations, false, !current_form.skip_location);
         };
         // Cherche la localisation et remplit le modal
-        helpers_9.getLocation(function (coords) {
+        helpers_7.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords, !current_form.skip_location);
         }, function () {
@@ -5139,7 +4759,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 lieux_dispo.push({
                     name: lieu,
                     label: locations[lieu].label,
-                    distance: helpers_9.calculateDistance(current_location.coords, locations[lieu])
+                    distance: helpers_7.calculateDistance(current_location.coords, locations[lieu])
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -5150,7 +4770,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_6.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_7.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -5187,18 +4807,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         ok.classList.add("btn-flat", "green-text", "right");
         ok.addEventListener('click', function () {
             if (input.value.trim() === "") {
-                helpers_9.showToast("Vous devez préciser un lieu.");
+                helpers_7.showToast("Vous devez préciser un lieu.");
             }
             else if (input.value in labels_to_name) {
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 // On stocke la clé de la localisation dans reallocation
                 loc_input.dataset.reallocation = labels_to_name[input.value][0];
-                helpers_9.getModalInstance().close();
+                helpers_7.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
-                helpers_9.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
+                helpers_7.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
             }
         });
         footer.appendChild(ok);
@@ -5212,7 +4832,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_4, helpers_10, main_7, form_schema_5, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_4, helpers_8, main_8, form_schema_5, location_2, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -5222,7 +4842,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_7.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_8.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
             sur le terrain !
@@ -5244,7 +4864,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         // Calcul du nombre de formulaires en attente de synchronisation
         try {
             const remaining_count = await SyncManager_4.SyncManager.remainingToSync();
-            if (helpers_10.hasGoodConnection()) {
+            if (helpers_8.hasGoodConnection()) {
                 if (remaining_count > 15) {
                     home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
                     <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`, "Synchronisation");
@@ -5274,7 +4894,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         }
         // Nombre de formulaires enregistrés sur l'appareil
         try {
-            const nb_files = (await helpers_10.getDirP('forms').then(helpers_10.dirEntries)).length;
+            const nb_files = (await getDirP('forms').then(dirEntries)).length;
             home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
         }
@@ -5335,7 +4955,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             event.preventDefault();
             event.stopPropagation();
             if (allow_to_click_to_terrain) {
-                test_vocal_reco_2.launchQuizz(helpers_10.getBase());
+                test_vocal_reco_2.launchQuizz(helpers_8.getBase());
             }
         };
     }
@@ -5454,7 +5074,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_6, helpers_11, SyncManager_5, PageManager_4, fetch_timeout_3, main_8, home_1, Settings_2) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_6, helpers_9, SyncManager_5, PageManager_4, fetch_timeout_3, main_9, home_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -5464,16 +5084,16 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             : "Vous n'êtes pas connecté-e"}.`;
     }
     function formActualisationModal() {
-        const instance = helpers_11.initModal({ dismissible: false }, helpers_11.getModalPreloader("Actualisation..."));
+        const instance = helpers_9.initModal({ dismissible: false }, helpers_9.getModalPreloader("Actualisation..."));
         instance.open();
         form_schema_6.Forms.init(true)
             .then(() => {
-            helpers_11.showToast("Actualisation terminée.");
+            helpers_9.showToast("Actualisation terminée.");
             instance.close();
             PageManager_4.PageManager.reload();
         })
             .catch(() => {
-            helpers_11.showToast("Impossible d'actualiser les schémas.");
+            helpers_9.showToast("Impossible d'actualiser les schémas.");
             instance.close();
         });
     }
@@ -5495,7 +5115,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.remove('blue');
             button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
             button.onclick = function () {
-                helpers_11.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+                helpers_9.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
                     .then(function () {
                     // L'utilisateur veut se déconnecter
                     user_manager_6.UserManager.unlog();
@@ -5577,7 +5197,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 subscriptionsModal();
             }
             else {
-                helpers_11.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
+                helpers_9.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
             }
         };
         container.appendChild(subs_btn);
@@ -5596,13 +5216,13 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         formbtn.innerHTML = "Actualiser schémas formulaire";
         formbtn.onclick = function () {
             if (user_manager_6.UserManager.logged) {
-                helpers_11.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
+                helpers_9.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
                     // L'utilisateur a dit oui
                     formActualisationModal();
                 });
             }
             else {
-                helpers_11.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+                helpers_9.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
             }
         };
         container.appendChild(formbtn);
@@ -5618,12 +5238,12 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     </p>
     `);
         // Select pour choisir la fréquence de synchro
-        const select_field = helpers_11.convertHTMLToElement('<div class="input-field col s12"></div>');
+        const select_field = helpers_9.convertHTMLToElement('<div class="input-field col s12"></div>');
         const select_input = document.createElement('select');
-        for (const minutes of main_8.SYNC_FREQUENCY_POSSIBILITIES) {
+        for (const minutes of main_9.SYNC_FREQUENCY_POSSIBILITIES) {
             const opt = document.createElement('option');
             opt.value = String(minutes);
-            opt.innerText = helpers_11.convertMinutesToText(minutes);
+            opt.innerText = helpers_9.convertMinutesToText(minutes);
             opt.selected = minutes === Settings_2.Settings.sync_freq;
             select_input.appendChild(opt);
         }
@@ -5670,21 +5290,21 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn.innerHTML = "Tout resynchroniser";
         syncbtn.onclick = function () {
             if (user_manager_6.UserManager.logged) {
-                helpers_11.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
+                helpers_9.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
                 Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.", "Oui", "Non", "Vider cache de synchronisation").then(checked_val => {
                     // L'utilisateur a dit oui
                     SyncManager_5.SyncManager.graphicalSync(true, checked_val);
                 });
             }
             else {
-                helpers_11.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
+                helpers_9.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
             }
         };
         container.appendChild(syncbtn);
     }
     exports.initSettingsPage = initSettingsPage;
     async function getSubscriptions() {
-        return fetch_timeout_3.default(main_8.API_URL + "schemas/available.json", {
+        return fetch_timeout_3.default(main_9.API_URL + "schemas/available.json", {
             headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
             method: "GET",
             mode: "cors"
@@ -5697,7 +5317,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(main_8.API_URL + "schemas/subscribe.json", {
+        return fetch_timeout_3.default(main_9.API_URL + "schemas/subscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -5711,7 +5331,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(main_8.API_URL + "schemas/unsubscribe.json", {
+        return fetch_timeout_3.default(main_9.API_URL + "schemas/unsubscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -5720,8 +5340,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             .then(response => response.json());
     }
     async function subscriptionsModal() {
-        const modal = helpers_11.getModal();
-        const instance = helpers_11.initModal({ inDuration: 200, outDuration: 150 }, helpers_11.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+        const modal = helpers_9.getModal();
+        const instance = helpers_9.initModal({ inDuration: 200, outDuration: 150 }, helpers_9.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
         instance.open();
         const content = document.createElement('div');
         content.classList.add('modal-content');
@@ -5799,7 +5419,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                     to_uncheck.push(ch.dataset.id);
                 }
             }
-            modal.innerHTML = helpers_11.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
+            modal.innerHTML = helpers_9.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
             modal.classList.remove('modal-fixed-footer');
             try {
                 // Appel à unsubscribe
@@ -5816,7 +5436,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 if (to_check.length > 0) {
                     subs = await subscribe(to_check, true);
                 }
-                helpers_11.showToast("Mise à jour des souscriptions réussie");
+                helpers_9.showToast("Mise à jour des souscriptions réussie");
                 instance.close();
                 // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
                 if (subs) {
@@ -5824,7 +5444,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 }
             }
             catch (e) {
-                helpers_11.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
+                helpers_9.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
                 instance.close();
             }
             PageManager_4.PageManager.reload();
@@ -5837,7 +5457,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         modal.appendChild(footer);
     }
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger", "sdcard_file"], function (require, exports, helpers_12, form_schema_7, PageManager_5, SyncManager_6, logger_5, sdcard_file_4) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger", "main"], function (require, exports, helpers_10, form_schema_7, PageManager_5, SyncManager_6, logger_5, main_10) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var SaveState;
@@ -5850,42 +5470,28 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
         if (form.type === null || !form_schema_7.Forms.formExists(form.type)) {
-            helpers_12.showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type + "'.", 10000);
+            helpers_10.showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type + "'.", 10000);
             return;
         }
         const current_form = form_schema_7.Forms.getForm(form.type);
         PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     async function deleteAll() {
-        const instance = helpers_12.unclosableBottomModal(`
-        ${helpers_12.SMALL_PRELOADER}
+        const instance = helpers_10.unclosableBottomModal(`
+        ${helpers_10.SMALL_PRELOADER}
         <p class="flow-text">Suppression en cours</p>
     `);
         PageManager_5.PageManager.lock_return_button = true;
         try {
             // On veut supprimer tous les fichiers
-            await helpers_12.removeContentOfDirectory('forms');
-            await helpers_12.removeContentOfDirectory('form_data');
-            if (device.platform === "Android") {
-                const sddir = await sdcard_file_4.getSdCardDir("forms");
-                if (sddir) {
-                    await new Promise((resolve, reject) => {
-                        sddir.removeRecursively(resolve, reject);
-                    }).catch(() => { });
-                    // Recrée le répertoire
-                    await sdcard_file_4.getSdCardDir("forms");
-                }
-                const sddir2 = await sdcard_file_4.getSdCardDir("form_data");
-                if (sddir2) {
-                    await new Promise((resolve, reject) => {
-                        sddir2.removeRecursively(resolve, reject);
-                    }).catch(() => { });
-                    // Recrée le répertoire
-                    await sdcard_file_4.getSdCardDir("form_data");
-                }
+            await main_10.FILE_HELPER.rm('forms', true);
+            await main_10.FILE_HELPER.rm('form_data', true);
+            if (device.platform === "Android" && main_10.SD_FILE_HELPER) {
+                await main_10.SD_FILE_HELPER.rm('forms', true);
+                await main_10.SD_FILE_HELPER.rm('form_data', true);
             }
             await SyncManager_6.SyncManager.clear();
-            helpers_12.showToast("Fichiers supprimés avec succès");
+            helpers_10.showToast("Fichiers supprimés avec succès");
             PageManager_5.PageManager.lock_return_button = false;
             instance.close();
             PageManager_5.PageManager.reload();
@@ -5938,14 +5544,14 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         else if (state === SaveState.waiting) {
             sync_str = `<i class="material-icons grey-text">sync_disabled</i>`;
         }
-        const sync_btn = helpers_12.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
+        const sync_btn = helpers_10.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
         container.innerHTML = "";
         container.appendChild(sync_btn);
         // Ajoute le texte de l'élément
         container.insertAdjacentHTML('beforeend', `
         <div class="left">
             [${type}] ${id} <br> 
-            Modifié le ${helpers_12.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_10.formatDate(new Date(json[0].lastModified), true)}
         </div>`);
         // Ajout des actions de l'élément
         //// ACTION 1: Modifier
@@ -5960,7 +5566,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             const list = ["Modifier"];
             list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
             list.push("Supprimer");
-            helpers_12.askModalList(list)
+            helpers_10.askModalList(list)
                 .then(index => {
                 if (index === 0) {
                     modify_element();
@@ -5980,60 +5586,27 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         selector.appendChild(container);
         ph.appendChild(selector);
     }
-    function readAllFilesOfDirectory(dirName) {
-        const dirreader = new Promise(function (resolve, reject) {
-            helpers_12.getDir(function (dirEntry) {
-                // Lecture de tous les fichiers du répertoire
-                const reader = dirEntry.createReader();
-                reader.readEntries(function (entries) {
-                    const promises = [];
-                    for (const entry of entries) {
-                        promises.push(new Promise(function (resolve, reject) {
-                            entry.file(function (file) {
-                                const reader = new FileReader();
-                                // console.log(file);
-                                reader.onloadend = function () {
-                                    try {
-                                        resolve([file, JSON.parse(this.result)]);
-                                    }
-                                    catch (e) {
-                                        console.log("JSON mal formé:", this.result);
-                                        resolve([file, { fields: {}, type: "", location: "", owner: "", metadata: {} }]);
-                                    }
-                                };
-                                reader.onerror = function (err) {
-                                    reject(err);
-                                };
-                                reader.readAsText(file);
-                            }, function (err) {
-                                reject(err);
-                            });
-                        }));
-                    }
-                    // Renvoie le tableau de promesses lancées
-                    resolve(promises);
-                }, function (err) {
-                    reject(err);
-                    console.log(err);
-                });
-            }, dirName, function (err) {
-                reject(err);
-            });
-        });
-        // @ts-ignore
-        return dirreader;
+    async function readAllFilesOfDirectory(dirName) {
+        const entries = await main_10.FILE_HELPER.ls(dirName, "e");
+        const data = [];
+        for (const entry of entries) {
+            const file = await main_10.FILE_HELPER.getFileOfEntry(entry);
+            const content = JSON.parse(await main_10.FILE_HELPER.readFileAs(file));
+            data.push([file, content]);
+        }
+        return data;
     }
     function modalDeleteForm(id) {
-        helpers_12.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+        helpers_10.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
             .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
                 .then(function () {
-                helpers_12.showToast("Entrée supprimée.");
+                helpers_10.showToast("Entrée supprimée.");
                 PageManager_5.PageManager.reload();
             })
                 .catch(function (err) {
-                helpers_12.showToast("Impossible de supprimer: " + err);
+                helpers_10.showToast("Impossible de supprimer: " + err);
             });
         })
             .catch(() => {
@@ -6045,32 +5618,17 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             id = id.substring(0, id.length - 5);
         }
         SyncManager_6.SyncManager.remove(id);
-        if (device.platform === 'Android') {
+        if (device.platform === 'Android' && main_10.SD_FILE_HELPER) {
             // Tente de supprimer depuis la carte SD
-            sdcard_file_4.getSdCardDir("form_data/" + id)
-                .then(dir => {
-                dir.removeRecursively(() => { });
-            });
-            sdcard_file_4.getSdCardFile("forms/" + id + '.json')
-                .then(entry => {
-                entry.remove(() => { });
-            });
+            main_10.SD_FILE_HELPER.rm("form_data/" + id, true);
+            main_10.SD_FILE_HELPER.rm("forms/" + id + '.json');
         }
-        return new Promise(function (resolve, reject) {
+        return new Promise(async function (resolve, reject) {
             if (id) {
                 // Supprime toutes les données (images, sons...) liées au formulaire
-                helpers_12.rmrfPromise('form_data/' + id, true).catch(err => err).then(function () {
-                    helpers_12.getDir(function (dirEntry) {
-                        dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                            helpers_12.removeFilePromise(fileEntry).then(function () {
-                                resolve();
-                            }).catch(reject);
-                        }, function () {
-                            console.log("Impossible de supprimer");
-                            reject("Impossible de supprimer");
-                        });
-                    }, 'forms', reject);
-                });
+                await main_10.FILE_HELPER.rm('form_data/' + id, true).catch(err => err);
+                await main_10.FILE_HELPER.rm("forms/" + id + ".json").catch(err => err);
+                resolve();
             }
             else {
                 reject("ID invalide");
@@ -6094,18 +5652,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 /// place en bas, pour les boutons
                 base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
                 if (files.length === 0) {
-                    base.innerHTML = helpers_12.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                    base.innerHTML = helpers_10.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
                 }
                 else {
                     //// Bouton de synchronisation
-                    const syncbtn = helpers_12.convertHTMLToElement(`
+                    const syncbtn = helpers_10.convertHTMLToElement(`
                             <div class="fixed-action-btn" style="margin-right: 50px;">
                                 <a class="btn-floating waves-effect waves-light green">
                                     <i class="material-icons">sync</i>
                                 </a>
                             </div>`);
                     syncbtn.onclick = function () {
-                        helpers_12.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
+                        helpers_10.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
                             .then(() => {
                             return SyncManager_6.SyncManager.inlineSync();
                         })
@@ -6116,18 +5674,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                     };
                     base.appendChild(syncbtn);
                     // Bouton de suppression globale
-                    const delete_btn = helpers_12.convertHTMLToElement(`
+                    const delete_btn = helpers_10.convertHTMLToElement(`
                             <div class="fixed-action-btn">
                                 <a class="btn-floating waves-effect waves-light red">
                                     <i class="material-icons">delete_sweep</i>
                                 </a>
                             </div>`);
                     delete_btn.addEventListener('click', () => {
-                        helpers_12.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
+                        helpers_10.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
                             .then(() => {
                             setTimeout(function () {
                                 // Attend que le modal précédent se ferme
-                                helpers_12.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
+                                helpers_10.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
                                     .then(() => {
                                     // Annulation
                                 })
@@ -6142,13 +5700,13 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 }
             })).catch(function (err) {
                 logger_5.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
-                base.innerHTML = helpers_12.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+                base.innerHTML = helpers_10.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             });
         });
     }
     exports.initSavedForm = initSavedForm;
 });
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_13, form_1, settings_page_1, saved_forms_1, home_2, logger_6) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, home_2, logger_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -6270,8 +5828,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                     this.pages_holder = [];
                 }
                 // On écrit le preloader dans la base et on change l'historique
-                const base = helpers_13.getBase();
-                base.innerHTML = helpers_13.getPreloader("Chargement");
+                const base = helpers_11.getBase();
+                base.innerHTML = helpers_11.getPreloader("Chargement");
                 if (window.history) {
                     window.history.pushState({}, "", "?" + pagename);
                 }
@@ -6323,7 +5881,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_13.getBase();
+            const actual_base = helpers_11.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -6357,7 +5915,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            const main = helpers_13.getBase();
+            const main = helpers_11.getBase();
             cleanElement(main);
             main.parentElement.removeChild(main);
             const new_main = last_page.save.firstElementChild;
@@ -6389,11 +5947,11 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
-                    helpers_13.getModalInstance().close();
+                    helpers_11.getModalInstance().close();
                 }
                 catch (e) { }
                 try {
-                    helpers_13.getBottomModalInstance().close();
+                    helpers_11.getBottomModalInstance().close();
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
@@ -6405,7 +5963,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             };
             if (this.should_wait || force_asking) {
-                helpers_13.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
+                helpers_11.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
                     .then(stepBack)
                     .catch(() => { });
             }

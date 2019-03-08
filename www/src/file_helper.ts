@@ -34,7 +34,6 @@ export class FileHelper {
      */
     public constructor(root: string | FileHelper | DirectoryEntry = "") {
         /** CHECK IF FH IS READY WITH waitInit(). */ 
-
         this.ready = new Promise((resolve, reject) => {
             document.addEventListener('deviceready', async () => {
                 if (root instanceof FileHelper) {
@@ -106,6 +105,11 @@ export class FileHelper {
      * @param path 
      */
     public async isFile(path: string) : Promise<boolean> {
+        const exists = await this.exists(path);
+        if (!exists) {
+            return false;
+        }
+
         return (await this.get(path)).isFile;
     }
 
@@ -114,6 +118,11 @@ export class FileHelper {
      * @param path 
      */
     public async isDir(path: string): Promise<boolean> {
+        const exists = await this.exists(path);
+        if (!exists) {
+            return false;
+        }
+
         return (await this.get(path)).isDirectory;
     }
 
@@ -185,6 +194,10 @@ export class FileHelper {
         let cur_entry = await this.get() as DirectoryEntry;
 
         for (const step of steps) {
+            if (step.trim() === ".") {
+                continue;
+            }
+
             cur_entry = await new Promise((resolve, reject) => {
                 cur_entry.getDirectory(step, {
                     create: true,
@@ -207,16 +220,19 @@ export class FileHelper {
      * 
      * @param append Determine that the function should write at the end of the file.
      */
-    public async write(path: string, content: any, append = false) : Promise<FileEntry> {
+    public async write(path: string | FileEntry, content: any, append = false) : Promise<FileEntry> {
         content = this.toBlob(content);
+        let entry: FileEntry = path as FileEntry;
 
-        const dirname = this.getDirUrlOfPath(path);
-        const filename = this.getBasenameOfPath(path);
-
-        const entry = await this.getFileEntryOfDirEntry(
-            dirname ? await this.mkdir(dirname) : await this.get() as DirectoryEntry, 
-            filename
-        );
+        if (typeof path === 'string') {
+            const dirname = this.getDirUrlOfPath(path);
+            const filename = this.getBasenameOfPath(path);
+    
+            entry = await this.getFileEntryOfDirEntry(
+                dirname ? await this.mkdir(dirname) : await this.get() as DirectoryEntry, 
+                filename
+            );
+        }
 
         return new Promise((resolve, reject) => {
             // Fonction pour écrire le fichier après vidage
@@ -296,7 +312,7 @@ export class FileHelper {
      * Get an existing file or directory using an absolute path
      * @param path Complete path
      */
-    protected absoluteGet(path: string) : Promise<Entry> {
+    public absoluteGet(path: string) : Promise<Entry> {
         return new Promise((resolve, reject) => {
             window.resolveLocalFileSystemURL(path, resolve, reject);
         }); 
@@ -344,6 +360,10 @@ export class FileHelper {
 
         path = path.replace(/\/$/, '');
 
+        if (path) {
+            path += "/";
+        }
+
         let entries = await new Promise((resolve, reject) => {
             const reader = (entry as DirectoryEntry).createReader();
             reader.readEntries(resolve, reject);
@@ -369,7 +389,7 @@ export class FileHelper {
             for (const e of entries) {
                 if (e.isDirectory) {
                     paths.push({
-                        name: path +  "/" + e.name,
+                        name: path + e.name,
                         mdate: undefined,
                         mtime: undefined,
                         size: 4096
@@ -388,7 +408,7 @@ export class FileHelper {
             const paths: string[] = [];
             
             for (const e of entries) {
-                paths.push(path +  "/" + e.name); 
+                paths.push(path + e.name); 
             }
     
             return paths;
