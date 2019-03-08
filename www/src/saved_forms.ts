@@ -1,9 +1,9 @@
-import { getDir, formatDate, rmrfPromise, removeFilePromise, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, removeContentOfDirectory, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
+import { formatDate, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
 import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
 import { Logger } from "./logger";
-import { getSdCardDir, getSdCardFile } from "./sdcard_file";
+import { FILE_HELPER, SD_FILE_HELPER } from "./main";
 
 enum SaveState {
     saved, waiting, error
@@ -31,32 +31,12 @@ async function deleteAll() : Promise<any> {
 
     try {
         // On veut supprimer tous les fichiers
-        await removeContentOfDirectory('forms');
-        await removeContentOfDirectory('form_data');
+        await FILE_HELPER.rm('forms', true);
+        await FILE_HELPER.rm('form_data', true);
 
-        if (device.platform === "Android") {
-            const sddir = await getSdCardDir("forms");
-
-            if (sddir) {
-                await new Promise((resolve, reject) => {
-                    sddir.removeRecursively(resolve, reject);
-                }).catch(() => {});
-
-                // Recrée le répertoire
-                await getSdCardDir("forms");
-            }
-            
-            
-            const sddir2 = await getSdCardDir("form_data");
-
-            if (sddir2) {
-                await new Promise((resolve, reject) => {
-                    sddir2.removeRecursively(resolve, reject);
-                }).catch(() => {});
-
-                // Recrée le répertoire
-                await getSdCardDir("form_data");
-            }
+        if (device.platform === "Android" && SD_FILE_HELPER) {
+            await SD_FILE_HELPER.rm('forms', true);
+            await SD_FILE_HELPER.rm('form_data', true);
         }
 
         await SyncManager.clear();
@@ -175,57 +155,19 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     ph.appendChild(selector);
 }
 
-function readAllFilesOfDirectory(dirName: string) : Promise<Promise<[File, FormSave]>[]> {
-    const dirreader = new Promise(function(resolve, reject) {
-        getDir(function(dirEntry) {
-            // Lecture de tous les fichiers du répertoire
-            const reader = dirEntry.createReader();
-            reader.readEntries(function (entries) {
-                const promises: Promise<[File, FormSave]>[] = [];
+async function readAllFilesOfDirectory(dirName: string) : Promise<[File, FormSave][]> {
+    const entries = await FILE_HELPER.ls(dirName, "e") as Entry[];
 
-                for (const entry of entries) {
-                    promises.push(
-                        new Promise(function(resolve, reject) {
-                            (entry as FileEntry).file(function (file) {
-                                const reader = new FileReader();
-                                // console.log(file);
-                        
-                                reader.onloadend = function() {
-                                    try {
-                                        resolve([file, JSON.parse(this.result as string)]);
-                                    } catch (e) {
-                                        console.log("JSON mal formé:", this.result);
-                                        resolve([file, { fields: {}, type: "", location: "", owner: "", metadata: {} }])
-                                    }
-                                };
+    const data: [File, FormSave][] = [];
 
-                                reader.onerror = function(err) {
-                                    reject(err);
-                                }
-                        
-                                reader.readAsText(file);
-                            }, function(err) {
-                                reject(err);
-                            });
-                        })
-                    );
-                }
+    for (const entry of entries) {
+        const file = await FILE_HELPER.getFileOfEntry(entry as FileEntry);
+        const content = JSON.parse(await FILE_HELPER.readFileAs(file) as string) as FormSave;
 
-                // Renvoie le tableau de promesses lancées
-                resolve(promises);
-            },function (err) {
-                reject(err);
-                console.log(err);
-            });
-        }, 
-        dirName,
-        function(err) {
-            reject(err);
-        });
-    }); 
+        data.push([file, content]);
+    }
 
-    // @ts-ignore
-    return dirreader;
+    return data;
 }
 
 function modalDeleteForm(id: string) {
@@ -253,34 +195,19 @@ function deleteForm(id: string) : Promise<void> {
 
     SyncManager.remove(id);
 
-    if (device.platform === 'Android') {
+    if (device.platform === 'Android' && SD_FILE_HELPER) {
         // Tente de supprimer depuis la carte SD
-        getSdCardDir("form_data/" + id)
-            .then(dir => {
-                dir.removeRecursively(() => {});
-            });
-
-        getSdCardFile("forms/" + id + '.json')
-            .then(entry => {
-                entry.remove(() => {});
-            });
+        SD_FILE_HELPER.rm("form_data/" + id, true);
+        SD_FILE_HELPER.rm("forms/" + id + '.json');
     }
 
-    return new Promise(function(resolve, reject) {
+    return new Promise(async function(resolve, reject) {
         if (id) {
             // Supprime toutes les données (images, sons...) liées au formulaire
-            rmrfPromise('form_data/' + id, true).catch(err => err).then(function() {
-                getDir(function(dirEntry) {
-                    dirEntry.getFile(id + '.json', { create: false }, function (fileEntry) {
-                        removeFilePromise(fileEntry).then(function() {
-                            resolve();
-                        }).catch(reject);
-                    }, function() {
-                        console.log("Impossible de supprimer");
-                        reject("Impossible de supprimer");
-                    });
-                }, 'forms', reject);
-            });
+            await FILE_HELPER.rm('form_data/' + id, true).catch(err => err);
+            await FILE_HELPER.rm("forms/" + id + ".json").catch(err => err);
+
+            resolve();
         }
         else {
             reject("ID invalide");

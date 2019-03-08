@@ -1,6 +1,6 @@
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
-import { hasGoodConnection, toValidUrl, getDirP, dirEntries, getBase } from "./helpers";
+import { hasGoodConnection, toValidUrl, getBase } from "./helpers";
 import { APP_VERSION } from "./main";
 import { Forms } from "./form_schema";
 import { createLocationInputSelector } from "./location";

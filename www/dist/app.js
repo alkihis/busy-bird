@@ -1629,13 +1629,36 @@ define("file_helper", ["require", "exports"], function (require, exports) {
         FileHelperReadMode[FileHelperReadMode["url"] = 2] = "url";
         FileHelperReadMode[FileHelperReadMode["binarystr"] = 3] = "binarystr";
     })(FileHelperReadMode = exports.FileHelperReadMode || (exports.FileHelperReadMode = {}));
+    /**
+     * Simplify file access and directory navigation with native Promise support
+     */
     class FileHelper {
-        constructor(root = undefined) {
+        /**
+         * Create a new FileHelper object using a root path.
+         * Root are automatically setted to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
+         * and to "cdvfile://localhost/temporary/" on browser.
+         *
+         * You can create a new FileHelper instance using a FileHelper instance, working directory will be used as root.
+         *
+         * You can also create a new FileHelper instance using a DirectoryEntry,
+         * returned by cordova-plugin-file's callbacks or by FileHelper.mkdir().
+         * DirectoryEntry's URL will be used as root.
+         *
+         * @param root Root directory of the new instance
+         */
+        constructor(root = "") {
             /** CHECK IF FH IS READY WITH waitInit(). */
             this.ready = null;
             this.root = null;
             this.ready = new Promise((resolve, reject) => {
                 document.addEventListener('deviceready', async () => {
+                    if (root instanceof FileHelper) {
+                        root = root.pwd();
+                    }
+                    else if (typeof root.isDirectory !== 'undefined') {
+                        // C'est une DirectoryEntry
+                        root = root.toInternalURL();
+                    }
                     try {
                         await this.cd(root, false);
                         resolve();
@@ -1646,6 +1669,9 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 });
             });
         }
+        /**
+         * Returns a resolved promise when FileHelper is ready.
+         */
         waitInit() {
             if (this.ready === null) {
                 return Promise.reject(new Error("File Helper constructor not called"));
@@ -1654,22 +1680,47 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 return this.ready;
             }
         }
+        /**
+         * Return parent directory of current path. Must NOT have trailing slash !
+         * @param path
+         */
         getDirUrlOfPath(path) {
             const a = path.split('/');
             a.pop();
             return a.join('/');
         }
+        /**
+         * Return basename (filename or foldername) of current path. Must NOT have trailing slash !
+         */
         getBasenameOfPath(path) {
-            return path.split('/').pop();
+            const basename = path.split('/').pop();
+            if (basename === undefined) {
+                return path;
+            }
+            else {
+                return basename;
+            }
         }
+        /**
+         * Check if path exists (either a file or a directory)
+         * @param path
+         */
         exists(path) {
             return this.get(path)
                 .then(() => true)
                 .catch(() => false);
         }
+        /**
+         * Check if path exists and is a file
+         * @param path
+         */
         async isFile(path) {
             return (await this.get(path)).isFile;
         }
+        /**
+         * Check if path exists and is a directory
+         * @param path
+         */
         async isDir(path) {
             return (await this.get(path)).isDirectory;
         }
@@ -1677,28 +1728,56 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          * Rename entry / Move file or directory to another directory.
          *
          * @param path Path of the actual entry
-         * @param dest Destination directory. Keep it undefined if you want to keep the same directory
+         * @param dest Destination directory. Keep it undefined if you want to keep the same directory.
+         * Can be a string-path, a FileHelper instance, or a DirectoryEntry
+         *
          * @param new_name New name of the entry. Keep it undefined if you want to keep the same name
          */
         async move(path, dest, new_name) {
             const entry = await this.get(path);
             path = entry.isDirectory ? path.replace(/\/$/, '') : path;
-            const dir_dest = dest ? await this.mkdir(dest) : await this.get(this.getDirUrlOfPath(path));
+            let dir_dest = dest;
+            if (typeof dest === 'string') {
+                dir_dest = await this.mkdir(dest);
+            }
+            else if (dest instanceof FileHelper) {
+                dir_dest = await this.absoluteGet(dest.pwd());
+            }
+            else if (dest === undefined) {
+                dir_dest = await this.get(this.getDirUrlOfPath(path));
+            }
+            // Sinon, c'est bien un DirectoryEntry
             entry.moveTo(dir_dest, new_name || this.getBasenameOfPath(path));
         }
         /**
          * Copy file or directory to another directory.
          *
          * @param path Path of the actual entry
-         * @param dest Destination directory
+         * @param dest Destination directory. Keep it undefined if you want to keep the same directory.
+         * Can be a string-path, a FileHelper instance, or a DirectoryEntry
+         *
          * @param new_name New name, after copy, of the entry. Keep it undefined if you want to keep the same name
          */
         async copy(path, dest, new_name) {
             const entry = await this.get(path);
             path = entry.isDirectory ? path.replace(/\/$/, '') : path;
-            const dir_dest = await this.mkdir(dest);
+            let dir_dest = dest;
+            if (typeof dest === 'string') {
+                dir_dest = await this.mkdir(dest);
+            }
+            else if (dest instanceof FileHelper) {
+                dir_dest = await this.absoluteGet(dest.pwd());
+            }
+            else if (dest === undefined) {
+                dir_dest = await this.get(this.getDirUrlOfPath(path));
+            }
+            // Sinon, c'est bien un DirectoryEntry
             entry.copyTo(dir_dest, new_name || this.getBasenameOfPath(path));
         }
+        /**
+         * Create a directory. Automatically create all the parent directories needed.
+         * @param path Path to the new directory
+         */
         async mkdir(path) {
             const steps = path.split('/');
             let cur_entry = await this.get();
@@ -1712,10 +1791,22 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             }
             return cur_entry;
         }
+        /**
+         * Write a file containing content.
+         * File and containing folder(s) are created automatically.
+         * If file already exists, by default, file content are truncated and replaced by content.
+         *
+         * @param path Path of the file relative to working directory
+         * @param content Content of the file. Can be a string, File instance, Blob or ArrayBuffer.
+         * Other types will be serialized automatically using JSON.stringify()
+         *
+         * @param append Determine that the function should write at the end of the file.
+         */
         async write(path, content, append = false) {
+            content = this.toBlob(content);
             const dirname = this.getDirUrlOfPath(path);
             const filename = this.getBasenameOfPath(path);
-            const entry = await this.getFileEntryOfDirEntry(await this.mkdir(dirname), filename);
+            const entry = await this.getFileEntryOfDirEntry(dirname ? await this.mkdir(dirname) : await this.get(), filename);
             return new Promise((resolve, reject) => {
                 // Fonction pour écrire le fichier après vidage
                 const finally_write = () => {
@@ -1723,6 +1814,10 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                         fileWriter.onerror = function (e) {
                             reject(e);
                         };
+                        if (append) {
+                            fileWriter.seek(fileWriter.length);
+                        }
+                        // @ts-ignore
                         fileWriter.onwriteend = null;
                         fileWriter.write(content);
                         fileWriter.onwriteend = () => {
@@ -1747,6 +1842,11 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 }
             });
         }
+        /**
+         * Read a existing file located in path
+         * @param path Path to the file
+         * @param mode Read mode. Should be a FileHelperReadMode instance. By default, read as classic text.
+         */
         async read(path, mode = FileHelperReadMode.text) {
             const file = await this.getFileOfEntry(await this.get(path));
             return new Promise((resolve, reject) => {
@@ -1777,13 +1877,22 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 }
             });
         }
+        /**
+         * Get an existing file or directory using an absolute path
+         * @param path Complete path
+         */
         absoluteGet(path) {
             return new Promise((resolve, reject) => {
                 window.resolveLocalFileSystemURL(path, resolve, reject);
             });
         }
+        /**
+         * Get an entry from a path.
+         * If you want to read a file, use read() instead.
+         * @param path Path to file or directory
+         */
         get(path = "") {
-            return this.absoluteGet(this.root + "/" + path);
+            return this.absoluteGet(this.pwd() + "/" + path);
         }
         /**
          * Get content of a directory.
@@ -1827,9 +1936,18 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 return paths;
             }
         }
-        async remove(path) {
+        /**
+         * Remove a file or a directory.
+         * @param path Path of the file to remove. Do **NOT** remove root, use empty() !
+         * @param r Make rm recursive.
+         * If r = false and path contains a directory that is not empty, remove will fail
+         */
+        async rm(path, r = false) {
             const entry = await this.get(path);
-            if (entry.isDirectory) {
+            if (entry.toInternalURL().replace(/\/$/, '') === this.pwd()) {
+                return Promise.reject(new Error("Can't remove root directory !"));
+            }
+            if (entry.isDirectory && r) {
                 return new Promise((resolve, reject) => {
                     entry.removeRecursively(resolve, reject);
                 });
@@ -1840,10 +1958,41 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 });
             }
         }
+        /**
+         * Remove all content of a directory.
+         * @param path Path of the directory
+         * @param r Make empty recursive.
+         * If r = false and path contains a directory that is not empty, empty will fail
+         */
+        async empty(path, r = false) {
+            const entries = await this.ls(path);
+            for (const e of entries) {
+                const entry = await this.get(path + "/" + e);
+                if (entry.isDirectory && r) {
+                    await new Promise((resolve, reject) => {
+                        entry.removeRecursively(resolve, reject);
+                    });
+                }
+                else {
+                    await new Promise((resolve, reject) => {
+                        entry.remove(resolve, reject);
+                    });
+                }
+            }
+        }
+        /**
+         * Get information about a file
+         * @param path Path to a file
+         */
         async stats(path) {
             const entry = await this.getFileOfEntry(await this.get(path));
             return this.getStatsFromFile(entry);
         }
+        /**
+         * Change current instance root to another directory
+         * @param path **DIRECTORY** path (must NOT be a file)
+         * @param relative Specify if path is relative to current directory
+         */
         async cd(path, relative = true) {
             if (!path) {
                 if (device.platform === "browser") {
@@ -1855,22 +2004,50 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             }
             // Teste si le chemin est valide (échouera sinon)
             const new_root = await (relative ? this.get(path) : this.absoluteGet(path));
+            if (new_root.isFile) {
+                throw new Error("New root can't be a file !");
+            }
             this.root = new_root.toInternalURL().replace(/\/$/, '');
         }
+        /**
+         * Get current root directory of this instance
+         */
         pwd() {
+            if (this.root === null) {
+                throw new Error("Object is not initialized");
+            }
             return this.root;
         }
+        /**
+         * see pwd()
+         */
+        toString() {
+            return this.pwd();
+        }
         /****** FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
+        /**
+         * Get a FileEntry from a DirectoryEntry. File will be created if "filename" does not exists in DirectoryEntry
+         * @param dir DirectoryEntry
+         * @param filename Name a the file to get
+         */
         getFileEntryOfDirEntry(dir, filename) {
             return new Promise((resolve, reject) => {
                 dir.getFile(filename, { create: true, exclusive: false }, resolve, reject);
             });
         }
+        /**
+         * Get a File object from a FileEntry
+         * @param file FileEntry
+         */
         getFileOfEntry(file) {
             return new Promise((resolve, reject) => {
                 file.file(resolve, reject);
             });
         }
+        /**
+         * Get informations about a single file using a File instance
+         * @param entry File
+         */
         getStatsFromFile(entry) {
             return {
                 mtime: entry.lastModified,
@@ -1880,8 +2057,23 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             };
         }
         /****** HELPERS */
-        stringToBlob(s) {
-            return new Blob([s]);
+        /**
+         * Convert string, ArrayBuffer, File, classic objects to a Blob instance
+         * @param s
+         */
+        toBlob(s) {
+            if (s instanceof Blob || s instanceof File) {
+                return s;
+            }
+            else if (typeof s === 'string' || s instanceof ArrayBuffer) {
+                return new Blob([s]);
+            }
+            else if (typeof s === "object") {
+                return this.toBlob(JSON.stringify(s));
+            }
+            else {
+                return this.toBlob(String(s));
+            }
         }
     }
     exports.FileHelper = FileHelper;

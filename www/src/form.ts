@@ -1,14 +1,14 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, generateId, removeFileByName, createImgSrc, readFromFile, urlToBlob, displayErrorMessage, getDirP, sleep, showToast, dateFormatter, writeFileP, readFileAsArrayBuffer } from "./helpers";
-import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE } from "./main";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, generateId, createImgSrc, urlToBlob, displayErrorMessage, sleep, showToast, dateFormatter } from "./helpers";
+import { MAX_LIEUX_AFFICHES, ID_COMPLEXITY, MP3_BITRATE, FILE_HELPER, SD_FILE_HELPER } from "./main";
 import { PageManager, AppPageName } from "./PageManager";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
 import { createLocationInputSelector } from "./location";
-import { writeSdCardFile, removeSdCardFile } from "./sdcard_file";
+import { FileHelperReadMode } from "./file_helper";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -817,20 +817,17 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             ////// Définition si un fichier son existe déjà
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                readFromFile(
-                    filled_form.fields[ele.name] as string,
-                    function(base64: string) {
+                FILE_HELPER.read(filled_form.fields[ele.name] as string, FileHelperReadMode.url)
+                    .then(base64 => {
                         button.classList.remove('blue');
                         button.classList.add('green');
-                        real_input.value = base64;
-                        const duration = ((base64.length * 0.7) / (MP3_BITRATE * 1000)) * 8;
+                        real_input.value = base64 as string;
+                        const duration = (((base64 as string).length * 0.7) / (MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
-                    },
-                    function(fail: FileError) {
-                        Logger.warn("Impossible de charger le fichier", fail);
-                    },
-                    true
-                );
+                    })
+                    .catch(err => {
+                        Logger.warn("Impossible de charger le fichier", err);
+                    });
             }
             ////// Fin
 
@@ -1249,10 +1246,10 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
     function saveBlobToFile(filename: string, input_name: string, blob: Blob) : Promise<void> {
         const full_path = 'form_data/' + name + '/' + filename;
 
-        return writeFileP('form_data/' + name, filename, blob)
+        return FILE_HELPER.write(full_path, blob)
             .then(() => {
-                if (device.platform === 'Android') {
-                    return writeSdCardFile(full_path, blob).catch(e => console.log(e));
+                if (device.platform === 'Android' && SD_FILE_HELPER) {
+                    return SD_FILE_HELPER.write(full_path, blob).catch(e => console.log(e));
                 }
             })
             .then(() => {
@@ -1266,11 +1263,10 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
                     if (older_save.fields[input_name] !== form_values.fields[input_name]) {
                         // Si le fichier enregistré est différent du fichier actuel
                         // Suppression de l'ancienne image
-                        const parts = (older_save.fields[input_name] as string).split('/');
-                        const file_name = parts.pop();
-                        const dir_name = parts.join('/');
-                        removeFileByName(dir_name, file_name);
-                        removeSdCardFile(older_save.fields[input_name] as string);
+                        if (SD_FILE_HELPER) {
+                            SD_FILE_HELPER.rm(older_save.fields[input_name] as string);
+                        }
+                        FILE_HELPER.rm(older_save.fields[input_name] as string);
                     }
                 }
             })
@@ -1279,9 +1275,6 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
                 return Promise.reject(error);
             });
     }
-
-    // Crée le dossier form_data si besoin
-    await getDirP('form_data');
 
     // Récupère les images du formulaire
     const images_from_form = document.getElementsByClassName('input-image-element');
@@ -1297,11 +1290,8 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
             const filename = file.name;
 
             promises.push(
-                readFileAsArrayBuffer(file)
-                    .then(buffer => {
-                        return saveBlobToFile(filename, input_name, new Blob([buffer]));
-                    })
-            )
+                saveBlobToFile(filename, input_name, file)
+            );
         }
         else {
             if (older_save && input_name in older_save.fields) {
@@ -1366,11 +1356,10 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
         }
     }
 
-    const json_blob = new Blob([JSON.stringify(form_values)]);
-    await writeFileP('forms', name + '.json', json_blob);
+    await FILE_HELPER.write('forms/' + name + '.json', form_values);
 
-    if (device.platform === 'Android') {
-        await writeSdCardFile('forms/' + name + '.json', json_blob).catch((e) => console.log(e));
+    if (device.platform === 'Android' && SD_FILE_HELPER) {
+        SD_FILE_HELPER.write('forms/' + name + '.json', form_values).catch((e) => console.log(e));
     }
 
     console.log(form_values);

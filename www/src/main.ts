@@ -1,5 +1,5 @@
 import { PageManager, AppPageName, SIDENAV_OBJ } from './PageManager';
-import { readFromFile, askModalList, saveDefaultForm, listDir, createDir, getLocation, testDistance, initModal, rmrf, changeDir, rmrfPromise, dateFormatter, getBase, displayErrorMessage, createRandomForms } from "./helpers";
+import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { FormEntityType, Forms } from "./form_schema";
@@ -7,7 +7,6 @@ import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager, SyncEvent } from "./SyncManager";
 import { launchQuizz } from './test_vocal_reco';
-import { getSdCardFolder, listSdCard, getSdCardDir } from './sdcard_file';
 import { FileHelper, FileHelperReadMode } from './file_helper';
 
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
@@ -18,6 +17,8 @@ export const APP_VERSION = 0.6;
 export const MP3_BITRATE = 256; /** En kb/s */
 export const SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
 export let SDCARD_PATH = null;
+export let SD_FILE_HELPER: FileHelper = null;
+export let FILE_HELPER: FileHelper = new FileHelper;
 
 export const app = {
     // Application Constructor
@@ -55,6 +56,8 @@ async function initApp() {
     // Sinon, si mobile, on passe sur dataDirectory
     changeDir();
 
+    await FILE_HELPER.waitInit();
+
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
     permissions.requestPermission(permissions.RECORD_AUDIO, () => {
@@ -72,10 +75,16 @@ async function initApp() {
         for (const f of folders) {
             if (f.canWrite) {
                 SDCARD_PATH = f.filePath;
+                SD_FILE_HELPER = new FileHelper(f.filePath);
+
+                try {
+                    await SD_FILE_HELPER.waitInit();
+                } catch (e) { SD_FILE_HELPER = null; }
+                
                 break;
             }
         }
-    } catch (e) {}
+    } catch (e) {  }
 
     Logger.init();
     Forms.init(); 
@@ -140,19 +149,12 @@ function initDebug() {
     window["DEBUG"] = {
         launchQuizz,
         PageManager,
-        readFromFile,
-        listDir,
         saveDefaultForm,
-        createDir,
         getLocation,
         testDistance,
-        rmrf,
-        rmrfPromise,
         Logger,
         Forms,
-        listSdCard,
         SyncEvent,
-        getSdCardDir,
         askModalList,
         FileHelper,
         FileHelperReadMode,

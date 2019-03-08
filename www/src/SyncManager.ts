@@ -1,11 +1,12 @@
 import { FormSave } from "./form_schema";
 import { Logger } from "./logger";
 import localforage from 'localforage';
-import { API_URL } from "./main";
-import { readFile, getDirP, dirEntries, readFileFromEntry, getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
+import { API_URL, FILE_HELPER } from "./main";
+import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
 import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
 import { BackgroundSync, Settings } from "./Settings";
+import { FileHelperReadMode } from "./file_helper";
 
 // en millisecondes
 const MAX_TIMEOUT_FOR_FORM = 20000; /** Pour le fichier .json de l'entrée */
@@ -187,7 +188,7 @@ export const SyncManager = new class {
         // et de ses métadonnées a réussi.
         let content: string;
         try {
-            content = await readFile('forms/' + id + ".json");
+            content = await FILE_HELPER.read('forms/' + id + ".json") as string;
         } catch (error) {
             Logger.info("Impossible de lire le fichier", error.message);
             throw {code: "file_read", error};
@@ -254,7 +255,7 @@ export const SyncManager = new class {
                 // Pour des raisons de charge réseau, on envoie les fichiers un par un.
                 let base64: string;
                 try {
-                    base64 = await readFile(file, true);
+                    base64 = await FILE_HELPER.read(file, FileHelperReadMode.url) as string;
                 } catch (e) {
                     // Le fichier n'existe pas en local. On passe.
                     continue;
@@ -309,14 +310,13 @@ export const SyncManager = new class {
     }
 
     public async getSpecificFile(id: string) : Promise<SList> {
-        const entries = await getDirP('forms').then(dirEntries);
+        const entries = await FILE_HELPER.ls('forms', "e") as Entry[];
         
         const filename = id + ".json";
 
         for (const entry of entries) {
             if (entry.name === filename) {
-                const text = await readFileFromEntry(entry);
-                const json: FormSave = JSON.parse(text);
+                const json: FormSave = JSON.parse(await FILE_HELPER.read(entry as FileEntry) as string);
 
                 return { type: json.type, metadata: json.metadata };
             }
@@ -329,31 +329,24 @@ export const SyncManager = new class {
     /**
      * Obtient tous les fichiers JSON disponibles sur l'appareil
      */
-    protected getAllCurrentFiles() : Promise<[string, SList][]> {
-        return getDirP('forms')
-            .then(dirEntries)
-            .then(entries => {
-                // On a les différents JSON situés dans le dossier 'forms', désormais,
-                // sous forme de FileEntry
-                const promises: Promise<[string, SList]>[] = [];
+    protected async getAllCurrentFiles() : Promise<[string, SList][]> {
+        const entries = await FILE_HELPER.ls("forms", "e") as Entry[];
+        
+        const promises: Promise<[string, SList]>[] = [];
 
-                // On ajoute chaque entrée
-                for (const entry of entries) {
-                    promises.push(
-                        readFileFromEntry(entry)
-                            .then(text => {
-                                const json: FormSave = JSON.parse(text);
-                                return [
-                                    entry.name.split('.json')[0], 
-                                    { type: json.type, metadata: json.metadata }
-                                ] as [string, SList];
-                            })
-                    );
-                }
+        // On ajoute chaque entrée
+        for (const entry of entries) {
+            promises.push(
+                new Promise(async (resolve) => {
+                    const json: FormSave = JSON.parse(await FILE_HELPER.read(entry as FileEntry) as string);
 
-                // On attend que tout soit OK
-                return Promise.all(promises);
-            });
+                    resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
+                })
+            );
+        }       
+
+        // On attend que tout soit OK
+        return Promise.all(promises);
     }
 
     /**

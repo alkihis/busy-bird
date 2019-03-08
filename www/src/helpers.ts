@@ -1,7 +1,7 @@
 import { PageManager } from "./PageManager";
 import { Forms, FormSave, FormEntityType } from "./form_schema";
 import { SyncManager } from "./SyncManager";
-import { writeSdCardFile } from "./sdcard_file";
+import { FILE_HELPER, SD_FILE_HELPER } from "./main";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -172,7 +172,7 @@ let DIR_ENTRY = null;
  * @param callbackIfFailed Fonction appelée en cas d'échec
  * @param asBase64 true si le fichier doit être passé encodé en base64
  */
-export function readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) : void {
+export function __readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) : void {
     const pathToFile = FOLDER + fileName;
     window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
         (fileEntry as FileEntry).file(function (file) {
@@ -216,7 +216,7 @@ export function toValidUrl() : string {
     return cordova.file.applicationDirectory + 'www/';
 }
 
-export function readFileAsArrayBuffer(file: File) : Promise<ArrayBuffer> {
+export function __readFileAsArrayBuffer(file: File) : Promise<ArrayBuffer> {
     return new Promise((resolve, reject) => {
         const r = new FileReader();
 
@@ -239,7 +239,7 @@ export function readFileAsArrayBuffer(file: File) : Promise<ArrayBuffer> {
  * @param asBase64 true si fichier passé en base64 dans la promesse
  * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
  */
-export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLDER) : Promise<string> {
+export function __readFile(fileName: string, asBase64 = false, forceBaseDir = FOLDER) : Promise<string> {
     const pathToFile = forceBaseDir + fileName;
 
     return new Promise(function(resolve, reject) {
@@ -269,7 +269,7 @@ export function readFile(fileName: string, asBase64 = false, forceBaseDir = FOLD
  * @param fileEntry FileEntry
  * @param asBase64 true si fichier passé en base64 à la Promise
  */
-export function readFileFromEntry(fileEntry, asBase64 = false) : Promise<string> {
+export function __readFileFromEntry(fileEntry, asBase64 = false) : Promise<string> {
     return new Promise(function(resolve, reject) {
         fileEntry.file(function (file) {
             const reader = new FileReader();
@@ -288,175 +288,9 @@ export function readFileFromEntry(fileEntry, asBase64 = false) : Promise<string>
     });
 }
 
-/**
- * Version Promise de getDir.
- * Voir getDir().
- * @param dirName string Nom du répertoire
- * @return Promise<DirectoryEntry>
- */
-export function getDirP(dirName: string) : Promise<DirectoryEntry> {
-    return new Promise((resolve, reject) => {
-        getDir(resolve, dirName, reject);
-    });
-}
-
-/**
- * Appelle le callback avec l'entrée de répertoire voulu par le chemin dirName précisé.
- * Sans dirName, renvoie la racine du système de fichiers.
- * @param callback Function(dirEntry) => void
- * @param dirName string
- * @param onError Function(error) => void
- */
-export function getDir(callback: (dirEntry: DirectoryEntry) => void, dirName: string = "", onError?) {
-    function callGetDirEntry(dirEntry: DirectoryEntry) {
-        DIR_ENTRY = dirEntry;
-
-        if (dirName) {
-            dirEntry.getDirectory(dirName, { create: true, exclusive: false }, (newEntry: DirectoryEntry) => {
-                if (callback) {
-                    callback(newEntry);
-                }
-            }, (err) => { 
-                console.log("Unable to create dir"); 
-                if (onError) {
-                    onError(err);
-                }
-            });
-        }
-        else if (callback) {
-            callback(dirEntry);
-        }
-    }
-
-    // par défaut, FOLDER vaut "cdvfile://localhost/persistent/"
-
-    if (DIR_ENTRY === null) {
-        window.resolveLocalFileSystemURL(FOLDER, 
-            (dirEntry: Entry) => {
-                callGetDirEntry(dirEntry as DirectoryEntry);
-            }, (err) => { 
-            console.log("Persistent not available", err.code); 
-            if (onError) {
-                onError(err);
-            }
-        });
-    }
-    else {
-        callGetDirEntry(DIR_ENTRY);
-    }
-}
-
-export function writeFileP(dirName: string, fileName: string, blob: Blob) : Promise<any> {
-    return new Promise((resolve, reject) => {
-        writeFile(dirName, fileName, blob, resolve, reject);
-    });
-}
-
-/**
- * Écrit dans le fichier fileName situé dans le dossier dirName le contenu du Blob blob.
- * Après écriture, appelle callback si réussi, onFailure si échec dans toute opération
- * @param dirName string
- * @param fileName string
- * @param blob Blob
- * @param callback Function() => void
- * @param onFailure Function(error) => void | Généralement, error est une FileError
- */
-export function writeFile(dirName: string, fileName: string, blob: Blob, callback?, onFailure?) {
-    getDir(function(dirEntry) {
-        dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-            writeFileFromEntry(fileEntry, blob).then(function(){
-                if (callback) {
-                    callback();
-                }
-            }).catch(error => { if (onFailure) onFailure(error); });
-        }, function(err) { console.log("Error in writing file", err.code); if (onFailure) { onFailure(err); } });
-    }, dirName);
-}
-
-export function writeFileFromEntry(file: FileEntry, content: Blob) : Promise<void> {
-    // Prend l'entry du fichier et son blob à écrire en paramètre
-    return new Promise(function (resolve, reject) {
-        // Fonction pour écrire le fichier après vidage
-        function finally_write() {
-            file.createWriter(function (fileWriter) {
-                fileWriter.onerror = function (e) {
-                    reject(e);
-                };
-
-                fileWriter.onwriteend = null;
-                fileWriter.write(content);
-
-                fileWriter.onwriteend = resolve as () => void;
-            });
-        }
-
-        // Vide le fichier
-        file.createWriter(function (fileWriter) {
-            fileWriter.onerror = function (e) {
-                reject(e);
-            };
-
-            // Vide le fichier
-            fileWriter.truncate(0);
-
-            // Quand le fichier est vidé, on écrit finalement dedans
-            fileWriter.onwriteend = finally_write;
-        });
-    });
-}
-
-/**
- * Crée un dossier name dans la racine du système de fichiers.
- * Si name vaut "dir1/dir2", le dossier "dir2" sera créé si et uniquement si "dir1" existe.
- * Si réussi, appelle onSuccess avec le dirEntry du dossier créé.
- * Si échec, appelle onError avec l'erreur
- * @param name string
- * @param onSuccess Function(dirEntry) => void
- * @param onError Function(error: FileError) => void
- */
-export function createDir(name: string, onSuccess?: (dirEntry: DirectoryEntry) => void, onError?: (error: FileError) => void) {
-    getDir(function(dirEntry) {
-        dirEntry.getDirectory(name, { create: true }, onSuccess, onError);
-    });
-}
-
-/**
- * Fonction de test.
- * Affiche les entrées du répertoire path dans la console.
- * Par défaut, affiche la racine du système de fichiers.
- * @param path string
- */
-export function listDir(path: string = "") : void {
-    getDir(function (fileSystem) {
-        const reader = fileSystem.createReader();
-        reader.readEntries(
-            function (entries) {
-                console.log(entries);
-            },
-            function (err) {
-                console.log(err);
-            }
-        );
-    }, path);
-}
-
 export function sleep(ms: number) : Promise<void> {
     return new Promise(resolve => {
         setTimeout(resolve, ms);
-    });
-}
-
-export function dirEntries(dirEntry: DirectoryEntry) : Promise<Entry[]> {
-    return new Promise(function(resolve, reject) {
-        const reader = dirEntry.createReader();
-        reader.readEntries(
-            function (entries) {
-                resolve(entries);
-            },
-            function (err) {
-                reject(err);
-            }
-        );
     });
 }
 
@@ -511,163 +345,6 @@ export function testDistance(latitude = 45.353421, longitude = 5.836441) {
         console.log(calculateDistance(res.coords, {latitude, longitude})); 
     }, function(error) {
         console.log(error);
-    });
-}
-
-/**
- * Supprime un fichier par son nom de dossier dirName et son nom de fichier fileName.
- * Si le chemin du fichier est "dir1/file.json", dirName = "dir1" et fileName = "file.json"
- * @param dirName string
- * @param fileName string
- * @param callback Function() => void Fonction appelée quand le fichier est supprimé
- */
-export function removeFileByName(dirName: string, fileName: string, callback?: () => void) : void {
-    getDir(function(dirEntry) {
-        dirEntry.getFile(fileName, { create: true }, function (fileEntry) {
-            removeFile(fileEntry, callback);
-        });
-    }, dirName);
-}
-
-/**
- * Supprime un fichier via son fileEntry
- * @param entry fileEntry
- * @param callback Function(any?) => void Fonction appelée quand le fichier est supprimé (ou pas)
- */
-export function removeFile(entry, callback?: (any?) => void) : void {
-    entry.remove(function() { 
-        // Fichier supprimé !
-        if (callback) callback();
-    }, function(err) {
-        console.log("error", err);
-        if (callback) callback(err);
-    }, function() {
-        console.log("file not found");
-        if (callback) callback(false);
-    });
-}
-
-/**
- * Supprime un fichier via son fileEntry
- * @param entry fileEntry
- * @returns Promise Promesse tenue si le fichier est supprimé, rejetée sinon
- */
-export function removeFilePromise(entry) : Promise<void> {
-    return new Promise(function(resolve, reject) {
-        entry.remove(function() { 
-            // Fichier supprimé !
-            resolve();
-        }, function(err) {
-            reject(err);
-        }, function() {
-            resolve();
-        });
-    });
-}
-
-/**
- * Supprime tous les fichiers d'un répertoire, sans le répertoire lui-même.
- * @param dirName string Chemin du répertoire
- * @param callback NE PAS UTILISER. USAGE INTERNE.
- * @param dirEntry NE PAS UTILISER. USAGE INTERNE.
- */
-export function rmrf(dirName?: string, callback?: () => void, dirEntry?) : void {
-    // Récupère le dossier dirName (ou la racine du système de fichiers)
-    function readDirEntry(dirEntry) {
-        const reader = dirEntry.createReader();
-        // Itère sur les entrées du répertoire via readEntries
-        reader.readEntries(function (entries) {
-            // Pour chaque entrée du dossier
-            for (const entry of entries) {
-                if (entry.isDirectory) { 
-                    // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                    rmrf(entry.fullPath, function() {
-                        // Puis on le supprime lui-même
-                        removeFile(entry, callback);
-                    });
-                }
-                else {
-                    // Si c'est un fichier, on le supprime
-                    removeFile(entry, callback);
-                }
-            }
-        });
-    }
-
-    if (dirEntry) {
-        readDirEntry(dirEntry);
-    }
-    else {
-        getDir(readDirEntry, dirName, function() {
-            if (callback) callback();
-        });
-    }   
-}
-
-/**
- * Supprime le dossier dirName et son contenu. [version améliorée de rmrf()]
- * Utilise les Promise en interne pour une plus grande efficacité, au prix d'une utilisation mémoire plus importante.
- * Si l'arborescence est très grande sous la dossier, subdivisez la suppression.
- * @param dirName string Chemin du dossier à supprimer
- * @param deleteSelf boolean true si le dossier à supprimer doit également l'être
- * @returns Promise Promesse tenue si suppression réussie, rompue sinon
- */
-export function rmrfPromise(dirName: string, deleteSelf: boolean = false) : Promise<void> {
-    function rmrfFromEntry(dirEntry) : Promise<void> {
-        return new Promise(function(resolve, reject) {
-            const reader = dirEntry.createReader();
-            // Itère sur les entrées du répertoire via readEntries
-            reader.readEntries(function (entries) {
-                // Pour chaque entrée du dossier
-                const promises: Promise<void>[] = [];
-
-                for (const entry of entries) {
-                    promises.push(
-                        new Promise(function(resolve, reject) {
-                            if (entry.isDirectory) { 
-                                // Si c'est un dossier, on appelle rmrf sur celui-ci,
-                                rmrfFromEntry(entry).then(function() {
-                                    // Quand c'est fini, on supprime le répertoire lui-même
-                                    // Puis on résout
-                                    removeFilePromise(entry).then(resolve).catch(reject)
-                                });
-                            }
-                            else {
-                                // Si c'est un fichier, on le supprime
-                                removeFilePromise(entry).then(resolve).catch(reject);
-                            }
-                        })
-                    );
-                }
-
-                // Attends que tous les fichiers et dossiers de ce dossier soient supprimés
-                Promise.all(promises).then(function() {
-                    // Quand ils le sont, résout la promesse
-                    resolve();
-                }).catch(reject);
-            });
-        });
-    }
-
-    return new Promise(function(resolve, reject) {
-        getDir(
-            function(dirEntry) {
-                // Attends que tous les dossiers soient supprimés sous ce répertoire
-                rmrfFromEntry(dirEntry).then(function() {
-                    // Si on doit supprimer le dossier et que ce n'est pas la racine
-                    if (deleteSelf && dirName !== "") {
-                        // On supprime puis on résout
-                        removeFilePromise(dirEntry).then(resolve).catch(reject);
-                    }
-                    // On résout immédiatement
-                    else {
-                        resolve();
-                    }
-                }).catch(reject);
-            }, 
-            dirName, 
-            reject
-        );
     });
 }
 
@@ -747,16 +424,10 @@ export function dateFormatter(schema: string, date = new Date()) : string {
  * @param path string
  * @param element HTMLImageElement
  */
-export function createImgSrc(path: string, element: HTMLImageElement) : void {
-    const parts = path.split('/');
-    const file_name = parts.pop();
-    const dir_name = parts.join('/');
+export async function createImgSrc(path: string, element: HTMLImageElement) : Promise<void> {
+    const file = await FILE_HELPER.get(path) as FileEntry;
 
-    getDir(function(dirEntry) {
-        dirEntry.getFile(file_name, { create: false }, function (fileEntry) {
-            element.src = fileEntry.toURL();
-        });
-    }, dir_name);
+    element.src = file.toURL();
 }
 
 /**
@@ -1079,29 +750,30 @@ export async function createRandomForms(count: 50) : Promise<void> {
         }
 
         // Sauvegarde du formulaire
+        const id = generateId(20);
+
         promises.push(
-            new Promise((resolve, reject) => {
-                const id = generateId(20);
-                writeFile('forms', id + '.json', new Blob([JSON.stringify(save)]), function() {
-                    SyncManager.add(id, save).then(resolve).catch(reject);
-                }, reject);
-            })
+            FILE_HELPER.write("forms/" + id + ".json", save)
+                .then(() => {
+                    return SyncManager.add(id, save)
+                })
         );
 
-        writeSdCardFile("forms/" + generateId(20) + ".json", new Blob([JSON.stringify(save)]))
-            .catch(error => console.log(error));
+        if (SD_FILE_HELPER) {
+            SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
+        }
     }
 
     await Promise.all(promises);
 }
 
-export async function removeContentOfDirectory(name: string) {
-    const entry = await getDirP(name);
-
-    await new Promise((resolve, reject) => {
-        entry.removeRecursively(resolve, reject);
+/**
+ * Obtient les répertoires sur cartes SD montés. 
+ * Attention, depuis KitKat, la racine de la carte SD n'est PAS accessible en écriture !
+ */
+export function getSdCardFolder() : Promise<{path: string, filePath: string, canWrite: boolean}[]> {
+    return new Promise((resolve, reject) => {
+        // @ts-ignore
+        cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
     });
-    
-    // Recrée le répertoire
-    await getDirP(name);
 }

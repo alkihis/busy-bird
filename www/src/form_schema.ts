@@ -1,8 +1,9 @@
-import {readFile, writeFile, toValidUrl, showToast, hasConnection} from "./helpers";
+import { toValidUrl, showToast, hasConnection } from "./helpers";
 import { Logger } from "./logger";
 import { UserManager } from "./user_manager";
-import { API_URL, ENABLE_FORM_DOWNLOAD } from "./main";
+import { API_URL, ENABLE_FORM_DOWNLOAD, FILE_HELPER } from "./main";
 import fetch from './fetch_timeout';
+import { FileHelper } from "./file_helper";
 
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /* 
@@ -119,7 +120,7 @@ export const Forms = new class {
 
     public saveForms() {
         if (this.available_forms) {
-            writeFile('', this.FORM_LOCATION, new Blob([JSON.stringify(this.available_forms)]));
+            FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
         }
     }
 
@@ -159,20 +160,23 @@ export const Forms = new class {
 
         const readStandardForm = () => {
             // On vérifie si le fichier loaded_forms.json existe
-            readFile(this.FORM_LOCATION)
+            FILE_HELPER.read(this.FORM_LOCATION)
                 .then((string) => {
-                    loadJSONInObject(JSON.parse(string));
+                    loadJSONInObject(JSON.parse(string as string));
                 })
                 .catch(() => {
                     // Il n'existe pas, on doit le charger depuis les sources de l'application
                     $.get('assets/form.json', {}, (json: any) => {
                         loadJSONInObject(json, true);
                     }, 'json')
-                    .fail(function() {
+                    .fail(async function() {
                         // Essaie de lire le fichier sur le périphérique
-                        readFile('assets/form.json', false, cordova.file.applicationDirectory + 'www/')
+                        const application = new FileHelper(cordova.file.applicationDirectory + 'www/');
+                        await application.waitInit();
+
+                        application.read('assets/form.json')
                             .then(string => {
-                                loadJSONInObject(JSON.parse(string));
+                                loadJSONInObject(JSON.parse(string as string));
                             })
                             .catch(() => {
                                 showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');

@@ -1,4 +1,4 @@
-import { getDir } from "./helpers";
+import { FILE_HELPER } from "./main";
 
 // Objet Logger
 // Sert à écrire dans un fichier de log formaté
@@ -39,10 +39,9 @@ export const Logger = new class {
 
         this.tries--;
 
-        getDir((dirEntry) => {
-            // Creates a new file or returns the file if it already exists.
-            dirEntry.getFile("log.txt", {create: true}, (fileEntry) => {
-                this.fileEntry = fileEntry;
+        FILE_HELPER.touch("log.txt")
+            .then(entry => {
+                this.fileEntry = entry;
                 this.init_done = true;
                 this.onWrite = false;
                 this.tries = 5;
@@ -51,12 +50,10 @@ export const Logger = new class {
                 while (func = this.init_waiting_callee.pop()) {
                     func();
                 }
-            }, function(err) {
+            })
+            .catch(err => {
                 console.log("Unable to create file log.", err);
             });
-        }, null, function(err) {
-            console.log("Unable to enable log.", err);
-        });
     }
 
     /**
