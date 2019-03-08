@@ -745,22 +745,18 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          * @param path
          */
         async isFile(path) {
-            const exists = await this.exists(path);
-            if (!exists) {
-                return false;
-            }
-            return (await this.get(path)).isFile;
+            return this.get(path)
+                .then(e => e.isFile)
+                .catch(() => false);
         }
         /**
          * Check if path exists and is a directory
          * @param path
          */
         async isDir(path) {
-            const exists = await this.exists(path);
-            if (!exists) {
-                return false;
-            }
-            return (await this.get(path)).isDirectory;
+            return this.get(path)
+                .then(e => e.isDirectory)
+                .catch(() => false);
         }
         /**
          * Rename entry / Move file or directory to another directory.

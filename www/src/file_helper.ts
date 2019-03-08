@@ -105,12 +105,9 @@ export class FileHelper {
      * @param path 
      */
     public async isFile(path: string) : Promise<boolean> {
-        const exists = await this.exists(path);
-        if (!exists) {
-            return false;
-        }
-
-        return (await this.get(path)).isFile;
+        return this.get(path)
+            .then(e => e.isFile)
+            .catch(() => false);
     }
 
     /**
@@ -118,12 +115,9 @@ export class FileHelper {
      * @param path 
      */
     public async isDir(path: string): Promise<boolean> {
-        const exists = await this.exists(path);
-        if (!exists) {
-            return false;
-        }
-
-        return (await this.get(path)).isDirectory;
+        return this.get(path)
+            .then(e => e.isDirectory)
+            .catch(() => false);
     }
 
     /**
