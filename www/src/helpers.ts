@@ -366,7 +366,7 @@ export function formatDate(date: Date, withTime: boolean = false) : string {
 /**
  * Formate un objet Date en chaîne de caractères potable.
  * Pour comprendre les significations des lettres du schéma, se référer à : http://php.net/manual/fr/function.date.php
- * @param schema string Schéma de la chaîne. Supporte Y, m, d, h, H, i, s, n, N, v, z, w
+ * @param schema string Schéma de la chaîne. Supporte Y, m, d, g, H, i, s, n, N, v, z, w
  * @param date Date Date depuis laquelle effectuer le formatage
  * @returns string La châine formatée
  */
@@ -389,11 +389,11 @@ export function dateFormatter(schema: string, date = new Date()) : string {
 
     const i = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
     const H = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
-    const h = date.getHours();
+    const g = date.getHours();
     const s = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
 
     const replacements = {
-        Y, m, d, i, H, h, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
+        Y, m, d, i, H, g, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
     };
 
     let str = "";

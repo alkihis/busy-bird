@@ -494,6 +494,28 @@ export class FileHelper {
         this.root = new_root.toInternalURL().replace(/\/$/, '');
     }
 
+    public async glob(pattern: string) : Promise<string[]> {
+        pattern = "^" + pattern.replace(/\*/g, '.*') + "$";
+        const entry = await this.get() as DirectoryEntry;
+
+        let entries = await new Promise((resolve, reject) => {
+            const reader = entry.createReader();
+            reader.readEntries(resolve, reject);
+        }) as Entry[];
+
+        const matched: string[] = [];
+
+        const regex = new RegExp(pattern, 'iu');
+
+        for (const e of entries) {
+            if (e.name.match(regex)) {
+                matched.push(e.name);
+            }
+        }
+
+        return matched;
+    }
+
     /**
      * Get current root directory of this instance
      */
@@ -548,7 +570,11 @@ export class FileHelper {
                     resolve(this.result as ArrayBuffer);
                 }
                 if (mode === FileHelperReadMode.json) {
-                    resolve(JSON.parse(this.result as string));
+                    try {
+                        resolve(JSON.parse(this.result as string));
+                    } catch (e) {
+                        reject(e);
+                    }
                 }
                 else {
                     resolve(this.result as string);
@@ -563,7 +589,7 @@ export class FileHelper {
             if (mode === FileHelperReadMode.array) {
                 r.readAsArrayBuffer(file);
             }
-            else if (mode === FileHelperReadMode.text) {
+            else if (mode === FileHelperReadMode.text || mode === FileHelperReadMode.json) {
                 r.readAsText(file);
             }
             else if (mode === FileHelperReadMode.url) {

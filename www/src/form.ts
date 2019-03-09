@@ -714,7 +714,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             }
             else {
                 // Définition de la valeur par défaut = date actuelle
-                input.value = dateFormatter("h:i");
+                input.value = dateFormatter("H:i");
             }
 
             wrapper.appendChild(label);

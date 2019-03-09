@@ -1,7 +1,7 @@
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
 import { hasGoodConnection, toValidUrl, getBase } from "./helpers";
-import { APP_VERSION } from "./main";
+import { APP_VERSION, FILE_HELPER } from "./main";
 import { Forms } from "./form_schema";
 import { createLocationInputSelector } from "./location";
 import { launchQuizz } from "./test_vocal_reco";
@@ -82,7 +82,14 @@ export async function initHomePage(base: HTMLElement) {
 
     // Nombre de formulaires enregistrés sur l'appareil
     try {
-        const nb_files = (await getDirP('forms').then(dirEntries)).length;
+        let nb_files: number;
+        try {
+            nb_files = (await FILE_HELPER.ls('forms') as string[]).length;
+        } catch (e) {
+            nb_files = 0;
+            await FILE_HELPER.mkdir('forms');
+        }
+        
 
         home_container.insertAdjacentHTML('beforeend', createCardPanel(
             `<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 

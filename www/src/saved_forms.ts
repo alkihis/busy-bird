@@ -31,12 +31,19 @@ async function deleteAll() : Promise<any> {
 
     try {
         // On veut supprimer tous les fichiers
-        await FILE_HELPER.rm('forms', true);
-        await FILE_HELPER.rm('form_data', true);
+        await FILE_HELPER.empty('forms', true);
+
+        if (await FILE_HELPER.exists('form_data')) {
+            await FILE_HELPER.empty('form_data', true);
+        }
 
         if (device.platform === "Android" && SD_FILE_HELPER) {
-            await SD_FILE_HELPER.rm('forms', true);
-            await SD_FILE_HELPER.rm('form_data', true);
+            try {
+                await SD_FILE_HELPER.empty('forms', true);
+                await SD_FILE_HELPER.empty('form_data', true);
+            } catch (e) {
+                // Tant pis, ça ne marche pas
+            }
         }
 
         await SyncManager.clear();
@@ -50,6 +57,7 @@ async function deleteAll() : Promise<any> {
     } catch (e) {
         PageManager.lock_return_button = false;
         instance.close();
+        Logger.error("Unable to delete", e);
         throw e;
     }
 }
@@ -188,7 +196,7 @@ function modalDeleteForm(id: string) {
         });
 }
 
-function deleteForm(id: string) : Promise<void> {
+async function deleteForm(id: string) : Promise<void> {
     if (id.match(/\.json$/)) {
         id = id.substring(0, id.length - 5);
     }
@@ -197,8 +205,10 @@ function deleteForm(id: string) : Promise<void> {
 
     if (device.platform === 'Android' && SD_FILE_HELPER) {
         // Tente de supprimer depuis la carte SD
-        SD_FILE_HELPER.rm("form_data/" + id, true);
-        SD_FILE_HELPER.rm("forms/" + id + '.json');
+        try {
+            await SD_FILE_HELPER.rm("form_data/" + id, true);
+            await SD_FILE_HELPER.rm("forms/" + id + '.json');
+        } catch (e) { }
     }
 
     return new Promise(async function(resolve, reject) {
@@ -215,9 +225,17 @@ function deleteForm(id: string) : Promise<void> {
     });
 }
 
-export function initSavedForm(base: HTMLElement) {
+export async function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
+
+    try {
+        await FILE_HELPER.mkdir('forms');
+    } catch (err) {
+        Logger.error("Impossible de créer le dossier de formulaire", err.message, err.stack);
+        base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. ("+err.message+")");
+        return;
+    }
 
     Forms.onReady(function() {
         readAllFilesOfDirectory('forms').then(all_promises => 

@@ -1066,6 +1066,22 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             }
             this.root = new_root.toInternalURL().replace(/\/$/, '');
         }
+        async glob(pattern) {
+            pattern = "^" + pattern.replace(/\*/g, '.*') + "$";
+            const entry = await this.get();
+            let entries = await new Promise((resolve, reject) => {
+                const reader = entry.createReader();
+                reader.readEntries(resolve, reject);
+            });
+            const matched = [];
+            const regex = new RegExp(pattern, 'iu');
+            for (const e of entries) {
+                if (e.name.match(regex)) {
+                    matched.push(e.name);
+                }
+            }
+            return matched;
+        }
         /**
          * Get current root directory of this instance
          */
@@ -1114,7 +1130,12 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                         resolve(this.result);
                     }
                     if (mode === FileHelperReadMode.json) {
-                        resolve(JSON.parse(this.result));
+                        try {
+                            resolve(JSON.parse(this.result));
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
                     }
                     else {
                         resolve(this.result);
@@ -1127,7 +1148,7 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 if (mode === FileHelperReadMode.array) {
                     r.readAsArrayBuffer(file);
                 }
-                else if (mode === FileHelperReadMode.text) {
+                else if (mode === FileHelperReadMode.text || mode === FileHelperReadMode.json) {
                     r.readAsText(file);
                 }
                 else if (mode === FileHelperReadMode.url) {
@@ -3016,7 +3037,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     /**
      * Formate un objet Date en chaîne de caractères potable.
      * Pour comprendre les significations des lettres du schéma, se référer à : http://php.net/manual/fr/function.date.php
-     * @param schema string Schéma de la chaîne. Supporte Y, m, d, h, H, i, s, n, N, v, z, w
+     * @param schema string Schéma de la chaîne. Supporte Y, m, d, g, H, i, s, n, N, v, z, w
      * @param date Date Date depuis laquelle effectuer le formatage
      * @returns string La châine formatée
      */
@@ -3036,10 +3057,10 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         const L = Y % 4 == 0 ? 1 : 0;
         const i = ((date.getMinutes()) < 10 ? "0" : "") + String(date.getMinutes());
         const H = ((date.getHours()) < 10 ? "0" : "") + String(date.getHours());
-        const h = date.getHours();
+        const g = date.getHours();
         const s = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
         const replacements = {
-            Y, m, d, i, H, h, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
+            Y, m, d, i, H, g, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
         };
         let str = "";
         // Construit la chaîne de caractères
@@ -4030,7 +4051,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // Définition de la valeur par défaut = date actuelle
-                    input.value = helpers_7.dateFormatter("h:i");
+                    input.value = helpers_7.dateFormatter("H:i");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -4890,7 +4911,14 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         }
         // Nombre de formulaires enregistrés sur l'appareil
         try {
-            const nb_files = (await getDirP('forms').then(dirEntries)).length;
+            let nb_files;
+            try {
+                nb_files = (await main_8.FILE_HELPER.ls('forms')).length;
+            }
+            catch (e) {
+                nb_files = 0;
+                await main_8.FILE_HELPER.mkdir('forms');
+            }
             home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
         }
@@ -5480,11 +5508,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         PageManager_5.PageManager.lock_return_button = true;
         try {
             // On veut supprimer tous les fichiers
-            await main_10.FILE_HELPER.rm('forms', true);
-            await main_10.FILE_HELPER.rm('form_data', true);
+            await main_10.FILE_HELPER.empty('forms', true);
+            if (await main_10.FILE_HELPER.exists('form_data')) {
+                await main_10.FILE_HELPER.empty('form_data', true);
+            }
             if (device.platform === "Android" && main_10.SD_FILE_HELPER) {
-                await main_10.SD_FILE_HELPER.rm('forms', true);
-                await main_10.SD_FILE_HELPER.rm('form_data', true);
+                try {
+                    await main_10.SD_FILE_HELPER.empty('forms', true);
+                    await main_10.SD_FILE_HELPER.empty('form_data', true);
+                }
+                catch (e) {
+                    // Tant pis, ça ne marche pas
+                }
             }
             await SyncManager_6.SyncManager.clear();
             helpers_10.showToast("Fichiers supprimés avec succès");
@@ -5495,6 +5530,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         catch (e) {
             PageManager_5.PageManager.lock_return_button = false;
             instance.close();
+            logger_5.Logger.error("Unable to delete", e);
             throw e;
         }
     }
@@ -5609,15 +5645,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             // Annulation
         });
     }
-    function deleteForm(id) {
+    async function deleteForm(id) {
         if (id.match(/\.json$/)) {
             id = id.substring(0, id.length - 5);
         }
         SyncManager_6.SyncManager.remove(id);
         if (device.platform === 'Android' && main_10.SD_FILE_HELPER) {
             // Tente de supprimer depuis la carte SD
-            main_10.SD_FILE_HELPER.rm("form_data/" + id, true);
-            main_10.SD_FILE_HELPER.rm("forms/" + id + '.json');
+            try {
+                await main_10.SD_FILE_HELPER.rm("form_data/" + id, true);
+                await main_10.SD_FILE_HELPER.rm("forms/" + id + '.json');
+            }
+            catch (e) { }
         }
         return new Promise(async function (resolve, reject) {
             if (id) {
@@ -5631,9 +5670,17 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             }
         });
     }
-    function initSavedForm(base) {
+    async function initSavedForm(base) {
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
+        try {
+            await main_10.FILE_HELPER.mkdir('forms');
+        }
+        catch (err) {
+            logger_5.Logger.error("Impossible de créer le dossier de formulaire", err.message, err.stack);
+            base.innerHTML = helpers_10.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+            return;
+        }
         form_schema_7.Forms.onReady(function () {
             readAllFilesOfDirectory('forms').then(all_promises => Promise.all(all_promises)
                 .then(async function (files) {
