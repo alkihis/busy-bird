@@ -617,10 +617,13 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             fillStandardInputValues(input, ele, span as HTMLLabelElement);
 
             wrapper.classList.add('row', 'col', 's12', 'input-checkbox', 'flex-center-aligner');
-            input.classList.add('filled-in', 'input-form-element');
+            input.classList.add('input-form-element');
 
-            if (filled_form && ele.name in filled_form.fields) {
+            if (filled_form && ele.name in filled_form.fields && typeof filled_form.fields[ele.name] === 'boolean') {
                 input.checked = filled_form.fields[ele.name] as boolean;
+            }
+            else {
+                input.indeterminate = true;
             }
 
             wrapper.appendChild(label);
@@ -970,6 +973,16 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
                 elements_warn.push([name, str, element]);
             }
         }
+        else if (element.tagName === "INPUT" && element.type === "checkbox") {
+            if ((element as HTMLInputElement).indeterminate) {
+                if (element.required) {
+                    elements_failed.push([(element.nextElementSibling as HTMLElement).innerText, "Ce champ est requis", element]);
+                }
+                else {
+                    elements_warn.push([(element.nextElementSibling as HTMLElement).innerText, "Vous n'avez pas interagi avec ce champ", element]);
+                }
+            }
+        }
         else if (element.required && !element.value) {
             if (element.tagName !== "SELECT" || (element.multiple && ($(element).val() as string[]).length === 0)) {
                 elements_failed.push([name, "Champ requis", element]);
@@ -1234,7 +1247,12 @@ export function saveForm(type: string, name: string, location: string, form_save
             }
             else {
                 // C'est une checkbox classique
-                form_values.fields[i.name] = i.checked;
+                if (i.indeterminate) {
+                    form_values.fields[i.name] = null;
+                }
+                else {
+                    form_values.fields[i.name] = i.checked;
+                }
             }
         }
         else if (i.type === "number") {

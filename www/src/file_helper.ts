@@ -376,9 +376,11 @@ export class FileHelper {
             reader.readEntries(resolve, reject);
         }) as Entry[];
 
-        let obj_entries: { [path: string]: Entry[] } = { [path]: entries };
+        let obj_entries: EntryObject = { [path]: entries };
 
         if (r) {
+            // Si la func est récursive, on recherche dans tous les dossiers
+            // L'appel sera fait récursivement dans les nouveaux ls
             for (const e of entries) {
                 if (e.isDirectory) {
                     obj_entries = {...obj_entries, ...(await this.ls(path + "/" + e.name, "re") as EntryObject)};
@@ -386,6 +388,7 @@ export class FileHelper {
             }
         }
 
+        // On filtre en fonction de directory/file only ou non
         for (const rel_path in obj_entries) {
             obj_entries[rel_path] = obj_entries[rel_path].filter(ele => {
                 if (f) {
@@ -398,10 +401,12 @@ export class FileHelper {
             });
         }
 
+        // On a demandé les entrées
         if (e) {
             return obj_entries;
         }
 
+        // Demande les stats du fichier
         if (l) {
             const paths: FileStats[] = [];
 
@@ -427,11 +432,13 @@ export class FileHelper {
 
             return paths;
         }
+        // Sinon, on traite les entrées comme un string[]
         else {
             const paths: string[] = [];
             
             for (const rel_path in obj_entries) {
                 for (const e of obj_entries[rel_path]) {
+                    // Enregistrement du bon nom
                     paths.push((rel_path ? rel_path + "/" : "") + e.name); 
                 }
             }
@@ -527,9 +534,8 @@ export class FileHelper {
 
     /**
      * Find files into a directory using a glob bash pattern.
-     * (** is not supported, use recursive = true and match like *.json to find all json files into all subdirectories)
      * @param pattern 
-     * @param recursive
+     * @param recursive Make glob function recursive. To use ** pattern, you MUST use recursive mode.
      * @param regex_flags Add additionnal flags to regex pattern matching
      */
     public async glob(pattern: string, recursive = false, regex_flags = "") : Promise<string[]> {
@@ -537,7 +543,7 @@ export class FileHelper {
 
         const matched: string[] = [];
 
-        const regex = glob_to_regex(pattern, regex_flags);
+        const regex = globToRegex(pattern, regex_flags);
 
         for (const path in entries) {
             for (const e of entries[path]) {
@@ -676,6 +682,7 @@ export class FileHelper {
 /**
  * Glob to regex function.
  * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
+ * NOT used as package to limit dependencies
  * 
  * COPYRIGHT NOTICE
  * see above function
@@ -683,7 +690,7 @@ export class FileHelper {
  * @param glob 
  * @param flags 
  */
-const glob_to_regex = function (glob: string, flags: string = "") : RegExp {
+function globToRegex(glob: string, flags: string = "") : RegExp {
     let str = glob;
 
     // The regexp we are building, as a string.

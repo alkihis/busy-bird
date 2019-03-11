@@ -969,12 +969,15 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             });
             let obj_entries = { [path]: entries };
             if (r) {
+                // Si la func est récursive, on recherche dans tous les dossiers
+                // L'appel sera fait récursivement dans les nouveaux ls
                 for (const e of entries) {
                     if (e.isDirectory) {
                         obj_entries = Object.assign({}, obj_entries, await this.ls(path + "/" + e.name, "re"));
                     }
                 }
             }
+            // On filtre en fonction de directory/file only ou non
             for (const rel_path in obj_entries) {
                 obj_entries[rel_path] = obj_entries[rel_path].filter(ele => {
                     if (f) {
@@ -986,9 +989,11 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                     return true;
                 });
             }
+            // On a demandé les entrées
             if (e) {
                 return obj_entries;
             }
+            // Demande les stats du fichier
             if (l) {
                 const paths = [];
                 for (const rel_path in obj_entries) {
@@ -1011,10 +1016,12 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 }
                 return paths;
             }
+            // Sinon, on traite les entrées comme un string[]
             else {
                 const paths = [];
                 for (const rel_path in obj_entries) {
                     for (const e of obj_entries[rel_path]) {
+                        // Enregistrement du bon nom
                         paths.push((rel_path ? rel_path + "/" : "") + e.name);
                     }
                 }
@@ -1096,15 +1103,14 @@ define("file_helper", ["require", "exports"], function (require, exports) {
         }
         /**
          * Find files into a directory using a glob bash pattern.
-         * (** is not supported, use recursive = true and match like *.json to find all json files into all subdirectories)
          * @param pattern
-         * @param recursive
+         * @param recursive Make glob function recursive. To use ** pattern, you MUST use recursive mode.
          * @param regex_flags Add additionnal flags to regex pattern matching
          */
         async glob(pattern, recursive = false, regex_flags = "") {
             const entries = await this.ls(undefined, "e" + (recursive ? "r" : ""));
             const matched = [];
-            const regex = glob_to_regex(pattern, regex_flags);
+            const regex = globToRegex(pattern, regex_flags);
             for (const path in entries) {
                 for (const e of entries[path]) {
                     const real_name = (path ? path + "/" : "") + e.name;
@@ -1229,6 +1235,7 @@ define("file_helper", ["require", "exports"], function (require, exports) {
     /**
      * Glob to regex function.
      * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
+     * NOT used as package to limit dependencies
      *
      * COPYRIGHT NOTICE
      * see above function
@@ -1236,7 +1243,7 @@ define("file_helper", ["require", "exports"], function (require, exports) {
      * @param glob
      * @param flags
      */
-    const glob_to_regex = function (glob, flags = "") {
+    function globToRegex(glob, flags = "") {
         let str = glob;
         // The regexp we are building, as a string.
         let reStr = "";
@@ -1334,7 +1341,8 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             reStr = "^" + reStr + "$";
         }
         return new RegExp(reStr, flags);
-    };
+    }
+    ;
 });
 /**
     Copyright notice for GLOB_TO_REGEX
@@ -1627,10 +1635,12 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         async getSpecificFile(id) {
             const entries = await main_3.FILE_HELPER.ls('forms', "e");
             const filename = id + ".json";
-            for (const entry of entries) {
-                if (entry.name === filename) {
-                    const json = JSON.parse(await main_3.FILE_HELPER.read(entry));
-                    return { type: json.type, metadata: json.metadata };
+            for (const d in entries) {
+                for (const entry of entries[d]) {
+                    if (entry.name === filename) {
+                        const json = JSON.parse(await main_3.FILE_HELPER.read(entry));
+                        return { type: json.type, metadata: json.metadata };
+                    }
                 }
             }
             // On a pas trouvé, on rejette
@@ -1643,11 +1653,13 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             const entries = await main_3.FILE_HELPER.ls("forms", "e");
             const promises = [];
             // On ajoute chaque entrée
-            for (const entry of entries) {
-                promises.push(new Promise(async (resolve) => {
-                    const json = JSON.parse(await main_3.FILE_HELPER.read(entry));
-                    resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
-                }));
+            for (const d in entries) {
+                for (const entry of entries[d]) {
+                    promises.push(new Promise(async (resolve) => {
+                        const json = JSON.parse(await main_3.FILE_HELPER.read(entry));
+                        resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
+                    }));
+                }
             }
             // On attend que tout soit OK
             return Promise.all(promises);
@@ -4160,9 +4172,12 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 const span = document.createElement('span');
                 fillStandardInputValues(input, ele, span);
                 wrapper.classList.add('row', 'col', 's12', 'input-checkbox', 'flex-center-aligner');
-                input.classList.add('filled-in', 'input-form-element');
-                if (filled_form && ele.name in filled_form.fields) {
+                input.classList.add('input-form-element');
+                if (filled_form && ele.name in filled_form.fields && typeof filled_form.fields[ele.name] === 'boolean') {
                     input.checked = filled_form.fields[ele.name];
+                }
+                else {
+                    input.indeterminate = true;
                 }
                 wrapper.appendChild(label);
                 label.appendChild(input);
@@ -4437,6 +4452,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     elements_warn.push([name, str, element]);
                 }
             }
+            else if (element.tagName === "INPUT" && element.type === "checkbox") {
+                if (element.indeterminate) {
+                    if (element.required) {
+                        elements_failed.push([element.nextElementSibling.innerText, "Ce champ est requis", element]);
+                    }
+                    else {
+                        elements_warn.push([element.nextElementSibling.innerText, "Vous n'avez pas interagi avec ce champ", element]);
+                    }
+                }
+            }
             else if (element.required && !element.value) {
                 if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
                     elements_failed.push([name, "Champ requis", element]);
@@ -4664,7 +4689,12 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // C'est une checkbox classique
-                    form_values.fields[i.name] = i.checked;
+                    if (i.indeterminate) {
+                        form_values.fields[i.name] = null;
+                    }
+                    else {
+                        form_values.fields[i.name] = i.checked;
+                    }
                 }
             }
             else if (i.type === "number") {
@@ -5814,11 +5844,14 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     async function readAllFilesOfDirectory(dirName) {
         const entries = await main_10.FILE_HELPER.ls(dirName, "e");
+        // Bon, vu que ls n'est pas récursif, EntryObject ne contient qu'un seul chemin
         const data = [];
-        for (const entry of entries) {
-            const file = await main_10.FILE_HELPER.getFileOfEntry(entry);
-            const content = JSON.parse(await main_10.FILE_HELPER.readFileAs(file));
-            data.push([file, content]);
+        for (const d in entries) {
+            for (const entry of entries[d]) {
+                const file = await main_10.FILE_HELPER.getFileOfEntry(entry);
+                const content = JSON.parse(await main_10.FILE_HELPER.readFileAs(file));
+                data.push([file, content]);
+            }
         }
         return data;
     }

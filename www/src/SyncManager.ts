@@ -6,7 +6,7 @@ import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoo
 import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
 import { BackgroundSync, Settings } from "./Settings";
-import { FileHelperReadMode } from "./file_helper";
+import { FileHelperReadMode, EntryObject } from "./file_helper";
 
 // en millisecondes
 const MAX_TIMEOUT_FOR_FORM = 20000; /** Pour le fichier .json de l'entrée */
@@ -310,18 +310,20 @@ export const SyncManager = new class {
     }
 
     public async getSpecificFile(id: string) : Promise<SList> {
-        const entries = await FILE_HELPER.ls('forms', "e") as Entry[];
+        const entries = await FILE_HELPER.ls('forms', "e") as EntryObject;
         
         const filename = id + ".json";
 
-        for (const entry of entries) {
-            if (entry.name === filename) {
-                const json: FormSave = JSON.parse(await FILE_HELPER.read(entry as FileEntry) as string);
+        for (const d in entries) {
+            for (const entry of entries[d]) {
+                if (entry.name === filename) {
+                    const json: FormSave = JSON.parse(await FILE_HELPER.read(entry as FileEntry) as string);
 
-                return { type: json.type, metadata: json.metadata };
+                    return { type: json.type, metadata: json.metadata };
+                }
             }
         }
-
+        
         // On a pas trouvé, on rejette
         throw "";
     }
@@ -330,20 +332,22 @@ export const SyncManager = new class {
      * Obtient tous les fichiers JSON disponibles sur l'appareil
      */
     protected async getAllCurrentFiles() : Promise<[string, SList][]> {
-        const entries = await FILE_HELPER.ls("forms", "e") as Entry[];
+        const entries = await FILE_HELPER.ls("forms", "e") as EntryObject;
         
         const promises: Promise<[string, SList]>[] = [];
 
         // On ajoute chaque entrée
-        for (const entry of entries) {
-            promises.push(
-                new Promise(async (resolve) => {
-                    const json: FormSave = JSON.parse(await FILE_HELPER.read(entry as FileEntry) as string);
+        for (const d in entries) {
+            for (const entry of entries[d]) {
+                promises.push(
+                    new Promise(async (resolve) => {
+                        const json: FormSave = JSON.parse(await FILE_HELPER.read(entry as FileEntry) as string);
 
-                    resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
-                })
-            );
-        }       
+                        resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
+                    })
+                );
+            }       
+        }
 
         // On attend que tout soit OK
         return Promise.all(promises);

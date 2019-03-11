@@ -88,6 +88,10 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     background-color: #318ede;
 }
 
+[type="checkbox"]:indeterminate + span:not(.lever):before {
+    border-right: 2px solid #318ede;
+}
+
 .switch label input[type=checkbox]:checked + .lever {
     background-color: #8ab8e0;
 }

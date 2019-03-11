@@ -4,6 +4,7 @@ import { PageManager, AppPageName } from "./PageManager";
 import { SyncManager } from "./SyncManager";
 import { Logger } from "./logger";
 import { FILE_HELPER, SD_FILE_HELPER } from "./main";
+import { EntryObject } from "./file_helper";
 
 enum SaveState {
     saved, waiting, error
@@ -164,16 +165,20 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
 }
 
 async function readAllFilesOfDirectory(dirName: string) : Promise<[File, FormSave][]> {
-    const entries = await FILE_HELPER.ls(dirName, "e") as Entry[];
+    const entries = await FILE_HELPER.ls(dirName, "e") as EntryObject;
+    // Bon, vu que ls n'est pas récursif, EntryObject ne contient qu'un seul chemin
 
     const data: [File, FormSave][] = [];
 
-    for (const entry of entries) {
-        const file = await FILE_HELPER.getFileOfEntry(entry as FileEntry);
-        const content = JSON.parse(await FILE_HELPER.readFileAs(file) as string) as FormSave;
+    for (const d in entries) {
+        for (const entry of entries[d]) {
+            const file = await FILE_HELPER.getFileOfEntry(entry as FileEntry);
+            const content = JSON.parse(await FILE_HELPER.readFileAs(file) as string) as FormSave;
 
-        data.push([file, content]);
+            data.push([file, content]);
+        }
     }
+    
 
     return data;
 }

@@ -708,7 +708,7 @@ export function askModalList(items: string[]) : Promise<number> {
     });
 }
 
-export async function createRandomForms(count: 50) : Promise<void> {
+export async function createRandomForms(count = 50) : Promise<void> {
     if (Forms.current_key === null) {
         throw "Impossible de créer une entrée sans base";
     }
