@@ -710,7 +710,7 @@ export function askModalList(items: string[]) : Promise<number> {
 
 export async function createRandomForms(count: 50) : Promise<void> {
     if (Forms.current_key === null) {
-        throw "Impossible de créer des formulaires sans base";
+        throw "Impossible de créer une entrée sans base";
     }
 
     const current = Forms.getForm(Forms.current_key);

@@ -179,7 +179,7 @@ export const Forms = new class {
                                 loadJSONInObject(JSON.parse(string as string));
                             })
                             .catch(() => {
-                                showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
+                                showToast("Impossible de charger les schémas." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                             })
                     });
                 });
@@ -189,7 +189,7 @@ export const Forms = new class {
         const init_text = document.getElementById('__init_text_center');
 
         if (init_text) {
-            init_text.innerText = "Mise à jour des formulaires";
+            init_text.innerText = "Mise à jour des schémas de formulaire";
         }
 
         // noinspection OverlyComplexBooleanExpressionJS

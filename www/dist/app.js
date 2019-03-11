@@ -896,12 +896,24 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             let file = await this.getFileOfEntry(typeof path === 'string' ? await this.get(path) : path);
             return this.readFileAs(file, mode);
         }
+        /**
+         * Read a file and parse content as JSON
+         * @param path
+         */
         readJSON(path) {
             return this.read(path, FileHelperReadMode.json);
         }
+        /**
+         * Returns internal URL (absolute file path to the file/dir)
+         * @param path
+         */
         toInternalURL(path) {
             return this.read(path, FileHelperReadMode.internalURL);
         }
+        /**
+         * Read file content as base64 data URL (url that begin with data:xxx/xxxx;base64,)
+         * @param path
+         */
         readDataURL(path) {
             return this.read(path, FileHelperReadMode.url);
         }
@@ -936,7 +948,7 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          * Get content of a directory.
          *
          * @param path Path of thing to explore
-         * @param option_string Options. Can be e, l, d or f. See docs.
+         * @param option_string Options. Can be e, l, d, r or f. See docs. Warning: recursive can be very slow.
          */
         async ls(path = "", option_string = "") {
             const entry = await this.get(path);
@@ -947,48 +959,64 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             const l = option_string.includes("l");
             const f = option_string.includes("f");
             const d = option_string.includes("d");
+            const r = option_string.includes("r");
+            // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
             path = path.replace(/\/$/, '');
-            if (path) {
-                path += "/";
-            }
+            path = path.replace(/^\//, '');
             let entries = await new Promise((resolve, reject) => {
                 const reader = entry.createReader();
                 reader.readEntries(resolve, reject);
             });
-            entries = entries.filter(ele => {
-                if (f) {
-                    return ele.isFile;
+            let obj_entries = { [path]: entries };
+            if (r) {
+                for (const e of entries) {
+                    if (e.isDirectory) {
+                        obj_entries = Object.assign({}, obj_entries, await this.ls(path + "/" + e.name, "re"));
+                    }
                 }
-                else if (d) {
-                    return ele.isDirectory;
-                }
-                return true;
-            });
+            }
+            for (const rel_path in obj_entries) {
+                obj_entries[rel_path] = obj_entries[rel_path].filter(ele => {
+                    if (f) {
+                        return ele.isFile;
+                    }
+                    else if (d) {
+                        return ele.isDirectory;
+                    }
+                    return true;
+                });
+            }
             if (e) {
-                return entries;
+                return obj_entries;
             }
             if (l) {
                 const paths = [];
-                for (const e of entries) {
-                    if (e.isDirectory) {
-                        paths.push({
-                            name: path + e.name,
-                            mdate: undefined,
-                            mtime: undefined,
-                            size: 4096
-                        });
-                    }
-                    else {
-                        const entry = await this.getFileOfEntry(e);
-                        paths.push(this.getStatsFromFile(entry));
+                for (const rel_path in obj_entries) {
+                    for (const e of obj_entries[rel_path]) {
+                        if (e.isDirectory) {
+                            paths.push({
+                                name: (rel_path ? rel_path + "/" : "") + e.name,
+                                mdate: undefined,
+                                mtime: undefined,
+                                size: 4096
+                            });
+                        }
+                        else {
+                            const entry = await this.getFileOfEntry(e);
+                            const stats = this.getStatsFromFile(entry);
+                            stats.name = (rel_path ? rel_path + "/" : "") + stats.name;
+                            paths.push(stats);
+                        }
                     }
                 }
                 return paths;
             }
             else {
                 const paths = [];
-                for (const e of entries) {
-                    paths.push(path + e.name);
+                for (const rel_path in obj_entries) {
+                    for (const e of obj_entries[rel_path]) {
+                        paths.push((rel_path ? rel_path + "/" : "") + e.name);
+                    }
                 }
                 return paths;
             }
@@ -1066,18 +1094,23 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             }
             this.root = new_root.toInternalURL().replace(/\/$/, '');
         }
-        async glob(pattern) {
-            pattern = "^" + pattern.replace(/\*/g, '.*') + "$";
-            const entry = await this.get();
-            let entries = await new Promise((resolve, reject) => {
-                const reader = entry.createReader();
-                reader.readEntries(resolve, reject);
-            });
+        /**
+         * Find files into a directory using a glob bash pattern.
+         * (** is not supported, use recursive = true and match like *.json to find all json files into all subdirectories)
+         * @param pattern
+         * @param recursive
+         * @param regex_flags Add additionnal flags to regex pattern matching
+         */
+        async glob(pattern, recursive = false, regex_flags = "") {
+            const entries = await this.ls(undefined, "e" + (recursive ? "r" : ""));
             const matched = [];
-            const regex = new RegExp(pattern, 'iu');
-            for (const e of entries) {
-                if (e.name.match(regex)) {
-                    matched.push(e.name);
+            const regex = glob_to_regex(pattern, regex_flags);
+            for (const path in entries) {
+                for (const e of entries[path]) {
+                    const real_name = (path ? path + "/" : "") + e.name;
+                    if (real_name.match(regex)) {
+                        matched.push(real_name);
+                    }
                 }
             }
             return matched;
@@ -1192,7 +1225,144 @@ define("file_helper", ["require", "exports"], function (require, exports) {
         }
     }
     exports.FileHelper = FileHelper;
+    ////// GLOB TO REGEX
+    /**
+     * Glob to regex function.
+     * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
+     *
+     * COPYRIGHT NOTICE
+     * see above function
+     *
+     * @param glob
+     * @param flags
+     */
+    const glob_to_regex = function (glob, flags = "") {
+        let str = glob;
+        // The regexp we are building, as a string.
+        let reStr = "";
+        // Whether we are matching so called "extended" globs (like bash) and should
+        // support single character matching, matching ranges of characters, group
+        // matching, etc.
+        const extended = true;
+        const globstar = true;
+        // If we are doing extended matching, this boolean is true when we are inside
+        // a group (eg {*.html,*.js}), and false otherwise.
+        let inGroup = false;
+        let c;
+        for (let i = 0, len = str.length; i < len; i++) {
+            c = str[i];
+            switch (c) {
+                case "/":
+                case "$":
+                case "^":
+                case "+":
+                case ".":
+                case "(":
+                case ")":
+                case "=":
+                case "!":
+                case "|":
+                    reStr += "\\" + c;
+                    break;
+                case "?":
+                    if (extended) {
+                        reStr += ".";
+                        break;
+                    }
+                case "[":
+                case "]":
+                    if (extended) {
+                        reStr += c;
+                        break;
+                    }
+                case "{":
+                    if (extended) {
+                        inGroup = true;
+                        reStr += "(";
+                        break;
+                    }
+                case "}":
+                    if (extended) {
+                        inGroup = false;
+                        reStr += ")";
+                        break;
+                    }
+                case ",":
+                    if (inGroup) {
+                        reStr += "|";
+                        break;
+                    }
+                    reStr += "\\" + c;
+                    break;
+                case "*":
+                    // Move over all consecutive "*"'s.
+                    // Also store the previous and next characters
+                    const prevChar = str[i - 1];
+                    let starCount = 1;
+                    while (str[i + 1] === "*") {
+                        starCount++;
+                        i++;
+                    }
+                    const nextChar = str[i + 1];
+                    if (!globstar) {
+                        // globstar is disabled, so treat any number of "*" as one
+                        reStr += ".*";
+                    }
+                    else {
+                        // globstar is enabled, so determine if this is a globstar segment
+                        const isGlobstar = starCount > 1 // multiple "*"'s
+                            && (prevChar === "/" || prevChar === undefined) // from the start of the segment
+                            && (nextChar === "/" || nextChar === undefined); // to the end of the segment
+                        if (isGlobstar) {
+                            // it's a globstar, so match zero or more path segments
+                            reStr += "((?:[^/]*(?:\/|$))*)";
+                            i++; // move over the "/"
+                        }
+                        else {
+                            // it's not a globstar, so only match one path segment
+                            reStr += "([^/]*)";
+                        }
+                    }
+                    break;
+                default:
+                    reStr += c;
+            }
+        }
+        // When regexp 'g' flag is specified don't
+        // constrain the regular expression with ^ & $
+        if (!flags || !~flags.indexOf('g')) {
+            reStr = "^" + reStr + "$";
+        }
+        return new RegExp(reStr, flags);
+    };
 });
+/**
+    Copyright notice for GLOB_TO_REGEX
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification,
+    are permitted provided that the following conditions are met:
+
+    Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+
+    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
+    the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+    IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (
+        INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+        LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION
+    )
+    HOWEVER CAUSED
+    AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 define("SyncManager", ["require", "exports", "logger", "localforage", "main", "helpers", "user_manager", "fetch_timeout", "Settings", "file_helper"], function (require, exports, logger_2, localforage_1, main_3, helpers_3, user_manager_1, fetch_timeout_1, Settings_1, file_helper_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -1535,7 +1705,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
             });
             receiver.addEventListener('send', (event) => {
                 const detail = event.detail;
-                text.innerHTML = `Envoi des données au serveur\n(Formulaire ${detail.number}/${detail.total})`;
+                text.innerHTML = `Envoi des données au serveur\n(Entrée ${detail.number}/${detail.total})`;
             });
             return this.sync(force_all, clear_cache, undefined, receiver)
                 .then(data => {
@@ -1595,8 +1765,8 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         let cause = (function (reason) {
                             switch (reason) {
                                 case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "json_send": return "Une entrée n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
                                 case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
                                 case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
                                 default: return "Erreur inconnue.";
@@ -1676,8 +1846,8 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                         let cause = (function (reason_1) {
                             switch (reason_1) {
                                 case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "json_send": return "Une entrée n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
                                 case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
                                 case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
                                 default: return "Erreur inconnue.";
@@ -2097,26 +2267,32 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         await exports.FILE_HELPER.waitInit();
         // @ts-ignore Force à demander la permission pour enregistrer du son
         const permissions = cordova.plugins.permissions;
-        permissions.requestPermission(permissions.RECORD_AUDIO, () => {
-            // console.log(status);
-        }, e => { console.log(e); });
-        // @ts-ignore Force à demander la permission pour accéder à la SD
-        permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, () => {
-            // console.log(status);
-        }, e => { console.log(e); });
+        await new Promise((resolve) => {
+            permissions.requestPermission(permissions.RECORD_AUDIO, (status) => {
+                resolve(status);
+            }, e => { console.log(e); resolve(); });
+        });
+        // Force à demander la permission pour accéder à la SD
+        const permission_write = await new Promise((resolve) => {
+            permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, (status) => {
+                resolve(status);
+            }, e => { console.log(e); resolve(undefined); });
+        });
         try {
-            const folders = await helpers_4.getSdCardFolder();
-            for (const f of folders) {
-                if (f.canWrite) {
-                    exports.SDCARD_PATH = f.filePath;
-                    exports.SD_FILE_HELPER = new file_helper_2.FileHelper(f.filePath);
-                    try {
-                        await exports.SD_FILE_HELPER.waitInit();
+            if (permission_write && permission_write.hasPermission) {
+                const folders = await helpers_4.getSdCardFolder();
+                for (const f of folders) {
+                    if (f.canWrite) {
+                        exports.SDCARD_PATH = f.filePath;
+                        exports.SD_FILE_HELPER = new file_helper_2.FileHelper(f.filePath);
+                        try {
+                            await exports.SD_FILE_HELPER.waitInit();
+                        }
+                        catch (e) {
+                            exports.SD_FILE_HELPER = null;
+                        }
+                        break;
                     }
-                    catch (e) {
-                        exports.SD_FILE_HELPER = null;
-                    }
-                    break;
                 }
             }
         }
@@ -2559,14 +2735,14 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                             loadJSONInObject(JSON.parse(string));
                         })
                             .catch(() => {
-                            helpers_5.showToast("Impossible de charger les formulaires." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
+                            helpers_5.showToast("Impossible de charger les schémas." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
                         });
                     });
                 });
             };
             const init_text = document.getElementById('__init_text_center');
             if (init_text) {
-                init_text.innerText = "Mise à jour des formulaires";
+                init_text.innerText = "Mise à jour des schémas de formulaire";
             }
             // noinspection OverlyComplexBooleanExpressionJS
             if ((main_5.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && helpers_5.hasConnection() && user_manager_3.UserManager.logged) {
@@ -3350,7 +3526,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     exports.askModalList = askModalList;
     async function createRandomForms(count) {
         if (form_schema_3.Forms.current_key === null) {
-            throw "Impossible de créer des formulaires sans base";
+            throw "Impossible de créer une entrée sans base";
         }
         const current = form_schema_3.Forms.getForm(form_schema_3.Forms.current_key);
         const promises = [];
@@ -3414,7 +3590,9 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
 define("location", ["require", "exports", "helpers"], function (require, exports, helpers_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function createLocationInputSelector(container, input, locations, open_on_complete = false) {
+    exports.UNKNOWN_NAME = "__unknown__";
+    const UNKNOWN_LABEL = "Lieu inconnu";
+    function createLocationInputSelector(container, input, locations, open_on_complete = false, with_unknown = false) {
         const row = document.createElement('div');
         row.classList.add('row');
         container.appendChild(row);
@@ -3437,11 +3615,17 @@ define("location", ["require", "exports", "helpers"], function (require, exports
             let key = lieu + " - " + locations[lieu].label;
             auto_complete_data[key] = null;
         }
+        if (with_unknown) {
+            auto_complete_data[exports.UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = null;
+        }
         // Création d'un objet clé => [nom, "latitude,longitude"]
         const labels_to_name = {};
         for (const lieu in locations) {
             let key = lieu + " - " + locations[lieu].label;
             labels_to_name[key] = [lieu, String(locations[lieu].latitude) + "," + String(locations[lieu].longitude)];
+        }
+        if (with_unknown) {
+            labels_to_name[exports.UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = [exports.UNKNOWN_NAME, ""];
         }
         // Lance l'autocomplétion materialize
         M.Autocomplete.init(input, {
@@ -4154,13 +4338,20 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 element_to_add = wrapper;
             }
             else if (ele.type === form_schema_4.FormEntityType.slider) {
+                const real_wrapper = document.createElement('div');
+                real_wrapper.classList.add('row', 'col', 's12');
+                const text_label = document.createElement('div');
+                text_label.classList.add('flow-text', 'col', 's12', 'center');
+                text_label.innerText = ele.label;
+                real_wrapper.appendChild(text_label);
                 const wrapper = document.createElement('div');
+                real_wrapper.appendChild(wrapper);
                 const label = document.createElement('label');
                 const input = document.createElement('input');
                 input.type = "checkbox";
                 const span = document.createElement('span');
                 fillStandardInputValues(input, ele);
-                wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch', 'flex-center-aligner');
+                wrapper.classList.add('input-slider', 'switch', 'flex-center-aligner', 'col', 's12');
                 input.classList.add('input-form-element', 'input-slider-element');
                 span.classList.add('lever');
                 wrapper.appendChild(label);
@@ -4178,7 +4369,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
                 // Il faudra par contrer créer (plus tard les input vocaux)
-                element_to_add = wrapper;
+                element_to_add = real_wrapper;
             }
             if (element_to_add)
                 placeh.appendChild(element_to_add);
@@ -4217,6 +4408,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
             else
                 elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+        }
+        if (location_str === location_1.UNKNOWN_NAME) {
+            elements_warn.push(["Lieu", "Le lieu choisi est un lieu inexistant.", undefined]);
         }
         // Input classiques: checkbox/slider, text, textarea, select, number
         for (const e of document.getElementsByClassName('input-form-element')) {
@@ -4385,7 +4579,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     SyncManager_3.SyncManager.add(unique_id, form_values);
                     if (form_save) {
                         instance.close();
-                        helpers_7.showToast("Écriture du formulaire et de ses données réussie.");
+                        helpers_7.showToast("Écriture de l'entrée et de ses données réussie.");
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager_3.PageManager.popPage();
                         // PageManager.reload(); la page se recharge toute seule au pop
@@ -4394,9 +4588,9 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         // On demande si on veut faire une nouvelle entrée
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="no-margin-top">Saisir une nouvelle entrée ?</h5>
+                            <h5 class="no-margin-top">Entrée enregistrée avec succès</h5>
                             <p class="flow-text">
-                                La précédente entrée a bien été enregistrée.
+                                Voulez-vous saisir une nouvelle entrée ?
                             </p>
                         </div>
                         <div class="modal-footer">
@@ -4605,7 +4799,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             form_schema_4.Forms.onReady(function (_, current) {
                 if (form_schema_4.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_7.displayErrorMessage("Aucun formulaire n'est chargé.", "Sélectionnez le formulaire à utiliser dans les paramètres.");
+                    base.innerHTML = helpers_7.displayErrorMessage("Aucun schéma n'est chargé.", "Sélectionnez le schéma de formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
                 }
                 else {
@@ -4762,7 +4956,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Vide le modal actuel et le remplace par le contenu et footer créés
         modal.innerHTML = "";
         modal.appendChild(content);
-        const labels_to_name = location_1.createLocationInputSelector(content, input, locations);
+        const labels_to_name = location_1.createLocationInputSelector(content, input, locations, undefined, true);
         // Construction de la liste de lieux si la location est trouvée
         if (current_location) {
             // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
@@ -4902,7 +5096,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         catch (e) {
             home_container.innerHTML = createCardPanel(`<span class="red-text text-darken-2">Impossible de relever les entrées disponibles.</span><br>
             <span class="red-text text-darken-2">Cette erreur est possiblement grave. 
-            Nous vous conseillons de ne pas enregistrer de formulaire.</span>`, "Erreur");
+            Nous vous conseillons de ne pas enregistrer d'entrée.</span>`, "Erreur");
         }
         // Montre l'utilisateur connecté
         if (user_manager_5.UserManager.logged) {
@@ -4926,7 +5120,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             // Impossible d'obtenir les fichiers
             home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span><br>
             <span class="red-text text-darken-2">Cette erreur est probablement grave. 
-            Nous vous conseillons de ne pas tenter d'enregistrer un formulaire et de vérifier votre stockage interne.</span>`));
+            Nous vous conseillons de ne pas tenter d'enregistrer d'entrée et de vérifier votre stockage interne.</span>`));
         }
         form_schema_5.Forms.onReady(function (available, current) {
             if (form_schema_5.Forms.current_key === null) {
@@ -5494,7 +5688,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
         if (form.type === null || !form_schema_7.Forms.formExists(form.type)) {
-            helpers_10.showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type + "'.", 10000);
+            helpers_10.showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
             return;
         }
         const current_form = form_schema_7.Forms.getForm(form.type);
@@ -5629,7 +5823,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         return data;
     }
     function modalDeleteForm(id) {
-        helpers_10.askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+        helpers_10.askModal("Supprimer cette entrée ?", "Vous ne pourrez pas la restaurer ultérieurement.", "Supprimer", "Annuler")
             .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
@@ -5677,7 +5871,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             await main_10.FILE_HELPER.mkdir('forms');
         }
         catch (err) {
-            logger_5.Logger.error("Impossible de créer le dossier de formulaire", err.message, err.stack);
+            logger_5.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
             base.innerHTML = helpers_10.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             return;
         }
@@ -5695,7 +5889,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 /// place en bas, pour les boutons
                 base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
                 if (files.length === 0) {
-                    base.innerHTML = helpers_10.displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                    base.innerHTML = helpers_10.displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
                 }
                 else {
                     //// Bouton de synchronisation
@@ -5724,15 +5918,21 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                                 </a>
                             </div>`);
                     delete_btn.addEventListener('click', () => {
-                        helpers_10.askModal("Tout supprimer ?", "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés.")
+                        helpers_10.askModal("Tout supprimer ?", "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés.")
                             .then(() => {
                             setTimeout(function () {
                                 // Attend que le modal précédent se ferme
                                 helpers_10.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
                                     .then(() => {
+                                    // @ts-ignore bugfix
+                                    document.body.style.overflow = '';
+                                    M.Modal._modalsOpen = 0;
                                     // Annulation
                                 })
                                     .catch(() => {
+                                    // @ts-ignore bugfix
+                                    document.body.style.overflow = '';
+                                    M.Modal._modalsOpen = 0;
                                     deleteAll();
                                 });
                             }, 150);

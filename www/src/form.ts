@@ -7,7 +7,7 @@ import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
 import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
-import { createLocationInputSelector } from "./location";
+import { createLocationInputSelector, UNKNOWN_NAME } from "./location";
 import { FileHelperReadMode } from "./file_helper";
 
 function createInputWrapper() : HTMLElement {
@@ -842,7 +842,17 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
         }
 
         else if (ele.type === FormEntityType.slider) {
+            const real_wrapper = document.createElement('div');
+            real_wrapper.classList.add('row', 'col', 's12');
+
+            const text_label = document.createElement('div');
+            text_label.classList.add('flow-text', 'col', 's12', 'center');
+            text_label.innerText = ele.label;
+            real_wrapper.appendChild(text_label);
+
             const wrapper = document.createElement('div');
+            real_wrapper.appendChild(wrapper);
+
             const label = document.createElement('label');
             const input = document.createElement('input');
             input.type = "checkbox";
@@ -850,7 +860,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             fillStandardInputValues(input, ele);
 
-            wrapper.classList.add('row', 'col', 's12', 'input-slider', 'switch', 'flex-center-aligner');
+            wrapper.classList.add('input-slider', 'switch', 'flex-center-aligner', 'col', 's12');
             input.classList.add('input-form-element', 'input-slider-element');
             span.classList.add('lever');
 
@@ -875,7 +885,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             // Pas de tip ni d'évènement pour le select; les choix se suffisent à eux mêmes
             // Il faudra par contrer créer (plus tard les input vocaux)
 
-            element_to_add = wrapper;
+            element_to_add = real_wrapper;
         }
 
         if (element_to_add)
@@ -928,6 +938,9 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
             elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
         else
             elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
+    }
+    if (location_str === UNKNOWN_NAME) {
+        elements_warn.push(["Lieu", "Le lieu choisi est un lieu inexistant.", undefined]);
     }
 
     // Input classiques: checkbox/slider, text, textarea, select, number
@@ -1126,7 +1139,7 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
 
                     if (form_save) {
                         instance.close();
-                        showToast("Écriture du formulaire et de ses données réussie.");
+                        showToast("Écriture de l'entrée et de ses données réussie.");
 
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager.popPage();
@@ -1136,9 +1149,9 @@ async function beginFormSave(type: string, current_form: Form, force_name?: stri
                         // On demande si on veut faire une nouvelle entrée
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="no-margin-top">Saisir une nouvelle entrée ?</h5>
+                            <h5 class="no-margin-top">Entrée enregistrée avec succès</h5>
                             <p class="flow-text">
-                                La précédente entrée a bien été enregistrée.
+                                Voulez-vous saisir une nouvelle entrée ?
                             </p>
                         </div>
                         <div class="modal-footer">
@@ -1381,8 +1394,8 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
             if (Forms.current_key === null) {
                 // Aucun formulaire n'est chargé !
                 base.innerHTML = displayErrorMessage(
-                    "Aucun formulaire n'est chargé.", 
-                    "Sélectionnez le formulaire à utiliser dans les paramètres."
+                    "Aucun schéma n'est chargé.", 
+                    "Sélectionnez le schéma de formulaire à utiliser dans les paramètres."
                 );
                 PageManager.should_wait = false;
             }
@@ -1570,7 +1583,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
     modal.innerHTML = "";
     modal.appendChild(content);
 
-    const labels_to_name = createLocationInputSelector(content, input, locations);
+    const labels_to_name = createLocationInputSelector(content, input, locations, undefined, true);
 
     // Construction de la liste de lieux si la location est trouvée
     if (current_location) {

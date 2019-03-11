@@ -12,6 +12,8 @@ export interface FileStats {
     name: string;
 }
 
+export type EntryObject = { [path: string]: Entry[] };
+
 /**
  * Simplify file access and directory navigation with native Promise support
  */
@@ -278,7 +280,7 @@ export class FileHelper {
     public async read(path: string | FileEntry, mode = FileHelperReadMode.text) : Promise<any | string | ArrayBuffer> {
         if (mode === FileHelperReadMode.internalURL) {
             return (typeof path === 'string' ? 
-                (await this.get(path) as FileEntry).toInternalURL() : 
+                (await this.get(path)).toInternalURL() : 
                 path.toInternalURL()
             );
         }
@@ -290,14 +292,26 @@ export class FileHelper {
         return this.readFileAs(file, mode);
     }
 
+    /**
+     * Read a file and parse content as JSON
+     * @param path 
+     */
     public readJSON(path: string | FileEntry) : Promise<any> {
         return this.read(path, FileHelperReadMode.json);
     }
 
-    public toInternalURL(path: string | FileEntry) : Promise<string> {
-        return this.read(path, FileHelperReadMode.internalURL);
+    /**
+     * Returns internal URL (absolute file path to the file/dir)
+     * @param path 
+     */
+    public toInternalURL(path: string | Entry) : Promise<string> {
+        return this.read(path as FileEntry, FileHelperReadMode.internalURL);
     }
 
+    /**
+     * Read file content as base64 data URL (url that begin with data:xxx/xxxx;base64,)
+     * @param path 
+     */
     public readDataURL(path: string | FileEntry) : Promise<string> {
         return this.read(path, FileHelperReadMode.url);
     }
@@ -338,9 +352,9 @@ export class FileHelper {
      * Get content of a directory.
      * 
      * @param path Path of thing to explore
-     * @param option_string Options. Can be e, l, d or f. See docs.
+     * @param option_string Options. Can be e, l, d, r or f. See docs. Warning: recursive can be very slow.
      */
-    public async ls(path: string = "", option_string: string = "") : Promise<string[] | FileStats[] | Entry[]> {
+    public async ls(path: string = "", option_string: string = "") : Promise<string[] | FileStats[] | EntryObject> {
         const entry = await this.get(path);
 
         if (entry.isFile) {
@@ -351,48 +365,63 @@ export class FileHelper {
         const l = option_string.includes("l");
         const f = option_string.includes("f");
         const d = option_string.includes("d");
+        const r = option_string.includes("r");
 
+        // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
         path = path.replace(/\/$/, '');
-
-        if (path) {
-            path += "/";
-        }
+        path = path.replace(/^\//, '');
 
         let entries = await new Promise((resolve, reject) => {
             const reader = (entry as DirectoryEntry).createReader();
             reader.readEntries(resolve, reject);
         }) as Entry[];
 
-        entries = entries.filter(ele => {
-            if (f) {
-                return ele.isFile;
+        let obj_entries: { [path: string]: Entry[] } = { [path]: entries };
+
+        if (r) {
+            for (const e of entries) {
+                if (e.isDirectory) {
+                    obj_entries = {...obj_entries, ...(await this.ls(path + "/" + e.name, "re") as EntryObject)};
+                }
             }
-            else if (d) {
-                return ele.isDirectory;
-            }
-            return true;
-        });
+        }
+
+        for (const rel_path in obj_entries) {
+            obj_entries[rel_path] = obj_entries[rel_path].filter(ele => {
+                if (f) {
+                    return ele.isFile;
+                }
+                else if (d) {
+                    return ele.isDirectory;
+                }
+                return true;
+            });
+        }
 
         if (e) {
-            return entries;
+            return obj_entries;
         }
 
         if (l) {
             const paths: FileStats[] = [];
 
-            for (const e of entries) {
-                if (e.isDirectory) {
-                    paths.push({
-                        name: path + e.name,
-                        mdate: undefined,
-                        mtime: undefined,
-                        size: 4096
-                    });
-                }
-                else {
-                    const entry = await this.getFileOfEntry(e as FileEntry);
+            for (const rel_path in obj_entries) {
+                for (const e of obj_entries[rel_path]) {
+                    if (e.isDirectory) {
+                        paths.push({
+                            name: (rel_path ? rel_path + "/" : "") + e.name,
+                            mdate: undefined,
+                            mtime: undefined,
+                            size: 4096
+                        });
+                    }
+                    else {
+                        const entry = await this.getFileOfEntry(e as FileEntry);
+                        const stats = this.getStatsFromFile(entry);
+                        stats.name = (rel_path ? rel_path + "/" : "") + stats.name;
 
-                    paths.push(this.getStatsFromFile(entry));
+                        paths.push(stats);
+                    }
                 }
             }
 
@@ -401,8 +430,10 @@ export class FileHelper {
         else {
             const paths: string[] = [];
             
-            for (const e of entries) {
-                paths.push(path + e.name); 
+            for (const rel_path in obj_entries) {
+                for (const e of obj_entries[rel_path]) {
+                    paths.push((rel_path ? rel_path + "/" : "") + e.name); 
+                }
             }
     
             return paths;
@@ -494,23 +525,28 @@ export class FileHelper {
         this.root = new_root.toInternalURL().replace(/\/$/, '');
     }
 
-    public async glob(pattern: string) : Promise<string[]> {
-        pattern = "^" + pattern.replace(/\*/g, '.*') + "$";
-        const entry = await this.get() as DirectoryEntry;
-
-        let entries = await new Promise((resolve, reject) => {
-            const reader = entry.createReader();
-            reader.readEntries(resolve, reject);
-        }) as Entry[];
+    /**
+     * Find files into a directory using a glob bash pattern.
+     * (** is not supported, use recursive = true and match like *.json to find all json files into all subdirectories)
+     * @param pattern 
+     * @param recursive
+     * @param regex_flags Add additionnal flags to regex pattern matching
+     */
+    public async glob(pattern: string, recursive = false, regex_flags = "") : Promise<string[]> {
+        const entries = await this.ls(undefined, "e" + (recursive ? "r" : "")) as EntryObject;
 
         const matched: string[] = [];
 
-        const regex = new RegExp(pattern, 'iu');
+        const regex = glob_to_regex(pattern, regex_flags);
 
-        for (const e of entries) {
-            if (e.name.match(regex)) {
-                matched.push(e.name);
-            }
+        for (const path in entries) {
+            for (const e of entries[path]) {
+                const real_name = (path ? path + "/" : "") + e.name;
+
+                if (real_name.match(regex)) {
+                    matched.push(real_name);
+                }
+            }  
         }
 
         return matched;
@@ -635,3 +671,155 @@ export class FileHelper {
         }
     }
 }
+
+////// GLOB TO REGEX
+/**
+ * Glob to regex function.
+ * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
+ * 
+ * COPYRIGHT NOTICE
+ * see above function
+ * 
+ * @param glob 
+ * @param flags 
+ */
+const glob_to_regex = function (glob: string, flags: string = "") : RegExp {
+    let str = glob;
+
+    // The regexp we are building, as a string.
+    let reStr = "";
+
+    // Whether we are matching so called "extended" globs (like bash) and should
+    // support single character matching, matching ranges of characters, group
+    // matching, etc.
+    const extended = true;
+    const globstar = true;
+
+    // If we are doing extended matching, this boolean is true when we are inside
+    // a group (eg {*.html,*.js}), and false otherwise.
+    let inGroup = false;
+
+    let c: string;
+    for (let i = 0, len = str.length; i < len; i++) {
+        c = str[i];
+
+        switch (c) {
+            case "/":
+            case "$":
+            case "^":
+            case "+":
+            case ".":
+            case "(":
+            case ")":
+            case "=":
+            case "!":
+            case "|":
+                reStr += "\\" + c;
+                break;
+
+            case "?":
+                if (extended) {
+                    reStr += ".";
+                    break;
+                }
+
+            case "[":
+            case "]":
+                if (extended) {
+                    reStr += c;
+                    break;
+                }
+
+            case "{":
+                if (extended) {
+                    inGroup = true;
+                    reStr += "(";
+                    break;
+                }
+
+            case "}":
+                if (extended) {
+                    inGroup = false;
+                    reStr += ")";
+                    break;
+                }
+
+            case ",":
+                if (inGroup) {
+                    reStr += "|";
+                    break;
+                }
+                reStr += "\\" + c;
+                break;
+
+            case "*":
+                // Move over all consecutive "*"'s.
+                // Also store the previous and next characters
+                const prevChar = str[i - 1];
+                let starCount = 1;
+                while (str[i + 1] === "*") {
+                    starCount++;
+                    i++;
+                }
+                const nextChar = str[i + 1];
+
+                if (!globstar) {
+                    // globstar is disabled, so treat any number of "*" as one
+                    reStr += ".*";
+                } else {
+                    // globstar is enabled, so determine if this is a globstar segment
+                    const isGlobstar = starCount > 1                      // multiple "*"'s
+                        && (prevChar === "/" || prevChar === undefined)   // from the start of the segment
+                        && (nextChar === "/" || nextChar === undefined)   // to the end of the segment
+
+                    if (isGlobstar) {
+                        // it's a globstar, so match zero or more path segments
+                        reStr += "((?:[^/]*(?:\/|$))*)";
+                        i++; // move over the "/"
+                    } else {
+                        // it's not a globstar, so only match one path segment
+                        reStr += "([^/]*)";
+                    }
+                }
+                break;
+            default:
+                reStr += c;
+        }
+    }
+
+    // When regexp 'g' flag is specified don't
+    // constrain the regular expression with ^ & $
+    if (!flags || !~flags.indexOf('g')) {
+        reStr = "^" + reStr + "$";
+    }
+
+    return new RegExp(reStr, flags);
+};
+
+/**
+    Copyright notice for GLOB_TO_REGEX
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification, 
+    are permitted provided that the following conditions are met:
+
+    Redistributions of source code must retain the above copyright notice, 
+    this list of conditions and the following disclaimer.
+
+    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and 
+    the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+    IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+    (
+        INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+        LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION
+    ) 
+    HOWEVER CAUSED 
+    AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/

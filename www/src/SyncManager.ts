@@ -418,7 +418,7 @@ export const SyncManager = new class {
 
         receiver.addEventListener('send', (event: Event) => {
             const detail = (event as CustomEvent).detail;
-            text.innerHTML = `Envoi des données au serveur\n(Formulaire ${detail.number}/${detail.total})`;
+            text.innerHTML = `Envoi des données au serveur\n(Entrée ${detail.number}/${detail.total})`;
         });
 
         return this.sync(force_all, clear_cache, undefined, receiver)
@@ -487,8 +487,8 @@ export const SyncManager = new class {
                         let cause = (function(reason) {
                             switch (reason) {
                                 case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Un formulaire n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                                case "json_send": return "Une entrée n'a pas pu être envoyé.";
+                                case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
                                 case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
                                 case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
                                 default: return "Erreur inconnue.";
@@ -577,8 +577,8 @@ export const SyncManager = new class {
                     let cause = (function (reason_1) {
                         switch (reason_1) {
                             case "aborted": return "La synchonisation a été annulée.";
-                            case "json_send": return "Un formulaire n'a pas pu être envoyé.";
-                            case "metadata_send": return "Un fichier associé à un formulaire n'a pas pu être envoyé.";
+                            case "json_send": return "Une entrée n'a pas pu être envoyé.";
+                            case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
                             case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
                             case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
                             default: return "Erreur inconnue.";

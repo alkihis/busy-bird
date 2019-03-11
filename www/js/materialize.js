@@ -3240,7 +3240,6 @@ $jscomp.polyfill = function (e, r, p, m) {
         // Enable body scrolling only if there are no more modals open.
         if (Modal._modalsOpen === 0) {
           document.body.style.overflow = '';
-          document.body.style.touchAction = '';
         }
 
         if (this.options.dismissible) {

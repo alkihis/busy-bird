@@ -12,7 +12,7 @@ enum SaveState {
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
     if (form.type === null || !Forms.formExists(form.type)) {
-        showToast("Impossible de charger ce fichier.\nLe type de formulaire enregistré est indisponible.\nVérifiez que vous avez souscrit à ce type de formulaire: '" + form.type+ "'.", 10000);
+        showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type+ "\".", 10000);
         return;
     }
 
@@ -179,7 +179,7 @@ async function readAllFilesOfDirectory(dirName: string) : Promise<[File, FormSav
 }
 
 function modalDeleteForm(id: string) {
-    askModal("Supprimer ce formulaire ?", "Vous ne pourrez pas le restaurer ultérieurement.", "Supprimer", "Annuler")
+    askModal("Supprimer cette entrée ?", "Vous ne pourrez pas la restaurer ultérieurement.", "Supprimer", "Annuler")
         .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
@@ -232,7 +232,7 @@ export async function initSavedForm(base: HTMLElement) {
     try {
         await FILE_HELPER.mkdir('forms');
     } catch (err) {
-        Logger.error("Impossible de créer le dossier de formulaire", err.message, err.stack);
+        Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
         base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. ("+err.message+")");
         return;
     }
@@ -258,7 +258,7 @@ export async function initSavedForm(base: HTMLElement) {
                     base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
         
                     if (files.length === 0) {
-                        base.innerHTML = displayInformalMessage("Vous n'avez aucun formulaire sauvegardé.");
+                        base.innerHTML = displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
                     }
                     else {
                         //// Bouton de synchronisation
@@ -293,7 +293,7 @@ export async function initSavedForm(base: HTMLElement) {
                         delete_btn.addEventListener('click', () => {
                             askModal(
                                 "Tout supprimer ?", 
-                                "Tous les formulaires enregistrés, même possiblement non synchronisés, seront supprimés."
+                                "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés."
                             )
                             .then(() => {
                                 setTimeout(function() {
@@ -305,9 +305,13 @@ export async function initSavedForm(base: HTMLElement) {
                                         "Supprimer"
                                     )
                                     .then(() => {
+                                        // @ts-ignore bugfix
+                                        document.body.style.overflow = ''; M.Modal._modalsOpen = 0;
                                         // Annulation
                                     })
                                     .catch(() => {
+                                        // @ts-ignore bugfix
+                                        document.body.style.overflow = ''; M.Modal._modalsOpen = 0;
                                         deleteAll();
                                     });
                                 }, 150);

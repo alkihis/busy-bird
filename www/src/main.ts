@@ -60,28 +60,35 @@ async function initApp() {
 
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
-    permissions.requestPermission(permissions.RECORD_AUDIO, () => {
-        // console.log(status);
-    }, e => {console.log(e)});
 
-    // @ts-ignore Force à demander la permission pour accéder à la SD
-    permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, () => {
-        // console.log(status);
-    }, e => {console.log(e)});
+    await new Promise((resolve) => {
+        permissions.requestPermission(permissions.RECORD_AUDIO, (status) => {
+            resolve(status);
+        }, e => { console.log(e); resolve(); });
+    });
+
+    // Force à demander la permission pour accéder à la SD
+    const permission_write: { hasPermission: boolean } = await new Promise((resolve) => {
+        permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, (status: { hasPermission: boolean }) => {
+            resolve(status);
+        }, e => { console.log(e); resolve(undefined); });
+    });
     
     try {
-        const folders = await getSdCardFolder();
+        if (permission_write && permission_write.hasPermission) {
+            const folders = await getSdCardFolder();
 
-        for (const f of folders) {
-            if (f.canWrite) {
-                SDCARD_PATH = f.filePath;
-                SD_FILE_HELPER = new FileHelper(f.filePath);
-
-                try {
-                    await SD_FILE_HELPER.waitInit();
-                } catch (e) { SD_FILE_HELPER = null; }
-                
-                break;
+            for (const f of folders) {
+                if (f.canWrite) {
+                    SDCARD_PATH = f.filePath;
+                    SD_FILE_HELPER = new FileHelper(f.filePath);
+    
+                    try {
+                        await SD_FILE_HELPER.waitInit();
+                    } catch (e) { SD_FILE_HELPER = null; }
+                    
+                    break;
+                }
             }
         }
     } catch (e) {  }

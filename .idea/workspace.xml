@@ -2,18 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e5be36e4-2bfe-4120-8f66-01a4f5d0e7a1" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/PageManager.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/PageManager.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/SyncManager.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/SyncManager.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/form.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/form.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/form_schema.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/form_schema.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/helpers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/helpers.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/logger.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/logger.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/www/dist/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/www/dist/app.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/www/src/main.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/main.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/settings_page.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/settings_page.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/test_vocal_reco.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/test_vocal_reco.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/www/src/vocal_recognition.ts" beforeDir="false" afterPath="$PROJECT_DIR$/www/src/vocal_recognition.ts" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -36,11 +27,11 @@
     <select />
   </component>
   <component name="FileEditorManager">
-    <leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/www/src/PageManager.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="4293">
+            <state relative-caret-position="6846">
               <caret line="331" column="20" selection-start-line="331" selection-start-column="20" selection-end-line="331" selection-end-column="20" />
             </state>
           </provider>
@@ -50,7 +41,7 @@
         <entry file="file://$PROJECT_DIR$/www/src/helpers.ts">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="356">
-              <caret line="544" column="1" lean-forward="true" selection-start-line="544" selection-start-column="1" selection-end-line="544" selection-end-column="1" />
+              <caret line="348" column="1" selection-start-line="348" selection-start-column="1" selection-end-line="348" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -92,6 +83,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -114,7 +106,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
       <pane id="PackagesPane" />
     </panes>
   </component>
@@ -157,18 +148,20 @@
       <workItem from="1551567293375" duration="61000" />
       <workItem from="1551567385416" duration="38000" />
       <workItem from="1551567457044" duration="214000" />
+      <workItem from="1552156229231" duration="19000" />
+      <workItem from="1552156281674" duration="12000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="3299000" />
+    <option name="totallyTimeSpent" value="3330000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="23" width="1440" height="820" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Captures" order="0" weight="0.25" />
-      <window_info active="true" content_ui="combo" id="Project" order="1" visible="true" weight="0.1595136" />
+      <window_info active="true" content_ui="combo" id="Project" order="1" visible="true" weight="0.16380544" />
       <window_info id="Structure" order="2" side_tool="true" />
       <window_info id="Image Layers" order="3" />
       <window_info id="Designer" order="4" />
@@ -333,7 +326,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/www/src/PageManager.ts">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="4293">
+        <state relative-caret-position="6846">
           <caret line="331" column="20" selection-start-line="331" selection-start-column="20" selection-end-line="331" selection-end-column="20" />
         </state>
       </provider>
@@ -341,7 +334,7 @@
     <entry file="file://$PROJECT_DIR$/www/src/helpers.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="356">
-          <caret line="544" column="1" lean-forward="true" selection-start-line="544" selection-start-column="1" selection-end-line="544" selection-end-column="1" />
+          <caret line="348" column="1" selection-start-line="348" selection-start-column="1" selection-end-line="348" selection-end-column="1" />
         </state>
       </provider>
     </entry>

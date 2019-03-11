@@ -1,7 +1,10 @@
 import { FormLocations } from "./form_schema";
 import { showToast } from "./helpers";
 
-export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocations, open_on_complete = false) {
+export const UNKNOWN_NAME = "__unknown__";
+const UNKNOWN_LABEL = "Lieu inconnu";
+
+export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocations, open_on_complete = false, with_unknown = false) {
     const row = document.createElement('div');
     row.classList.add('row');
     container.appendChild(row);
@@ -29,11 +32,20 @@ export function createLocationInputSelector(container: HTMLElement, input: HTMLI
 
         auto_complete_data[key] = null;
     }
+
+    if (with_unknown) {
+        auto_complete_data[UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = null;
+    }
+
     // Création d'un objet clé => [nom, "latitude,longitude"]
     const labels_to_name: {[label: string]: [string, string]} = {};
     for (const lieu in locations) {
         let key = lieu + " - " + locations[lieu].label;
         labels_to_name[key] = [lieu, String(locations[lieu].latitude) + "," + String(locations[lieu].longitude)];
+    }
+
+    if (with_unknown) {
+        labels_to_name[UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = [UNKNOWN_NAME, ""];
     }
 
     // Lance l'autocomplétion materialize

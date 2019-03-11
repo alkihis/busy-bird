@@ -6,8 +6,13 @@
         "type": "divider"
     }, {
         "name": "__date__",
-        "label": "Date",
-        "type": "datetime",
+        "label": "Jour",
+        "type": "date",
+        "required": true
+    }, {
+        "name": "__time__",
+        "label": "Temps",
+        "type": "time",
         "required": true
     }, {
         "name": "name",
@@ -40,7 +45,7 @@
         "type": "checkbox"
     }, {
         "name": "amont_aval",
-        "label": null,
+        "label": "Amont ou aval",
         "type": "slider",
         "slider_options": [{
             "name": "amont",
@@ -101,53 +106,22 @@
         },
         "allow_voice_control": true
     }, {
-        "name": "bagues_couleur_gauche",
-        "label": "Bagues gauche",
+        "name": "bagues_title",
+        "label": "Bagues de l'oiseau",
         "type": "divider"
     }, {
-        "name": "bague_metal_gauche",
-        "label": "Métal",
-        "type": "select",
-        "external_constraints": "bague_metal_droite!=*",
-        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague gauche si il a une bague métal droite.",
-        "select_options": {
-            "multiple": false,
-            "options": [{
-                "label": "Aucune",
-                "value": ""
+        "name": "bague_metal",
+        "label": "Emplacement de la bague en métal",
+        "type": "slider",
+        "slider_options": [
+            {
+                "label": "Gauche",
+                "name": "gauche"
             }, {
-                "label": "Dark blue",
-                "value": "db"
-            }, {
-                "label": "Light blue",
-                "value": "lb"
-            }, {
-                "label": "Green",
-                "value": "g"
-            }, {
-                "label": "Yellow",
-                "value": "y"
-            }, {
-                "label": "White",
-                "value": "w"
-            }, {
-                "label": "Red",
-                "value": "r"
-            }, {
-                "label": "Grey",
-                "value": "gy"
-            }, {
-                "label": "Pink",
-                "value": "p"
-            }, {
-                "label": "Black",
-                "value": "b"
-            }, {
-                "label": "Orange",
-                "value": "o"
-            }]
-        },
-        "allow_voice_control": true
+                "label": "Droite",
+                "name": "droite"
+            }
+        ]
     }, {
         "name": "bague_plastique_gauche",
         "label": "Plastique",
@@ -155,54 +129,6 @@
         "select_options": {
             "multiple": true,
             "options": [{
-                "label": "Dark blue",
-                "value": "db"
-            }, {
-                "label": "Light blue",
-                "value": "lb"
-            }, {
-                "label": "Green",
-                "value": "g"
-            }, {
-                "label": "Yellow",
-                "value": "y"
-            }, {
-                "label": "White",
-                "value": "w"
-            }, {
-                "label": "Red",
-                "value": "r"
-            }, {
-                "label": "Grey",
-                "value": "gy"
-            }, {
-                "label": "Pink",
-                "value": "p"
-            }, {
-                "label": "Black",
-                "value": "b"
-            }, {
-                "label": "Orange",
-                "value": "o"
-            }]
-        },
-        "allow_voice_control": true
-    }, {
-        "name": "bagues_couleur_droite",
-        "label": "Bagues droite",
-        "type": "divider"
-    }, {
-        "name": "bague_metal_droite",
-        "label": "Métal",
-        "type": "select",
-        "external_constraints": "bague_metal_gauche!=*",
-        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague droite si il a une bague métal gauche.",
-        "select_options": {
-            "multiple": false,
-            "options": [{
-                "label": "Aucune",
-                "value": ""
-            }, {
                 "label": "Dark blue",
                 "value": "db"
             }, {
