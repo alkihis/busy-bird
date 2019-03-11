@@ -371,10 +371,7 @@ export class FileHelper {
         path = path.replace(/\/$/, '');
         path = path.replace(/^\//, '');
 
-        let entries = await new Promise((resolve, reject) => {
-            const reader = (entry as DirectoryEntry).createReader();
-            reader.readEntries(resolve, reject);
-        }) as Entry[];
+        let entries = await this.entriesOf(entry as DirectoryEntry);
 
         let obj_entries: EntryObject = { [path]: entries };
 
@@ -578,6 +575,31 @@ export class FileHelper {
     /* FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
 
     /**
+     * Get entries presents in a DirectoryEntry.
+     * @param entry 
+     */
+    public entriesOf(entry: DirectoryEntry) : Promise<Entry[]> {
+        return new Promise((resolve, reject) => {
+            const reader = entry.createReader();
+            reader.readEntries(resolve, reject);
+        });
+    }
+
+    /**
+     * Get entries from numerous paths
+     * @param paths Array of string paths
+     */
+    public async entries(...paths: string[]) : Promise<Entry[]> {
+        const e: Entry[] = [];
+
+        for (const p of paths) {
+            e.push(await this.get(p));
+        }
+
+        return e;
+    }
+
+    /**
      * Get a FileEntry from a DirectoryEntry. File will be created if "filename" does not exists in DirectoryEntry
      * @param dir DirectoryEntry
      * @param filename Name a the file to get
@@ -678,7 +700,6 @@ export class FileHelper {
     }
 }
 
-////// GLOB TO REGEX
 /**
  * Glob to regex function.
  * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).

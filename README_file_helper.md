@@ -2,8 +2,6 @@
 
 > Wrap most of the filesystem operations of Cordova File Plugin into a modern and flexible native Promise API.
 
-File Helper plugin are also available at npm.
-
 API provided by `cordova-plugin-file` is quite horrible with terrible development experience: callbacks everywhere, need to fetch directories before creating a file, or the need of four operations to truncate and write a to single file.
 This full Promise-designed API tries to reduce the pain of interacting with the OS in Cordova app.
 
@@ -152,6 +150,7 @@ If `path` parameter is not specified, list files and directories that are in cur
 - `f` return only files.
 - `d` return only directories.
 - `l` return `FileStats[]` objects instead of filenames (`string[]`).
+- `r` makes `ls()` recursive. This flag can makes function very slow due to Cordova F-S enormous latency.
 
 Options are combinable into the same string.
 ```js
@@ -170,6 +169,18 @@ helper.ls(path, "l"); // Promise<FileStats[]>
 Get a `FileStats` object about a file.
 ```js
 helper.stats(path); // => Promise<FileStats>
+```
+
+#### glob
+Find files with a [glob pattern](https://en.wikipedia.org/wiki/Glob_(programming)).
+
+Specify a glob pattern in the `pattern` parameter.
+Specify custom regex flags `regex_flags`. Accepted flags are all flags supported by `RegExp` JS object.
+
+```js
+helper.glob(pattern, recursive = true, regex_flags = ""); // Promise<string[]>
+
+helper.glob("**/*.json", true); // Find all json files below working directory
 ```
 
 --- 
@@ -291,9 +302,28 @@ helper.empty("test/", true);
 
 ### Helpers
 
+#### entries
+Get entries (files or directories) from numerous paths.
+If one path does not exists, the function will fail.
+
+```js
+helper.entries(...paths); // Promise<Entry[]>
+
+helper.entries("test.json", "another_test.txt", "my_dir"); // Promise<[FileEntry, FileEntry, DirectoryEntry]>
+```
+
+#### entriesOf
+Get entries of a directory entry.
+
+```js
+helper.entriesOf(dir_entry); // Promise<Entry[]>
+```
+
 #### readFileAs
 If you have a File object, use this to read the object in a specific mode
 ```js
+helper.readFileAs(file, mode); // => Promise<string | ArrayBuffer | any>
+
 helper.readFileAs(file, FileHelperReadMode.text); // => Promise<string>
 ```
 

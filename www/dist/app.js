@@ -963,10 +963,7 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
             path = path.replace(/\/$/, '');
             path = path.replace(/^\//, '');
-            let entries = await new Promise((resolve, reject) => {
-                const reader = entry.createReader();
-                reader.readEntries(resolve, reject);
-            });
+            let entries = await this.entriesOf(entry);
             let obj_entries = { [path]: entries };
             if (r) {
                 // Si la func est récursive, on recherche dans tous les dossiers
@@ -1138,6 +1135,27 @@ define("file_helper", ["require", "exports"], function (require, exports) {
         }
         /* FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
         /**
+         * Get entries presents in a DirectoryEntry.
+         * @param entry
+         */
+        entriesOf(entry) {
+            return new Promise((resolve, reject) => {
+                const reader = entry.createReader();
+                reader.readEntries(resolve, reject);
+            });
+        }
+        /**
+         * Get entries from numerous paths
+         * @param paths Array of string paths
+         */
+        async entries(...paths) {
+            const e = [];
+            for (const p of paths) {
+                e.push(await this.get(p));
+            }
+            return e;
+        }
+        /**
          * Get a FileEntry from a DirectoryEntry. File will be created if "filename" does not exists in DirectoryEntry
          * @param dir DirectoryEntry
          * @param filename Name a the file to get
@@ -1231,7 +1249,6 @@ define("file_helper", ["require", "exports"], function (require, exports) {
         }
     }
     exports.FileHelper = FileHelper;
-    ////// GLOB TO REGEX
     /**
      * Glob to regex function.
      * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
@@ -3536,7 +3553,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         });
     }
     exports.askModalList = askModalList;
-    async function createRandomForms(count) {
+    async function createRandomForms(count = 50) {
         if (form_schema_3.Forms.current_key === null) {
             throw "Impossible de créer une entrée sans base";
         }
