@@ -15,6 +15,157 @@ export interface FileStats {
 export type EntryObject = { [path: string]: Entry[] };
 
 /**
+ * Glob to regex function.
+ * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
+ * NOT used as package to limit dependencies
+ * 
+ * COPYRIGHT NOTICE
+ * see above function
+ * 
+ * @param glob 
+ * @param flags 
+ */
+function globToRegex(glob: string, flags: string = "") : RegExp {
+    let str = glob;
+
+    // The regexp we are building, as a string.
+    let reStr = "";
+
+    // Whether we are matching so called "extended" globs (like bash) and should
+    // support single character matching, matching ranges of characters, group
+    // matching, etc.
+    const extended = true;
+    const globstar = true;
+
+    // If we are doing extended matching, this boolean is true when we are inside
+    // a group (eg {*.html,*.js}), and false otherwise.
+    let inGroup = false;
+
+    let c: string;
+    for (let i = 0, len = str.length; i < len; i++) {
+        c = str[i];
+
+        switch (c) {
+            case "/":
+            case "$":
+            case "^":
+            case "+":
+            case ".":
+            case "(":
+            case ")":
+            case "=":
+            case "!":
+            case "|":
+                reStr += "\\" + c;
+                break;
+
+            case "?":
+                if (extended) {
+                    reStr += ".";
+                    break;
+                }
+
+            case "[":
+            case "]":
+                if (extended) {
+                    reStr += c;
+                    break;
+                }
+
+            case "{":
+                if (extended) {
+                    inGroup = true;
+                    reStr += "(";
+                    break;
+                }
+
+            case "}":
+                if (extended) {
+                    inGroup = false;
+                    reStr += ")";
+                    break;
+                }
+
+            case ",":
+                if (inGroup) {
+                    reStr += "|";
+                    break;
+                }
+                reStr += "\\" + c;
+                break;
+
+            case "*":
+                // Move over all consecutive "*"'s.
+                // Also store the previous and next characters
+                const prevChar = str[i - 1];
+                let starCount = 1;
+                while (str[i + 1] === "*") {
+                    starCount++;
+                    i++;
+                }
+                const nextChar = str[i + 1];
+
+                if (!globstar) {
+                    // globstar is disabled, so treat any number of "*" as one
+                    reStr += ".*";
+                } else {
+                    // globstar is enabled, so determine if this is a globstar segment
+                    const isGlobstar = starCount > 1                      // multiple "*"'s
+                        && (prevChar === "/" || prevChar === undefined)   // from the start of the segment
+                        && (nextChar === "/" || nextChar === undefined)   // to the end of the segment
+
+                    if (isGlobstar) {
+                        // it's a globstar, so match zero or more path segments
+                        reStr += "((?:[^/]*(?:\/|$))*)";
+                        i++; // move over the "/"
+                    } else {
+                        // it's not a globstar, so only match one path segment
+                        reStr += "([^/]*)";
+                    }
+                }
+                break;
+            default:
+                reStr += c;
+        }
+    }
+
+    // When regexp 'g' flag is specified don't
+    // constrain the regular expression with ^ & $
+    if (!flags || !~flags.indexOf('g')) {
+        reStr = "^" + reStr + "$";
+    }
+
+    return new RegExp(reStr, flags);
+}
+/**
+*  Copyright notice for globToRegex
+*   All rights reserved.
+*
+*   Redistribution and use in source and binary forms, with or without modification, 
+*   are permitted provided that the following conditions are met:
+*
+*   Redistributions of source code must retain the above copyright notice, 
+*   this list of conditions and the following disclaimer.
+*
+*   Redistributions in binary form must reproduce the above copyright notice, this list of conditions and 
+*   the following disclaimer in the documentation and/or other materials provided with the distribution.
+*
+*   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+*   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
+*   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+*   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+*   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+*   (
+*       INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+*       LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION
+*   ) 
+*   HOWEVER CAUSED 
+*   AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+*   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
+*   EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/**
  * Simplify file access and directory navigation with native Promise support
  */
 export class FileHelper {
@@ -575,12 +726,20 @@ export class FileHelper {
     /* FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
 
     /**
-     * Get entries presents in a DirectoryEntry.
+     * Get entries presents in a directory via a DirectoryEntry or via directory path.
      * @param entry 
      */
-    public entriesOf(entry: DirectoryEntry) : Promise<Entry[]> {
+    public async entriesOf(entry: DirectoryEntry | string) : Promise<Entry[]> {
+        if (typeof entry === 'string') {
+            entry = await this.get(entry) as DirectoryEntry;
+
+            if (!entry.isDirectory) {
+                throw new Error("Path is not a directory path");
+            }
+        }
+
         return new Promise((resolve, reject) => {
-            const reader = entry.createReader();
+            const reader = (entry as DirectoryEntry).createReader();
             reader.readEntries(resolve, reject);
         });
     }
@@ -589,14 +748,14 @@ export class FileHelper {
      * Get entries from numerous paths
      * @param paths Array of string paths
      */
-    public async entries(...paths: string[]) : Promise<Entry[]> {
-        const e: Entry[] = [];
+    public entries(...paths: string[]) : Promise<Entry[]> {
+        const e: Promise<Entry>[] = [];
 
         for (const p of paths) {
-            e.push(await this.get(p));
+            e.push(this.get(p));
         }
 
-        return e;
+        return Promise.all(e);
     }
 
     /**
@@ -699,155 +858,3 @@ export class FileHelper {
         }
     }
 }
-
-/**
- * Glob to regex function.
- * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
- * NOT used as package to limit dependencies
- * 
- * COPYRIGHT NOTICE
- * see above function
- * 
- * @param glob 
- * @param flags 
- */
-function globToRegex(glob: string, flags: string = "") : RegExp {
-    let str = glob;
-
-    // The regexp we are building, as a string.
-    let reStr = "";
-
-    // Whether we are matching so called "extended" globs (like bash) and should
-    // support single character matching, matching ranges of characters, group
-    // matching, etc.
-    const extended = true;
-    const globstar = true;
-
-    // If we are doing extended matching, this boolean is true when we are inside
-    // a group (eg {*.html,*.js}), and false otherwise.
-    let inGroup = false;
-
-    let c: string;
-    for (let i = 0, len = str.length; i < len; i++) {
-        c = str[i];
-
-        switch (c) {
-            case "/":
-            case "$":
-            case "^":
-            case "+":
-            case ".":
-            case "(":
-            case ")":
-            case "=":
-            case "!":
-            case "|":
-                reStr += "\\" + c;
-                break;
-
-            case "?":
-                if (extended) {
-                    reStr += ".";
-                    break;
-                }
-
-            case "[":
-            case "]":
-                if (extended) {
-                    reStr += c;
-                    break;
-                }
-
-            case "{":
-                if (extended) {
-                    inGroup = true;
-                    reStr += "(";
-                    break;
-                }
-
-            case "}":
-                if (extended) {
-                    inGroup = false;
-                    reStr += ")";
-                    break;
-                }
-
-            case ",":
-                if (inGroup) {
-                    reStr += "|";
-                    break;
-                }
-                reStr += "\\" + c;
-                break;
-
-            case "*":
-                // Move over all consecutive "*"'s.
-                // Also store the previous and next characters
-                const prevChar = str[i - 1];
-                let starCount = 1;
-                while (str[i + 1] === "*") {
-                    starCount++;
-                    i++;
-                }
-                const nextChar = str[i + 1];
-
-                if (!globstar) {
-                    // globstar is disabled, so treat any number of "*" as one
-                    reStr += ".*";
-                } else {
-                    // globstar is enabled, so determine if this is a globstar segment
-                    const isGlobstar = starCount > 1                      // multiple "*"'s
-                        && (prevChar === "/" || prevChar === undefined)   // from the start of the segment
-                        && (nextChar === "/" || nextChar === undefined)   // to the end of the segment
-
-                    if (isGlobstar) {
-                        // it's a globstar, so match zero or more path segments
-                        reStr += "((?:[^/]*(?:\/|$))*)";
-                        i++; // move over the "/"
-                    } else {
-                        // it's not a globstar, so only match one path segment
-                        reStr += "([^/]*)";
-                    }
-                }
-                break;
-            default:
-                reStr += c;
-        }
-    }
-
-    // When regexp 'g' flag is specified don't
-    // constrain the regular expression with ^ & $
-    if (!flags || !~flags.indexOf('g')) {
-        reStr = "^" + reStr + "$";
-    }
-
-    return new RegExp(reStr, flags);
-};
-
-/**
-    Copyright notice for GLOB_TO_REGEX
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without modification, 
-    are permitted provided that the following conditions are met:
-
-    Redistributions of source code must retain the above copyright notice, 
-    this list of conditions and the following disclaimer.
-
-    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and 
-    the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
-    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-    IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
-    (
-        INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
-        LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION
-    ) 
-    HOWEVER CAUSED 
-    AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
-    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
