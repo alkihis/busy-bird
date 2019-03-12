@@ -1060,7 +1060,13 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          */
         absoluteGet(path) {
             return new Promise((resolve, reject) => {
-                window.resolveLocalFileSystemURL(path, resolve, reject);
+                window.resolveLocalFileSystemURL(path, resolve, err => {
+                    if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
+                        reject(new Error("File not found"));
+                        return;
+                    }
+                    reject(err);
+                });
             });
         }
         /**
@@ -1085,21 +1091,35 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          * Get content of a directory.
          *
          * @param path Path of thing to explore
-         * @param option_string Options. Can be e, l, d, r or f. See docs. Warning: recursive can be very slow.
+         * @param option_string Options. Can be e, l, d, r, p or f. See docs. Warning: recursive can be very slow.
          */
         async ls(path = "", option_string = "") {
             const entry = await this.get(path);
+            const [e, l, f, d, r, p] = [
+                option_string.includes("e"), option_string.includes("l"), option_string.includes("f"),
+                option_string.includes("d"), option_string.includes("r"), option_string.includes("p")
+            ];
             if (entry.isFile) {
+                if (e) {
+                    const dir = this.getDirUrlOfPath(path);
+                    return {
+                        [dir ? dir + "/" : ""]: [entry]
+                    };
+                }
+                else if (l) {
+                    return [this.getStatsFromFile(await this.getFileOfEntry(entry))];
+                }
                 return [path];
             }
-            const e = option_string.includes("e");
-            const l = option_string.includes("l");
-            const f = option_string.includes("f");
-            const d = option_string.includes("d");
-            const r = option_string.includes("r");
             // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
-            path = path.replace(/\/$/, '');
-            path = path.replace(/^\//, '');
+            path = path.replace(/\/$/, '').replace(/^\//, '');
+            // Si jamais on veut chercher récursivement les entrées, avec un path non vide
+            // et qu'on veut en plus supprimer les préfixes
+            if (p && e && r && path) {
+                const new_root = new FileHelper(this.pwd() + "/" + path);
+                await new_root.waitInit();
+                return new_root.ls(undefined, "per");
+            }
             let entries = await this.entriesOf(entry);
             let obj_entries = { [path]: entries };
             if (r) {
@@ -1127,14 +1147,15 @@ define("file_helper", ["require", "exports"], function (require, exports) {
             if (e) {
                 return obj_entries;
             }
-            // Demande les stats du fichier
-            if (l) {
-                const paths = [];
-                for (const rel_path in obj_entries) {
-                    for (const e of obj_entries[rel_path]) {
+            const paths = [];
+            for (const rel_path in obj_entries) {
+                for (const e of obj_entries[rel_path]) {
+                    // Demande les stats du fichier
+                    if (l) {
                         if (e.isDirectory) {
                             paths.push({
-                                name: (rel_path ? rel_path + "/" : "") + e.name,
+                                // p n'est pas activable si r est activé
+                                name: (rel_path && (!p || r) ? rel_path + "/" : "") + e.name,
                                 mdate: undefined,
                                 mtime: undefined,
                                 size: 4096
@@ -1143,24 +1164,48 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                         else {
                             const entry = await this.getFileOfEntry(e);
                             const stats = this.getStatsFromFile(entry);
-                            stats.name = (rel_path ? rel_path + "/" : "") + stats.name;
+                            stats.name = (rel_path && (!p || r) ? rel_path + "/" : "") + stats.name;
                             paths.push(stats);
                         }
                     }
-                }
-                return paths;
-            }
-            // Sinon, on traite les entrées comme un string[]
-            else {
-                const paths = [];
-                for (const rel_path in obj_entries) {
-                    for (const e of obj_entries[rel_path]) {
+                    else {
+                        // Sinon, on traite les entrées comme un string[]
                         // Enregistrement du bon nom
-                        paths.push((rel_path ? rel_path + "/" : "") + e.name);
+                        paths.push((rel_path && (!p || r) ? rel_path + "/" : "") + e.name);
                     }
                 }
-                return paths;
             }
+            return paths;
+        }
+        /**
+         * Get a tree to see files below a certain directory
+         * @param path Base path for tree
+         */
+        async tree(path = "") {
+            const flat_tree = await this.ls(path, "pre");
+            // Désaplatissement de l'arbre
+            const tree = {};
+            for (const p in flat_tree) {
+                let current_tree = tree;
+                // Si ce n'est pas la racine
+                if (p !== "") {
+                    const steps = p.split('/');
+                    for (const step of steps) {
+                        // Construction des dossiers dans l'arbre
+                        if (!(step in current_tree)) {
+                            current_tree[step] = {};
+                        }
+                        current_tree = current_tree[step];
+                    }
+                }
+                for (const entry of flat_tree[p]) {
+                    // On ajoute les entrées dans current_tree
+                    if (entry.isFile) {
+                        current_tree[entry.name] = null;
+                    }
+                }
+            }
+            return tree;
         }
         /**
          * Remove a file or a directory.
@@ -2699,13 +2744,11 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
     // Classe contenant le formulaire JSON chargé et parsé
     exports.Forms = new class {
         constructor() {
-            this.form_ready = false;
-            this.waiting_callee = [];
-            this.current = null;
             this._current_key = null;
             this._default_form_key = null;
-            this.DEAD_FORM_SCHEMA = { name: null, fields: [], locations: {} };
+            this.on_ready = null;
             this.FORM_LOCATION = 'loaded_forms.json';
+            this.DEAD_FORM_SCHEMA = { name: null, fields: [], locations: {} };
             if (localStorage.getItem('default_form_key')) {
                 this._default_form_key = localStorage.getItem('default_form_key');
             }
@@ -2713,6 +2756,9 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             this.default_form_key = this._default_form_key;
             /** call init() after constructor() ! */
         }
+        /**
+         * Sauvegarde les schémas actuellement chargés dans cet objet sur le stockage interne de l'appareil.
+         */
         saveForms() {
             if (this.available_forms) {
                 main_5.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
@@ -2722,103 +2768,127 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * Initialise les formulaires disponible via un fichier JSON.
          * Si un connexion Internet est disponible, télécharge les derniers formulaires depuis le serveur.
          * Charge automatiquement un formulaire par défaut: la clé du formulaire par défaut est contenu dans "default_form_name"
-         * @param crash_if_not_form_download Rejette la promesse si le téléchargement des formulaires
+         * N'appelez PAS deux fois cette fonction !
          */
-        init(crash_if_not_form_download = false) {
-            const loadJSONInObject = (json, save = false) => {
-                // Le JSON est reçu, on l'enregistre dans available_forms
-                this.available_forms = json;
-                // On met le form à ready
-                this.form_ready = true;
-                // On enregistre le formulaire par défaut (si la clé définie existe)
-                if (this._default_form_key in this.available_forms) {
-                    this.current = this.available_forms[this._default_form_key];
-                    this._current_key = this._default_form_key;
-                }
-                else {
-                    this.current = this.DEAD_FORM_SCHEMA;
-                }
-                // On sauvegarde les formulaires dans loaded_forms.json
-                // uniquement si demandé
-                if (save) {
-                    this.saveForms();
-                }
-                // On exécute les fonctions en attente
-                let func;
-                while (func = this.waiting_callee.pop()) {
-                    func(this.available_forms, this.current);
-                }
-            };
-            const readStandardForm = () => {
-                // On vérifie si le fichier loaded_forms.json existe
-                main_5.FILE_HELPER.read(this.FORM_LOCATION)
-                    .then((string) => {
-                    loadJSONInObject(JSON.parse(string));
-                })
-                    .catch(() => {
-                    // Il n'existe pas, on doit le charger depuis les sources de l'application
-                    $.get('assets/form.json', {}, (json) => {
-                        loadJSONInObject(json, true);
-                    }, 'json')
-                        .fail(async function () {
-                        // Essaie de lire le fichier sur le périphérique
-                        const application = new file_helper_3.FileHelper(cordova.file.applicationDirectory + 'www/');
-                        await application.waitInit();
-                        application.read('assets/form.json')
-                            .then(string => {
-                            loadJSONInObject(JSON.parse(string));
-                        })
-                            .catch(() => {
-                            helpers_5.showToast("Impossible de charger les schémas." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
-                        });
-                    });
-                });
-            };
+        init() {
+            return this.on_ready = this._init();
+        }
+        /**
+         * Fonction fantôme de init(). Permet de glisser cette fonction dans on_ready.
+         * Voir init().
+         */
+        _init() {
             const init_text = document.getElementById('__init_text_center');
             if (init_text) {
                 init_text.innerText = "Mise à jour des schémas de formulaire";
             }
-            // noinspection OverlyComplexBooleanExpressionJS
-            if ((main_5.ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && helpers_5.hasConnection() && user_manager_3.UserManager.logged) {
-                // On tente d'actualiser les formulaires disponibles
-                // On attend au max 20 secondes
-                return fetch_timeout_2.default(main_5.API_URL + "schemas/subscribed.json", {
-                    headers: new Headers({ "Authorization": "Bearer " + user_manager_3.UserManager.token }),
-                    method: "GET"
-                }, crash_if_not_form_download ? 30000 : 5000)
-                    .then(response => response.json())
-                    .then(json => {
-                    if (json.error_code)
-                        throw json.error_code;
-                    loadJSONInObject(json, true);
-                })
-                    .catch(error => {
-                    console.log("Timeout/fail for forms");
-                    // Impossible de charger le JSON depuis le serveur
-                    if (crash_if_not_form_download) {
-                        return Promise.reject(error);
-                    }
-                    readStandardForm();
-                });
+            if (main_5.ENABLE_FORM_DOWNLOAD && helpers_5.hasConnection() && user_manager_3.UserManager.logged) {
+                return this.downloadSchemaFromServer();
             }
             else {
-                if (crash_if_not_form_download) {
-                    return Promise.reject();
+                return this.readSchemaJSONFromFile();
+            }
+        }
+        /**
+         * Télécharge les schémas à jour depuis un serveur distant.
+         * @param timeout Temps avant d'annuler le chargement
+         * @param reject_on_fetch_fail Rejeter la promesse si le téléchargement échoue.
+         * Sinon, les schémas par défaut présents sur l'appareil seront chargés.
+         */
+        async downloadSchemaFromServer(timeout = 5000, reject_on_fetch_fail = false) {
+            // On tente d'actualiser les formulaires disponibles
+            // On attend au max 20 secondes
+            try {
+                const response = await fetch_timeout_2.default(main_5.API_URL + "schemas/subscribed.json", {
+                    headers: new Headers({ "Authorization": "Bearer " + user_manager_3.UserManager.token }),
+                    method: "GET"
+                }, timeout);
+                const json_2 = await response.json();
+                if (json_2.error_code)
+                    throw json_2.error_code;
+                this.loadFormSchemaInClass(json_2, true);
+            }
+            catch (error) {
+                console.log("Timeout/fail for forms");
+                // Impossible de charger le JSON depuis le serveur
+                if (reject_on_fetch_fail) {
+                    return Promise.reject(error);
                 }
-                readStandardForm();
+                return this.readSchemaJSONFromFile();
+            }
+        }
+        /**
+         * Force le téléchargement des nouveaux schémas depuis un serveur distant.
+         * Si le téléchargement échoue, la promesse est rejetée.
+         */
+        forceSchemaDownloadFromServer() {
+            if (helpers_5.hasConnection() && user_manager_3.UserManager.logged) {
+                return this.downloadSchemaFromServer(30000, true);
+            }
+            else {
+                return Promise.reject();
+            }
+        }
+        /**
+         * Lit les schémas depuis le système de fichiers.
+         * Essaie d'abord le local, puis, si il n'existe pas, celui du package de l'app
+         */
+        async readSchemaJSONFromFile() {
+            // On vérifie si le fichier loaded_forms.json existe
+            try {
+                const string = await main_5.FILE_HELPER.read(this.FORM_LOCATION);
+                this.loadFormSchemaInClass(JSON.parse(string));
+            }
+            catch (e) {
+                // Il n'existe pas, on doit le charger depuis les sources de l'application
+                try {
+                    const parsed = await (await fetch_timeout_2.default('assets/form.json', {})).json();
+                    this.loadFormSchemaInClass(parsed, true);
+                }
+                catch (e2) {
+                    // Essaie de lire le fichier sur le périphérique
+                    const application = new file_helper_3.FileHelper(cordova.file.applicationDirectory + 'www/');
+                    await application.waitInit();
+                    await application.read('assets/form.json')
+                        .then(string_1 => {
+                        this.loadFormSchemaInClass(JSON.parse(string_1));
+                    })
+                        .catch(() => {
+                        helpers_5.showToast("Impossible de charger les schémas." + " "
+                            + cordova.file.applicationDirectory + 'www/assets/form.json');
+                    });
+                }
+            }
+        }
+        /**
+         * Charge un FormSchema dans la classe et initialise les pointeurs sur schéma en cours dans l'objet.
+         *
+         * @param schema
+         * @param save Sauvegarder dans le JSON local les schémas de FormSchema
+         */
+        loadFormSchemaInClass(schema, save = false) {
+            // Le JSON est reçu, on l'enregistre dans available_forms
+            this.available_forms = schema;
+            // On enregistre le formulaire par défaut (si la clé définie existe)
+            if (this._default_form_key in this.available_forms) {
+                this._current_key = this._default_form_key;
+            }
+            // On sauvegarde les formulaires dans loaded_forms.json
+            // uniquement si demandé
+            if (save) {
+                this.saveForms();
             }
         }
         /**
          * Exécute callback quand l'objet est prêt.
          * @param callback Fonction à appeler quand le formulaire est prêt
          */
-        onReady(callback) {
-            if (this.form_ready) {
+        async onReady(callback) {
+            if (callback) {
+                await this.on_ready;
                 callback(this.available_forms, this.current);
             }
-            else {
-                this.waiting_callee.push(callback);
-            }
+            return this.on_ready;
         }
         /**
          * Renvoie vrai si le formulaire existe. Renvoie également vrai pour null.
@@ -2835,7 +2905,6 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         changeForm(name, make_default = false) {
             if (name === null) {
                 // On supprime le formulaire chargé
-                this.current = this.DEAD_FORM_SCHEMA;
                 this._current_key = null;
                 if (make_default) {
                     this.default_form_key = null;
@@ -2843,7 +2912,6 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 return;
             }
             if (this.formExists(name)) {
-                this.current = this.available_forms[name];
                 this._current_key = name;
                 if (make_default) {
                     this.default_form_key = name;
@@ -2889,6 +2957,14 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
         get current_key() {
             return this._current_key;
+        }
+        get current() {
+            if (this.current_key === null || !this.formExists(this.current_key)) {
+                return this.DEAD_FORM_SCHEMA;
+            }
+            else {
+                return this.getForm(this.current_key);
+            }
         }
         get default_form_key() {
             return this._default_form_key;
@@ -5356,7 +5432,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     function formActualisationModal() {
         const instance = helpers_9.initModal({ dismissible: false }, helpers_9.getModalPreloader("Actualisation..."));
         instance.open();
-        form_schema_6.Forms.init(true)
+        form_schema_6.Forms.forceSchemaDownloadFromServer()
             .then(() => {
             helpers_9.showToast("Actualisation terminée.");
             instance.close();

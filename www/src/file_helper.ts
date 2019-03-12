@@ -12,7 +12,13 @@ export interface FileStats {
     name: string;
 }
 
-export type EntryObject = { [path: string]: Entry[] };
+export interface EntryObject { 
+    [path: string]: Entry[] 
+}
+
+export interface EntryTree {
+    [path: string]: EntryTree | null;
+}
 
 /**
  * Glob to regex function.
@@ -473,7 +479,13 @@ export class FileHelper {
      */
     public absoluteGet(path: string) : Promise<Entry> {
         return new Promise((resolve, reject) => {
-            window.resolveLocalFileSystemURL(path, resolve, reject);
+            window.resolveLocalFileSystemURL(path, resolve, err => {
+                if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
+                    reject(new Error("File not found")); return;
+                }
+
+                reject(err);
+            });
         }); 
     }
 
@@ -503,32 +515,48 @@ export class FileHelper {
      * Get content of a directory.
      * 
      * @param path Path of thing to explore
-     * @param option_string Options. Can be e, l, d, r or f. See docs. Warning: recursive can be very slow.
+     * @param option_string Options. Can be e, l, d, r, p or f. See docs. Warning: recursive can be very slow.
      */
     public async ls(path: string = "", option_string: string = "") : Promise<string[] | FileStats[] | EntryObject> {
         const entry = await this.get(path);
 
+        const [e, l, f, d, r, p] = [
+            option_string.includes("e"), option_string.includes("l"), option_string.includes("f"),
+            option_string.includes("d"), option_string.includes("r"), option_string.includes("p")
+        ];
+
         if (entry.isFile) {
+            if (e) {
+                const dir = this.getDirUrlOfPath(path);
+                return { 
+                    [ dir ? dir + "/" : "" ]: [entry]
+                };
+            }
+            else if (l) {
+                return [this.getStatsFromFile(await this.getFileOfEntry(entry as FileEntry))];
+            }
             return [path];
         }
 
-        const e = option_string.includes("e");
-        const l = option_string.includes("l");
-        const f = option_string.includes("f");
-        const d = option_string.includes("d");
-        const r = option_string.includes("r");
-
         // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
-        path = path.replace(/\/$/, '');
-        path = path.replace(/^\//, '');
+        path = path.replace(/\/$/, '').replace(/^\//, '');
+
+        // Si jamais on veut chercher récursivement les entrées, avec un path non vide
+        // et qu'on veut en plus supprimer les préfixes
+        if (p && e && r && path) {
+            const new_root = new FileHelper(this.pwd() + "/" + path);
+            await new_root.waitInit();
+
+            return new_root.ls(undefined, "per");
+        }
 
         let entries = await this.entriesOf(entry as DirectoryEntry);
-
         let obj_entries: EntryObject = { [path]: entries };
 
         if (r) {
             // Si la func est récursive, on recherche dans tous les dossiers
             // L'appel sera fait récursivement dans les nouveaux ls
+
             for (const e of entries) {
                 if (e.isDirectory) {
                     obj_entries = {...obj_entries, ...(await this.ls(path + "/" + e.name, "re") as EntryObject)};
@@ -554,15 +582,16 @@ export class FileHelper {
             return obj_entries;
         }
 
-        // Demande les stats du fichier
-        if (l) {
-            const paths: FileStats[] = [];
+        const paths: any[] = [];
 
-            for (const rel_path in obj_entries) {
-                for (const e of obj_entries[rel_path]) {
+        for (const rel_path in obj_entries) {
+            for (const e of obj_entries[rel_path]) {
+                // Demande les stats du fichier
+                if (l) {
                     if (e.isDirectory) {
                         paths.push({
-                            name: (rel_path ? rel_path + "/" : "") + e.name,
+                            // p n'est pas activable si r est activé
+                            name: (rel_path && (!p || r) ? rel_path + "/" : "") + e.name,
                             mdate: undefined,
                             mtime: undefined,
                             size: 4096
@@ -571,28 +600,57 @@ export class FileHelper {
                     else {
                         const entry = await this.getFileOfEntry(e as FileEntry);
                         const stats = this.getStatsFromFile(entry);
-                        stats.name = (rel_path ? rel_path + "/" : "") + stats.name;
+                        stats.name = (rel_path && (!p || r) ? rel_path + "/" : "") + stats.name;
 
                         paths.push(stats);
                     }
                 }
-            }
-
-            return paths;
-        }
-        // Sinon, on traite les entrées comme un string[]
-        else {
-            const paths: string[] = [];
-            
-            for (const rel_path in obj_entries) {
-                for (const e of obj_entries[rel_path]) {
+                else {
+                    // Sinon, on traite les entrées comme un string[]
                     // Enregistrement du bon nom
-                    paths.push((rel_path ? rel_path + "/" : "") + e.name); 
+                    paths.push((rel_path && (!p || r) ? rel_path + "/" : "") + e.name); 
                 }
             }
-    
-            return paths;
         }
+
+        return paths;
+    }
+
+    /**
+     * Get a tree to see files below a certain directory
+     * @param path Base path for tree
+     */
+    public async tree(path: string = "") : Promise<EntryTree> {
+        const flat_tree = await this.ls(path, "pre") as EntryObject;
+
+        // Désaplatissement de l'arbre
+        const tree: EntryTree = {};
+
+        for (const p in flat_tree) {
+            let current_tree = tree;
+
+            // Si ce n'est pas la racine
+            if (p !== "") {
+                const steps = p.split('/');
+                for (const step of steps) {
+                    // Construction des dossiers dans l'arbre
+                    if (!(step in current_tree)) {
+                        current_tree[step] = {};
+                    }
+    
+                    current_tree = current_tree[step] as EntryTree;
+                }
+            }
+
+            for (const entry of flat_tree[p]) {
+                // On ajoute les entrées dans current_tree
+                if (entry.isFile) {
+                    current_tree[entry.name] = null;
+                }
+            }
+        }
+
+        return tree;
     }
 
     /**

@@ -97,15 +97,13 @@ type FormCallback = (available?: FormSchema, current?: Form) => any;
 
 // Classe contenant le formulaire JSON chargé et parsé
 export const Forms = new class {
-    protected form_ready: boolean = false;
-    protected waiting_callee: FormCallback[] = [];
     protected available_forms: FormSchema;
-    protected current: Form = null;
     protected _current_key: string = null;
     protected _default_form_key: string = null;
-    protected readonly DEAD_FORM_SCHEMA: Form = {name: null, fields: [], locations: {}};
+    protected on_ready: Promise<void> = null;
 
     protected readonly FORM_LOCATION: string = 'loaded_forms.json';
+    protected readonly DEAD_FORM_SCHEMA: Form = {name: null, fields: [], locations: {}};
 
     constructor() { 
         if (localStorage.getItem('default_form_key')) {
@@ -118,6 +116,9 @@ export const Forms = new class {
         /** call init() after constructor() ! */ 
     }
 
+    /**
+     * Sauvegarde les schémas actuellement chargés dans cet objet sur le stockage interne de l'appareil.
+     */
     public saveForms() {
         if (this.available_forms) {
             FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
@@ -128,99 +129,128 @@ export const Forms = new class {
      * Initialise les formulaires disponible via un fichier JSON.
      * Si un connexion Internet est disponible, télécharge les derniers formulaires depuis le serveur.
      * Charge automatiquement un formulaire par défaut: la clé du formulaire par défaut est contenu dans "default_form_name"
-     * @param crash_if_not_form_download Rejette la promesse si le téléchargement des formulaires
+     * N'appelez PAS deux fois cette fonction !
      */
-    public init(crash_if_not_form_download = false) : Promise<any> {
-        const loadJSONInObject = (json: any, save = false) => {
-            // Le JSON est reçu, on l'enregistre dans available_forms
-            this.available_forms = json;
-            // On met le form à ready
-            this.form_ready = true;
-            // On enregistre le formulaire par défaut (si la clé définie existe)
-            if (this._default_form_key in this.available_forms) {
-                this.current = this.available_forms[this._default_form_key]; 
-                this._current_key = this._default_form_key;
-            }
-            else {
-                this.current = this.DEAD_FORM_SCHEMA;
-            }
+    public init() : Promise<any> {
+        return this.on_ready = this._init();
+    }
 
-            // On sauvegarde les formulaires dans loaded_forms.json
-            // uniquement si demandé
-            if (save) {
-                this.saveForms();
-            }
-    
-            // On exécute les fonctions en attente
-            let func: FormCallback;
-            while (func = this.waiting_callee.pop()) {
-                func(this.available_forms, this.current);
-            }
-        };
-
-        const readStandardForm = () => {
-            // On vérifie si le fichier loaded_forms.json existe
-            FILE_HELPER.read(this.FORM_LOCATION)
-                .then((string) => {
-                    loadJSONInObject(JSON.parse(string as string));
-                })
-                .catch(() => {
-                    // Il n'existe pas, on doit le charger depuis les sources de l'application
-                    $.get('assets/form.json', {}, (json: any) => {
-                        loadJSONInObject(json, true);
-                    }, 'json')
-                    .fail(async function() {
-                        // Essaie de lire le fichier sur le périphérique
-                        const application = new FileHelper(cordova.file.applicationDirectory + 'www/');
-                        await application.waitInit();
-
-                        application.read('assets/form.json')
-                            .then(string => {
-                                loadJSONInObject(JSON.parse(string as string));
-                            })
-                            .catch(() => {
-                                showToast("Impossible de charger les schémas." + " " + cordova.file.applicationDirectory + 'www/assets/form.json');
-                            })
-                    });
-                });
-        };
-
-
+    /**
+     * Fonction fantôme de init(). Permet de glisser cette fonction dans on_ready.
+     * Voir init().
+     */
+    protected _init() : Promise<any> {
         const init_text = document.getElementById('__init_text_center');
 
         if (init_text) {
             init_text.innerText = "Mise à jour des schémas de formulaire";
         }
 
-        // noinspection OverlyComplexBooleanExpressionJS
-        if ((ENABLE_FORM_DOWNLOAD || crash_if_not_form_download) && hasConnection() && UserManager.logged) {
-            // On tente d'actualiser les formulaires disponibles
-            // On attend au max 20 secondes
-            return fetch(API_URL + "schemas/subscribed.json", {
-                headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
-                method: "GET"
-            },  crash_if_not_form_download ? 30000 : 5000)
-                .then(response => response.json())
-                .then(json => {
-                    if (json.error_code) throw json.error_code;
-
-                    loadJSONInObject(json, true);
-                })
-                .catch(error => {
-                    console.log("Timeout/fail for forms");
-                    // Impossible de charger le JSON depuis le serveur
-                    if (crash_if_not_form_download) {
-                        return Promise.reject(error);
-                    }
-
-                    readStandardForm();
-                });
+        if (ENABLE_FORM_DOWNLOAD && hasConnection() && UserManager.logged) {
+            return this.downloadSchemaFromServer();
         }
         else {
-            if (crash_if_not_form_download) {
-                return Promise.reject();
+            return this.readSchemaJSONFromFile();
+        }
+    }
+
+    /**
+     * Télécharge les schémas à jour depuis un serveur distant.
+     * @param timeout Temps avant d'annuler le chargement
+     * @param reject_on_fetch_fail Rejeter la promesse si le téléchargement échoue.
+     * Sinon, les schémas par défaut présents sur l'appareil seront chargés.
+     */
+    protected async downloadSchemaFromServer(timeout = 5000, reject_on_fetch_fail = false) : Promise<void> {
+        // On tente d'actualiser les formulaires disponibles
+        // On attend au max 20 secondes
+        try {
+            const response = await fetch(API_URL + "schemas/subscribed.json", {
+                headers: new Headers({ "Authorization": "Bearer " + UserManager.token }),
+                method: "GET"
+            }, timeout);
+
+            const json_2 = await response.json();
+            if (json_2.error_code)
+                throw json_2.error_code;
+
+            this.loadFormSchemaInClass(json_2, true);
+        }
+        catch (error) {
+            console.log("Timeout/fail for forms");
+            // Impossible de charger le JSON depuis le serveur
+            if (reject_on_fetch_fail) {
+                return Promise.reject(error);
             }
-            readStandardForm();
+
+            return this.readSchemaJSONFromFile();
+        }
+    }
+
+    /**
+     * Force le téléchargement des nouveaux schémas depuis un serveur distant.
+     * Si le téléchargement échoue, la promesse est rejetée.
+     */
+    public forceSchemaDownloadFromServer() : Promise<void> {
+        if (hasConnection() && UserManager.logged) {
+            return this.downloadSchemaFromServer(30000, true);
+        }
+        else {
+            return Promise.reject();
+        }
+    }
+
+    /**
+     * Lit les schémas depuis le système de fichiers.
+     * Essaie d'abord le local, puis, si il n'existe pas, celui du package de l'app
+     */
+    protected async readSchemaJSONFromFile(): Promise<void> {
+        // On vérifie si le fichier loaded_forms.json existe
+        try {
+            const string = await FILE_HELPER.read(this.FORM_LOCATION);
+            this.loadFormSchemaInClass(JSON.parse((string as string)));
+        }
+        catch (e) {
+            // Il n'existe pas, on doit le charger depuis les sources de l'application
+            try {
+                const parsed = await (await fetch('assets/form.json', {})).json();
+
+                this.loadFormSchemaInClass(parsed, true);
+            } catch (e2) {
+                // Essaie de lire le fichier sur le périphérique
+                const application = new FileHelper(cordova.file.applicationDirectory + 'www/');
+
+                await application.waitInit();
+
+                await application.read('assets/form.json')
+                    .then(string_1 => {
+                        this.loadFormSchemaInClass(JSON.parse((string_1 as string)));
+                    })
+                    .catch(() => {
+                        showToast("Impossible de charger les schémas." + " "
+                            + cordova.file.applicationDirectory + 'www/assets/form.json');
+                    });
+            }
+        }
+    }
+
+    /**
+     * Charge un FormSchema dans la classe et initialise les pointeurs sur schéma en cours dans l'objet.
+     * 
+     * @param schema 
+     * @param save Sauvegarder dans le JSON local les schémas de FormSchema
+     */
+    protected loadFormSchemaInClass(schema: FormSchema, save: boolean = false) : void {
+        // Le JSON est reçu, on l'enregistre dans available_forms
+        this.available_forms = schema;
+        // On enregistre le formulaire par défaut (si la clé définie existe)
+        if (this._default_form_key in this.available_forms) {
+            this._current_key = this._default_form_key;
+        }
+
+        // On sauvegarde les formulaires dans loaded_forms.json
+        // uniquement si demandé
+        if (save) {
+            this.saveForms();
         }
     }
 
@@ -228,13 +258,13 @@ export const Forms = new class {
      * Exécute callback quand l'objet est prêt.
      * @param callback Fonction à appeler quand le formulaire est prêt
      */
-    public onReady(callback: FormCallback) : void {
-        if (this.form_ready) {
+    public async onReady(callback?: FormCallback) : Promise<void> {
+        if (callback) {
+            await this.on_ready;
             callback(this.available_forms, this.current);
         }
-        else {
-            this.waiting_callee.push(callback);
-        }
+
+        return this.on_ready;
     }
 
     /**
@@ -253,7 +283,6 @@ export const Forms = new class {
     public changeForm(name: string, make_default: boolean = false) : void {
         if (name === null) {
             // On supprime le formulaire chargé
-            this.current = this.DEAD_FORM_SCHEMA;
             this._current_key = null;
 
             if (make_default) {
@@ -263,7 +292,6 @@ export const Forms = new class {
         }
 
         if (this.formExists(name)) {
-            this.current = this.available_forms[name]; 
             this._current_key = name;
 
             if (make_default) {
@@ -317,6 +345,15 @@ export const Forms = new class {
 
     public get current_key() : string {
         return this._current_key;
+    }
+
+    public get current() : Form {
+        if (this.current_key === null || !this.formExists(this.current_key)) {
+            return this.DEAD_FORM_SCHEMA;
+        }
+        else {
+            return this.getForm(this.current_key);
+        }
     }
 
     public get default_form_key() : string {

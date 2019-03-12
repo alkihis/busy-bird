@@ -146,6 +146,8 @@ La synchronisation globale, ou forcée, force le téléphone à envoyer toutes l
 
 ## Introduction à Cordova
 
+
+
 ## Plugins utilisés
 
 Veillez bien à vous assurer que ces plugins sont installés avant de compiler l'application.

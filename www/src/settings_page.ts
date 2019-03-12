@@ -18,7 +18,7 @@ function formActualisationModal() : void {
     const instance = initModal({dismissible: false}, getModalPreloader("Actualisation..."));
     instance.open();
 
-    Forms.init(true)
+    Forms.forceSchemaDownloadFromServer()
         .then(() => {
             showToast("Actualisation terminée.");
             instance.close();

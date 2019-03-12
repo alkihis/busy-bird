@@ -123,7 +123,7 @@ helper.absoluteGet(path); // => Promise<Entry>
 ```
 
 #### pwd
-Get current "root" working directory of the instance.
+Get current working directory of the instance.
 This method do *not* use Promises !
 ```js
 helper.pwd(); // => string
@@ -146,23 +146,79 @@ List existing files into a directory.
 If `path` parameter is not specified, list files and directories that are in current working directory.
 
 `option_string` parameter is a string where you can specify how the function is supposed to work.
-- `e` return `Entry[]` instead of filenames (`string[]`).
+- `e` return `EntryObject` instead of filenames (see `EntryObject` information).
 - `f` return only files.
 - `d` return only directories.
 - `l` return `FileStats[]` objects instead of filenames (`string[]`).
-- `r` makes `ls()` recursive. This flag can makes function very slow due to Cordova F-S enormous latency.
+- `r` makes `ls()` recursive. This flag can make function very slow due to the high latency Cordova File System access.
+- `p` remove subdirectory auto-prefixing, if `path` is not current working directory. `p` will not work in recursive mode (`r`), except if `e` is enabled.
+
+---
+***`EntryObject` information***
+
+An `EntryObject` is a classic JS Object that index key=directory_path to value=`Entry[]`.
+
+If your FS is like:
+- json
+- assets
+  - images
+    - img.jpg
+    - img2.jpg
+  - audio
+    - sound.mp3
+
+The `EntryObject` will be organized like:
+```js
+let o = await helper.ls(undefined /* will list current working directory */, "re");
+o = {
+    "": /* current working directory */ [ DirectoryEntry<"json">, DirectoryEntry<"assets"> ],
+    "json": [],
+    "assets": [ DirectoryEntry<"images">, DirectoryEntry<"audio"> ],
+    "assets/images": [ FileEntry<"img.jpg">, FileEntry<"img2.jpg"> ],
+    "assets/audio": [ FileEntry<"sound.mp3"> ]
+};
+```
+
+If you don't activate the `r` option, your `EntryObject` will always contains only one key, the empty string (current working directory).
+
+---
+
 
 Options are combinable into the same string.
 ```js
 helper.ls(); // Promise<string[]>
 
 helper.ls(path); // Promise<string[]>
+// Warning: If you list a directory that is not cwd, all paths will be prefixed.
+// exemple: await helper.ls("assets"); => [ "assets/images", "assets/audio" ]
+// To remove prefixing, use "p" parameter
 
-helper.ls(path, "ef"); // Promise<FileEntry[]>
-
-helper.ls(path, "ed"); // Promise<DirectoryEntry[]>
+helper.ls(path, "ef"); // Promise<EntryObject>
 
 helper.ls(path, "l"); // Promise<FileStats[]>
+```
+
+#### tree
+Like `ls(path, "pre")`, but unflattened.
+Returns a `EntryTree` object.
+
+In the same file system of the `EntryObject` exemple, it gives you:
+```js
+helper.tree(path); // => Promise<EntryTree>
+
+o = await helper.tree();
+o = {
+    "json": {},
+    "assets": {
+        "images": {
+            "img.jpg": null,
+            "img2.jpg": null
+        },
+        "audio": {
+            "sound.mp3": null
+        }
+    }
+};
 ```
 
 #### stats
@@ -317,6 +373,17 @@ Get entries of a directory entry.
 
 ```js
 helper.entriesOf(dir_entry); // Promise<Entry[]>
+```
+
+#### toBlob
+Convert almost any JavaScript variable into blob.
+Automatically encode JavaScript objects with JSON.stringify.
+Cannot encode JS functions.
+
+```js
+helper.toBlob(object);
+
+helper.toBlob({ a: "str" }); // => Blob<"{ \"a\": \"str\" }">
 ```
 
 #### readFileAs
