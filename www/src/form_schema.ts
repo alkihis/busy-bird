@@ -1,5 +1,4 @@
-import { toValidUrl, showToast, hasConnection } from "./helpers";
-import { Logger } from "./logger";
+import { showToast, hasConnection } from "./helpers";
 import { UserManager } from "./user_manager";
 import { API_URL, ENABLE_FORM_DOWNLOAD, FILE_HELPER } from "./main";
 import fetch from './fetch_timeout';
@@ -90,6 +89,7 @@ export enum FormEntityType {
     audio = "audio", date = "date", time = "time"
 }
 
+// Représente tous les schémas de Formulaire dispo
 export type FormSchema = {[formName: string] : Form};
 
 // Type de fonction à passer en paramètre à onReady(callback)

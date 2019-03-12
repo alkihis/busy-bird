@@ -41,9 +41,8 @@ La partie spécifique au développement est détaillée dans la partie sus-nomm�
       3. [Gestion des utilisateurs]()
       4. [Gestion des schémas de formulaire]()
       5. [Interactions avec le système de fichiers]()
-   4. [Créer une entrée]()
-   5. [Synchronisation]()
-   6. [Paramètres de l'application]()
+   4. [Synchronisation]()
+   5. [Paramètres de l'application]()
 4. [Maintenance du serveur Busy Bird]()
    1. [Introduction à l'API Busy Bird]()
    2. [Organisation]()
@@ -54,6 +53,7 @@ La partie spécifique au développement est détaillée dans la partie sus-nomm�
 # Introduction
 
 L'application Busy Bird compte un certain nombre de termes dont la signification doit être claire :
+
 - Un schéma de formulaire est une base listant les champs d'un formulaire un à un.
 - Une entrée de formulaire est le fait de remplir un formulaire généré via son schéma et le stocker dans un fichier
 - La synchronisation est le fait d'envoyer les entrées ainsi que leurs fichiers attachés vers un serveur, et ainsi de créer ou mettre à jour les entrées déjà stockées sur le serveur.
@@ -87,7 +87,7 @@ Ouvrez la boîte de dialogue disponible dans les paramètres pour souscrire ou v
 
 ### Lieu de saisie
 
-Si le schéma le suggère, vous devrez préciser le lieu de votre saisie avec le sélecteur de localisation dédié. Merci d'activer la géolocalisation sur votre téléphone pour qu'elle puisse fonctionner correctement. Si le lieu que vous recherchez n'est pas disponible dans le sélecteur, un joker "Lieu inconnu" est toujours disponible, il vous suffit de rechercher "__unknown__" dans la barre de recherche.
+Si le schéma le suggère, vous devrez préciser le lieu de votre saisie avec le sélecteur de localisation dédié. Merci d'activer la géolocalisation sur votre téléphone pour qu'elle puisse fonctionner correctement. Si le lieu que vous recherchez n'est pas disponible dans le sélecteur, un joker "Lieu inconnu" est toujours disponible, il vous suffit de rechercher "**unknown**" dans la barre de recherche.
 
 ### Formulaire
 
@@ -105,6 +105,7 @@ Pour consulter les entrées, rendez-vous dans le menu "Entrées" disponible dans
 ### Lister les entrées sauvegardées
 
 Les entrées sont présentées sous la forme:
+
 ```
 [icône précisant l'état de synchronisation du formulaire] [type de formulaire] [identifiant du formulaire]
 
@@ -146,7 +147,39 @@ La synchronisation globale, ou forcée, force le téléphone à envoyer toutes l
 
 ## Introduction à Cordova
 
+Cordova étant un framework permettant de programmer avec les technologies du web pour développer des applications mobiles, cette application est intégralement écrite en HTML+CSS+JS+TS.
+Cordova utilise également un système de plugins pour y ajouter des fonctions supplémentaires comme la reconnaissance vocale.
 
+### CLI PhoneGap
+
+Ce projet utilise PhoneGap. Pour installer un plugin, utilisez `phonegap plugin add <nomplugin>`.
+Pour compiler l'application, utilisez `phonegap build android`.
+
+Si PhoneGap râle, parce que mon dieu ça arrive, utilisez cet enchaînememnt de commandes:
+
+```bash
+phonegap platform remove android
+phonegap platform remove browser
+
+phonegap platform add browser
+phonegap prepare browser
+
+phonegap platform add android
+# À ce moment, il y a de fortes chances qu'un plugin râle. Utilisez alors
+phonegap platform add android --force
+phonegap prepare android
+
+phonegap build android
+```
+
+### Développer et prévisualiser l'application dans le navigateur
+
+Pour lancer le serveur web intégré, utilisez `phonegap serve`.
+
+N'oubliez pas de lancer aussi dans une autre instance de bash un `tsc -w` pour compiler le TypeScript à la volée lors d'une modification.
+Ne modifiez **JAMAIS** le fichier `app.js` manuellement !
+
+Lancez ensuite un navigateur web (Chrome ou Chromium, le seul à supporter la reconnaissance vocale), et accédez à l'adresse `http://localhost:3000`.
 
 ## Plugins utilisés
 
@@ -175,19 +208,132 @@ La liste complète des plugins est disponible dans config.xml.
 
 ## Organisation du code et bases structurantes
 
+Le code est organisé en modules TypeScript, dans ses parties principales.
+Pour fonctionner sur Cordova, les modules se compilent pour se charger avec `RequireJS`, qui charge `app.js`.
+Le point d'entrée de l'application se fait dans `app.ts` qui charge `main.ts`. Depuis main, les fichiers sont chargés de façon classique, par module.
+
 ### Organisation générale
+
+L'application se structure autour de plusieurs bases importantes, représentés sous la forme d'objets.
+
+Ces objets sont:
+
+- `Forms` de `form_schema.ts`, un objet qui gère les schémas de formulaire
+- `PageManager` de `PageManager.ts`, un objet qui gère les pages de l'application (changer de page, empiler/dépiler le stack de pages)
+- `UserManager` dans `user_manager.ts`, un objet pour gérer la connexion utilisateur
+- `SyncManager` dans `SyncManager.ts`, un objet qui gère la synchronisation des entrées et tient à jour une liste d'entrées à synchroniser
+- `FormSaves` dans `FormSaves.ts`, un objet pour récupérer et supprimer des formulaires sauvegardés
+- `FILE_HELPER`, un objet de type `FileHelper`, pour interagir avec le système de fichiers, instancié dans `main.ts`
+
+De nombreuses fonctions d'aide au développement sont disponibles dans `helpers.ts`.
+
+Vous trouverez aussi dans `vocal_recognition.ts` les fonctions `prompt()` et `talk()` qui permettent respectivement de faire de l'écoute de l'utilisateur par reconnaissance vocale et de parler via synthèse vocale.
 
 ### Gestion des pages
 
+Les pages de l'application en fait un simple objet `AppPageObj` (voir `PageManager.ts`).
+Cet objet lie à une clé de page une fonction d'appel lorsque la page est chargée, un nom à afficher dans la barre de menu, et d'autres paramètres.
+
+Les pages sont gérées avec une pile qui permet de pousser des pages dans la pile et dépiler lors de l'appui sur le bouton retour.
+Pour ouvrir une nouvelle page et l'insérer dans la pile, utilisez `PageMananger.pushPage(app_page_name)`.
+Pour dépiler, utilisez `PageManager.popPage()`.
+Pour simuler l'appui du bouton retour, utilisez `PageManager.goBack()`.
+
+Consulter le fichier `PageManager.ts` pour connaître la documentation fonction par fonction.
+
 ### Gestion des utilisateurs
+
+Les utilisateurs sont gérés depuis `UserManager`, présent dans `user_manager.ts`.
+Pour savoir si un utilisateur est connecté, utilisez `.logged`. Pour connaître son nom d'utilisateur, utilisez `.username`.
+
+Pour connecter un utilisateur, utilisez `.login(username, password)`. Pour logger artificiellement, depuis un token, utilisez `.logSomeone(username, token)`. Pour créer un utilisateur, utilisez `.createUser(username, password, admin_password)`.
+
+Vous pouvez également vous déconnecter avec `.unlog()`.
 
 ### Gestion des schémas de formulaire
 
+Les schémas de formulaire se gèrent avec l'objet `Forms`.
+
+Obtenez la clé du schéma chargé avec `.current_key`. Attention, vaut `null` si aucun schéma chargé.
+Obtenez le formulaire chargé actuellement avec `.current`. Attention, si `current_key` vaut `null`, `.current` aura une valeur non nulle !
+
+Toutes les autres fonctions sont disponibles et documentés dans la classe elle-même, voir le fichier `form_schema.ts`.
+
 ### Interactions avec le système de fichiers
 
-## Créer une entrée
+Utilisez `FILE_HELPER` pour manipuler le système de fichiers applicatif, et `SD_FILE_HELPER` pour manipuler la carte SD (attention, vérifiez qu'il ne soit pas `null`).
+
+La documentation du type `FileHelper` est disponible dans `README_file_helper.md`.
 
 ## Synchronisation
+
+La synchro est gérée par `SyncManager`. Le fonctionnement interne n'a pas lieu d'être plus documenté que dans la classe elle-même.
+
+Pour ajouter une nouvelle entrée dans la liste à synchro, utilisez `SyncManager.add(id, FormSave)`.
+Pour supprimer une entrée de la liste, utilisez `SyncManager.remove(id)`.
+
+- `SyncManager.available()` Liste les entrées classifiées comme attendant une synchronisation
+- `SyncManager.has(id)` Répond `true` si l'entrée `id` est présente dans la liste de sync
+- `SyncManager.sync(force_all, clear_cache, force_specific_elements, receiver)` Lance une synchronisation.
+  - `force_all` Si `true`, force à synchroniser tout l'appareil
+  - `clear_cache` Si `true`, force à vider le cache de synchro puis synchronise tout l'appareil
+  - `force_specific_elements` Si `string[]`, ne synchronisera que les id passés dans le tableau
+  - `receiver` Un `SyncEvent` sur lequel on pourra attacher des événements qui se délencheront à certaines phases de la synchronisation (voir événements)
+
+`SyncManager` a de nombreuses autres méthodes décrites dans la définition de la classe par du JSDoc.
+
+### Événements de synchronisation
+
+Vous pouvez instancier un `SyncEvent` sur lequel vous attacherez des événements, puis vous pouvez appeler `sync()` avec ce `SyncEvent` dans le paramètre `receiver`.
+
+```js
+const receiver = new SyncEvent;
+
+receiver.addEventListener("error", err => {
+    console.log(err.detail);
+});
+
+await SyncManager.sync(false, false, undefined, receiver);
+```
+#### error
+Une erreur est survenue et la synchronisation s'est arrêtée. 
+Un paramètre `err` est joint dans le détail de l'événement qui contient un objet { code: "message" }.
+
+#### abort
+La synchronisation a été arrêtée manuellement.
+
+#### begin
+Émis lorsque la synchronisation commence.
+
+#### beforesend
+Émis lorsque la liste des fichiers à envoyer a été construite, juste avant l'envoi.
+
+#### groupsend
+Émis lorsqu'un groupe d'entrées est paré à être envoyé.
+Un paramètre `subset` de type `string[]` est passé dans le détail de l'événement et contient l'ID des formulaires allant être envoyé.
+
+#### send
+Émis lorsqu'une entrée est paré à être envoyée.
+Le détail contient `{ id: id_entry, data: SList, number: current_iterator_number, total: total_entries_to_send }`.
+
+#### sended
+Émis lorsqu'une entrée a été envoyée.
+Le détail contient l'identifiant `id` de l'entrée envoyée.
+
+#### groupsended
+Émis lorsqu'un groupe d'entrées a été envoyé.
+Un paramètre `subset` de type `string[]` est passé dans le détail de l'événement et contient l'ID des formulaires étant envoyé.
+
+#### groupsenderror
+Émis lorsqu'un groupe d'entrées a échoué à être envoyé.
+Un paramètre `subset` de type `string[]` est passé dans le détail de l'événement et contient l'ID des formulaires devant être envoyés.
+
+#### senderrorfailer
+Émis lorsqu'une entrée n'a pas pu être envoyée.
+Le détail contient l'identifiant `id` de l'entrée dont l'envoi a échoué.
+
+#### complete
+Émis lorsque la synchronisation se termine (et que tout s'est bien passé).
 
 ## Paramètres de l'application
 
@@ -208,4 +354,3 @@ La liste complète des plugins est disponible dans config.xml.
 ### Utilisateurs
 
 ## Informations fonctionnelles sur les endpoints
-

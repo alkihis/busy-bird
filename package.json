@@ -11,6 +11,7 @@
     "artyom.js": "^1.0.6",
     "cordova-android": "^7.1.4",
     "cordova-browser": "^5.0.4",
+    "cordova-file-helper": "^1.0.0",
     "cordova-plugin-android-permissions": "1.0.0",
     "cordova-plugin-background-fetch": "5.4.1",
     "cordova-plugin-battery-status": "~1.2.4",

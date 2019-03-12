@@ -4,6 +4,18 @@ const options = {
     prompt: "Parlez maintenant"
 };
 
+export function talk(sentence: string) : Promise<void> {
+    const u = new SpeechSynthesisUtterance();
+    u.text = sentence;
+    u.lang = 'fr-FR';
+
+    return new Promise((resolve) => {
+        u.onend = () => { resolve() };
+
+        speechSynthesis.speak(u);
+    });
+}
+
 /**
  * Récupère le texte dicté par l'utilisateur
  * @param prompt_text Message affiché à l'utilisateur expliquant ce qu'il est censé dire

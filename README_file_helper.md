@@ -36,6 +36,19 @@ If you don't use Node.js and you can't import libs with `require()` or `import`,
 Object.defineProperty(exports, "__esModule", { value: true });
 ```
 
+replace export for FileHelperReadMode
+```js
+var FileHelperReadMode;
+(function (FileHelperReadMode) {
+    FileHelperReadMode[FileHelperReadMode["text"] = 0] = "text";
+    FileHelperReadMode[FileHelperReadMode["array"] = 1] = "array";
+    FileHelperReadMode[FileHelperReadMode["url"] = 2] = "url";
+    FileHelperReadMode[FileHelperReadMode["binarystr"] = 3] = "binarystr";
+    FileHelperReadMode[FileHelperReadMode["json"] = 4] = "json";
+    FileHelperReadMode[FileHelperReadMode["internalURL"] = 5] = "internalURL";
+})(FileHelperReadMode);
+```
+
 and the last one
 ```js
 exports.FileHelper = FileHelper;

@@ -1,17 +1,6 @@
-import { prompt } from "./vocal_recognition";
+import { prompt, talk } from "./vocal_recognition";
 
 /// FICHIER DE TEST DE LA RECONNAISSANCE VOCALE
-export function talk(sentence: string) : Promise<void> {
-    const u = new SpeechSynthesisUtterance();
-    u.text = sentence;
-    u.lang = 'fr-FR';
-
-    return new Promise((resolve) => {
-        u.onend = () => { resolve() };
-
-        speechSynthesis.speak(u);
-    });
-}
 
 export function launchQuizz(base: HTMLElement) : void {
     const if_bad_answer = [

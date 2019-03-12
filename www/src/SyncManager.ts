@@ -80,11 +80,18 @@ export const SyncManager = new class {
     protected last_bgsync = Date.now();
     protected running_fetchs: AbortController[] = [];
 
+    /**
+     * Initilise l'objet SyncManager
+     */
     public init() {
         this.list.init();
         this.initBackgroundSync();
     }
 
+    /**
+     * Initialise la synchronisation d'arrière plan avec l'intervalle interval
+     * @param interval 
+     */
     public initBackgroundSync(interval: number = Settings.sync_freq) : void {
         const success_fn = () => {
             Logger.info("Il s'est écoulé " + ((Date.now() - this.last_bgsync) / 1000) + " secondes depuis la dernière synchronisation.");
@@ -132,6 +139,9 @@ export const SyncManager = new class {
         }
     }
 
+    /**
+     * Démarre la synchronisation d'arrière-plan
+     */
     public startBackgroundSync() : void {
         if (BackgroundSync.isInit()) {
             BackgroundSync.start();
@@ -141,12 +151,20 @@ export const SyncManager = new class {
         }
     }
 
+    /**
+     * Arrête la synchro d'arrière plan
+     */
     public stopBackgroundSync() : void {
         if (BackgroundSync.isInit()) {
             BackgroundSync.stop();
         }
     }
 
+    /**
+     * Ajoute une entrée dans la liste d'attente de synchronisation
+     * @param id Identifiant du formulaire
+     * @param data Sauvegarde de formulaire
+     */
     public add(id: string, data: FormSave) : Promise<SList> {
         const saveItem = (id: string, type: string, metadata: {[fieldName: string]: string}) => {
             return this.list.add(id, {type, metadata});
@@ -179,10 +197,19 @@ export const SyncManager = new class {
             });
     }
 
+    /**
+     * Supprime une entrée id de la liste d'attente de synchro
+     * @param id 
+     */
     public remove(id: string) : Promise<void> {
         return this.list.remove(id);
     }
 
+    /**
+     * Envoie un formulaire id vers le serveur Busy Bird
+     * @param id identifiant du formulaire
+     * @param data SList correpondant au formulaire
+     */
     protected async sendForm(id: string, data: SList) : Promise<void> {
         // Renvoie une promise réussie si l'envoi du formulaire 
         // et de ses métadonnées a réussi.
@@ -774,14 +801,24 @@ export const SyncManager = new class {
         this.running_fetchs = [];
     }
 
+    /**
+     * Efface la liste d'entrées attendant d'être envoyées 
+     */
     public clear() : Promise<void> {
         return this.list.clear();
     }
 
+    /**
+     * Retourne le nombre d'entrées attendant d'être envoyées
+     */
     public remainingToSync() : Promise<number> {
         return this.list.getRemainingToSync();
     }
 
+    /**
+     * Teste if id attend d'être envoyé
+     * @param id string
+     */
     public has(id: string) : Promise<boolean> {
         return this.list.has(id);
     }

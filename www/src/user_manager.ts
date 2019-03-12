@@ -1,6 +1,5 @@
 import { API_URL } from "./main";
 import { getModal, initModal, getModalPreloader, showToast } from "./helpers";
-import { Logger } from "./logger";
 import { Forms } from "./form_schema";
 
 export const UserManager = new class {
@@ -298,25 +297,3 @@ export function loginUser() : Promise<void> {
         };
     });
 }
-
-/**
- * 
- * const data = new FormData();
-        data.append("username", username);
-        data.append("password", password);
- * return new Promise((resolve, reject) => {
-            fetch(API_URL + "/users/login.json", {
-                method: "POST",
-                body: data
-            }).then((response) => {
-                return response.json();
-            }).then((json) => {
-                this._token = json.access_token;
-                this._username = username;
-
-                resolve();
-            }).catch((error) => {
-                reject(error);
-            });
-        }); 
- */

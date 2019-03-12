@@ -5,6 +5,7 @@ import { SyncManager } from "./SyncManager";
 import { Logger } from "./logger";
 import { FILE_HELPER, SD_FILE_HELPER } from "./main";
 import { EntryObject } from "./file_helper";
+import { FormSaves } from "./FormSaves";
 
 enum SaveState {
     saved, waiting, error
@@ -31,23 +32,7 @@ async function deleteAll() : Promise<any> {
     PageManager.lock_return_button = true;
 
     try {
-        // On veut supprimer tous les fichiers
-        await FILE_HELPER.empty('forms', true);
-
-        if (await FILE_HELPER.exists('form_data')) {
-            await FILE_HELPER.empty('form_data', true);
-        }
-
-        if (device.platform === "Android" && SD_FILE_HELPER) {
-            try {
-                await SD_FILE_HELPER.empty('forms', true);
-                await SD_FILE_HELPER.empty('form_data', true);
-            } catch (e) {
-                // Tant pis, ça ne marche pas
-            }
-        }
-
-        await SyncManager.clear();
+        await FormSaves.clear();
 
         showToast("Fichiers supprimés avec succès");
 
@@ -201,33 +186,17 @@ function modalDeleteForm(id: string) {
         });
 }
 
-async function deleteForm(id: string) : Promise<void> {
+function deleteForm(id: string) : Promise<void> {
     if (id.match(/\.json$/)) {
         id = id.substring(0, id.length - 5);
     }
 
-    SyncManager.remove(id);
-
-    if (device.platform === 'Android' && SD_FILE_HELPER) {
-        // Tente de supprimer depuis la carte SD
-        try {
-            await SD_FILE_HELPER.rm("form_data/" + id, true);
-            await SD_FILE_HELPER.rm("forms/" + id + '.json');
-        } catch (e) { }
+    if (id) {
+        return FormSaves.rm(id);
     }
-
-    return new Promise(async function(resolve, reject) {
-        if (id) {
-            // Supprime toutes les données (images, sons...) liées au formulaire
-            await FILE_HELPER.rm('form_data/' + id, true).catch(err => err);
-            await FILE_HELPER.rm("forms/" + id + ".json").catch(err => err);
-
-            resolve();
-        }
-        else {
-            reject("ID invalide");
-        }
-    });
+    else {
+        return Promise.reject("ID invalide");
+    }
 }
 
 export async function initSavedForm(base: HTMLElement) {
