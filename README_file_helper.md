@@ -13,6 +13,9 @@ This full Promise-designed API tries to reduce the pain of interacting with the 
 [phonegap] plugin add cordova-plugin-device
 ```
 
+Warning: This wrapper use native Promise and a big usage of the `async`/`await` keywords to improve performance, so your project must target devices that have access to asynchronous functions (see [this](https://caniuse.com/#search=async)).
+If you can't target those devices, you can use [cordova-file-helper-legacy](https://www.npmjs.com/package/cordova-file-helper-legacy) plugin, that target [those devices](https://caniuse.com/#search=promise).
+
 ### With npm
 
 ```bash
@@ -215,9 +218,11 @@ helper.ls(path, "l"); // Promise<FileStats[]>
 Like `ls(path, "pre")`, but unflattened.
 Returns a `EntryTree` object.
 
+If `mime_type` parameter is `true`, file's MIME types will be returns as object values instead of `null`.
+
 In the same file system of the `EntryObject` exemple, it gives you:
 ```js
-helper.tree(path); // => Promise<EntryTree>
+helper.tree(path, add_mime_types /* = false */); // => Promise<EntryTree>
 
 o = await helper.tree();
 o = {
@@ -407,10 +412,12 @@ helper.readFileAs(file, mode); // => Promise<string | ArrayBuffer | any>
 helper.readFileAs(file, FileHelperReadMode.text); // => Promise<string>
 ```
 
-#### getFileOfEntry
-Extract a File object from a FileEntry.
+#### getFile
+Extract a File object from a FileEntry or from a path.
 ```js
-helper.getFileOfEntry(fileEntry); // Promise<File>
+helper.getFile(fileEntry); // Promise<File>
+
+helper.getFile(path); // Promise<File>
 ```
 
 #### getFileEntryOfDirEntry

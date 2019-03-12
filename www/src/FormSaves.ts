@@ -15,7 +15,7 @@ export const FormSaves = new class {
         for (const field in save.metadata) {
             files[field] = [
                 save.metadata[field],
-                await FILE_HELPER.getFileOfEntry(await FILE_HELPER.get("form_data/" + id + "/" + save.metadata[field]) as FileEntry)
+                await FILE_HELPER.getFile(await FILE_HELPER.get("form_data/" + id + "/" + save.metadata[field]) as FileEntry)
             ];
         }
 

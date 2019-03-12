@@ -10,6 +10,7 @@ export interface FileStats {
     mdate: Date | undefined;
     size: number;
     name: string;
+    type: string;
 }
 
 export interface EntryObject { 
@@ -17,7 +18,7 @@ export interface EntryObject {
 }
 
 export interface EntryTree {
-    [path: string]: EntryTree | null;
+    [path: string]: EntryTree | string | null;
 }
 
 /**
@@ -442,9 +443,7 @@ export class FileHelper {
             );
         }
         
-        let file = await this.getFileOfEntry(
-            typeof path === 'string' ? await this.get(path) as FileEntry : path
-        );
+        let file = await this.getFile(path);
         
         return this.readFileAs(file, mode);
     }
@@ -533,7 +532,7 @@ export class FileHelper {
                 };
             }
             else if (l) {
-                return [this.getStatsFromFile(await this.getFileOfEntry(entry as FileEntry))];
+                return [this.getStatsFromFile(await this.getFile(entry as FileEntry))];
             }
             return [path];
         }
@@ -594,11 +593,12 @@ export class FileHelper {
                             name: (rel_path && (!p || r) ? rel_path + "/" : "") + e.name,
                             mdate: undefined,
                             mtime: undefined,
-                            size: 4096
+                            size: 4096,
+                            type: "directory"
                         });
                     }
                     else {
-                        const entry = await this.getFileOfEntry(e as FileEntry);
+                        const entry = await this.getFile(e as FileEntry);
                         const stats = this.getStatsFromFile(entry);
                         stats.name = (rel_path && (!p || r) ? rel_path + "/" : "") + stats.name;
 
@@ -619,8 +619,9 @@ export class FileHelper {
     /**
      * Get a tree to see files below a certain directory
      * @param path Base path for tree
+     * @param mime_type Get MIME type of files instead of null
      */
-    public async tree(path: string = "") : Promise<EntryTree> {
+    public async tree(path: string = "", mime_type = false) : Promise<EntryTree> {
         const flat_tree = await this.ls(path, "pre") as EntryObject;
 
         // Désaplatissement de l'arbre
@@ -645,7 +646,12 @@ export class FileHelper {
             for (const entry of flat_tree[p]) {
                 // On ajoute les entrées dans current_tree
                 if (entry.isFile) {
-                    current_tree[entry.name] = null;
+                    if (mime_type) {
+                        current_tree[entry.name] = (await this.getFile(entry as FileEntry)).type
+                    } 
+                    else {
+                        current_tree[entry.name] = null;
+                    }
                 }
             }
         }
@@ -708,7 +714,7 @@ export class FileHelper {
      * @param path Path to a file
      */
     public async stats(path: string) : Promise<FileStats> {
-        const entry = await this.getFileOfEntry(await this.get(path) as FileEntry);
+        const entry = await this.getFile(path);
 
         return this.getStatsFromFile(entry);
     }
@@ -828,12 +834,16 @@ export class FileHelper {
     }
 
     /**
-     * Get a File object from a FileEntry
-     * @param file FileEntry
+     * Get a File object from a path or a FileEntry
+     * @param path String path or a FileEntry
      */
-    public getFileOfEntry(file: FileEntry) : Promise<File> {
+    public async getFile(path: string | FileEntry) : Promise<File> {
+        if (typeof path === 'string') {
+            path = await this.get(path) as FileEntry;
+        }
+
         return new Promise((resolve, reject) => {
-            file.file(resolve, reject);
+            (path as FileEntry).file(resolve, reject);
         });
     }
     
@@ -891,7 +901,8 @@ export class FileHelper {
             mtime: entry.lastModified,
             mdate: new Date(entry.lastModified),
             size: entry.size,
-            name: entry.name
+            name: entry.name,
+            type: entry.type
         };
     }
 

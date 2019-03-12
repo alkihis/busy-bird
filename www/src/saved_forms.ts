@@ -157,7 +157,7 @@ async function readAllFilesOfDirectory(dirName: string) : Promise<[File, FormSav
 
     for (const d in entries) {
         for (const entry of entries[d]) {
-            const file = await FILE_HELPER.getFileOfEntry(entry as FileEntry);
+            const file = await FILE_HELPER.getFile(entry as FileEntry);
             const content = JSON.parse(await FILE_HELPER.readFileAs(file) as string) as FormSave;
 
             data.push([file, content]);
