@@ -12,6 +12,7 @@ const PROPERTIES_INTERNAL_NAME = {
     float_precision: "float_prec", /* for type.float */
     default_value: "default_val",
     tip_on_invalid: "invalid_tip",
+    indeterminate: "indeterminate_chk",
     vocal_access_words: false,
     allow_voice_control: "vocal_command",
     remove_whitespaces: "rm_whitesp", /* for type.string / type.bigstring; during vocal reco */
@@ -29,6 +30,7 @@ const FORM_PROPERTIES = {
     slider_options: generateSliderOpt, /* for type.slider */
     file_type: generateFileType, /* for type.file */
     float_precision: generateFloatPrec, /* for type.float */
+    indeterminate: generateIndeterminate,
     // default_value: "string | boolean", VALABLE POUR CHAQUE CHAMP
     tip_on_invalid: generateInvalidTip,
     vocal_access_words: "string[]",
@@ -45,7 +47,7 @@ const FORM_TYPES = {
     float: {label: "Nombre à virgule", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "float_precision", "placeholder"]}, 
     slider: {label: "Choix binaire", props: ["slider_options"]},
     select: {label: "Liste de choix", props: ["allow_voice_control", "tip_on_invalid", "external_constraints", "select_options"]}, 
-    checkbox: {label: "Case à cocher", info: "La valeur par défaut est le statut décoché.", props: []},
+    checkbox: {label: "Case à cocher", info: "La valeur par défaut est le statut décoché ou indéterminé.", props: ['indeterminate']},
     datetime: {label: "Date et heure", props: []},
     date: {label: "Date", props: []},
     time: {label: "Heure et minutes", props: []},
@@ -185,6 +187,13 @@ function makeSelectOption(required = false, def = undefined) {
     one_opt.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
 
     return one_opt;
+}
+
+function generateIndeterminate(base, existing_item = {}) {
+    base.insertAdjacentHTML(
+        'beforeend', 
+        generateCheckbox('indeterminate_chk', "La case a un statut indéterminé par défaut", existing_item.indeterminate || false)
+    );
 }
 
 /**

@@ -2596,6 +2596,8 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.APP_VERSION = 0.6;
     exports.MP3_BITRATE = 256; /** En kb/s */
     exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
+    exports.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK = true; /** Active le scroll lorsqu'on clique sur un élément lors du modal de vérification */
+    exports.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK = true;
     exports.SDCARD_PATH = null;
     exports.SD_FILE_HELPER = null;
     exports.FILE_HELPER = new file_helper_2.FileHelper;
@@ -2809,33 +2811,457 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "SyncManager", "location", "file_helper"], function (require, exports, vocal_recognition_3, form_schema_3, helpers_6, main_5, PageManager_2, logger_4, audio_listener_2, user_manager_3, SyncManager_2, location_1, file_helper_3) {
+define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", "PageManager", "logger", "SyncManager", "location"], function (require, exports, main_5, helpers_6, user_manager_3, PageManager_2, logger_4, SyncManager_2, location_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    function createInputWrapper() {
-        const e = document.createElement('div');
-        e.classList.add("row", "input-field", "col", "s12");
-        return e;
+    function scrollToAnElementOnClick(element_base, element_related, modal, center = false) {
+        element_base.onclick = () => {
+            $([document.documentElement, document.body]).animate({
+                scrollTop: ($(element_related).offset().top) - (center ? window.innerHeight / 2 : 20)
+            }, 500, function () {
+                $(element_related).fadeOut(300, function () {
+                    $(this).fadeIn(200);
+                });
+            });
+            modal.close();
+        };
     }
-    function createTip(wrapper, ele) {
-        if (ele.tip_on_invalid) {
-            const tip = document.createElement('div');
-            tip.classList.add('invalid-tip');
-            tip.innerText = ele.tip_on_invalid;
-            tip.style.display = 'none';
-            wrapper.appendChild(tip);
+    /**
+     * Lance la vérification des champs pour ensuite sauvegarder le formulaire
+     * @param type Type de formulaire (ex: cincle_plongeur)
+     * @param current_form
+     * @param force_name? Force un identifiant pour le form à enregistrer
+     * @param form_save? Précédente sauvegarde du formulaire
+     */
+    async function beginFormSave(type, current_form, force_name, form_save) {
+        // Ouverture du modal de verification
+        const modal = helpers_6.getModal();
+        const instance = helpers_6.initModal({ dismissible: false, outDuration: 100 }, helpers_6.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
+            <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
+        </div>`));
+        instance.open();
+        // Attend que le modal s'ouvre proprement (ralentissements sinon)
+        await helpers_6.sleep(300);
+        modal.classList.add('modal-fixed-footer');
+        // Recherche des éléments à vérifier
+        const elements_failed = [];
+        const elements_warn = [];
+        const location_element = document.getElementById('__location__id');
+        let location_str = null;
+        if (location_element) {
+            location_str = location_element.dataset.reallocation;
         }
-        return wrapper;
-    }
-    function showHideTip(current, show) {
-        if (current.nextElementSibling && current.nextElementSibling.classList.contains("invalid-tip")) {
-            // Si il y a un tip, on le fait appraître
-            if (show)
-                $(current.nextElementSibling).slideDown(200);
+        // Vérifie le lieu si le lieu est défini 
+        // (si il n'est pas requis, affiche un warning, sinon une erreur)
+        if (!current_form.no_location && !location_str) {
+            if (current_form.skip_location)
+                elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element.parentElement]);
             else
-                $(current.nextElementSibling).slideUp(200);
+                elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element.parentElement]);
         }
+        if (location_str === location_1.UNKNOWN_NAME) {
+            elements_warn.push(["Lieu", "Le lieu choisi est un lieu inexistant.", location_element.parentElement]);
+        }
+        // Input classiques: checkbox/slider, text, textarea, select, number
+        for (const e of document.getElementsByClassName('input-form-element')) {
+            const element = e;
+            const label = document.querySelector(`label[for="${element.id}"]`);
+            let name = element.name;
+            if (label) {
+                name = label.textContent;
+            }
+            const contraintes = {};
+            if (element.dataset.constraints) {
+                element.dataset.constraints.split(';').map((e) => {
+                    const [name, value] = e.split('=');
+                    contraintes[name] = value;
+                });
+            }
+            // Valide des contraintes externes si jamais l'élément a une valeur
+            if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
+                const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
+                if (element.required) {
+                    elements_failed.push([name, str, element.parentElement]);
+                }
+                else {
+                    elements_warn.push([name, str, element.parentElement]);
+                }
+            }
+            else if (element.tagName === "INPUT" && element.type === "checkbox") {
+                if (element.indeterminate) {
+                    if (element.required) {
+                        elements_failed.push([element.nextElementSibling.innerText, "Ce champ est requis", element.parentElement]);
+                    }
+                    else {
+                        elements_warn.push([element.nextElementSibling.innerText, "Vous n'avez pas interagi avec ce champ", element.parentElement]);
+                    }
+                }
+            }
+            else if (element.required && !element.value) {
+                if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
+                    elements_failed.push([name, "Champ requis", element.parentElement]);
+                }
+            }
+            else {
+                let str = "";
+                // Si le champ est requis et a une valeur, on recherche ses contraintes
+                if (Object.keys(contraintes).length > 0 || element.type === "number") {
+                    if (element.type === "text" || element.tagName === "textarea") {
+                        if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
+                            str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
+                        }
+                        if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
+                            str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
+                        }
+                    }
+                    else if (element.type === "number" && element.value !== "") {
+                        if (element.validity.rangeUnderflow) {
+                            str += "Le nombre doit être égal ou supérieur à " + element.min + ". ";
+                        }
+                        if (element.validity.rangeOverflow) {
+                            str += "Le nombre doit être égal ou inférieur à " + element.max + ". ";
+                        }
+                        // Vérification de la précision
+                        if (element.step) {
+                            if (element.validity.stepMismatch) {
+                                str += "Le nombre doit avoir une précision de " + element.step + ". ";
+                            }
+                            else if (element.value.indexOf('.') === -1) {
+                                str += "Le nombre doit être à virgule. ";
+                            }
+                        }
+                    }
+                }
+                // On vérifie que le champ n'a pas un "suggested_not_blank"
+                // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
+                // sont vides, la vérification lève une erreur fatale.
+                if (contraintes.suggest && !element.required && element.value === "") {
+                    str += "Cet élément ne devrait pas être vide. ";
+                }
+                if (str) {
+                    if (element.required) {
+                        elements_failed.push([name, str, element.parentElement]);
+                    }
+                    else {
+                        elements_warn.push([name, str, element.parentElement]);
+                    }
+                }
+                // Si c'est autre chose, l'élément est forcément valide
+            }
+        }
+        // Éléments FILE (ici, possiblement que des images)
+        for (const e of document.querySelectorAll('.input-image-element[required]')) {
+            const filei = e;
+            if (filei.files.length === 0) {
+                const label = document.querySelector(`input[data-for="${filei.id}"]`);
+                let name = filei.name;
+                if (label) {
+                    name = label.dataset.label;
+                }
+                elements_failed.push([name, "Fichier requis", filei.parentElement]);
+            }
+        }
+        // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
+        for (const e of document.querySelectorAll('.input-audio-element[required]')) {
+            const hiddeni = e;
+            if (!hiddeni.value) {
+                elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni.parentElement]);
+            }
+        }
+        // Construit les éléments dans le modal
+        const container = document.createElement('div');
+        container.classList.add('modal-content');
+        if (elements_warn.length > 0 || elements_failed.length > 0) {
+            const par = document.createElement('p');
+            par.classList.add('flow-text', 'no-margin-top');
+            par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
+            container.appendChild(par);
+            if (!elements_failed.length) {
+                const tinypar = document.createElement('p');
+                tinypar.style.marginTop = "-15px";
+                tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
+                container.appendChild(tinypar);
+            }
+            const list = document.createElement('ul');
+            list.classList.add('collection');
+            for (const error of elements_failed) {
+                const li = document.createElement('li');
+                li.classList.add("collection-item");
+                li.innerHTML = `
+                <span class="red-text bold">${error[0]}</span>: 
+                <span>${error[1]}</span>
+            `;
+                if (main_5.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK) {
+                    scrollToAnElementOnClick(li, error[2], instance, main_5.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK);
+                }
+                list.appendChild(li);
+            }
+            for (const warning of elements_warn) {
+                const li = document.createElement('li');
+                li.classList.add("collection-item");
+                li.innerHTML = `
+                <span class="bold">${warning[0]}</span>: 
+                <span>${warning[1]}</span>
+            `;
+                if (main_5.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK) {
+                    scrollToAnElementOnClick(li, warning[2], instance, main_5.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK);
+                }
+                list.appendChild(li);
+            }
+            container.appendChild(list);
+        }
+        else {
+            // On affiche un message de succès
+            const title = document.createElement('h5');
+            title.classList.add('no-margin-top');
+            title.innerText = "Résumé";
+            container.appendChild(title);
+            const par = document.createElement('p');
+            par.classList.add('flow-text');
+            par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
+            container.appendChild(par);
+        }
+        // Footer
+        const footer = document.createElement('div');
+        footer.classList.add('modal-footer');
+        const cancel_btn = document.createElement('a');
+        cancel_btn.href = "#!";
+        cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
+        cancel_btn.innerText = "Corriger";
+        footer.appendChild(cancel_btn);
+        // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
+        if (elements_failed.length === 0) {
+            const save_btn = document.createElement('a');
+            save_btn.href = "#!";
+            save_btn.classList.add('btn-flat', 'right', 'green-text');
+            save_btn.innerText = "Sauvegarder";
+            save_btn.onclick = function () {
+                modal.innerHTML = helpers_6.getModalPreloader("Sauvegarde en cours");
+                modal.classList.remove('modal-fixed-footer');
+                const unique_id = force_name || helpers_6.generateId(main_5.ID_COMPLEXITY);
+                PageManager_2.PageManager.lock_return_button = true;
+                saveForm(type, unique_id, location_str, form_save)
+                    .then((form_values) => {
+                    SyncManager_2.SyncManager.add(unique_id, form_values);
+                    if (form_save) {
+                        instance.close();
+                        helpers_6.showToast("Écriture de l'entrée et de ses données réussie.");
+                        // On vient de la page d'édition de formulaire déjà créés
+                        PageManager_2.PageManager.popPage();
+                        // PageManager.reload(); la page se recharge toute seule au pop
+                    }
+                    else {
+                        // On demande si on veut faire une nouvelle entrée
+                        modal.innerHTML = `
+                        <div class="modal-content">
+                            <h5 class="no-margin-top">Entrée enregistrée avec succès</h5>
+                            <p class="flow-text">
+                                Voulez-vous saisir une nouvelle entrée ?
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">Non</a>
+                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Oui</a>
+                            <div class="clearb"></div>
+                        </div>
+                        `;
+                        document.getElementById('__after_save_entries').onclick = function () {
+                            PageManager_2.PageManager.changePage(PageManager_2.AppPageName.saved, false);
+                        };
+                        document.getElementById('__after_save_new').onclick = function () {
+                            setTimeout(() => {
+                                PageManager_2.PageManager.reload(undefined, true);
+                            }, 150);
+                        };
+                    }
+                })
+                    .catch((error) => {
+                    modal.innerHTML = `
+                    <div class="modal-content">
+                        <h5 class="no-margin-top red-text">Erreur</h5>
+                        <p class="flow-text">
+                            Impossible d'enregistrer cette entrée.
+                            Veuillez réessayer.
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="btn-flat right red-text modal-close">Fermer</a>
+                        <div class="clearb"></div>
+                    </div>
+                    `;
+                    PageManager_2.PageManager.lock_return_button = false;
+                    logger_4.Logger.error(error, error.message, error.stack);
+                });
+            };
+            footer.appendChild(save_btn);
+        }
+        const clearb = document.createElement('div');
+        clearb.classList.add('clearb');
+        footer.appendChild(clearb);
+        modal.innerHTML = "";
+        modal.appendChild(container);
+        modal.appendChild(footer);
     }
+    exports.beginFormSave = beginFormSave;
+    /**
+     * Sauvegarde le formulaire actuel dans un fichier .json
+     * @param type
+     * @param name
+     * @param location
+     * @param form_save
+     */
+    function saveForm(type, name, location, form_save) {
+        const form_values = {
+            fields: {},
+            type,
+            location,
+            owner: (form_save ? form_save.owner : user_manager_3.UserManager.username),
+            metadata: {}
+        };
+        for (const input of document.getElementsByClassName('input-form-element')) {
+            const i = input;
+            if (input.tagName === "SELECT" && input.multiple) {
+                const selected = [...input.options].filter(option => option.selected).map(option => option.value);
+                form_values.fields[i.name] = selected;
+            }
+            else if (i.type === "checkbox") {
+                if (i.classList.contains("input-slider-element")) {
+                    // C'est un slider
+                    form_values.fields[i.name] = (i.checked ? i.dataset.ifchecked : i.dataset.ifunchecked);
+                }
+                else {
+                    // C'est une checkbox classique
+                    if (i.indeterminate) {
+                        form_values.fields[i.name] = null;
+                    }
+                    else {
+                        form_values.fields[i.name] = i.checked;
+                    }
+                }
+            }
+            else if (i.type === "number") {
+                form_values.fields[i.name] = i.value === "" ? null : Number(i.value);
+            }
+            else {
+                form_values.fields[i.name] = i.value;
+            }
+        }
+        return writeDataThenForm(name, form_values, form_save);
+    }
+    exports.saveForm = saveForm;
+    /**
+     * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
+     * puis crée le formulaire
+     * @param name Nom du formulaire (sans le .json)
+     * @param form_values
+     * @param older_save
+     */
+    async function writeDataThenForm(name, form_values, older_save) {
+        function saveBlobToFile(filename, input_name, blob) {
+            const full_path = 'form_data/' + name + '/' + filename;
+            return main_5.FILE_HELPER.write(full_path, blob)
+                .then(() => {
+                if (device.platform === 'Android' && main_5.SD_FILE_HELPER) {
+                    return main_5.SD_FILE_HELPER.write(full_path, blob).catch(e => console.log(e));
+                }
+            })
+                .then(() => {
+                // Enregistre le nom du fichier sauvegardé dans le formulaire,
+                // dans la valeur du champ field
+                form_values.fields[input_name] = full_path;
+                form_values.metadata[input_name] = filename;
+                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                    // Si une image était déjà présente
+                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                        // Si le fichier enregistré est différent du fichier actuel
+                        // Suppression de l'ancienne image
+                        if (main_5.SD_FILE_HELPER) {
+                            main_5.SD_FILE_HELPER.rm(older_save.fields[input_name]);
+                        }
+                        main_5.FILE_HELPER.rm(older_save.fields[input_name]);
+                    }
+                }
+            })
+                .catch((error) => {
+                helpers_6.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                return Promise.reject(error);
+            });
+        }
+        // Récupère les images du formulaire
+        const images_from_form = document.getElementsByClassName('input-image-element');
+        // Sauvegarde les images !
+        const promises = [];
+        for (const img of images_from_form) {
+            const file = img.files[0];
+            const input_name = img.name;
+            if (file) {
+                const filename = file.name;
+                promises.push(saveBlobToFile(filename, input_name, file));
+            }
+            else {
+                if (older_save && input_name in older_save.fields) {
+                    form_values.fields[input_name] = older_save.fields[input_name];
+                    if (typeof older_save.fields[input_name] === 'string') {
+                        const parts = older_save.fields[input_name].split('/');
+                        form_values.metadata[input_name] = parts[parts.length - 1];
+                    }
+                    else {
+                        form_values.metadata[input_name] = null;
+                    }
+                }
+                else {
+                    form_values.fields[input_name] = null;
+                    form_values.metadata[input_name] = null;
+                }
+            }
+        }
+        // Récupère les données audio du formulaire
+        const audio_from_form = document.getElementsByClassName('input-audio-element');
+        for (const audio of audio_from_form) {
+            const file = audio.value;
+            const input_name = audio.name;
+            if (file) {
+                const filename = helpers_6.generateId(main_5.ID_COMPLEXITY) + '.mp3';
+                promises.push(helpers_6.urlToBlob(file).then(function (blob) {
+                    return saveBlobToFile(filename, input_name, blob);
+                }));
+            }
+            else {
+                if (older_save && input_name in older_save.fields) {
+                    form_values.fields[input_name] = older_save.fields[input_name];
+                    if (typeof older_save.fields[input_name] === 'string') {
+                        const parts = older_save.fields[input_name].split('/');
+                        form_values.metadata[input_name] = parts[parts.length - 1];
+                    }
+                    else {
+                        form_values.metadata[input_name] = null;
+                    }
+                }
+                else {
+                    form_values.fields[input_name] = null;
+                    form_values.metadata[input_name] = null;
+                }
+            }
+        }
+        await Promise.all(promises);
+        // On supprime les metadonnées vides du form
+        for (const n in form_values.metadata) {
+            if (form_values.metadata[n] === null) {
+                delete form_values.metadata[n];
+            }
+        }
+        await main_5.FILE_HELPER.write('forms/' + name + '.json', form_values);
+        if (device.platform === 'Android' && main_5.SD_FILE_HELPER) {
+            main_5.SD_FILE_HELPER.write('forms/' + name + '.json', form_values).catch((e) => console.log(e));
+        }
+        console.log(form_values);
+        return form_values;
+    }
+    /**
+     * Valide les contraintes externes d'un champ
+     * @param constraints
+     * @param e
+     */
     function validConstraints(constraints, e) {
         const cons = constraints.split(';');
         const form = document.getElementById('__main_form__id');
@@ -2880,6 +3306,35 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             }
         }
         return true;
+    }
+    exports.validConstraints = validConstraints;
+});
+define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpers", "main", "PageManager", "logger", "audio_listener", "user_manager", "location", "file_helper", "save_a_form"], function (require, exports, vocal_recognition_3, form_schema_3, helpers_7, main_6, PageManager_3, logger_5, audio_listener_2, user_manager_4, location_2, file_helper_3, save_a_form_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function createInputWrapper() {
+        const e = document.createElement('div');
+        e.classList.add("row", "input-field", "col", "s12");
+        return e;
+    }
+    function createTip(wrapper, ele) {
+        if (ele.tip_on_invalid) {
+            const tip = document.createElement('div');
+            tip.classList.add('invalid-tip');
+            tip.innerText = ele.tip_on_invalid;
+            tip.style.display = 'none';
+            wrapper.appendChild(tip);
+        }
+        return wrapper;
+    }
+    function showHideTip(current, show) {
+        if (current.nextElementSibling && current.nextElementSibling.classList.contains("invalid-tip")) {
+            // Si il y a un tip, on le fait appraître
+            if (show)
+                $(current.nextElementSibling).slideDown(200);
+            else
+                $(current.nextElementSibling).slideUp(200);
+        }
     }
     /**
      * Classe le champ comme valide.
@@ -2965,7 +3420,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     location.value = `${filled_form.location} - ${label_location.label}`;
                 }
                 else if (filled_form.location !== null) {
-                    helpers_6.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
+                    helpers_7.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
                 }
             }
             loc_wrapper.appendChild(location);
@@ -3178,7 +3633,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         vocal_recognition_3.prompt().then(function (value) {
                             let val = value;
                             if (ele.remove_whitespaces) {
-                                val = val.replace(/ /g, '').replace(/à/iug, 'a');
+                                val = val.replace(/ /g, '').replace(/à/iug, 'a').replace(/-/g, '');
                             }
                             if (erase) {
                                 htmle.value = val;
@@ -3297,7 +3752,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                             valid = false;
                         }
                         else if (this.value && ele.external_constraints) {
-                            valid = validConstraints(ele.external_constraints, this);
+                            valid = save_a_form_1.validConstraints(ele.external_constraints, this);
                         }
                         if (valid) {
                             setValid(this, label);
@@ -3321,7 +3776,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 if (filled_form && ele.name in filled_form.fields && typeof filled_form.fields[ele.name] === 'boolean') {
                     input.checked = filled_form.fields[ele.name];
                 }
-                else {
+                else if (ele.indeterminate) {
                     input.indeterminate = true;
                 }
                 wrapper.appendChild(label);
@@ -3373,7 +3828,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // Définition de la valeur par défaut = date actuelle
-                    input.value = helpers_6.dateFormatter("Y-m-d");
+                    input.value = helpers_7.dateFormatter("Y-m-d");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -3395,7 +3850,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 }
                 else {
                     // Définition de la valeur par défaut = date actuelle
-                    input.value = helpers_6.dateFormatter("H:i");
+                    input.value = helpers_7.dateFormatter("H:i");
                 }
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
@@ -3416,7 +3871,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     img_miniature.classList.add('image-form-wrapper');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_6.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_7.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                 }
@@ -3476,16 +3931,16 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    main_5.FILE_HELPER.read(filled_form.fields[ele.name], file_helper_3.FileHelperReadMode.url)
+                    main_6.FILE_HELPER.read(filled_form.fields[ele.name], file_helper_3.FileHelperReadMode.url)
                         .then(base64 => {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
-                        const duration = ((base64.length * 0.7) / (main_5.MP3_BITRATE * 1000)) * 8;
+                        const duration = ((base64.length * 0.7) / (main_6.MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                     })
                         .catch(err => {
-                        logger_4.Logger.warn("Impossible de charger le fichier", err);
+                        logger_5.Logger.warn("Impossible de charger le fichier", err);
                     });
                 }
                 ////// Fin
@@ -3537,430 +3992,6 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
     }
     exports.constructForm = constructForm;
     /**
-     * Lance la vérification des champs pour ensuite sauvegarder le formulaire
-     * @param type Type de formulaire (ex: cincle_plongeur)
-     * @param current_form
-     * @param force_name? Force un identifiant pour le form à enregistrer
-     * @param form_save? Précédente sauvegarde du formulaire
-     */
-    async function beginFormSave(type, current_form, force_name, form_save) {
-        // Ouverture du modal de verification
-        const modal = helpers_6.getModal();
-        const instance = helpers_6.initModal({ dismissible: false, outDuration: 100 }, helpers_6.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
-            <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
-        </div>`));
-        instance.open();
-        // Attend que le modal s'ouvre proprement (ralentissements sinon)
-        await helpers_6.sleep(300);
-        modal.classList.add('modal-fixed-footer');
-        // Recherche des éléments à vérifier
-        const elements_failed = [];
-        const elements_warn = [];
-        const location_element = document.getElementById('__location__id');
-        let location_str = null;
-        if (location_element) {
-            location_str = location_element.dataset.reallocation;
-        }
-        // Vérifie le lieu si le lieu est défini 
-        // (si il n'est pas requis, affiche un warning, sinon une erreur)
-        if (!current_form.no_location && !location_str) {
-            if (current_form.skip_location)
-                elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
-            else
-                elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element]);
-        }
-        if (location_str === location_1.UNKNOWN_NAME) {
-            elements_warn.push(["Lieu", "Le lieu choisi est un lieu inexistant.", undefined]);
-        }
-        // Input classiques: checkbox/slider, text, textarea, select, number
-        for (const e of document.getElementsByClassName('input-form-element')) {
-            const element = e;
-            const label = document.querySelector(`label[for="${element.id}"]`);
-            let name = element.name;
-            if (label) {
-                name = label.textContent;
-            }
-            const contraintes = {};
-            if (element.dataset.constraints) {
-                element.dataset.constraints.split(';').map((e) => {
-                    const [name, value] = e.split('=');
-                    contraintes[name] = value;
-                });
-            }
-            // Valide des contraintes externes si jamais l'élément a une valeur
-            if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
-                const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
-                if (element.required) {
-                    elements_failed.push([name, str, element]);
-                }
-                else {
-                    elements_warn.push([name, str, element]);
-                }
-            }
-            else if (element.tagName === "INPUT" && element.type === "checkbox") {
-                if (element.indeterminate) {
-                    if (element.required) {
-                        elements_failed.push([element.nextElementSibling.innerText, "Ce champ est requis", element]);
-                    }
-                    else {
-                        elements_warn.push([element.nextElementSibling.innerText, "Vous n'avez pas interagi avec ce champ", element]);
-                    }
-                }
-            }
-            else if (element.required && !element.value) {
-                if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
-                    elements_failed.push([name, "Champ requis", element]);
-                }
-            }
-            else {
-                let str = "";
-                // Si le champ est requis et a une valeur, on recherche ses contraintes
-                if (Object.keys(contraintes).length > 0 || element.type === "number") {
-                    if (element.type === "text" || element.tagName === "textarea") {
-                        if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
-                            str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
-                        }
-                        if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
-                            str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
-                        }
-                    }
-                    else if (element.type === "number" && element.value !== "") {
-                        if (element.validity.rangeUnderflow) {
-                            str += "Le nombre doit être égal ou supérieur à " + element.min + ". ";
-                        }
-                        if (element.validity.rangeOverflow) {
-                            str += "Le nombre doit être égal ou inférieur à " + element.max + ". ";
-                        }
-                        // Vérification de la précision
-                        if (element.step) {
-                            if (element.validity.stepMismatch) {
-                                str += "Le nombre doit avoir une précision de " + element.step + ". ";
-                            }
-                            else if (element.value.indexOf('.') === -1) {
-                                str += "Le nombre doit être à virgule. ";
-                            }
-                        }
-                    }
-                }
-                // On vérifie que le champ n'a pas un "suggested_not_blank"
-                // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
-                // sont vides, la vérification lève une erreur fatale.
-                if (contraintes.suggest && !element.required && element.value === "") {
-                    str += "Cet élément ne devrait pas être vide. ";
-                }
-                if (str) {
-                    if (element.required) {
-                        elements_failed.push([name, str, element]);
-                    }
-                    else {
-                        elements_warn.push([name, str, element]);
-                    }
-                }
-                // Si c'est autre chose, l'élément est forcément valide
-            }
-        }
-        // Éléments FILE (ici, possiblement que des images)
-        for (const e of document.querySelectorAll('.input-image-element[required]')) {
-            const filei = e;
-            if (filei.files.length === 0) {
-                const label = document.querySelector(`input[data-for="${filei.id}"]`);
-                let name = filei.name;
-                if (label) {
-                    name = label.dataset.label;
-                }
-                elements_failed.push([name, "Fichier requis", filei]);
-            }
-        }
-        // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
-        for (const e of document.querySelectorAll('.input-audio-element[required]')) {
-            const hiddeni = e;
-            if (!hiddeni.value) {
-                elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni]);
-            }
-        }
-        // Construit les éléments dans le modal
-        const container = document.createElement('div');
-        container.classList.add('modal-content');
-        if (elements_warn.length > 0 || elements_failed.length > 0) {
-            const par = document.createElement('p');
-            par.classList.add('flow-text', 'no-margin-top');
-            par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
-            container.appendChild(par);
-            if (!elements_failed.length) {
-                const tinypar = document.createElement('p');
-                tinypar.style.marginTop = "-15px";
-                tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
-                container.appendChild(tinypar);
-            }
-            const list = document.createElement('ul');
-            list.classList.add('collection');
-            for (const error of elements_failed) {
-                const li = document.createElement('li');
-                li.classList.add("collection-item");
-                li.innerHTML = `
-                <span class="red-text bold">${error[0]}</span>: 
-                <span>${error[1]}</span>
-            `;
-                list.appendChild(li);
-            }
-            for (const warning of elements_warn) {
-                const li = document.createElement('li');
-                li.classList.add("collection-item");
-                li.innerHTML = `
-                <span class="bold">${warning[0]}</span>: 
-                <span>${warning[1]}</span>
-            `;
-                list.appendChild(li);
-            }
-            container.appendChild(list);
-        }
-        else {
-            // On affiche un message de succès
-            const title = document.createElement('h5');
-            title.classList.add('no-margin-top');
-            title.innerText = "Résumé";
-            container.appendChild(title);
-            const par = document.createElement('p');
-            par.classList.add('flow-text');
-            par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
-            container.appendChild(par);
-        }
-        // Footer
-        const footer = document.createElement('div');
-        footer.classList.add('modal-footer');
-        const cancel_btn = document.createElement('a');
-        cancel_btn.href = "#!";
-        cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
-        cancel_btn.innerText = "Corriger";
-        footer.appendChild(cancel_btn);
-        // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
-        if (elements_failed.length === 0) {
-            const save_btn = document.createElement('a');
-            save_btn.href = "#!";
-            save_btn.classList.add('btn-flat', 'right', 'green-text');
-            save_btn.innerText = "Sauvegarder";
-            save_btn.onclick = function () {
-                modal.innerHTML = helpers_6.getModalPreloader("Sauvegarde en cours");
-                modal.classList.remove('modal-fixed-footer');
-                const unique_id = force_name || helpers_6.generateId(main_5.ID_COMPLEXITY);
-                PageManager_2.PageManager.lock_return_button = true;
-                saveForm(type, unique_id, location_str, form_save)
-                    .then((form_values) => {
-                    SyncManager_2.SyncManager.add(unique_id, form_values);
-                    if (form_save) {
-                        instance.close();
-                        helpers_6.showToast("Écriture de l'entrée et de ses données réussie.");
-                        // On vient de la page d'édition de formulaire déjà créés
-                        PageManager_2.PageManager.popPage();
-                        // PageManager.reload(); la page se recharge toute seule au pop
-                    }
-                    else {
-                        // On demande si on veut faire une nouvelle entrée
-                        modal.innerHTML = `
-                        <div class="modal-content">
-                            <h5 class="no-margin-top">Entrée enregistrée avec succès</h5>
-                            <p class="flow-text">
-                                Voulez-vous saisir une nouvelle entrée ?
-                            </p>
-                        </div>
-                        <div class="modal-footer">
-                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">Non</a>
-                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Oui</a>
-                            <div class="clearb"></div>
-                        </div>
-                        `;
-                        document.getElementById('__after_save_entries').onclick = function () {
-                            PageManager_2.PageManager.changePage(PageManager_2.AppPageName.saved, false);
-                        };
-                        document.getElementById('__after_save_new').onclick = function () {
-                            setTimeout(() => {
-                                PageManager_2.PageManager.reload(undefined, true);
-                            }, 150);
-                        };
-                    }
-                })
-                    .catch((error) => {
-                    modal.innerHTML = `
-                    <div class="modal-content">
-                        <h5 class="no-margin-top red-text">Erreur</h5>
-                        <p class="flow-text">
-                            Impossible d'enregistrer cette entrée.
-                            Veuillez réessayer.
-                        </p>
-                    </div>
-                    <div class="modal-footer">
-                        <a href="#!" class="btn-flat right red-text modal-close">Fermer</a>
-                        <div class="clearb"></div>
-                    </div>
-                    `;
-                    PageManager_2.PageManager.lock_return_button = false;
-                    logger_4.Logger.error(error, error.message, error.stack);
-                });
-            };
-            footer.appendChild(save_btn);
-        }
-        const clearb = document.createElement('div');
-        clearb.classList.add('clearb');
-        footer.appendChild(clearb);
-        modal.innerHTML = "";
-        modal.appendChild(container);
-        modal.appendChild(footer);
-    }
-    /**
-     * Sauvegarde le formulaire actuel dans un fichier .json
-     * @param type
-     * @param name
-     * @param location
-     * @param form_save
-     */
-    function saveForm(type, name, location, form_save) {
-        const form_values = {
-            fields: {},
-            type,
-            location,
-            owner: (form_save ? form_save.owner : user_manager_3.UserManager.username),
-            metadata: {}
-        };
-        for (const input of document.getElementsByClassName('input-form-element')) {
-            const i = input;
-            if (input.tagName === "SELECT" && input.multiple) {
-                const selected = [...input.options].filter(option => option.selected).map(option => option.value);
-                form_values.fields[i.name] = selected;
-            }
-            else if (i.type === "checkbox") {
-                if (i.classList.contains("input-slider-element")) {
-                    // C'est un slider
-                    form_values.fields[i.name] = (i.checked ? i.dataset.ifchecked : i.dataset.ifunchecked);
-                }
-                else {
-                    // C'est une checkbox classique
-                    if (i.indeterminate) {
-                        form_values.fields[i.name] = null;
-                    }
-                    else {
-                        form_values.fields[i.name] = i.checked;
-                    }
-                }
-            }
-            else if (i.type === "number") {
-                form_values.fields[i.name] = i.value === "" ? null : Number(i.value);
-            }
-            else {
-                form_values.fields[i.name] = i.value;
-            }
-        }
-        return writeDataThenForm(name, form_values, form_save);
-    }
-    exports.saveForm = saveForm;
-    /**
-     * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
-     * puis crée le formulaire
-     * @param name Nom du formulaire (sans le .json)
-     * @param form_values
-     * @param older_save
-     */
-    async function writeDataThenForm(name, form_values, older_save) {
-        function saveBlobToFile(filename, input_name, blob) {
-            const full_path = 'form_data/' + name + '/' + filename;
-            return main_5.FILE_HELPER.write(full_path, blob)
-                .then(() => {
-                if (device.platform === 'Android' && main_5.SD_FILE_HELPER) {
-                    return main_5.SD_FILE_HELPER.write(full_path, blob).catch(e => console.log(e));
-                }
-            })
-                .then(() => {
-                // Enregistre le nom du fichier sauvegardé dans le formulaire,
-                // dans la valeur du champ field
-                form_values.fields[input_name] = full_path;
-                form_values.metadata[input_name] = filename;
-                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                    // Si une image était déjà présente
-                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                        // Si le fichier enregistré est différent du fichier actuel
-                        // Suppression de l'ancienne image
-                        if (main_5.SD_FILE_HELPER) {
-                            main_5.SD_FILE_HELPER.rm(older_save.fields[input_name]);
-                        }
-                        main_5.FILE_HELPER.rm(older_save.fields[input_name]);
-                    }
-                }
-            })
-                .catch((error) => {
-                helpers_6.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
-                return Promise.reject(error);
-            });
-        }
-        // Récupère les images du formulaire
-        const images_from_form = document.getElementsByClassName('input-image-element');
-        // Sauvegarde les images !
-        const promises = [];
-        for (const img of images_from_form) {
-            const file = img.files[0];
-            const input_name = img.name;
-            if (file) {
-                const filename = file.name;
-                promises.push(saveBlobToFile(filename, input_name, file));
-            }
-            else {
-                if (older_save && input_name in older_save.fields) {
-                    form_values.fields[input_name] = older_save.fields[input_name];
-                    if (typeof older_save.fields[input_name] === 'string') {
-                        const parts = older_save.fields[input_name].split('/');
-                        form_values.metadata[input_name] = parts[parts.length - 1];
-                    }
-                    else {
-                        form_values.metadata[input_name] = null;
-                    }
-                }
-                else {
-                    form_values.fields[input_name] = null;
-                    form_values.metadata[input_name] = null;
-                }
-            }
-        }
-        // Récupère les données audio du formulaire
-        const audio_from_form = document.getElementsByClassName('input-audio-element');
-        for (const audio of audio_from_form) {
-            const file = audio.value;
-            const input_name = audio.name;
-            if (file) {
-                const filename = helpers_6.generateId(main_5.ID_COMPLEXITY) + '.mp3';
-                promises.push(helpers_6.urlToBlob(file).then(function (blob) {
-                    return saveBlobToFile(filename, input_name, blob);
-                }));
-            }
-            else {
-                if (older_save && input_name in older_save.fields) {
-                    form_values.fields[input_name] = older_save.fields[input_name];
-                    if (typeof older_save.fields[input_name] === 'string') {
-                        const parts = older_save.fields[input_name].split('/');
-                        form_values.metadata[input_name] = parts[parts.length - 1];
-                    }
-                    else {
-                        form_values.metadata[input_name] = null;
-                    }
-                }
-                else {
-                    form_values.fields[input_name] = null;
-                    form_values.metadata[input_name] = null;
-                }
-            }
-        }
-        await Promise.all(promises);
-        // On supprime les metadonnées vides du form
-        for (const n in form_values.metadata) {
-            if (form_values.metadata[n] === null) {
-                delete form_values.metadata[n];
-            }
-        }
-        await main_5.FILE_HELPER.write('forms/' + name + '.json', form_values);
-        if (device.platform === 'Android' && main_5.SD_FILE_HELPER) {
-            main_5.SD_FILE_HELPER.write('forms/' + name + '.json', form_values).catch((e) => console.log(e));
-        }
-        console.log(form_values);
-        return form_values;
-    }
-    /**
      * Fonction qui va faire attendre l'arrivée du formulaire,
      * puis charger la page
      * @param base
@@ -3974,8 +4005,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             form_schema_3.Forms.onReady(function (_, current) {
                 if (form_schema_3.Forms.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_6.displayErrorMessage("Aucun schéma n'est chargé.", "Sélectionnez le schéma de formulaire à utiliser dans les paramètres.");
-                    PageManager_2.PageManager.should_wait = false;
+                    base.innerHTML = helpers_7.displayErrorMessage("Aucun schéma n'est chargé.", "Sélectionnez le schéma de formulaire à utiliser dans les paramètres.");
+                    PageManager_3.PageManager.should_wait = false;
                 }
                 else {
                     loadFormPage(base, current, edition_mode);
@@ -3992,10 +4023,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function loadFormPage(base, current_form, edition_mode) {
         base.innerHTML = "";
-        if (!edition_mode && !user_manager_3.UserManager.logged) {
+        if (!edition_mode && !user_manager_4.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = base.innerHTML = helpers_6.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
-            PageManager_2.PageManager.should_wait = false;
+            base.innerHTML = base.innerHTML = helpers_7.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
+            PageManager_3.PageManager.should_wait = false;
             return;
         }
         const base_block = document.createElement('div');
@@ -4032,14 +4063,14 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const current_form_key = form_schema_3.Forms.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
-                beginFormSave(edition_mode.save.type, current_form, edition_mode.name, edition_mode.save);
+                save_a_form_1.beginFormSave(edition_mode.save.type, current_form, edition_mode.name, edition_mode.save);
             }
             else {
                 try {
-                    beginFormSave(current_form_key, current_form);
+                    save_a_form_1.beginFormSave(current_form_key, current_form);
                 }
                 catch (e) {
-                    logger_4.Logger.error(JSON.stringify(e));
+                    logger_5.Logger.error(JSON.stringify(e));
                 }
             }
         });
@@ -4058,10 +4089,10 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
         else {
             // Sinon, on ramène à la page précédente
-            PageManager_2.PageManager.goBack();
+            PageManager_3.PageManager.goBack();
         }
-        helpers_6.getModalInstance().close();
-        helpers_6.getModal().classList.remove('modal-fixed-footer');
+        helpers_7.getModalInstance().close();
+        helpers_7.getModal().classList.remove('modal-fixed-footer');
     }
     /**
      * Charge le sélecteur de localisation depuis un schéma de formulaire
@@ -4069,13 +4100,13 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
      */
     function callLocationSelector(current_form) {
         // Obtient l'élément HTML du modal
-        const modal = helpers_6.getModal();
-        const instance = helpers_6.initModal({
+        const modal = helpers_7.getModal();
+        const instance = helpers_7.initModal({
             dismissible: false, preventScrolling: true
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
-        modal.innerHTML = helpers_6.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
+        modal.innerHTML = helpers_7.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
             <div class="clearb"></div>
@@ -4090,7 +4121,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             locationSelector(modal, current_form.locations, false, !current_form.skip_location);
         };
         // Cherche la localisation et remplit le modal
-        helpers_6.getLocation(function (coords) {
+        helpers_7.getLocation(function (coords) {
             if (!is_loc_canceled)
                 locationSelector(modal, current_form.locations, coords, !current_form.skip_location);
         }, function () {
@@ -4131,7 +4162,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         // Vide le modal actuel et le remplace par le contenu et footer créés
         modal.innerHTML = "";
         modal.appendChild(content);
-        const labels_to_name = location_1.createLocationInputSelector(content, input, locations, undefined, true);
+        const labels_to_name = location_2.createLocationInputSelector(content, input, locations, undefined, true);
         // Construction de la liste de lieux si la location est trouvée
         if (current_location) {
             // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
@@ -4145,7 +4176,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 lieux_dispo.push({
                     name: lieu,
                     label: locations[lieu].label,
-                    distance: helpers_6.calculateDistance(current_location.coords, locations[lieu])
+                    distance: helpers_7.calculateDistance(current_location.coords, locations[lieu])
                 });
             }
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
@@ -4156,7 +4187,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_5.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_6.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -4193,18 +4224,18 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         ok.classList.add("btn-flat", "green-text", "right");
         ok.addEventListener('click', function () {
             if (input.value.trim() === "") {
-                helpers_6.showToast("Vous devez préciser un lieu.");
+                helpers_7.showToast("Vous devez préciser un lieu.");
             }
             else if (input.value in labels_to_name) {
                 const loc_input = document.getElementById('__location__id');
                 loc_input.value = input.value;
                 // On stocke la clé de la localisation dans reallocation
                 loc_input.dataset.reallocation = labels_to_name[input.value][0];
-                helpers_6.getModalInstance().close();
+                helpers_7.getModalInstance().close();
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
-                helpers_6.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
+                helpers_7.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
             }
         });
         footer.appendChild(ok);
@@ -4218,7 +4249,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         modal.appendChild(footer);
     }
 });
-define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_4, SyncManager_3, helpers_7, main_6, form_schema_4, location_2, test_vocal_reco_2) {
+define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", "main", "form_schema", "location", "test_vocal_reco"], function (require, exports, user_manager_5, SyncManager_3, helpers_8, main_7, form_schema_4, location_3, test_vocal_reco_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -4228,13 +4259,13 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_6.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_7.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
             sur le terrain !
         </p>
         <p class="flow-text red-text">
-            ${!user_manager_4.UserManager.logged ? `
+            ${!user_manager_5.UserManager.logged ? `
                 Vous n'êtes pas connecté dans l'application. Vous ne serez pas en mesure de
                 saisir de nouvelles entrées sans être authentifié. Veuillez vous connecter via
                 les paramètres de l'application.
@@ -4250,7 +4281,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         // Calcul du nombre de formulaires en attente de synchronisation
         try {
             const remaining_count = await SyncManager_3.SyncManager.remainingToSync();
-            if (helpers_7.hasGoodConnection()) {
+            if (helpers_8.hasGoodConnection()) {
                 if (remaining_count > 15) {
                     home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
                     <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`, "Synchronisation");
@@ -4274,19 +4305,19 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             Nous vous conseillons de ne pas enregistrer d'entrée.</span>`, "Erreur");
         }
         // Montre l'utilisateur connecté
-        if (user_manager_4.UserManager.logged) {
-            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="grey-text text-darken-1">${user_manager_4.UserManager.username}</span>
+        if (user_manager_5.UserManager.logged) {
+            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="grey-text text-darken-1">${user_manager_5.UserManager.username}</span>
             <span class="blue-text text-darken-2">est connecté-e.</span>`));
         }
         // Nombre de formulaires enregistrés sur l'appareil
         try {
             let nb_files;
             try {
-                nb_files = (await main_6.FILE_HELPER.ls('forms')).length;
+                nb_files = (await main_7.FILE_HELPER.ls('forms')).length;
             }
             catch (e) {
                 nb_files = 0;
-                await main_6.FILE_HELPER.mkdir('forms');
+                await main_7.FILE_HELPER.mkdir('forms');
             }
             home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
@@ -4305,7 +4336,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             // Navigation vers nichoir
             home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
             <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${current.name.toLowerCase()}</h6>`);
-            location_2.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
+            location_3.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
         });
         // Initialise les champs materialize et le select
         M.updateTextFields();
@@ -4348,7 +4379,7 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             event.preventDefault();
             event.stopPropagation();
             if (allow_to_click_to_terrain) {
-                test_vocal_reco_2.launchQuizz(helpers_7.getBase());
+                test_vocal_reco_2.launchQuizz(helpers_8.getBase());
             }
         };
     }
@@ -4467,31 +4498,31 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
 //     };
 //     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
 // }
-define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_5, form_schema_5, helpers_8, SyncManager_4, PageManager_3, fetch_timeout_2, main_7, home_1, Settings_2) {
+define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_5, helpers_9, SyncManager_4, PageManager_4, fetch_timeout_2, main_8, home_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_2 = __importDefault(fetch_timeout_2);
     function headerText() {
-        return `${user_manager_5.UserManager.logged ?
-            "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + user_manager_5.UserManager.username + "</span>"
+        return `${user_manager_6.UserManager.logged ?
+            "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + user_manager_6.UserManager.username + "</span>"
             : "Vous n'êtes pas connecté-e"}.`;
     }
     function formActualisationModal() {
-        const instance = helpers_8.initModal({ dismissible: false }, helpers_8.getModalPreloader("Actualisation..."));
+        const instance = helpers_9.initModal({ dismissible: false }, helpers_9.getModalPreloader("Actualisation..."));
         instance.open();
         form_schema_5.Forms.forceSchemaDownloadFromServer()
             .then(() => {
-            helpers_8.showToast("Actualisation terminée.");
+            helpers_9.showToast("Actualisation terminée.");
             instance.close();
-            PageManager_3.PageManager.reload();
+            PageManager_4.PageManager.reload();
         })
             .catch(() => {
-            helpers_8.showToast("Impossible d'actualiser les schémas.");
+            helpers_9.showToast("Impossible d'actualiser les schémas.");
             instance.close();
         });
     }
     function initSettingsPage(base) {
-        const connecte = user_manager_5.UserManager.logged;
+        const connecte = user_manager_6.UserManager.logged;
         base.innerHTML = `
     <div class="container row" id="main_settings_container">
         <h4>Utilisateur</h4>
@@ -4508,11 +4539,11 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.remove('blue');
             button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
             button.onclick = function () {
-                helpers_8.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+                helpers_9.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
                     .then(function () {
                     // L'utilisateur veut se déconnecter
-                    user_manager_5.UserManager.unlog();
-                    PageManager_3.PageManager.reload();
+                    user_manager_6.UserManager.unlog();
+                    PageManager_4.PageManager.reload();
                 })
                     .catch(function () {
                     // L'utilisateur ne se déconnecte pas, finalement
@@ -4525,8 +4556,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             button.classList.remove('red');
             button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
             button.onclick = function () {
-                user_manager_5.loginUser().then(function () {
-                    PageManager_3.PageManager.reload();
+                user_manager_6.loginUser().then(function () {
+                    PageManager_4.PageManager.reload();
                 }).catch(() => { });
             };
         }
@@ -4536,7 +4567,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             createaccbtn.classList.add('col', 's12', 'blue-grey', 'btn', 'btn-perso', 'btn-small-margins');
             createaccbtn.innerHTML = "Créer un compte";
             createaccbtn.style.marginTop = "-5px";
-            createaccbtn.onclick = user_manager_5.createNewUser;
+            createaccbtn.onclick = user_manager_6.createNewUser;
             container.appendChild(createaccbtn);
         }
         /////// PARTIE DEUX: FORMULAIRES
@@ -4577,8 +4608,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     <h5>Souscriptions aux schémas</h5>
     <p class="flow-text">
         Les schémas de formulaires sont les types de formulaires vous étant proposés à la saisie dans ${home_1.APP_NAME}.
-        ${user_manager_5.UserManager.logged ? `
-            Consultez et modifiez ici les différents schémas auquel l'application autorise "${user_manager_5.UserManager.username}" à remplir.
+        ${user_manager_6.UserManager.logged ? `
+            Consultez et modifiez ici les différents schémas auquel l'application autorise "${user_manager_6.UserManager.username}" à remplir.
         ` : ''}
     </p>
     `);
@@ -4586,11 +4617,11 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         subs_btn.classList.add('col', 's12', 'purple', 'btn', 'btn-perso', 'btn-small-margins');
         subs_btn.innerHTML = "Gérer souscriptions";
         subs_btn.onclick = function () {
-            if (user_manager_5.UserManager.logged) {
+            if (user_manager_6.UserManager.logged) {
                 subscriptionsModal();
             }
             else {
-                helpers_8.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
+                helpers_9.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
             }
         };
         container.appendChild(subs_btn);
@@ -4608,14 +4639,14 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
         formbtn.innerHTML = "Actualiser schémas formulaire";
         formbtn.onclick = function () {
-            if (user_manager_5.UserManager.logged) {
-                helpers_8.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
+            if (user_manager_6.UserManager.logged) {
+                helpers_9.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.").then(() => {
                     // L'utilisateur a dit oui
                     formActualisationModal();
                 });
             }
             else {
-                helpers_8.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+                helpers_9.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
             }
         };
         container.appendChild(formbtn);
@@ -4631,12 +4662,12 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     </p>
     `);
         // Select pour choisir la fréquence de synchro
-        const select_field = helpers_8.convertHTMLToElement('<div class="input-field col s12"></div>');
+        const select_field = helpers_9.convertHTMLToElement('<div class="input-field col s12"></div>');
         const select_input = document.createElement('select');
-        for (const minutes of main_7.SYNC_FREQUENCY_POSSIBILITIES) {
+        for (const minutes of main_8.SYNC_FREQUENCY_POSSIBILITIES) {
             const opt = document.createElement('option');
             opt.value = String(minutes);
-            opt.innerText = helpers_8.convertMinutesToText(minutes);
+            opt.innerText = helpers_9.convertMinutesToText(minutes);
             opt.selected = minutes === Settings_2.Settings.sync_freq;
             select_input.appendChild(opt);
         }
@@ -4682,23 +4713,23 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         syncbtn.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
         syncbtn.innerHTML = "Tout resynchroniser";
         syncbtn.onclick = function () {
-            if (user_manager_5.UserManager.logged) {
-                helpers_8.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
+            if (user_manager_6.UserManager.logged) {
+                helpers_9.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
                 Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.", "Oui", "Non", "Vider cache de synchronisation").then(checked_val => {
                     // L'utilisateur a dit oui
                     SyncManager_4.SyncManager.graphicalSync(true, checked_val);
                 });
             }
             else {
-                helpers_8.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
+                helpers_9.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
             }
         };
         container.appendChild(syncbtn);
     }
     exports.initSettingsPage = initSettingsPage;
     async function getSubscriptions() {
-        return fetch_timeout_2.default(main_7.API_URL + "schemas/available.json", {
-            headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
+        return fetch_timeout_2.default(main_8.API_URL + "schemas/available.json", {
+            headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
             method: "GET",
             mode: "cors"
         }, 30000)
@@ -4710,8 +4741,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_2.default(main_7.API_URL + "schemas/subscribe.json", {
-            headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
+        return fetch_timeout_2.default(main_8.API_URL + "schemas/subscribe.json", {
+            headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
             body: form_data
@@ -4724,8 +4755,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_2.default(main_7.API_URL + "schemas/unsubscribe.json", {
-            headers: new Headers({ "Authorization": "Bearer " + user_manager_5.UserManager.token }),
+        return fetch_timeout_2.default(main_8.API_URL + "schemas/unsubscribe.json", {
+            headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
             body: form_data
@@ -4733,8 +4764,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
             .then(response => response.json());
     }
     async function subscriptionsModal() {
-        const modal = helpers_8.getModal();
-        const instance = helpers_8.initModal({ inDuration: 200, outDuration: 150 }, helpers_8.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+        const modal = helpers_9.getModal();
+        const instance = helpers_9.initModal({ inDuration: 200, outDuration: 150 }, helpers_9.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
         instance.open();
         const content = document.createElement('div');
         content.classList.add('modal-content');
@@ -4812,7 +4843,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                     to_uncheck.push(ch.dataset.id);
                 }
             }
-            modal.innerHTML = helpers_8.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
+            modal.innerHTML = helpers_9.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
             modal.classList.remove('modal-fixed-footer');
             try {
                 // Appel à unsubscribe
@@ -4829,7 +4860,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 if (to_check.length > 0) {
                     subs = await subscribe(to_check, true);
                 }
-                helpers_8.showToast("Mise à jour des souscriptions réussie");
+                helpers_9.showToast("Mise à jour des souscriptions réussie");
                 instance.close();
                 // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
                 if (subs) {
@@ -4837,10 +4868,10 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 }
             }
             catch (e) {
-                helpers_8.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
+                helpers_9.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
                 instance.close();
             }
-            PageManager_3.PageManager.reload();
+            PageManager_4.PageManager.reload();
         };
         footer.appendChild(valid_btn);
         footer.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
@@ -4850,7 +4881,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         modal.appendChild(footer);
     }
 });
-define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger", "main", "FormSaves"], function (require, exports, helpers_9, form_schema_6, PageManager_4, SyncManager_5, logger_5, main_8, FormSaves_1) {
+define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageManager", "SyncManager", "logger", "main", "FormSaves"], function (require, exports, helpers_10, form_schema_6, PageManager_5, SyncManager_5, logger_6, main_9, FormSaves_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var SaveState;
@@ -4863,29 +4894,29 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
         if (form.type === null || !form_schema_6.Forms.formExists(form.type)) {
-            helpers_9.showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
+            helpers_10.showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
             return;
         }
         const current_form = form_schema_6.Forms.getForm(form.type);
-        PageManager_4.PageManager.pushPage(PageManager_4.AppPageName.form, "Modifier", { form: current_form, name, save: form });
+        PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     async function deleteAll() {
-        const instance = helpers_9.unclosableBottomModal(`
-        ${helpers_9.SMALL_PRELOADER}
+        const instance = helpers_10.unclosableBottomModal(`
+        ${helpers_10.SMALL_PRELOADER}
         <p class="flow-text">Suppression en cours</p>
     `);
-        PageManager_4.PageManager.lock_return_button = true;
+        PageManager_5.PageManager.lock_return_button = true;
         try {
             await FormSaves_1.FormSaves.clear();
-            helpers_9.showToast("Fichiers supprimés avec succès");
-            PageManager_4.PageManager.lock_return_button = false;
+            helpers_10.showToast("Fichiers supprimés avec succès");
+            PageManager_5.PageManager.lock_return_button = false;
             instance.close();
-            PageManager_4.PageManager.reload();
+            PageManager_5.PageManager.reload();
         }
         catch (e) {
-            PageManager_4.PageManager.lock_return_button = false;
+            PageManager_5.PageManager.lock_return_button = false;
             instance.close();
-            logger_5.Logger.error("Unable to delete", e);
+            logger_6.Logger.error("Unable to delete", e);
             throw e;
         }
     }
@@ -4931,14 +4962,14 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         else if (state === SaveState.waiting) {
             sync_str = `<i class="material-icons grey-text">sync_disabled</i>`;
         }
-        const sync_btn = helpers_9.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
+        const sync_btn = helpers_10.convertHTMLToElement(`<a href="#!" class="sync-icon">${sync_str}</a>`);
         container.innerHTML = "";
         container.appendChild(sync_btn);
         // Ajoute le texte de l'élément
         container.insertAdjacentHTML('beforeend', `
         <div class="left">
             [${type}] ${id} <br> 
-            Modifié le ${helpers_9.formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${helpers_10.formatDate(new Date(json[0].lastModified), true)}
         </div>`);
         // Ajout des actions de l'élément
         //// ACTION 1: Modifier
@@ -4953,7 +4984,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             const list = ["Modifier"];
             list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
             list.push("Supprimer");
-            helpers_9.askModalList(list)
+            helpers_10.askModalList(list)
                 .then(index => {
                 if (index === 0) {
                     modify_element();
@@ -4974,29 +5005,29 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         ph.appendChild(selector);
     }
     async function readAllFilesOfDirectory(dirName) {
-        const entries = await main_8.FILE_HELPER.ls(dirName, "e");
+        const entries = await main_9.FILE_HELPER.ls(dirName, "e");
         // Bon, vu que ls n'est pas récursif, EntryObject ne contient qu'un seul chemin
         const data = [];
         for (const d in entries) {
             for (const entry of entries[d]) {
-                const file = await main_8.FILE_HELPER.getFile(entry);
-                const content = JSON.parse(await main_8.FILE_HELPER.readFileAs(file));
+                const file = await main_9.FILE_HELPER.getFile(entry);
+                const content = JSON.parse(await main_9.FILE_HELPER.readFileAs(file));
                 data.push([file, content]);
             }
         }
         return data;
     }
     function modalDeleteForm(id) {
-        helpers_9.askModal("Supprimer cette entrée ?", "Vous ne pourrez pas la restaurer ultérieurement.", "Supprimer", "Annuler")
+        helpers_10.askModal("Supprimer cette entrée ?", "Vous ne pourrez pas la restaurer ultérieurement.", "Supprimer", "Annuler")
             .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
                 .then(function () {
-                helpers_9.showToast("Entrée supprimée.");
-                PageManager_4.PageManager.reload();
+                helpers_10.showToast("Entrée supprimée.");
+                PageManager_5.PageManager.reload();
             })
                 .catch(function (err) {
-                helpers_9.showToast("Impossible de supprimer: " + err);
+                helpers_10.showToast("Impossible de supprimer: " + err);
             });
         })
             .catch(() => {
@@ -5018,11 +5049,11 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
         try {
-            await main_8.FILE_HELPER.mkdir('forms');
+            await main_9.FILE_HELPER.mkdir('forms');
         }
         catch (err) {
-            logger_5.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
-            base.innerHTML = helpers_9.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+            logger_6.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
+            base.innerHTML = helpers_10.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             return;
         }
         form_schema_6.Forms.onReady(function () {
@@ -5039,18 +5070,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                 /// place en bas, pour les boutons
                 base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
                 if (files.length === 0) {
-                    base.innerHTML = helpers_9.displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
+                    base.innerHTML = helpers_10.displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
                 }
                 else {
                     //// Bouton de synchronisation
-                    const syncbtn = helpers_9.convertHTMLToElement(`
+                    const syncbtn = helpers_10.convertHTMLToElement(`
                             <div class="fixed-action-btn" style="margin-right: 50px;">
                                 <a class="btn-floating waves-effect waves-light green">
                                     <i class="material-icons">sync</i>
                                 </a>
                             </div>`);
                     syncbtn.onclick = function () {
-                        helpers_9.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
+                        helpers_10.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
                             .then(() => {
                             return SyncManager_5.SyncManager.inlineSync();
                         })
@@ -5061,18 +5092,18 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                     };
                     base.appendChild(syncbtn);
                     // Bouton de suppression globale
-                    const delete_btn = helpers_9.convertHTMLToElement(`
+                    const delete_btn = helpers_10.convertHTMLToElement(`
                             <div class="fixed-action-btn">
                                 <a class="btn-floating waves-effect waves-light red">
                                     <i class="material-icons">delete_sweep</i>
                                 </a>
                             </div>`);
                     delete_btn.addEventListener('click', () => {
-                        helpers_9.askModal("Tout supprimer ?", "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés.")
+                        helpers_10.askModal("Tout supprimer ?", "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés.")
                             .then(() => {
                             setTimeout(function () {
                                 // Attend que le modal précédent se ferme
-                                helpers_9.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
+                                helpers_10.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
                                     .then(() => {
                                     // @ts-ignore bugfix
                                     document.body.style.overflow = '';
@@ -5092,14 +5123,14 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
                     base.insertAdjacentElement('beforeend', delete_btn);
                 }
             })).catch(function (err) {
-                logger_5.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
-                base.innerHTML = helpers_9.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+                logger_6.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
+                base.innerHTML = helpers_10.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             });
         });
     }
     exports.initSavedForm = initSavedForm;
 });
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_10, form_1, settings_page_1, saved_forms_1, home_2, logger_6) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, home_2, logger_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -5221,8 +5252,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                     this.pages_holder = [];
                 }
                 // On écrit le preloader dans la base et on change l'historique
-                const base = helpers_10.getBase();
-                base.innerHTML = helpers_10.getPreloader("Chargement");
+                const base = helpers_11.getBase();
+                base.innerHTML = helpers_11.getPreloader("Chargement");
                 if (window.history) {
                     window.history.pushState({}, "", "?" + pagename);
                 }
@@ -5252,7 +5283,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             }
             catch (e) {
-                logger_6.Logger.error("Erreur lors du changement de page", e);
+                logger_7.Logger.error("Erreur lors du changement de page", e);
                 return Promise.reject(e);
             }
         }
@@ -5274,7 +5305,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Si il y a plus de 10 pages dans la pile, clean
             this.cleanWaitingPages();
             // Récupère le contenu actuel du bloc mère
-            const actual_base = helpers_10.getBase();
+            const actual_base = helpers_11.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
             // Cela supprime immédiatement le noeud du DOM
             // const save = new DocumentFragment(); // semble être trop récent
@@ -5308,7 +5339,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Récupère la dernière page poussée dans le tableau
             const last_page = this.pages_holder.pop();
             // Supprime le main actuel
-            const main = helpers_10.getBase();
+            const main = helpers_11.getBase();
             cleanElement(main);
             main.parentElement.removeChild(main);
             const new_main = last_page.save.firstElementChild;
@@ -5340,11 +5371,11 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const stepBack = () => {
                 // Ferme le modal possiblement ouvert
                 try {
-                    helpers_10.getModalInstance().close();
+                    helpers_11.getModalInstance().close();
                 }
                 catch (e) { }
                 try {
-                    helpers_10.getBottomModalInstance().close();
+                    helpers_11.getBottomModalInstance().close();
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
@@ -5356,7 +5387,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
             };
             if (this.should_wait || force_asking) {
-                helpers_10.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
+                helpers_11.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
                     .then(stepBack)
                     .catch(() => { });
             }
@@ -5384,7 +5415,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         }
     }
 });
-define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "main"], function (require, exports, PageManager_5, form_schema_7, SyncManager_6, main_9) {
+define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "main"], function (require, exports, PageManager_6, form_schema_7, SyncManager_6, main_10) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -5531,7 +5562,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             // Permet le bouton retour sur navigateur
             const back_btn = document.getElementById('__nav_back_button');
             back_btn.onclick = function () {
-                PageManager_5.PageManager.goBack();
+                PageManager_6.PageManager.goBack();
             };
             back_btn.classList.remove('hide');
         }
@@ -5772,7 +5803,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
      * @param element HTMLImageElement
      */
     async function createImgSrc(path, element) {
-        const file = await main_9.FILE_HELPER.get(path);
+        const file = await main_10.FILE_HELPER.get(path);
         element.src = file.toURL();
     }
     exports.createImgSrc = createImgSrc;
@@ -5877,9 +5908,9 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         instance.open();
         const chk = document.getElementById("__question_checkbox");
         return new Promise(function (resolve, reject) {
-            PageManager_5.PageManager.lock_return_button = true;
+            PageManager_6.PageManager.lock_return_button = true;
             document.getElementById('__question_yes').addEventListener('click', () => {
-                PageManager_5.PageManager.lock_return_button = false;
+                PageManager_6.PageManager.lock_return_button = false;
                 if (chk) {
                     resolve(chk.checked);
                 }
@@ -5888,7 +5919,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
                 }
             });
             document.getElementById('__question_no').addEventListener('click', () => {
-                PageManager_5.PageManager.lock_return_button = false;
+                PageManager_6.PageManager.lock_return_button = false;
                 if (chk) {
                     reject(chk.checked);
                 }
@@ -6071,12 +6102,12 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             }
             // Sauvegarde du formulaire
             const id = generateId(20);
-            promises.push(main_9.FILE_HELPER.write("forms/" + id + ".json", save)
+            promises.push(main_10.FILE_HELPER.write("forms/" + id + ".json", save)
                 .then(() => {
                 return SyncManager_6.SyncManager.add(id, save);
             }));
-            if (main_9.SD_FILE_HELPER) {
-                main_9.SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
+            if (main_10.SD_FILE_HELPER) {
+                main_10.SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
             }
         }
         await Promise.all(promises);
@@ -6094,7 +6125,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     }
     exports.getSdCardFolder = getSdCardFolder;
 });
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout", "file_helper"], function (require, exports, helpers_11, user_manager_6, main_10, fetch_timeout_3, file_helper_4) {
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout", "file_helper"], function (require, exports, helpers_12, user_manager_7, main_11, fetch_timeout_3, file_helper_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -6138,7 +6169,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          */
         saveForms() {
             if (this.available_forms) {
-                main_10.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
+                main_11.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
             }
         }
         /**
@@ -6159,7 +6190,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             if (init_text) {
                 init_text.innerText = "Mise à jour des schémas de formulaire";
             }
-            if (main_10.ENABLE_FORM_DOWNLOAD && helpers_11.hasConnection() && user_manager_6.UserManager.logged) {
+            if (main_11.ENABLE_FORM_DOWNLOAD && helpers_12.hasConnection() && user_manager_7.UserManager.logged) {
                 return this.downloadSchemaFromServer();
             }
             else {
@@ -6176,8 +6207,8 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes
             try {
-                const response = await fetch_timeout_3.default(main_10.API_URL + "schemas/subscribed.json", {
-                    headers: new Headers({ "Authorization": "Bearer " + user_manager_6.UserManager.token }),
+                const response = await fetch_timeout_3.default(main_11.API_URL + "schemas/subscribed.json", {
+                    headers: new Headers({ "Authorization": "Bearer " + user_manager_7.UserManager.token }),
                     method: "GET"
                 }, timeout);
                 const json_2 = await response.json();
@@ -6199,7 +6230,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * Si le téléchargement échoue, la promesse est rejetée.
          */
         forceSchemaDownloadFromServer() {
-            if (helpers_11.hasConnection() && user_manager_6.UserManager.logged) {
+            if (helpers_12.hasConnection() && user_manager_7.UserManager.logged) {
                 return this.downloadSchemaFromServer(30000, true);
             }
             else {
@@ -6213,7 +6244,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         async readSchemaJSONFromFile() {
             // On vérifie si le fichier loaded_forms.json existe
             try {
-                const string = await main_10.FILE_HELPER.read(this.FORM_LOCATION);
+                const string = await main_11.FILE_HELPER.read(this.FORM_LOCATION);
                 this.loadFormSchemaInClass(JSON.parse(string));
             }
             catch (e) {
@@ -6231,7 +6262,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                         this.loadFormSchemaInClass(JSON.parse(string_1));
                     })
                         .catch(() => {
-                        helpers_11.showToast("Impossible de charger les schémas." + " "
+                        helpers_12.showToast("Impossible de charger les schémas." + " "
                             + cordova.file.applicationDirectory + 'www/assets/form.json');
                     });
                 }
@@ -6364,34 +6395,34 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         }
     };
 });
-define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"], function (require, exports, main_11, file_helper_5, SyncManager_7) {
+define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"], function (require, exports, main_12, file_helper_5, SyncManager_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.FormSaves = new class {
         get(id) {
-            return main_11.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
+            return main_12.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
         }
         async getMetadata(id) {
-            const save = await main_11.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
+            const save = await main_12.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
             const files = {};
             for (const field in save.metadata) {
                 files[field] = [
                     save.metadata[field],
-                    await main_11.FILE_HELPER.getFile(await main_11.FILE_HELPER.get("form_data/" + id + "/" + save.metadata[field]))
+                    await main_12.FILE_HELPER.getFile(await main_12.FILE_HELPER.get("form_data/" + id + "/" + save.metadata[field]))
                 ];
             }
             return files;
         }
         async clear() {
             // On veut supprimer tous les fichiers
-            await main_11.FILE_HELPER.empty('forms', true);
-            if (await main_11.FILE_HELPER.exists('form_data')) {
-                await main_11.FILE_HELPER.empty('form_data', true);
+            await main_12.FILE_HELPER.empty('forms', true);
+            if (await main_12.FILE_HELPER.exists('form_data')) {
+                await main_12.FILE_HELPER.empty('form_data', true);
             }
-            if (device.platform === "Android" && main_11.SD_FILE_HELPER) {
+            if (device.platform === "Android" && main_12.SD_FILE_HELPER) {
                 try {
-                    await main_11.SD_FILE_HELPER.empty('forms', true);
-                    await main_11.SD_FILE_HELPER.empty('form_data', true);
+                    await main_12.SD_FILE_HELPER.empty('forms', true);
+                    await main_12.SD_FILE_HELPER.empty('form_data', true);
                 }
                 catch (e) {
                     // Tant pis, ça ne marche pas
@@ -6400,15 +6431,15 @@ define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"]
             await SyncManager_7.SyncManager.clear();
         }
         async rm(id) {
-            await main_11.FILE_HELPER.rm("forms/" + id + ".json");
-            if (await main_11.FILE_HELPER.exists("form_data/" + id)) {
-                await main_11.FILE_HELPER.rm("form_data/" + id, true);
+            await main_12.FILE_HELPER.rm("forms/" + id + ".json");
+            if (await main_12.FILE_HELPER.exists("form_data/" + id)) {
+                await main_12.FILE_HELPER.rm("form_data/" + id, true);
             }
-            if (device.platform === 'Android' && main_11.SD_FILE_HELPER) {
+            if (device.platform === 'Android' && main_12.SD_FILE_HELPER) {
                 // Tente de supprimer depuis la carte SD
                 try {
-                    await main_11.SD_FILE_HELPER.rm("form_data/" + id, true);
-                    await main_11.SD_FILE_HELPER.rm("forms/" + id + '.json');
+                    await main_12.SD_FILE_HELPER.rm("form_data/" + id, true);
+                    await main_12.SD_FILE_HELPER.rm("forms/" + id + '.json');
                 }
                 catch (e) { }
             }

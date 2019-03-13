@@ -421,3 +421,7 @@ label, .form-audio-label {
     max-height: 90%;
     height: auto;
 }
+
+#__main_form__id {
+    margin-bottom: 10px;
+}

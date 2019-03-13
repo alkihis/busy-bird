@@ -62,6 +62,7 @@ export interface FormEntity {
     tip_on_invalid?: string;
     vocal_access_words?: string[];
     allow_voice_control?: boolean;
+    indeterminate?: boolean; /* for type.checkbox */
     remove_whitespaces?: boolean; /* for type.string / type.bigstring; during vocal reco */
     external_constraints?: string; /* for type.select only; Définit des contraintes externes de façon simpliste */
 }

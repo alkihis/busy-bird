@@ -124,7 +124,7 @@
         ]
     }, {
         "name": "bague_plastique_gauche",
-        "label": "Plastique",
+        "label": "Plastique gauche",
         "type": "select",
         "select_options": {
             "multiple": true,
@@ -163,7 +163,7 @@
         "allow_voice_control": true
     }, {
         "name": "bague_plastique_droite",
-        "label": "Plastique",
+        "label": "Plastique droite",
         "type": "select",
         "select_options": {
             "multiple": true,
@@ -214,7 +214,6 @@
         },
         "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
         "placeholder": "Composé de 10 chiffres et de lettres",
-        "required": true,
         "remove_whitespaces": true,
         "allow_voice_control": true
     }, {
@@ -505,6 +504,9 @@
         "select_options": {
             "multiple": false,
             "options": [{
+                "label": "Non défini",
+                "value": "none"
+            }, {
                 "label": "0",
                 "value": "0"
             }, {
@@ -545,6 +547,10 @@
         "label": "Commentaires",
         "type": "textarea",
         "allow_voice_control": true
+    }, {
+        "name": "comments_plus",
+        "label": "Commentaires audio",
+        "type": "audio"
     }],
     "locations": {
         "Touvat": {
