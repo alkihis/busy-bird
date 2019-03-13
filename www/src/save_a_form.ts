@@ -9,8 +9,10 @@ import { UNKNOWN_NAME } from "./location";
 
 function scrollToAnElementOnClick(element_base: HTMLElement, element_related: HTMLElement, modal: M.Modal, center = false) : void {
     element_base.onclick = () => {
+        const element_middle = element_related.clientHeight;
+
         $([document.documentElement, document.body]).animate({
-            scrollTop: ($(element_related).offset().top) - (center ? window.innerHeight / 2 : 20)
+            scrollTop: ($(element_related).offset().top) - (center ? (window.innerHeight / 2) - (element_middle / 2) : 20)
         }, 500, function() {
             $(element_related).fadeOut(300, function() {
                 $(this).fadeIn(200);

@@ -2593,7 +2593,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-    exports.APP_VERSION = 0.6;
+    exports.APP_VERSION = 0.7;
     exports.MP3_BITRATE = 256; /** En kb/s */
     exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
     exports.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK = true; /** Active le scroll lorsqu'on clique sur un élément lors du modal de vérification */
@@ -2816,8 +2816,9 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
     Object.defineProperty(exports, "__esModule", { value: true });
     function scrollToAnElementOnClick(element_base, element_related, modal, center = false) {
         element_base.onclick = () => {
+            const element_middle = element_related.clientHeight;
             $([document.documentElement, document.body]).animate({
-                scrollTop: ($(element_related).offset().top) - (center ? window.innerHeight / 2 : 20)
+                scrollTop: ($(element_related).offset().top) - (center ? (window.innerHeight / 2) - (element_middle / 2) : 20)
             }, 500, function () {
                 $(element_related).fadeOut(300, function () {
                     $(this).fadeIn(200);
