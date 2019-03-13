@@ -912,6 +912,40 @@ define("file_helper", ["require", "exports"], function (require, exports) {
         FileHelperReadMode[FileHelperReadMode["internalURL"] = 5] = "internalURL";
     })(FileHelperReadMode = exports.FileHelperReadMode || (exports.FileHelperReadMode = {}));
     /**
+     * Normalize a path. Credit to [markmarijnissen](https://github.com/markmarijnissen/cordova-promise-fs).
+     * @param str
+     */
+    function normalize(str) {
+        str = str || '';
+        if (str[0] === '/')
+            str = str.substr(1);
+        let tokens = str.split('/'), last = tokens[0];
+        // check tokens for instances of .. and .
+        for (let i = 1; i < tokens.length; i++) {
+            last = tokens[i];
+            if (tokens[i] === '..') {
+                // remove the .. and the previous token
+                tokens.splice(i - 1, 2);
+                // rewind 'cursor' 2 tokens
+                i = i - 2;
+            }
+            else if (tokens[i] === '.') {
+                // remove the .. and the previous token
+                tokens.splice(i, 1);
+                // rewind 'cursor' 1 token
+                i--;
+            }
+        }
+        str = tokens.join('/');
+        if (str === './') {
+            str = '';
+        }
+        else if (last && last.indexOf('.') < 0 && str[str.length - 1] != '/') {
+            str += '/';
+        }
+        return str;
+    }
+    /**
      * Glob to regex function.
      * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
      * NOT used as package to limit dependencies
@@ -1311,6 +1345,8 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          * @param path Complete path
          */
         absoluteGet(path) {
+            // Rajoute un / final (ne gène en rien)
+            path = path.replace(/\/$/, '') + "/";
             return new Promise((resolve, reject) => {
                 window.resolveLocalFileSystemURL(path, resolve, err => {
                     if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
@@ -1327,7 +1363,10 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          * @param path Path to file or directory
          */
         get(path = "") {
-            return this.absoluteGet(this.pwd() + "/" + path);
+            if (path === "/") {
+                path = "";
+            }
+            return this.absoluteGet(this.pwd() + path);
         }
         /**
          * Create / get a file and return FileEntry of it. Autocreate need parent directories.
@@ -1346,6 +1385,13 @@ define("file_helper", ["require", "exports"], function (require, exports) {
          * @param option_string Options. Can be e, l, d, r, p or f. See docs. Warning: recursive can be very slow.
          */
         async ls(path = "", option_string = "") {
+            if (typeof path !== 'string') {
+                const new_instance = new FileHelper(path);
+                await new_instance.waitInit();
+                return new_instance.ls(undefined, option_string);
+            }
+            // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
+            path = path.replace(/\/$/, '').replace(/^\//, '');
             const entry = await this.get(path);
             const [e, l, f, d, r, p] = [
                 option_string.includes("e"), option_string.includes("l"), option_string.includes("f"),
@@ -1355,7 +1401,7 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 if (e) {
                     const dir = this.getDirUrlOfPath(path);
                     return {
-                        [dir ? dir + "/" : ""]: [entry]
+                        [dir ? dir : ""]: [entry]
                     };
                 }
                 else if (l) {
@@ -1363,12 +1409,10 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                 }
                 return [path];
             }
-            // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
-            path = path.replace(/\/$/, '').replace(/^\//, '');
             // Si jamais on veut chercher récursivement les entrées, avec un path non vide
             // et qu'on veut en plus supprimer les préfixes
             if (p && e && r && path) {
-                const new_root = new FileHelper(this.pwd() + "/" + path);
+                const new_root = new FileHelper(this.pwd() + path);
                 await new_root.waitInit();
                 return new_root.ls(undefined, "per");
             }
@@ -1532,12 +1576,13 @@ define("file_helper", ["require", "exports"], function (require, exports) {
                     path = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
                 }
             }
+            path = normalize(relative ? this.pwd() + path : path).replace(/\/$/, '');
             // Teste si le chemin est valide (échouera sinon)
-            const new_root = await (relative ? this.get(path) : this.absoluteGet(path));
+            const new_root = await this.absoluteGet(path);
             if (new_root.isFile) {
                 throw new Error("New root can't be a file !");
             }
-            this.root = new_root.toInternalURL().replace(/\/$/, '');
+            this.root = new_root.toInternalURL();
         }
         /**
          * Find files into a directory using a glob bash pattern.
@@ -1706,12 +1751,6 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
     fetch_timeout_1 = __importDefault(fetch_timeout_1);
-    // en millisecondes
-    const MAX_TIMEOUT_FOR_FORM = 20000; /** Pour le fichier .json de l'entrée */
-    const MAX_TIMEOUT_FOR_METADATA = 180000; /** Pour chaque fichier "métadonnée" (img, audio, ...) */
-    // Nombre de formulaires à envoyer en même temps
-    // Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
-    const PROMISE_BY_SYNC_STEP = 10;
     const SyncList = new class {
         init() {
             localforage_1.default.config({
@@ -1915,7 +1954,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                     body: d,
                     signal,
                     headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
-                }, MAX_TIMEOUT_FOR_FORM);
+                }, main_4.MAX_TIMEOUT_FOR_FORM);
                 json = await response.json();
             }
             catch (error) {
@@ -1971,7 +2010,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                             body: md,
                             signal,
                             headers: new Headers({ "Authorization": "Bearer " + user_manager_1.UserManager.token })
-                        }, MAX_TIMEOUT_FOR_METADATA);
+                        }, main_4.MAX_TIMEOUT_FOR_METADATA);
                         const json = await resp.json();
                         if (json.error_code) {
                             throw { code: "metadata_treatement", error_code: json.error_code, "message": json.message };
@@ -2239,9 +2278,9 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
          * @param receiver Récepteur aux événements lancés par la synchro
          */
         async subSyncDivider(id_getter, entries, receiver) {
-            for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
-                // Itère par groupe de formulaire. Group de taille PROMISE_BY_SYNC_STEP
-                const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
+            for (let position = 0; position < entries.length; position += main_4.MAX_CONCURRENT_SYNC_ENTRIES) {
+                // Itère par groupe de formulaire. Groupe de taille MAX_CONCURRENT_SYNC_ENTRIES
+                const subset = entries.slice(position, main_4.MAX_CONCURRENT_SYNC_ENTRIES + position);
                 const promises = [];
                 receiver.dispatchEvent(eventCreator("groupsend", subset));
                 let i = 1;
@@ -2589,15 +2628,23 @@ define("test_vocal_reco", ["require", "exports", "vocal_recognition"], function 
 define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio_listener", "form_schema", "vocal_recognition", "user_manager", "SyncManager", "test_vocal_reco", "file_helper"], function (require, exports, PageManager_1, helpers_4, logger_3, audio_listener_1, form_schema_2, vocal_recognition_2, user_manager_2, SyncManager_1, test_vocal_reco_1, file_helper_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    // Constantes de l'application
+    exports.APP_VERSION = 0.7;
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
     exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-    exports.APP_VERSION = 0.7;
     exports.MP3_BITRATE = 256; /** En kb/s */
     exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
     exports.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK = true; /** Active le scroll lorsqu'on clique sur un élément lors du modal de vérification */
     exports.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK = true;
+    exports.MAX_TIMEOUT_FOR_FORM = 20000; /** Timeout pour l'envoi du fichier .json de l'entrée, en millisecondes */
+    exports.MAX_TIMEOUT_FOR_METADATA = 180000; /** Timeout pour l'envoi de chaque fichier "métadonnée" (img, audio, ...), en millisecondes */
+    exports.MAX_CONCURRENT_SYNC_ENTRIES = 10; /** Nombre d'entrées à envoyer en même temps pendant la synchronisation.
+        Attention, 1 entrée correspond au JSON + ses possibles fichiers attachés.
+    */
+    exports.APP_ID = "com.lbbe.busybird";
+    // Variables globales exportées
     exports.SDCARD_PATH = null;
     exports.SD_FILE_HELPER = null;
     exports.FILE_HELPER = new file_helper_2.FileHelper;
@@ -2655,7 +2702,11 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
                 for (const f of folders) {
                     if (f.canWrite) {
                         exports.SDCARD_PATH = f.filePath;
-                        exports.SD_FILE_HELPER = new file_helper_2.FileHelper(f.filePath);
+                        // Si on est pas dans Android/com.lbbe.busybird/data/
+                        if (!exports.SDCARD_PATH.includes(exports.APP_ID)) {
+                            exports.SDCARD_PATH += "/Busy Bird";
+                        }
+                        exports.SD_FILE_HELPER = new file_helper_2.FileHelper(exports.SDCARD_PATH);
                         try {
                             await exports.SD_FILE_HELPER.waitInit();
                         }
@@ -2891,10 +2942,10 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
             else if (element.tagName === "INPUT" && element.type === "checkbox") {
                 if (element.indeterminate) {
                     if (element.required) {
-                        elements_failed.push([element.nextElementSibling.innerText, "Ce champ est requis", element.parentElement]);
+                        elements_failed.push([element.nextElementSibling.innerText, "Ce champ est requis.", element.parentElement]);
                     }
                     else {
-                        elements_warn.push([element.nextElementSibling.innerText, "Vous n'avez pas interagi avec ce champ", element.parentElement]);
+                        elements_warn.push([element.nextElementSibling.innerText, "Vous n'avez pas interagi avec ce champ.", element.parentElement]);
                     }
                 }
             }

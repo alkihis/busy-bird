@@ -1,20 +1,12 @@
 import { FormSave } from "./form_schema";
 import { Logger } from "./logger";
 import localforage from 'localforage';
-import { API_URL, FILE_HELPER } from "./main";
+import { API_URL, FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "./main";
 import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
 import { UserManager } from "./user_manager";
 import fetch from './fetch_timeout';
 import { BackgroundSync, Settings } from "./Settings";
 import { FileHelperReadMode, EntryObject } from "./file_helper";
-
-// en millisecondes
-const MAX_TIMEOUT_FOR_FORM = 20000; /** Pour le fichier .json de l'entrée */
-const MAX_TIMEOUT_FOR_METADATA = 180000; /** Pour chaque fichier "métadonnée" (img, audio, ...) */
-
-// Nombre de formulaires à envoyer en même temps
-// Attention, 1 formulaire correspond au JSON + ses possibles fichiers attachés.
-const PROMISE_BY_SYNC_STEP = 10;
 
 const SyncList = new class {
     public init() {
@@ -72,7 +64,6 @@ export class SyncEvent extends EventTarget {
     }
 }
 ////// Fin polyfill
-
 
 export const SyncManager = new class {
     protected in_sync = false;
@@ -634,9 +625,9 @@ export const SyncManager = new class {
      * @param receiver Récepteur aux événements lancés par la synchro
      */
     protected async subSyncDivider(id_getter: Function, entries: string[], receiver: SyncEvent) : Promise<void> {    
-        for (let position = 0; position < entries.length; position += PROMISE_BY_SYNC_STEP) {
-            // Itère par groupe de formulaire. Group de taille PROMISE_BY_SYNC_STEP
-            const subset = entries.slice(position, PROMISE_BY_SYNC_STEP + position);
+        for (let position = 0; position < entries.length; position += MAX_CONCURRENT_SYNC_ENTRIES) {
+            // Itère par groupe de formulaire. Groupe de taille MAX_CONCURRENT_SYNC_ENTRIES
+            const subset = entries.slice(position, MAX_CONCURRENT_SYNC_ENTRIES + position);
             const promises: Promise<any>[] = [];
 
             receiver.dispatchEvent(eventCreator("groupsend", subset));

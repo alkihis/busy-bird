@@ -9,16 +9,25 @@ import { SyncManager, SyncEvent } from "./SyncManager";
 import { launchQuizz } from './test_vocal_reco';
 import { FileHelper, FileHelperReadMode } from './file_helper';
 
+// Constantes de l'application
+export const APP_VERSION = 0.7;
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
 export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
 export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
-export const APP_VERSION = 0.7;
 export const MP3_BITRATE = 256; /** En kb/s */
 export const SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
 export const ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK = true; /** Active le scroll lorsqu'on clique sur un élément lors du modal de vérification */
 export const SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK = true;
-export let SDCARD_PATH = null;
+export const MAX_TIMEOUT_FOR_FORM = 20000; /** Timeout pour l'envoi du fichier .json de l'entrée, en millisecondes */
+export const MAX_TIMEOUT_FOR_METADATA = 180000; /** Timeout pour l'envoi de chaque fichier "métadonnée" (img, audio, ...), en millisecondes */
+export const MAX_CONCURRENT_SYNC_ENTRIES = 10; /** Nombre d'entrées à envoyer en même temps pendant la synchronisation.
+    Attention, 1 entrée correspond au JSON + ses possibles fichiers attachés. 
+*/
+export const APP_ID = "com.lbbe.busybird";
+
+// Variables globales exportées
+export let SDCARD_PATH: string = null;
 export let SD_FILE_HELPER: FileHelper = null;
 export let FILE_HELPER: FileHelper = new FileHelper;
 
@@ -83,7 +92,13 @@ async function initApp() {
             for (const f of folders) {
                 if (f.canWrite) {
                     SDCARD_PATH = f.filePath;
-                    SD_FILE_HELPER = new FileHelper(f.filePath);
+
+                    // Si on est pas dans Android/com.lbbe.busybird/data/
+                    if (!SDCARD_PATH.includes(APP_ID)) {
+                        SDCARD_PATH += "/Busy Bird";
+                    }
+
+                    SD_FILE_HELPER = new FileHelper(SDCARD_PATH);
     
                     try {
                         await SD_FILE_HELPER.waitInit();
@@ -154,7 +169,7 @@ async function initApp() {
 }
 
 function initDebug() {
-    
+
     window["DEBUG"] = {
         launchQuizz,
         PageManager,

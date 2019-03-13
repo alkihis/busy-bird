@@ -22,6 +22,43 @@ export interface EntryTree {
 }
 
 /**
+ * Normalize a path. Credit to [markmarijnissen](https://github.com/markmarijnissen/cordova-promise-fs).
+ * @param str 
+ */
+function normalize(str: string) : string {
+    str = str || '';
+    if (str[0] === '/') str = str.substr(1);
+
+    let tokens = str.split('/'), last = tokens[0];
+
+    // check tokens for instances of .. and .
+    for (let i = 1; i < tokens.length; i++) {
+        last = tokens[i];
+        if (tokens[i] === '..') {
+            // remove the .. and the previous token
+            tokens.splice(i - 1, 2);
+            // rewind 'cursor' 2 tokens
+            i = i - 2;
+        } 
+        else if (tokens[i] === '.') {
+            // remove the .. and the previous token
+            tokens.splice(i, 1);
+            // rewind 'cursor' 1 token
+            i--;
+        }
+    }
+
+    str = tokens.join('/');
+    if (str === './') {
+        str = '';
+    } 
+    else if (last && last.indexOf('.') < 0 && str[str.length - 1] != '/') {
+        str += '/';
+    }
+    return str;
+}
+
+/**
  * Glob to regex function.
  * Credit to [Nick Fitzgerald](https://github.com/fitzgen/glob-to-regexp).
  * NOT used as package to limit dependencies
@@ -477,6 +514,9 @@ export class FileHelper {
      * @param path Complete path
      */
     public absoluteGet(path: string) : Promise<Entry> {
+        // Rajoute un / final (ne gène en rien)
+        path = path.replace(/\/$/, '') + "/";
+        
         return new Promise((resolve, reject) => {
             window.resolveLocalFileSystemURL(path, resolve, err => {
                 if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
@@ -494,7 +534,11 @@ export class FileHelper {
      * @param path Path to file or directory
      */
     public get(path: string = "") : Promise<Entry> {
-        return this.absoluteGet(this.pwd() + "/" + path);
+        if (path === "/") {
+            path = "";
+        }
+
+        return this.absoluteGet(this.pwd() + path);
     }
 
     /**
@@ -516,7 +560,17 @@ export class FileHelper {
      * @param path Path of thing to explore
      * @param option_string Options. Can be e, l, d, r, p or f. See docs. Warning: recursive can be very slow.
      */
-    public async ls(path: string = "", option_string: string = "") : Promise<string[] | FileStats[] | EntryObject> {
+    public async ls(path: string | DirectoryEntry = "", option_string: string = "") : Promise<string[] | FileStats[] | EntryObject> {
+        if (typeof path !== 'string') {
+            const new_instance = new FileHelper(path);
+            await new_instance.waitInit();
+
+            return new_instance.ls(undefined, option_string);
+        }
+
+        // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
+        path = path.replace(/\/$/, '').replace(/^\//, '');
+
         const entry = await this.get(path);
 
         const [e, l, f, d, r, p] = [
@@ -528,7 +582,7 @@ export class FileHelper {
             if (e) {
                 const dir = this.getDirUrlOfPath(path);
                 return { 
-                    [ dir ? dir + "/" : "" ]: [entry]
+                    [ dir ? dir : "" ]: [entry]
                 };
             }
             else if (l) {
@@ -537,13 +591,10 @@ export class FileHelper {
             return [path];
         }
 
-        // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
-        path = path.replace(/\/$/, '').replace(/^\//, '');
-
         // Si jamais on veut chercher récursivement les entrées, avec un path non vide
         // et qu'on veut en plus supprimer les préfixes
         if (p && e && r && path) {
-            const new_root = new FileHelper(this.pwd() + "/" + path);
+            const new_root = new FileHelper(this.pwd() + path);
             await new_root.waitInit();
 
             return new_root.ls(undefined, "per");
@@ -621,7 +672,7 @@ export class FileHelper {
      * @param path Base path for tree
      * @param mime_type Get MIME type of files instead of null
      */
-    public async tree(path: string = "", mime_type = false) : Promise<EntryTree> {
+    public async tree(path: string | DirectoryEntry = "", mime_type = false) : Promise<EntryTree> {
         const flat_tree = await this.ls(path, "pre") as EntryObject;
 
         // Désaplatissement de l'arbre
@@ -734,14 +785,16 @@ export class FileHelper {
             }
         }
 
+        path = normalize(relative ? this.pwd() + path : path).replace(/\/$/, '');
+
         // Teste si le chemin est valide (échouera sinon)
-        const new_root = await (relative ? this.get(path) : this.absoluteGet(path));
+        const new_root = await this.absoluteGet(path);
 
         if (new_root.isFile) {
             throw new Error("New root can't be a file !");
         }
         
-        this.root = new_root.toInternalURL().replace(/\/$/, '');
+        this.root = new_root.toInternalURL();
     }
 
     /**

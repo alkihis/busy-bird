@@ -103,10 +103,10 @@ export async function beginFormSave(type: string, current_form: Form, force_name
         else if (element.tagName === "INPUT" && element.type === "checkbox") {
             if ((element as HTMLInputElement).indeterminate) {
                 if (element.required) {
-                    elements_failed.push([(element.nextElementSibling as HTMLElement).innerText, "Ce champ est requis", element.parentElement]);
+                    elements_failed.push([(element.nextElementSibling as HTMLElement).innerText, "Ce champ est requis.", element.parentElement]);
                 }
                 else {
-                    elements_warn.push([(element.nextElementSibling as HTMLElement).innerText, "Vous n'avez pas interagi avec ce champ", element.parentElement]);
+                    elements_warn.push([(element.nextElementSibling as HTMLElement).innerText, "Vous n'avez pas interagi avec ce champ.", element.parentElement]);
                 }
             }
         }

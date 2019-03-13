@@ -34,32 +34,10 @@ import { FileHelper } from "cordova-file-helper";
 
 ### With HTML script
 
-If you don't use Node.js and you can't import libs with `require()` or `import`, remove the second line of the .js file
-```js
-Object.defineProperty(exports, "__esModule", { value: true });
-```
+If you don't use Node.js and you can't import libs with `require()` or `import`, include [`FileHelper.js`](https://gitlab.com/Alkihis/cordova-file-helper/blob/master/dist/FileHelper.js).
 
-replace export for FileHelperReadMode
-```js
-var FileHelperReadMode;
-(function (FileHelperReadMode) {
-    FileHelperReadMode[FileHelperReadMode["text"] = 0] = "text";
-    FileHelperReadMode[FileHelperReadMode["array"] = 1] = "array";
-    FileHelperReadMode[FileHelperReadMode["url"] = 2] = "url";
-    FileHelperReadMode[FileHelperReadMode["binarystr"] = 3] = "binarystr";
-    FileHelperReadMode[FileHelperReadMode["json"] = 4] = "json";
-    FileHelperReadMode[FileHelperReadMode["internalURL"] = 5] = "internalURL";
-})(FileHelperReadMode);
-```
-
-and the last one
-```js
-exports.FileHelper = FileHelper;
-```
-
-then import the JS file via HTML
 ```html
-<script src="file_helper.js"></script>
+<script src="FileHelper.js"></script>
 ```
 Helper will be available as `FileHelper` object.
 
@@ -83,6 +61,8 @@ Function that accepts `string | Entry` as `path` are:
 - `write()`
 - `read()` and his derivates `readJSON()`,  `toInternalURL()`, `readDataURL()`
 - `mv()` and `cp()`, but only for the `dest` parameter
+- `ls()`
+- `tree()`
 
 ### Instanciation
 File Helper use `cordova.file.externalDataDirectory || cordova.file.dataDirectory` as default values for current working directory.
