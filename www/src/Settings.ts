@@ -1,4 +1,4 @@
-export const Settings = new class {
+class AppSettings {
     protected _sync_freq = 30; /** En minutes */
     protected _sync_bg = true; /** Activer la sync en arrière plan */
 
@@ -30,9 +30,11 @@ export const Settings = new class {
     public get sync_freq() : number {
         return this._sync_freq;
     }
-};
+}
 
-export const BackgroundSync = new class {
+export const Settings = new AppSettings;
+
+class BgSyncObj {
     //// credit to https://github.com/transistorsoft/cordova-plugin-background-fetch
     protected background_sync = null;
     protected fetchCb = null;
@@ -128,4 +130,6 @@ export const BackgroundSync = new class {
             }
         } catch (e) { /** Ne fait rien si échoue à stopper (ce n'était pas lancé) */ }
     }
-};
+}
+
+export const BackgroundSync = new BgSyncObj;

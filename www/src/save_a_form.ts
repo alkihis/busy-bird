@@ -411,37 +411,38 @@ export function saveForm(type: string, name: string, location: string, form_save
  * @param older_save
  */
 async function writeDataThenForm(name: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
-    function saveBlobToFile(filename: string, input_name: string, blob: Blob) : Promise<void> {
+    async function deleteOlderFile(input_name: string) : Promise<void> {
+        if (SD_FILE_HELPER) {
+            SD_FILE_HELPER.rm((older_save.fields[input_name] as string));
+        }
+        return FILE_HELPER.rm((older_save.fields[input_name] as string));
+    }
+
+    async function saveBlobToFile(filename: string, input_name: string, blob: Blob) : Promise<void> {
         const full_path = 'form_data/' + name + '/' + filename;
 
-        return FILE_HELPER.write(full_path, blob)
-            .then(() => {
-                if (device.platform === 'Android' && SD_FILE_HELPER) {
-                    return SD_FILE_HELPER.write(full_path, blob).catch(e => console.log(e));
+        try {
+            await FILE_HELPER.write(full_path, blob);
+            if (device.platform === 'Android' && SD_FILE_HELPER) {
+                return SD_FILE_HELPER.write(full_path, blob).then(() => {}).catch(e => console.log(e));
+            }
+            // Enregistre le nom du fichier sauvegardé dans le formulaire,
+            // dans la valeur du champ field
+            form_values.fields[input_name] = full_path;
+            form_values.metadata[input_name] = filename;
+            if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                // Si une image était déjà présente
+                if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                    // Si le fichier enregistré est différent du fichier actuel
+                    // Suppression de l'ancien fichier
+                    deleteOlderFile(input_name);
                 }
-            })
-            .then(() => {
-                // Enregistre le nom du fichier sauvegardé dans le formulaire,
-                // dans la valeur du champ field
-                form_values.fields[input_name] = full_path;
-                form_values.metadata[input_name] = filename;
-
-                if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                    // Si une image était déjà présente
-                    if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                        // Si le fichier enregistré est différent du fichier actuel
-                        // Suppression de l'ancienne image
-                        if (SD_FILE_HELPER) {
-                            SD_FILE_HELPER.rm(older_save.fields[input_name] as string);
-                        }
-                        FILE_HELPER.rm(older_save.fields[input_name] as string);
-                    }
-                }
-            })
-            .catch((error: FileError) => {
-                showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
-                return Promise.reject(error);
-            });
+            }
+        }
+        catch (error) {
+            showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+            return Promise.reject(error);
+        }
     }
 
     // Récupère les images du formulaire
@@ -462,15 +463,23 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
             );
         }
         else {
+            // Si il n'y a aucun fichier
             if (older_save && input_name in older_save.fields) {
+                // Si il a une sauvegarde précédente
                 form_values.fields[input_name] = older_save.fields[input_name];
+                form_values.metadata[input_name] = null;
 
                 if (typeof older_save.fields[input_name] === 'string') {
-                    const parts = (older_save.fields[input_name] as string).split('/');
-                    form_values.metadata[input_name] = parts[parts.length - 1];
-                }
-                else {
-                    form_values.metadata[input_name] = null;
+                    // Si le fichier doit être supprimé
+                    if ((img as HTMLInputElement).dataset.toremove === "true") {
+                        form_values.fields[input_name] = null;
+                        // Suppression du fichier en question
+                        deleteOlderFile(input_name);
+                    } 
+                    else {
+                        const parts = (older_save.fields[input_name] as string).split('/');
+                        form_values.metadata[input_name] = parts[parts.length - 1];
+                    }
                 }
             }
             else {
@@ -499,13 +508,18 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
         else {
             if (older_save && input_name in older_save.fields) {
                 form_values.fields[input_name] = older_save.fields[input_name];
+                form_values.metadata[input_name] = null;
 
                 if (typeof older_save.fields[input_name] === 'string') {
-                    const parts = (older_save.fields[input_name] as string).split('/');
-                    form_values.metadata[input_name] = parts[parts.length - 1];
-                }
-                else {
-                    form_values.metadata[input_name] = null;
+                    if ((audio as HTMLInputElement).dataset.toremove === "true") {
+                        form_values.fields[input_name] = null;
+                        // Suppression du fichier en question
+                        deleteOlderFile(input_name);
+                    } 
+                    else {
+                        const parts = (older_save.fields[input_name] as string).split('/');
+                        form_values.metadata[input_name] = parts[parts.length - 1];
+                    }
                 }
             }
             else {

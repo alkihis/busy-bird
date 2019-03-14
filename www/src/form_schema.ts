@@ -97,7 +97,7 @@ export type FormSchema = {[formName: string] : Form};
 type FormCallback = (available?: FormSchema, current?: Form) => any;
 
 // Classe contenant le formulaire JSON chargé et parsé
-export const Forms = new class {
+class FormSchemas {
     protected available_forms: FormSchema;
     protected _current_key: string = null;
     protected _default_form_key: string = null;
@@ -140,7 +140,7 @@ export const Forms = new class {
      * Fonction fantôme de init(). Permet de glisser cette fonction dans on_ready.
      * Voir init().
      */
-    protected _init() : Promise<any> {
+    protected async _init() : Promise<any> {
         const init_text = document.getElementById('__init_text_center');
 
         if (init_text) {
@@ -381,7 +381,9 @@ export const Forms = new class {
 
         this.saveForms();
     }
-};
+}
+
+export const Forms = new FormSchemas;
 
 /**
  * Interfaces représentant la sauvegarde d'un formulaire

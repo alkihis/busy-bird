@@ -163,7 +163,6 @@ async function readAllFilesOfDirectory(dirName: string) : Promise<[File, FormSav
             data.push([file, content]);
         }
     }
-    
 
     return data;
 }

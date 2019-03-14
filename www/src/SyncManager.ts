@@ -8,7 +8,7 @@ import fetch from './fetch_timeout';
 import { BackgroundSync, Settings } from "./Settings";
 import { FileHelperReadMode, EntryObject } from "./file_helper";
 
-const SyncList = new class {
+class _SyncList {
     public init() {
         localforage.config({
             driver: [localforage.INDEXEDDB,
@@ -53,6 +53,8 @@ const SyncList = new class {
     }
 }
 
+const SyncList = new _SyncList;
+
 ////// Polyfill si l'application est portée sur iOS: Safari ne supporte pas le constructeur EventTarget()
 export class SyncEvent extends EventTarget {
     constructor() {
@@ -65,7 +67,7 @@ export class SyncEvent extends EventTarget {
 }
 ////// Fin polyfill
 
-export const SyncManager = new class {
+class _SyncManager {
     protected in_sync = false;
     protected list = SyncList;
     protected last_bgsync = Date.now();
@@ -813,7 +815,9 @@ export const SyncManager = new class {
     public has(id: string) : Promise<boolean> {
         return this.list.has(id);
     }
-};
+}
+
+export const SyncManager = new _SyncManager;
 
 interface SList {
     type: string;

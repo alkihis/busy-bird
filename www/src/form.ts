@@ -1,6 +1,6 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
 import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter } from "./helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal } from "./helpers";
 import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "./main";
 import { PageManager } from "./PageManager";
 import { Logger } from "./logger";
@@ -683,13 +683,17 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             // de choisir une image enregistrée. 
             // Le problème peut être contourné en créant un input personnalisé
             // avec choix en utilisant navigator.camera et le plugin cordova camera.
+            let delete_file_btn: HTMLElement = null;
+            const input = document.createElement('input');
+            const real_wrapper = document.createElement('div');
+            real_wrapper.className = "row col s12 no-margin-bottom";
 
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                 // L'input file est déjà présent dans le formulaire
                 // on affiche une miniature
 
                 const img_miniature = document.createElement('div');
-                img_miniature.classList.add('image-form-wrapper');
+                img_miniature.classList.add('image-form-wrapper', 'relative-container');
                 const img_balise = document.createElement('img');
                 img_balise.classList.add('img-form-element');
 
@@ -697,17 +701,35 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
                 img_miniature.appendChild(img_balise);
                 placeh.appendChild(img_miniature);
+
+                // On crée un bouton "supprimer ce fichier"
+                delete_file_btn = document.createElement('div');
+                delete_file_btn.className = "remove-img-btn";
+                delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
+
+                delete_file_btn.onclick = () => {
+                    askModal("Supprimer ce fichier ?", "")
+                        .then(() => {
+                            // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                            input.dataset.toremove = "true";
+                            delete_file_btn.remove();
+
+                            $("[data-original='"+ filled_form.fields[ele.name]+ "']").remove();
+                        })
+                        .catch(() => {});
+                };
+
+                img_miniature.appendChild(delete_file_btn);
             }
 
             // Input de type file
             const wrapper = document.createElement('div');
-            wrapper.classList.add('file-field', 'input-field', 'row', 'col', 's12');
+            wrapper.classList.add('file-field', 'input-field');
             const divbtn = document.createElement('div');
             divbtn.classList.add('btn');
 
             const span = document.createElement('span');
             span.innerText = "Fichier";
-            const input = document.createElement('input');
             input.type = "file";
             input.id = "id_" + ele.name;
             input.name = ele.name;
@@ -732,8 +754,9 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             fwrapper.appendChild(f_input);
             wrapper.appendChild(fwrapper);
+            real_wrapper.appendChild(wrapper);
 
-            placeh.appendChild(wrapper);
+            placeh.appendChild(real_wrapper);
 
             // Sépare les champ input file
             placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
@@ -752,7 +775,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
             const button = document.createElement('button');
             button.classList.add('btn', 'blue', 'col', 's12', 'btn-perso');
 
-            button.innerText = "Enregistrement audio"
+            button.innerText = "Enregistrement audio";
             button.type = "button";
 
             const real_input = document.createElement('input');
@@ -763,6 +786,7 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             // Création d'un label vide pour l'input
             const hidden_label = document.createElement('label');
+            let delete_file_btn: HTMLElement = null;
 
             fillStandardInputValues(real_input, ele, hidden_label);
             hidden_label.classList.add('hide');
@@ -781,6 +805,26 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                     .catch(err => {
                         Logger.warn("Impossible de charger le fichier", err);
                     });
+
+                // On crée un bouton "supprimer ce fichier"
+                // pour supprimer l'entrée existante
+                delete_file_btn = document.createElement('div');
+                delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
+                delete_file_btn.innerText = "Supprimer ce fichier";
+
+                delete_file_btn.onclick = () => {
+                    askModal("Supprimer ce fichier ?", "")
+                        .then(() => {
+                            // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                            real_input.dataset.toremove = "true";
+                            real_input.value = "";
+                            delete_file_btn.remove();
+
+                            button.className = 'btn blue col s12 btn-perso';
+                            button.innerText = "Enregistrement audio";
+                        })
+                        .catch(() => {});
+                };
             }
             ////// Fin
 
@@ -791,6 +835,10 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
 
             wrapper.appendChild(button);
             wrapper.appendChild(real_input);
+
+            if (delete_file_btn)
+                wrapper.append(delete_file_btn);
+
             element_to_add = wrapper;
         }
 

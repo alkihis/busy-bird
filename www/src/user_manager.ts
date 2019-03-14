@@ -2,7 +2,7 @@ import { API_URL } from "./main";
 import { getModal, initModal, getModalPreloader, showToast } from "./helpers";
 import { Forms } from "./form_schema";
 
-export const UserManager = new class {
+class _UserManager {
     protected _username = null;
     protected _token = null;
 
@@ -94,6 +94,8 @@ export const UserManager = new class {
         }); 
     }
 }
+
+export const UserManager = new _UserManager;
 
 export function createNewUser() : void {
     const modal = getModal();

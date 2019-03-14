@@ -19,7 +19,7 @@ export enum AppPageName {
     form = "form", settings = "settings", saved = "saved", home = "home"
 }
 
-export const PageManager = new class {
+class _PageMananger {
     protected actual_page: AppPageObj;
     protected _should_wait: boolean;
     public lock_return_button: boolean = false;
@@ -326,6 +326,8 @@ export const PageManager = new class {
         return this.pages_holder.length > 0;
     }
 }
+
+export const PageManager = new _PageMananger;
 
 function cleanElement(e: HTMLElement) {
     let n: Node;

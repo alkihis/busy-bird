@@ -146,7 +146,7 @@ define("logger", ["require", "exports", "main"], function (require, exports, mai
      * Logger
      * Permet de logger dans un fichier texte des messages.
      */
-    exports.Logger = new class {
+    class _Logger {
         constructor() {
             this._onWrite = false;
             this.delayed = [];
@@ -390,7 +390,8 @@ define("logger", ["require", "exports", "main"], function (require, exports, mai
         error(...data) {
             this.write(data, LogLevel.error);
         }
-    };
+    }
+    exports.Logger = new _Logger;
 });
 define("audio_listener", ["require", "exports", "helpers", "logger", "main"], function (require, exports, helpers_1, logger_1, main_2) {
     "use strict";
@@ -505,7 +506,7 @@ define("audio_listener", ["require", "exports", "helpers", "logger", "main"], fu
 define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_3, helpers_2, form_schema_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.UserManager = new class {
+    class _UserManager {
         constructor() {
             this._username = null;
             this._token = null;
@@ -583,7 +584,8 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
                 });
             });
         }
-    };
+    }
+    exports.UserManager = new _UserManager;
     function createNewUser() {
         const modal = helpers_2.getModal();
         const instance = helpers_2.initModal({ dismissible: false });
@@ -788,7 +790,7 @@ define("fetch_timeout", ["require", "exports"], function (require, exports) {
 define("Settings", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.Settings = new class {
+    class AppSettings {
         constructor() {
             this._sync_freq = 30; /** En minutes */
             this._sync_bg = true; /** Activer la sync en arrière plan */
@@ -813,8 +815,9 @@ define("Settings", ["require", "exports"], function (require, exports) {
         get sync_freq() {
             return this._sync_freq;
         }
-    };
-    exports.BackgroundSync = new class {
+    }
+    exports.Settings = new AppSettings;
+    class BgSyncObj {
         constructor() {
             //// credit to https://github.com/transistorsoft/cordova-plugin-background-fetch
             this.background_sync = null;
@@ -897,7 +900,8 @@ define("Settings", ["require", "exports"], function (require, exports) {
             }
             catch (e) { /** Ne fait rien si échoue à stopper (ce n'était pas lancé) */ }
         }
-    };
+    }
+    exports.BackgroundSync = new BgSyncObj;
 });
 define("file_helper", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -1534,22 +1538,34 @@ define("file_helper", ["require", "exports"], function (require, exports) {
         }
         /**
          * Remove all content of a directory.
-         * @param path Path of the directory
-         * @param r Make empty recursive.
+         * If path is a file, truncate file data to empty.
+         *
+         * @param path Path or Entry
+         * @param r Make empty recursive. (if path is a directory)
          * If r = false and path contains a directory that is not empty, empty will fail
          */
         async empty(path, r = false) {
-            const entries = await this.ls(path);
+            let entry = path;
+            // Si jamais le chemin est une string, on obtient son entry associée
+            if (typeof path === 'string') {
+                entry = await this.get(path);
+            }
+            // Si c'est un fichier, alors on le vide. Sinon, on va vider le répertoire
+            if (entry.isFile) {
+                // Vide le fichier
+                await this.write(entry, new Blob);
+                return;
+            }
+            const entries = await this.entriesOf(entry);
             for (const e of entries) {
-                const entry = await this.get(e);
-                if (entry.isDirectory && r) {
+                if (e.isDirectory && r) {
                     await new Promise((resolve, reject) => {
-                        entry.removeRecursively(resolve, reject);
+                        e.removeRecursively(resolve, reject);
                     });
                 }
                 else {
                     await new Promise((resolve, reject) => {
-                        entry.remove(resolve, reject);
+                        e.remove(resolve, reject);
                     });
                 }
             }
@@ -1751,7 +1767,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
     fetch_timeout_1 = __importDefault(fetch_timeout_1);
-    const SyncList = new class {
+    class _SyncList {
         init() {
             localforage_1.default.config({
                 driver: [localforage_1.default.INDEXEDDB,
@@ -1787,7 +1803,8 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 return !!item;
             });
         }
-    };
+    }
+    const SyncList = new _SyncList;
     ////// Polyfill si l'application est portée sur iOS: Safari ne supporte pas le constructeur EventTarget()
     class SyncEvent extends EventTarget {
         constructor() {
@@ -1801,7 +1818,7 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
     }
     exports.SyncEvent = SyncEvent;
     ////// Fin polyfill
-    exports.SyncManager = new class {
+    class _SyncManager {
         constructor() {
             this.in_sync = false;
             this.list = SyncList;
@@ -2439,7 +2456,8 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
         has(id) {
             return this.list.has(id);
         }
-    };
+    }
+    exports.SyncManager = new _SyncManager;
     /**
      * Crée un événement personnalisé
      * @param type Type de l'événement
@@ -2630,6 +2648,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     Object.defineProperty(exports, "__esModule", { value: true });
     // Constantes de l'application
     exports.APP_VERSION = 0.7;
+    const FIXED_NAVBAR = true; /** Active la barre de navigation fixe */
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
     exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
@@ -2696,6 +2715,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
                 resolve(status);
             }, e => { console.log(e); resolve(undefined); });
         });
+        // Essaie de trouver le chemin de la carte SD
         try {
             if (permission_write && permission_write.hasPermission) {
                 const folders = await helpers_4.getSdCardFolder();
@@ -2719,6 +2739,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             }
         }
         catch (e) { }
+        // Initialise les blocs principaux du code: L'utilitaire de log, les schémas de form et le gestionnaire de sync
         logger_3.Logger.init();
         form_schema_2.Forms.init();
         SyncManager_1.SyncManager.init();
@@ -2731,9 +2752,14 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         document.addEventListener("backbutton", function () {
             PageManager_1.PageManager.goBack();
         }, false);
-        exports.app.initialize();
+        // app.initialize();
+        // Initialise le mode de debug
         initDebug();
         helpers_4.initModal();
+        if (FIXED_NAVBAR) {
+            // Ajoute la classe navbar-fixed au div contenant le nav
+            document.getElementsByTagName('nav')[0].parentElement.classList.add('navbar-fixed');
+        }
         // Check si on est à une page spéciale
         let href = "";
         if (window.location) {
@@ -2742,7 +2768,10 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             href = tmp[tmp.length - 1];
         }
         // Quand les forms sont prêts, on affiche l'app !
-        form_schema_2.Forms.onReady(function () {
+        return form_schema_2.Forms.onReady()
+            .then(() => {
+            // On montre l'écran
+            navigator.splashscreen.hide();
             let prom;
             if (href && PageManager_1.PageManager.pageExists(href)) {
                 prom = PageManager_1.PageManager.changePage(href);
@@ -2750,21 +2779,19 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             else {
                 prom = PageManager_1.PageManager.changePage(PageManager_1.AppPageName.home);
             }
-            prom
-                .then(() => {
-                // On montre l'écran quand tout est chargé
-                navigator.splashscreen.hide();
-            })
-                .catch(err => {
-                // On montre l'écran et on affiche l'erreur
-                navigator.splashscreen.hide();
-                // Bloque le sidenav pour empêcher de naviguer
-                try {
-                    PageManager_1.SIDENAV_OBJ.destroy();
-                }
-                catch (e) { }
-                helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
-            });
+            return prom;
+        });
+    }
+    function appWrapper() {
+        initApp().catch(err => {
+            // On montre l'écran et on affiche l'erreur
+            navigator.splashscreen.hide();
+            // Bloque le sidenav pour empêcher de naviguer
+            try {
+                PageManager_1.SIDENAV_OBJ.destroy();
+            }
+            catch (e) { }
+            helpers_4.getBase().innerHTML = helpers_4.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
         });
     }
     function initDebug() {
@@ -2795,7 +2822,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             SyncManager: SyncManager_1.SyncManager
         };
     }
-    document.addEventListener('deviceready', initApp, false);
+    document.addEventListener('deviceready', appWrapper, false);
 });
 define("location", ["require", "exports", "helpers"], function (require, exports, helpers_5) {
     "use strict";
@@ -3209,15 +3236,19 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
      * @param older_save
      */
     async function writeDataThenForm(name, form_values, older_save) {
-        function saveBlobToFile(filename, input_name, blob) {
+        async function deleteOlderFile(input_name) {
+            if (main_5.SD_FILE_HELPER) {
+                main_5.SD_FILE_HELPER.rm(older_save.fields[input_name]);
+            }
+            return main_5.FILE_HELPER.rm(older_save.fields[input_name]);
+        }
+        async function saveBlobToFile(filename, input_name, blob) {
             const full_path = 'form_data/' + name + '/' + filename;
-            return main_5.FILE_HELPER.write(full_path, blob)
-                .then(() => {
+            try {
+                await main_5.FILE_HELPER.write(full_path, blob);
                 if (device.platform === 'Android' && main_5.SD_FILE_HELPER) {
-                    return main_5.SD_FILE_HELPER.write(full_path, blob).catch(e => console.log(e));
+                    return main_5.SD_FILE_HELPER.write(full_path, blob).then(() => { }).catch(e => console.log(e));
                 }
-            })
-                .then(() => {
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
                 form_values.fields[input_name] = full_path;
@@ -3226,18 +3257,15 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                     // Si une image était déjà présente
                     if (older_save.fields[input_name] !== form_values.fields[input_name]) {
                         // Si le fichier enregistré est différent du fichier actuel
-                        // Suppression de l'ancienne image
-                        if (main_5.SD_FILE_HELPER) {
-                            main_5.SD_FILE_HELPER.rm(older_save.fields[input_name]);
-                        }
-                        main_5.FILE_HELPER.rm(older_save.fields[input_name]);
+                        // Suppression de l'ancien fichier
+                        deleteOlderFile(input_name);
                     }
                 }
-            })
-                .catch((error) => {
+            }
+            catch (error) {
                 helpers_6.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
                 return Promise.reject(error);
-            });
+            }
         }
         // Récupère les images du formulaire
         const images_from_form = document.getElementsByClassName('input-image-element');
@@ -3251,14 +3279,22 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                 promises.push(saveBlobToFile(filename, input_name, file));
             }
             else {
+                // Si il n'y a aucun fichier
                 if (older_save && input_name in older_save.fields) {
+                    // Si il a une sauvegarde précédente
                     form_values.fields[input_name] = older_save.fields[input_name];
+                    form_values.metadata[input_name] = null;
                     if (typeof older_save.fields[input_name] === 'string') {
-                        const parts = older_save.fields[input_name].split('/');
-                        form_values.metadata[input_name] = parts[parts.length - 1];
-                    }
-                    else {
-                        form_values.metadata[input_name] = null;
+                        // Si le fichier doit être supprimé
+                        if (img.dataset.toremove === "true") {
+                            form_values.fields[input_name] = null;
+                            // Suppression du fichier en question
+                            deleteOlderFile(input_name);
+                        }
+                        else {
+                            const parts = older_save.fields[input_name].split('/');
+                            form_values.metadata[input_name] = parts[parts.length - 1];
+                        }
                     }
                 }
                 else {
@@ -3281,12 +3317,17 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
             else {
                 if (older_save && input_name in older_save.fields) {
                     form_values.fields[input_name] = older_save.fields[input_name];
+                    form_values.metadata[input_name] = null;
                     if (typeof older_save.fields[input_name] === 'string') {
-                        const parts = older_save.fields[input_name].split('/');
-                        form_values.metadata[input_name] = parts[parts.length - 1];
-                    }
-                    else {
-                        form_values.metadata[input_name] = null;
+                        if (audio.dataset.toremove === "true") {
+                            form_values.fields[input_name] = null;
+                            // Suppression du fichier en question
+                            deleteOlderFile(input_name);
+                        }
+                        else {
+                            const parts = older_save.fields[input_name].split('/');
+                            form_values.metadata[input_name] = parts[parts.length - 1];
+                        }
                     }
                 }
                 else {
@@ -3916,25 +3957,43 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 // de choisir une image enregistrée. 
                 // Le problème peut être contourné en créant un input personnalisé
                 // avec choix en utilisant navigator.camera et le plugin cordova camera.
+                let delete_file_btn = null;
+                const input = document.createElement('input');
+                const real_wrapper = document.createElement('div');
+                real_wrapper.className = "row col s12 no-margin-bottom";
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                     // L'input file est déjà présent dans le formulaire
                     // on affiche une miniature
                     const img_miniature = document.createElement('div');
-                    img_miniature.classList.add('image-form-wrapper');
+                    img_miniature.classList.add('image-form-wrapper', 'relative-container');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
                     helpers_7.createImgSrc(filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
+                    // On crée un bouton "supprimer ce fichier"
+                    delete_file_btn = document.createElement('div');
+                    delete_file_btn.className = "remove-img-btn";
+                    delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
+                    delete_file_btn.onclick = () => {
+                        helpers_7.askModal("Supprimer ce fichier ?", "")
+                            .then(() => {
+                            // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                            input.dataset.toremove = "true";
+                            delete_file_btn.remove();
+                            $("[data-original='" + filled_form.fields[ele.name] + "']").remove();
+                        })
+                            .catch(() => { });
+                    };
+                    img_miniature.appendChild(delete_file_btn);
                 }
                 // Input de type file
                 const wrapper = document.createElement('div');
-                wrapper.classList.add('file-field', 'input-field', 'row', 'col', 's12');
+                wrapper.classList.add('file-field', 'input-field');
                 const divbtn = document.createElement('div');
                 divbtn.classList.add('btn');
                 const span = document.createElement('span');
                 span.innerText = "Fichier";
-                const input = document.createElement('input');
                 input.type = "file";
                 input.id = "id_" + ele.name;
                 input.name = ele.name;
@@ -3955,7 +4014,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 f_input.dataset.for = input.id;
                 fwrapper.appendChild(f_input);
                 wrapper.appendChild(fwrapper);
-                placeh.appendChild(wrapper);
+                real_wrapper.appendChild(wrapper);
+                placeh.appendChild(real_wrapper);
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
             }
@@ -3978,6 +4038,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 real_input.dataset.label = ele.label;
                 // Création d'un label vide pour l'input
                 const hidden_label = document.createElement('label');
+                let delete_file_btn = null;
                 fillStandardInputValues(real_input, ele, hidden_label);
                 hidden_label.classList.add('hide');
                 wrapper.appendChild(hidden_label);
@@ -3994,6 +4055,23 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                         .catch(err => {
                         logger_5.Logger.warn("Impossible de charger le fichier", err);
                     });
+                    // On crée un bouton "supprimer ce fichier"
+                    // pour supprimer l'entrée existante
+                    delete_file_btn = document.createElement('div');
+                    delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
+                    delete_file_btn.innerText = "Supprimer ce fichier";
+                    delete_file_btn.onclick = () => {
+                        helpers_7.askModal("Supprimer ce fichier ?", "")
+                            .then(() => {
+                            // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                            real_input.dataset.toremove = "true";
+                            real_input.value = "";
+                            delete_file_btn.remove();
+                            button.className = 'btn blue col s12 btn-perso';
+                            button.innerText = "Enregistrement audio";
+                        })
+                            .catch(() => { });
+                    };
                 }
                 ////// Fin
                 button.addEventListener('click', function () {
@@ -4002,6 +4080,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                 });
                 wrapper.appendChild(button);
                 wrapper.appendChild(real_input);
+                if (delete_file_btn)
+                    wrapper.append(delete_file_btn);
                 element_to_add = wrapper;
             }
             else if (ele.type === form_schema_3.FormEntityType.slider) {
@@ -5193,7 +5273,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         AppPageName["saved"] = "saved";
         AppPageName["home"] = "home";
     })(AppPageName = exports.AppPageName || (exports.AppPageName = {}));
-    exports.PageManager = new class {
+    class _PageMananger {
         constructor() {
             this.lock_return_button = false;
             /**
@@ -5459,7 +5539,8 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         isPageWaiting() {
             return this.pages_holder.length > 0;
         }
-    };
+    }
+    exports.PageManager = new _PageMananger;
     function cleanElement(e) {
         let n;
         while (n = e.firstChild) {
@@ -5857,6 +5938,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     async function createImgSrc(path, element) {
         const file = await main_10.FILE_HELPER.get(path);
         element.src = file.toURL();
+        element.dataset.original = path;
     }
     exports.createImgSrc = createImgSrc;
     /**
@@ -6202,7 +6284,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         FormEntityType["time"] = "time";
     })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
     // Classe contenant le formulaire JSON chargé et parsé
-    exports.Forms = new class {
+    class FormSchemas {
         constructor() {
             this._current_key = null;
             this._default_form_key = null;
@@ -6237,7 +6319,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * Fonction fantôme de init(). Permet de glisser cette fonction dans on_ready.
          * Voir init().
          */
-        _init() {
+        async _init() {
             const init_text = document.getElementById('__init_text_center');
             if (init_text) {
                 init_text.innerText = "Mise à jour des schémas de formulaire";
@@ -6445,12 +6527,14 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             }
             this.saveForms();
         }
-    };
+    }
+    exports.Forms = new FormSchemas;
 });
 define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"], function (require, exports, main_12, file_helper_5, SyncManager_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.FormSaves = new class {
+    // Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
+    class _FormSaves {
         get(id) {
             return main_12.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
         }
@@ -6497,7 +6581,8 @@ define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"]
             }
             await SyncManager_7.SyncManager.remove(id);
         }
-    };
+    }
+    exports.FormSaves = new _FormSaves;
 });
 // Lance main.ts
 require(['main']);

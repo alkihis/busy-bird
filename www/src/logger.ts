@@ -12,7 +12,7 @@ export enum LogLevel {
  * Logger
  * Permet de logger dans un fichier texte des messages.
  */
-export const Logger = new class {
+class _Logger {
     protected fileEntry: any;
     protected _onWrite: boolean = false;
     protected delayed: [any[], LogLevel][] = [];
@@ -298,4 +298,6 @@ export const Logger = new class {
     public error(...data: any[]) : void {
         this.write(data, LogLevel.error);
     }
-};
+}
+
+export const Logger = new _Logger;

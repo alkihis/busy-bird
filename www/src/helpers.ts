@@ -428,6 +428,7 @@ export async function createImgSrc(path: string, element: HTMLImageElement) : Pr
     const file = await FILE_HELPER.get(path) as FileEntry;
 
     element.src = file.toURL();
+    element.dataset.original = path;
 }
 
 /**

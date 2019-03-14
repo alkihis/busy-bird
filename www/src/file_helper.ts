@@ -737,24 +737,38 @@ export class FileHelper {
 
     /**
      * Remove all content of a directory.
-     * @param path Path of the directory
-     * @param r Make empty recursive. 
+     * If path is a file, truncate file data to empty.
+     * 
+     * @param path Path or Entry
+     * @param r Make empty recursive. (if path is a directory)
      * If r = false and path contains a directory that is not empty, empty will fail
      */
-    public async empty(path: string, r = false) : Promise<void> {
-        const entries = await this.ls(path) as string[];
+    public async empty(path: string | Entry, r = false) : Promise<void> {
+        let entry: Entry = path as Entry;
+
+        // Si jamais le chemin est une string, on obtient son entry associée
+        if (typeof path === 'string') {
+            entry = await this.get(path);
+        }
+
+        // Si c'est un fichier, alors on le vide. Sinon, on va vider le répertoire
+        if (entry.isFile) {
+            // Vide le fichier
+            await this.write(entry as FileEntry, new Blob);
+            return;
+        }
+
+        const entries = await this.entriesOf(entry as DirectoryEntry);
 
         for (const e of entries) {
-            const entry = await this.get(e);
-
-            if (entry.isDirectory && r) {
+            if (e.isDirectory && r) {
                 await new Promise((resolve, reject) => {
-                    (entry as DirectoryEntry).removeRecursively(resolve, reject);
+                    (e as DirectoryEntry).removeRecursively(resolve, reject);
                 }); 
             }
             else {
                 await new Promise((resolve, reject) => {
-                    (entry as FileEntry).remove(resolve, reject);
+                    (e as FileEntry).remove(resolve, reject);
                 });
             }
         }

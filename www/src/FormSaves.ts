@@ -3,7 +3,8 @@ import { FILE_HELPER, SD_FILE_HELPER } from "./main";
 import { FileHelperReadMode } from "./file_helper";
 import { SyncManager } from "./SyncManager";
 
-export const FormSaves = new class {
+// Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
+class _FormSaves {
     public get(id: string) : Promise<FormSave> {
         return FILE_HELPER.read("forms/" + id + ".json", FileHelperReadMode.json);
     }
@@ -59,4 +60,6 @@ export const FormSaves = new class {
 
         await SyncManager.remove(id);
     }
-};
+}
+
+export const FormSaves = new _FormSaves;

@@ -11,6 +11,7 @@ import { FileHelper, FileHelperReadMode } from './file_helper';
 
 // Constantes de l'application
 export const APP_VERSION = 0.7;
+const FIXED_NAVBAR = true; /** Active la barre de navigation fixe */
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
 export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
@@ -85,6 +86,7 @@ async function initApp() {
         }, e => { console.log(e); resolve(undefined); });
     });
     
+    // Essaie de trouver le chemin de la carte SD
     try {
         if (permission_write && permission_write.hasPermission) {
             const folders = await getSdCardFolder();
@@ -110,6 +112,7 @@ async function initApp() {
         }
     } catch (e) {  }
 
+    // Initialise les blocs principaux du code: L'utilitaire de log, les schémas de form et le gestionnaire de sync
     Logger.init();
     Forms.init(); 
     SyncManager.init();
@@ -125,9 +128,15 @@ async function initApp() {
         PageManager.goBack();
     }, false);
 
-    app.initialize();
+    // app.initialize();
+    // Initialise le mode de debug
     initDebug();
     initModal();
+
+    if (FIXED_NAVBAR) {
+        // Ajoute la classe navbar-fixed au div contenant le nav
+        document.getElementsByTagName('nav')[0].parentElement.classList.add('navbar-fixed');
+    }
     
     // Check si on est à une page spéciale
     let href: string = "";
@@ -139,32 +148,35 @@ async function initApp() {
     }
 
     // Quand les forms sont prêts, on affiche l'app !
-    Forms.onReady(function() {
-        let prom: Promise<any>;
+    return Forms.onReady()
+        .then(() => {
+            // On montre l'écran
+            navigator.splashscreen.hide();
 
-        if (href && PageManager.pageExists(href)) {
-            prom = PageManager.changePage(href as AppPageName);
-        }
-        else {
-            prom = PageManager.changePage(AppPageName.home);
-        }
+            let prom: Promise<any>;
 
-        prom
-            .then(() => {
-                // On montre l'écran quand tout est chargé
-                navigator.splashscreen.hide();
-            })
-            .catch(err => {
-                // On montre l'écran et on affiche l'erreur
-                navigator.splashscreen.hide();
+            if (href && PageManager.pageExists(href)) {
+                prom = PageManager.changePage(href as AppPageName);
+            }
+            else {
+                prom = PageManager.changePage(AppPageName.home);
+            }
+    
+            return prom;
+        })
+}
 
-                // Bloque le sidenav pour empêcher de naviguer
-                try {
-                    SIDENAV_OBJ.destroy();
-                } catch (e) {}
+function appWrapper() {
+    initApp().catch(err => {
+        // On montre l'écran et on affiche l'erreur
+        navigator.splashscreen.hide();
 
-                getBase().innerHTML = displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
-            });
+        // Bloque le sidenav pour empêcher de naviguer
+        try {
+            SIDENAV_OBJ.destroy();
+        } catch (e) {}
+
+        getBase().innerHTML = displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
     });
 }
 
@@ -199,4 +211,4 @@ function initDebug() {
     };
 }
 
-document.addEventListener('deviceready', initApp, false);
+document.addEventListener('deviceready', appWrapper, false);
