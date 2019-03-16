@@ -155,7 +155,7 @@ export function changeDir() {
         // Permet le bouton retour sur navigateur
         const back_btn = document.getElementById('__nav_back_button')
         back_btn.onclick = function() {
-            PageManager.goBack();
+            PageManager.back();
         };
         back_btn.classList.remove('hide');
     }
@@ -709,12 +709,12 @@ export function askModalList(items: string[]) : Promise<number> {
     });
 }
 
-export async function createRandomForms(count = 50) : Promise<void> {
+export async function createRandomForms(count: number = 50) : Promise<void> {
     if (Forms.current_key === null) {
         throw "Impossible de créer une entrée sans base";
     }
 
-    const current = Forms.getForm(Forms.current_key);
+    const current = Forms.get(Forms.current_key);
     const promises: Promise<any>[] = [];
     for (let i = 0; i < count; i++) {
         const save: FormSave = {

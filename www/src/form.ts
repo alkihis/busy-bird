@@ -1010,7 +1010,7 @@ function cancelGeoLocModal(required = true) : void {
     }
     else {
         // Sinon, on ramène à la page précédente
-        PageManager.goBack();
+        PageManager.back();
     }
 
     getModalInstance().close();

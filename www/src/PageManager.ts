@@ -1,13 +1,14 @@
-import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance, convertHTMLToElement } from "./helpers";
+import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance } from "./helpers";
 import { initFormPage } from "./form";
 import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
 import { initHomePage, APP_NAME } from "./home";
 import { Logger } from "./logger";
+import { MAX_SLEEPING_PAGES } from "./main";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 
-interface AppPageObj {
+interface AppPage {
     not_sidenav_close?: boolean;
     callback: (base: HTMLElement, additionnals?: any) => any;
     name: string;
@@ -19,8 +20,27 @@ export enum AppPageName {
     form = "form", settings = "settings", saved = "saved", home = "home"
 }
 
-class _PageMananger {
-    protected actual_page: AppPageObj;
+type AppPages = {[pageName: string]: AppPage};
+
+interface PageSave {
+    save: DocumentFragment;
+    name: string;
+    page: AppPage;
+    ask: boolean
+}
+
+const DEFAULT_PAGE = AppPageName.home;
+
+/**
+ * Gère les pages de l'application.
+ * Utilisée pour gérer le système de pile de pages.
+ * Pour pousser une nouvelle page sur les autres, utilisez push().
+ * Pour revenir à la page précédente, utilisez back(). Vous pouvez
+ * aussi utiliser pop() qui ne fait pas de vérification d'usage lors du dépop.
+ * Cette classe ne doit être instanciée qu'une seule fois !
+ */
+class _PageManager {
+    protected actual_page: AppPage;
     protected _should_wait: boolean;
     public lock_return_button: boolean = false;
 
@@ -28,7 +48,7 @@ class _PageMananger {
      * Déclaration des pages possibles
      * Chaque clé de AppPages doit être une possibilité de AppPageName
      */
-    protected AppPages: {[pageName: string]: AppPageObj} = {
+    protected app_pages: AppPages = {
         home: {
             name: "Tableau de bord",
             callback: initHomePage,
@@ -52,7 +72,7 @@ class _PageMananger {
         }
     };
 
-    protected pages_holder: {save: DocumentFragment, name: string, page: AppPageObj, ask: boolean}[] = [];
+    protected pages_holder: PageSave[] = [];
 
     constructor() {
         // Génération du sidenav
@@ -70,16 +90,16 @@ class _PageMananger {
         </li>`);
 
         // Ajoute chaque page au menu
-        for (const page in this.AppPages) {
+        for (const page in this.app_pages) {
             const li = document.createElement('li');
             li.id = "__sidenav_base_element_" + page;
             li.onclick = () => {
-                PageManager.pushPage(this.AppPages[page]);
+                PageManager.push(this.app_pages[page]);
             };
 
             const link = document.createElement('a');
             link.href = "#!";
-            link.innerText = this.AppPages[page].name;
+            link.innerText = this.app_pages[page].name;
             li.appendChild(link);
 
             sidenav.appendChild(li);
@@ -90,6 +110,9 @@ class _PageMananger {
         SIDENAV_OBJ = M.Sidenav.init(elem, {});
     }
     
+    /**
+     * Met à jour le bouton retour sur PC
+     */
     protected updateReturnBtn() : void {
         if (device.platform === "browser") {
             const back_btn = document.getElementById('__nav_back_button');
@@ -107,7 +130,7 @@ class _PageMananger {
      * Recharge la page actuelle. (la vide et réexécute le callback configuré dans la AppPageObj)
      */
     public reload(additionnals?: any, reset_scroll = false) {
-        this.changePage(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals, reset_scroll);
+        this.change(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals, reset_scroll);
     }
 
     /**
@@ -118,23 +141,23 @@ class _PageMananger {
      * @param additionnals Variable à passer en paramètre au callback de page
      * @param reset_scroll Réinitiliser le scroll de la page en haut
      */
-    public changePage(page: AppPageName | AppPageObj, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
+    public change(page: AppPageName | AppPage, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
         // Tente de charger la page
         try {
             let pagename: string = "";
             if (typeof page === 'string') {
                 // AppPageName
-                if (!this.pageExists(page)) {
+                if (!this.exists(page)) {
                     throw new ReferenceError("Page does not exists");
                 }
                 
                 pagename = page;
-                page = this.AppPages[page];
+                page = this.app_pages[page];
             }
             else {
                 // Recherche de la clé correspondante
-                for (const k in this.AppPages) {
-                    if (this.AppPages[k] === page) {
+                for (const k in this.app_pages) {
+                    if (this.app_pages[k] === page) {
                         pagename = k;
                         break;
                     }
@@ -154,7 +177,7 @@ class _PageMananger {
             }
 
             //// help linter
-            page = page as AppPageObj;
+            page = page as AppPage;
 
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
@@ -190,8 +213,11 @@ class _PageMananger {
         }
     }
 
-    protected cleanWaitingPages() : void {
-        while (this.pages_holder.length >= 10) {
+    /**
+     * Supprime des pages sauvegardées si la pile de page dépasse MAX_SLEEPING_PAGES
+     */
+    protected clean() : void {
+        while (this.pages_holder.length >= MAX_SLEEPING_PAGES) {
             this.pages_holder.shift();
         }
     }
@@ -202,13 +228,13 @@ class _PageMananger {
      * @param force_name Nom à mettre dans la navbar
      * @param additionnals Variable à passer au callback de la page à charger
      */
-    public pushPage(page: AppPageName | AppPageObj, force_name?: string | null, additionnals?: any) : Promise<any> {
-        if (typeof page === 'string' && !this.pageExists(page)) {
+    public push(page: AppPageName | AppPage, force_name?: string | null, additionnals?: any) : Promise<any> {
+        if (typeof page === 'string' && !this.exists(page)) {
             throw new ReferenceError("Page does not exists");
         }
 
-        // Si il y a plus de 10 pages dans la pile, clean
-        this.cleanWaitingPages();
+        // Si il y a plus de MAX_SLEEPING_PAGES pages dans la pile, clean
+        this.clean();
 
         // Récupère le contenu actuel du bloc mère
         const actual_base = getBase();
@@ -235,16 +261,16 @@ class _PageMananger {
         document.getElementsByTagName('main')[0].appendChild(new_base);
 
         // Appelle la fonction pour charger la page demandée dans le bloc
-        return this.changePage(page, false, force_name, additionnals);
+        return this.change(page, false, force_name, additionnals);
     }
 
     /**
      * Revient à la page précédente.
      * Charge la page d'accueil si aucune page disponible
      */
-    public popPage() : void {
+    public pop() : void {
         if (this.pages_holder.length === 0) {
-            this.changePage(AppPageName.home);
+            this.change(DEFAULT_PAGE);
             return;
         }
 
@@ -268,7 +294,7 @@ class _PageMananger {
 
         if (this.actual_page.reload_on_restore) {
             if (typeof this.actual_page.reload_on_restore === 'boolean') {
-                this.changePage(this.actual_page, false, undefined, undefined, false);
+                this.change(this.actual_page, false, undefined, undefined, false);
             }
             else {
                 this.actual_page.reload_on_restore();
@@ -280,8 +306,9 @@ class _PageMananger {
 
     /**
      * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
+     * @param force_asking Oblige à demander si on doit retourner à la page précédente ou non.
      */
-    public goBack(force_asking = false) : void {
+    public back(force_asking = false) : void {
         if (this.lock_return_button) {
             return;
         }
@@ -292,7 +319,7 @@ class _PageMananger {
             try { getBottomModalInstance().close(); } catch (e) { }
             
             if (this.isPageWaiting()) {
-                this.popPage();
+                this.pop();
             }
             else {
                 // @ts-ignore this.changePage(AppPageName.home);
@@ -318,8 +345,8 @@ class _PageMananger {
         this._should_wait = v;
     }
 
-    public pageExists(name: string) : boolean {
-        return name in this.AppPages;
+    public exists(name: string) : boolean {
+        return name in this.app_pages;
     }
 
     public isPageWaiting() : boolean {
@@ -327,7 +354,7 @@ class _PageMananger {
     }
 }
 
-export const PageManager = new _PageMananger;
+export const PageManager = new _PageManager;
 
 function cleanElement(e: HTMLElement) {
     let n: Node;

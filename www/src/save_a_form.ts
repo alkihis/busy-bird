@@ -292,7 +292,7 @@ export async function beginFormSave(type: string, current_form: Form, force_name
                         showToast("Écriture de l'entrée et de ses données réussie.");
 
                         // On vient de la page d'édition de formulaire déjà créés
-                        PageManager.popPage();
+                        PageManager.pop();
                         // PageManager.reload(); la page se recharge toute seule au pop
                     }
                     else {
@@ -312,7 +312,7 @@ export async function beginFormSave(type: string, current_form: Form, force_name
                         `;
 
                         document.getElementById('__after_save_entries').onclick = function() {
-                            PageManager.changePage(AppPageName.saved, false);
+                            PageManager.change(AppPageName.saved, false);
                         };
 
                         document.getElementById('__after_save_new').onclick = function() {

@@ -2,10 +2,17 @@ import { API_URL } from "./main";
 import { getModal, initModal, getModalPreloader, showToast } from "./helpers";
 import { Forms } from "./form_schema";
 
+/**
+ * Permet de gérer l'utilisateur connecté, ou la création d'un nouvel utilisateur.
+ * Cette classe doit être instanciée qu'une seule fois.
+ */
 class _UserManager {
     protected _username = null;
     protected _token = null;
 
+    /**
+     * Initialise l'utilisateur connecté depuis les données sauvegardées.
+     */
     constructor() {
         const usr = localStorage.getItem('__username_manager');
         const tkn = localStorage.getItem('__token_manager')
@@ -24,6 +31,12 @@ class _UserManager {
         return this._token;
     }
 
+    /**
+     * Connecte un utilisateur par son nom d'utilisateur et mot de passe.
+     * Renvoie une promesse résolue si connexion réussie, rompue si échec.
+     * @param username 
+     * @param password 
+     */
     public login(username: string, password: string) : Promise<void> {
         return new Promise((resolve, reject) => {
             let data = new FormData();
@@ -53,6 +66,11 @@ class _UserManager {
         }); 
     }
 
+    /**
+     * Connecte un utilisateur en interne sans faire d'appel à l'API.
+     * @param username 
+     * @param token 
+     */
     protected logSomeone(username: string, token: string) : void {
         this._token = token;
         this._username = username;
@@ -60,6 +78,9 @@ class _UserManager {
         localStorage.setItem('__token_manager', token);
     }
 
+    /**
+     * Déconnecte l'utilisateur connecté dans l'objet.
+     */
     public unlog() : void {
         localStorage.removeItem('__username_manager');
         localStorage.removeItem('__token_manager');
@@ -71,6 +92,12 @@ class _UserManager {
         return this._username !== null;
     }
 
+    /**
+     * Demande à créer un nouvel utilisateur au serveur.
+     * @param username 
+     * @param password 
+     * @param admin_password 
+     */
     public createUser(username: string, password: string, admin_password: string) : Promise<void> {
         const data = new FormData();
         data.append("username", username);

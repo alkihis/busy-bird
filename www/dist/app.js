@@ -506,7 +506,14 @@ define("audio_listener", ["require", "exports", "helpers", "logger", "main"], fu
 define("user_manager", ["require", "exports", "main", "helpers", "form_schema"], function (require, exports, main_3, helpers_2, form_schema_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Permet de gérer l'utilisateur connecté, ou la création d'un nouvel utilisateur.
+     * Cette classe doit être instanciée qu'une seule fois.
+     */
     class _UserManager {
+        /**
+         * Initialise l'utilisateur connecté depuis les données sauvegardées.
+         */
         constructor() {
             this._username = null;
             this._token = null;
@@ -523,6 +530,12 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
         get token() {
             return this._token;
         }
+        /**
+         * Connecte un utilisateur par son nom d'utilisateur et mot de passe.
+         * Renvoie une promesse résolue si connexion réussie, rompue si échec.
+         * @param username
+         * @param password
+         */
         login(username, password) {
             return new Promise((resolve, reject) => {
                 let data = new FormData();
@@ -548,12 +561,20 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
                 });
             });
         }
+        /**
+         * Connecte un utilisateur en interne sans faire d'appel à l'API.
+         * @param username
+         * @param token
+         */
         logSomeone(username, token) {
             this._token = token;
             this._username = username;
             localStorage.setItem('__username_manager', username);
             localStorage.setItem('__token_manager', token);
         }
+        /**
+         * Déconnecte l'utilisateur connecté dans l'objet.
+         */
         unlog() {
             localStorage.removeItem('__username_manager');
             localStorage.removeItem('__token_manager');
@@ -563,6 +584,12 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
         get logged() {
             return this._username !== null;
         }
+        /**
+         * Demande à créer un nouvel utilisateur au serveur.
+         * @param username
+         * @param password
+         * @param admin_password
+         */
         createUser(username, password, admin_password) {
             const data = new FormData();
             data.append("username", username);
@@ -2654,6 +2681,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
     exports.MP3_BITRATE = 256; /** En kb/s */
+    exports.MAX_SLEEPING_PAGES = 20; /** Nombre de pages maximum qui restent en attente en arrière-plan */
     exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
     exports.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK = true; /** Active le scroll lorsqu'on clique sur un élément lors du modal de vérification */
     exports.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK = true;
@@ -2750,7 +2778,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         }
         // Initialise le bouton retour
         document.addEventListener("backbutton", function () {
-            PageManager_1.PageManager.goBack();
+            PageManager_1.PageManager.back();
         }, false);
         // app.initialize();
         // Initialise le mode de debug
@@ -2773,11 +2801,11 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             // On montre l'écran
             navigator.splashscreen.hide();
             let prom;
-            if (href && PageManager_1.PageManager.pageExists(href)) {
-                prom = PageManager_1.PageManager.changePage(href);
+            if (href && PageManager_1.PageManager.exists(href)) {
+                prom = PageManager_1.PageManager.change(href);
             }
             else {
-                prom = PageManager_1.PageManager.changePage(PageManager_1.AppPageName.home);
+                prom = PageManager_1.PageManager.change(PageManager_1.AppPageName.home);
             }
             return prom;
         });
@@ -3126,7 +3154,7 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                         instance.close();
                         helpers_6.showToast("Écriture de l'entrée et de ses données réussie.");
                         // On vient de la page d'édition de formulaire déjà créés
-                        PageManager_2.PageManager.popPage();
+                        PageManager_2.PageManager.pop();
                         // PageManager.reload(); la page se recharge toute seule au pop
                     }
                     else {
@@ -3145,7 +3173,7 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                         </div>
                         `;
                         document.getElementById('__after_save_entries').onclick = function () {
-                            PageManager_2.PageManager.changePage(PageManager_2.AppPageName.saved, false);
+                            PageManager_2.PageManager.change(PageManager_2.AppPageName.saved, false);
                         };
                         document.getElementById('__after_save_new').onclick = function () {
                             setTimeout(() => {
@@ -4221,7 +4249,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         }
         else {
             // Sinon, on ramène à la page précédente
-            PageManager_3.PageManager.goBack();
+            PageManager_3.PageManager.back();
         }
         helpers_7.getModalInstance().close();
         helpers_7.getModal().classList.remove('modal-fixed-footer');
@@ -4717,7 +4745,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         select.classList.add('material-select');
         container.appendChild(select);
         form_schema_5.Forms.onReady(function () {
-            const available = [["", "Aucun"], ...form_schema_5.Forms.getAvailableForms()];
+            const available = [["", "Aucun"], ...form_schema_5.Forms.available()];
             for (const option of available) {
                 const o = document.createElement('option');
                 o.value = option[0];
@@ -4731,8 +4759,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         });
         select.addEventListener('change', function () {
             const value = select.value || null;
-            if (form_schema_5.Forms.formExists(value)) {
-                form_schema_5.Forms.changeForm(value, true);
+            if (form_schema_5.Forms.exists(value)) {
+                form_schema_5.Forms.change(value, true);
             }
         });
         // Bouton pour accéder aux souscriptions
@@ -4983,9 +5011,9 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                     await unsubscribe(to_uncheck, false);
                     // Suppression des formulaires demandés à être unsub
                     for (const f of to_uncheck) {
-                        form_schema_5.Forms.deleteForm(f);
+                        form_schema_5.Forms.delete(f, false);
                     }
-                    form_schema_5.Forms.saveForms();
+                    form_schema_5.Forms.save();
                 }
                 let subs = undefined;
                 // Appel à subscribe
@@ -5025,12 +5053,12 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     ;
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
-        if (form.type === null || !form_schema_6.Forms.formExists(form.type)) {
+        if (form.type === null || !form_schema_6.Forms.exists(form.type)) {
             helpers_10.showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
             return;
         }
-        const current_form = form_schema_6.Forms.getForm(form.type);
-        PageManager_5.PageManager.pushPage(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
+        const current_form = form_schema_6.Forms.get(form.type);
+        PageManager_5.PageManager.push(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
     }
     async function deleteAll() {
         const instance = helpers_10.unclosableBottomModal(`
@@ -5063,8 +5091,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         container.dataset.formid = id_without_json;
         let state = SaveState.error;
         let type = "Type inconnu";
-        if (save.type !== null && form_schema_6.Forms.formExists(save.type)) {
-            const form = form_schema_6.Forms.getForm(save.type);
+        if (save.type !== null && form_schema_6.Forms.exists(save.type)) {
+            const form = form_schema_6.Forms.get(save.type);
             type = form.name;
             if (form.id_field) {
                 // Si un champ existe pour ce formulaire
@@ -5262,7 +5290,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     }
     exports.initSavedForm = initSavedForm;
 });
-define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, home_2, logger_7) {
+define("PageManager", ["require", "exports", "helpers", "form", "settings_page", "saved_forms", "home", "logger", "main"], function (require, exports, helpers_11, form_1, settings_page_1, saved_forms_1, home_2, logger_7, main_10) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -5273,14 +5301,23 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         AppPageName["saved"] = "saved";
         AppPageName["home"] = "home";
     })(AppPageName = exports.AppPageName || (exports.AppPageName = {}));
-    class _PageMananger {
+    const DEFAULT_PAGE = AppPageName.home;
+    /**
+     * Gère les pages de l'application.
+     * Utilisée pour gérer le système de pile de pages.
+     * Pour pousser une nouvelle page sur les autres, utilisez push().
+     * Pour revenir à la page précédente, utilisez back(). Vous pouvez
+     * aussi utiliser pop() qui ne fait pas de vérification d'usage lors du dépop.
+     * Cette classe ne doit être instanciée qu'une seule fois !
+     */
+    class _PageManager {
         constructor() {
             this.lock_return_button = false;
             /**
              * Déclaration des pages possibles
              * Chaque clé de AppPages doit être une possibilité de AppPageName
              */
-            this.AppPages = {
+            this.app_pages = {
                 home: {
                     name: "Tableau de bord",
                     callback: home_2.initHomePage,
@@ -5317,15 +5354,15 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             </div>
         </li>`);
             // Ajoute chaque page au menu
-            for (const page in this.AppPages) {
+            for (const page in this.app_pages) {
                 const li = document.createElement('li');
                 li.id = "__sidenav_base_element_" + page;
                 li.onclick = () => {
-                    exports.PageManager.pushPage(this.AppPages[page]);
+                    exports.PageManager.push(this.app_pages[page]);
                 };
                 const link = document.createElement('a');
                 link.href = "#!";
-                link.innerText = this.AppPages[page].name;
+                link.innerText = this.app_pages[page].name;
                 li.appendChild(link);
                 sidenav.appendChild(li);
             }
@@ -5333,6 +5370,9 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             const elem = document.querySelector('.sidenav');
             exports.SIDENAV_OBJ = M.Sidenav.init(elem, {});
         }
+        /**
+         * Met à jour le bouton retour sur PC
+         */
         updateReturnBtn() {
             if (device.platform === "browser") {
                 const back_btn = document.getElementById('__nav_back_button');
@@ -5348,7 +5388,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
          * Recharge la page actuelle. (la vide et réexécute le callback configuré dans la AppPageObj)
          */
         reload(additionnals, reset_scroll = false) {
-            this.changePage(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals, reset_scroll);
+            this.change(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals, reset_scroll);
         }
         /**
          * Change l'affichage et charge la page "page" dans le bloc principal
@@ -5358,22 +5398,22 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
          * @param additionnals Variable à passer en paramètre au callback de page
          * @param reset_scroll Réinitiliser le scroll de la page en haut
          */
-        changePage(page, delete_paused = true, force_name, additionnals, reset_scroll = true) {
+        change(page, delete_paused = true, force_name, additionnals, reset_scroll = true) {
             // Tente de charger la page
             try {
                 let pagename = "";
                 if (typeof page === 'string') {
                     // AppPageName
-                    if (!this.pageExists(page)) {
+                    if (!this.exists(page)) {
                         throw new ReferenceError("Page does not exists");
                     }
                     pagename = page;
-                    page = this.AppPages[page];
+                    page = this.app_pages[page];
                 }
                 else {
                     // Recherche de la clé correspondante
-                    for (const k in this.AppPages) {
-                        if (this.AppPages[k] === page) {
+                    for (const k in this.app_pages) {
+                        if (this.app_pages[k] === page) {
                             pagename = k;
                             break;
                         }
@@ -5419,8 +5459,11 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 return Promise.reject(e);
             }
         }
-        cleanWaitingPages() {
-            while (this.pages_holder.length >= 10) {
+        /**
+         * Supprime des pages sauvegardées si la pile de page dépasse MAX_SLEEPING_PAGES
+         */
+        clean() {
+            while (this.pages_holder.length >= main_10.MAX_SLEEPING_PAGES) {
                 this.pages_holder.shift();
             }
         }
@@ -5430,12 +5473,12 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
          * @param force_name Nom à mettre dans la navbar
          * @param additionnals Variable à passer au callback de la page à charger
          */
-        pushPage(page, force_name, additionnals) {
-            if (typeof page === 'string' && !this.pageExists(page)) {
+        push(page, force_name, additionnals) {
+            if (typeof page === 'string' && !this.exists(page)) {
                 throw new ReferenceError("Page does not exists");
             }
-            // Si il y a plus de 10 pages dans la pile, clean
-            this.cleanWaitingPages();
+            // Si il y a plus de MAX_SLEEPING_PAGES pages dans la pile, clean
+            this.clean();
             // Récupère le contenu actuel du bloc mère
             const actual_base = helpers_11.getBase();
             // Sauvegarde de la base actuelle dans le document fragment
@@ -5457,15 +5500,15 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             // Insère la nouvelle base vide à la racine de main
             document.getElementsByTagName('main')[0].appendChild(new_base);
             // Appelle la fonction pour charger la page demandée dans le bloc
-            return this.changePage(page, false, force_name, additionnals);
+            return this.change(page, false, force_name, additionnals);
         }
         /**
          * Revient à la page précédente.
          * Charge la page d'accueil si aucune page disponible
          */
-        popPage() {
+        pop() {
             if (this.pages_holder.length === 0) {
-                this.changePage(AppPageName.home);
+                this.change(DEFAULT_PAGE);
                 return;
             }
             // Récupère la dernière page poussée dans le tableau
@@ -5485,7 +5528,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             this.lock_return_button = false;
             if (this.actual_page.reload_on_restore) {
                 if (typeof this.actual_page.reload_on_restore === 'boolean') {
-                    this.changePage(this.actual_page, false, undefined, undefined, false);
+                    this.change(this.actual_page, false, undefined, undefined, false);
                 }
                 else {
                     this.actual_page.reload_on_restore();
@@ -5495,8 +5538,9 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         }
         /**
          * Retourne à la page précédente, et demande si à confirmer si la page a le flag "should_wait".
+         * @param force_asking Oblige à demander si on doit retourner à la page précédente ou non.
          */
-        goBack(force_asking = false) {
+        back(force_asking = false) {
             if (this.lock_return_button) {
                 return;
             }
@@ -5511,7 +5555,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                 }
                 catch (e) { }
                 if (this.isPageWaiting()) {
-                    this.popPage();
+                    this.pop();
                 }
                 else {
                     // @ts-ignore this.changePage(AppPageName.home);
@@ -5533,14 +5577,14 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         set should_wait(v) {
             this._should_wait = v;
         }
-        pageExists(name) {
-            return name in this.AppPages;
+        exists(name) {
+            return name in this.app_pages;
         }
         isPageWaiting() {
             return this.pages_holder.length > 0;
         }
     }
-    exports.PageManager = new _PageMananger;
+    exports.PageManager = new _PageManager;
     function cleanElement(e) {
         let n;
         while (n = e.firstChild) {
@@ -5548,7 +5592,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
         }
     }
 });
-define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "main"], function (require, exports, PageManager_6, form_schema_7, SyncManager_6, main_10) {
+define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncManager", "main"], function (require, exports, PageManager_6, form_schema_7, SyncManager_6, main_11) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -5695,7 +5739,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             // Permet le bouton retour sur navigateur
             const back_btn = document.getElementById('__nav_back_button');
             back_btn.onclick = function () {
-                PageManager_6.PageManager.goBack();
+                PageManager_6.PageManager.back();
             };
             back_btn.classList.remove('hide');
         }
@@ -5936,7 +5980,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
      * @param element HTMLImageElement
      */
     async function createImgSrc(path, element) {
-        const file = await main_10.FILE_HELPER.get(path);
+        const file = await main_11.FILE_HELPER.get(path);
         element.src = file.toURL();
         element.dataset.original = path;
     }
@@ -6200,7 +6244,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         if (form_schema_7.Forms.current_key === null) {
             throw "Impossible de créer une entrée sans base";
         }
-        const current = form_schema_7.Forms.getForm(form_schema_7.Forms.current_key);
+        const current = form_schema_7.Forms.get(form_schema_7.Forms.current_key);
         const promises = [];
         for (let i = 0; i < count; i++) {
             const save = {
@@ -6236,12 +6280,12 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
             }
             // Sauvegarde du formulaire
             const id = generateId(20);
-            promises.push(main_10.FILE_HELPER.write("forms/" + id + ".json", save)
+            promises.push(main_11.FILE_HELPER.write("forms/" + id + ".json", save)
                 .then(() => {
                 return SyncManager_6.SyncManager.add(id, save);
             }));
-            if (main_10.SD_FILE_HELPER) {
-                main_10.SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
+            if (main_11.SD_FILE_HELPER) {
+                main_11.SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
             }
         }
         await Promise.all(promises);
@@ -6259,7 +6303,7 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     }
     exports.getSdCardFolder = getSdCardFolder;
 });
-define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout", "file_helper"], function (require, exports, helpers_12, user_manager_7, main_11, fetch_timeout_3, file_helper_4) {
+define("form_schema", ["require", "exports", "helpers", "user_manager", "main", "fetch_timeout", "file_helper"], function (require, exports, helpers_12, user_manager_7, main_12, fetch_timeout_3, file_helper_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -6283,7 +6327,15 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         FormEntityType["date"] = "date";
         FormEntityType["time"] = "time";
     })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
-    // Classe contenant le formulaire JSON chargé et parsé
+    /**
+     * Contient les différents schémas de formulaire,
+     * le schéma actuellement chargé,
+     * et charge automatiquement au démarrage, depuis le serveur
+     * ou depuis le stockage interne, les schémas disponibles.
+     *
+     * Après création de l'objet, lancez l'initialisation avec init()
+     * puis attendez la fin de l'initialisation avec onReady().
+     */
     class FormSchemas {
         constructor() {
             this._current_key = null;
@@ -6301,9 +6353,9 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         /**
          * Sauvegarde les schémas actuellement chargés dans cet objet sur le stockage interne de l'appareil.
          */
-        saveForms() {
+        save() {
             if (this.available_forms) {
-                main_11.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
+                main_12.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
             }
         }
         /**
@@ -6324,7 +6376,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             if (init_text) {
                 init_text.innerText = "Mise à jour des schémas de formulaire";
             }
-            if (main_11.ENABLE_FORM_DOWNLOAD && helpers_12.hasConnection() && user_manager_7.UserManager.logged) {
+            if (main_12.ENABLE_FORM_DOWNLOAD && helpers_12.hasConnection() && user_manager_7.UserManager.logged) {
                 return this.downloadSchemaFromServer();
             }
             else {
@@ -6341,7 +6393,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes
             try {
-                const response = await fetch_timeout_3.default(main_11.API_URL + "schemas/subscribed.json", {
+                const response = await fetch_timeout_3.default(main_12.API_URL + "schemas/subscribed.json", {
                     headers: new Headers({ "Authorization": "Bearer " + user_manager_7.UserManager.token }),
                     method: "GET"
                 }, timeout);
@@ -6378,7 +6430,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
         async readSchemaJSONFromFile() {
             // On vérifie si le fichier loaded_forms.json existe
             try {
-                const string = await main_11.FILE_HELPER.read(this.FORM_LOCATION);
+                const string = await main_12.FILE_HELPER.read(this.FORM_LOCATION);
                 this.loadFormSchemaInClass(JSON.parse(string));
             }
             catch (e) {
@@ -6418,7 +6470,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             // On sauvegarde les formulaires dans loaded_forms.json
             // uniquement si demandé
             if (save) {
-                this.saveForms();
+                this.save();
             }
         }
         /**
@@ -6436,7 +6488,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * Renvoie vrai si le formulaire existe. Renvoie également vrai pour null.
          * @param name Clé du formulaire
          */
-        formExists(name) {
+        exists(name) {
             return name === null || name in this.available_forms;
         }
         /**
@@ -6444,7 +6496,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * @param name clé d'accès au formulaire
          * @param make_default enregistre le nouveau formulaire comme clé par défaut
          */
-        changeForm(name, make_default = false) {
+        change(name, make_default = false) {
             if (name === null) {
                 // On supprime le formulaire chargé
                 this._current_key = null;
@@ -6453,7 +6505,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
                 }
                 return;
             }
-            if (this.formExists(name)) {
+            if (this.exists(name)) {
                 this._current_key = name;
                 if (make_default) {
                     this.default_form_key = name;
@@ -6467,20 +6519,27 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * Renvoie un formulaire, sans modifier le courant
          * @param name clé d'accès au formulaire
          */
-        getForm(name) {
-            if (this.formExists(name)) {
+        get(name) {
+            if (this.exists(name)) {
                 return this.available_forms[name];
             }
             else {
                 throw new Error("Form does not exists");
             }
         }
-        deleteForm(name) {
-            if (this.formExists(name) && name !== null) {
+        /**
+         * Supprime un schéma existant
+         * @param name
+         * @param will_save Sauvegarder les forms après suppression
+         */
+        delete(name, will_save = false) {
+            if (this.exists(name) && name !== null) {
                 delete this.available_forms[name];
                 if (this._current_key === name) {
                     this._current_key = null;
                 }
+                if (will_save)
+                    this.save();
             }
         }
         /**
@@ -6489,7 +6548,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
          * et en seconde position son nom textuel à présenter à l'utilisateur
          * @returns [string, string][]
          */
-        getAvailableForms() {
+        available() {
             const keys = Object.keys(this.available_forms);
             const tuples = [];
             for (const key of keys) {
@@ -6501,11 +6560,11 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             return this._current_key;
         }
         get current() {
-            if (this.current_key === null || !this.formExists(this.current_key)) {
+            if (this.current_key === null || !this.exists(this.current_key)) {
                 return this.DEAD_FORM_SCHEMA;
             }
             else {
-                return this.getForm(this.current_key);
+                return this.get(this.current_key);
             }
         }
         get default_form_key() {
@@ -6525,40 +6584,40 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             if (!(this._current_key in this.available_forms)) {
                 this._current_key = null;
             }
-            this.saveForms();
+            this.save();
         }
     }
     exports.Forms = new FormSchemas;
 });
-define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"], function (require, exports, main_12, file_helper_5, SyncManager_7) {
+define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"], function (require, exports, main_13, file_helper_5, SyncManager_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
     class _FormSaves {
         get(id) {
-            return main_12.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
+            return main_13.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
         }
         async getMetadata(id) {
-            const save = await main_12.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
+            const save = await main_13.FILE_HELPER.read("forms/" + id + ".json", file_helper_5.FileHelperReadMode.json);
             const files = {};
             for (const field in save.metadata) {
                 files[field] = [
                     save.metadata[field],
-                    await main_12.FILE_HELPER.getFile(await main_12.FILE_HELPER.get("form_data/" + id + "/" + save.metadata[field]))
+                    await main_13.FILE_HELPER.getFile(await main_13.FILE_HELPER.get("form_data/" + id + "/" + save.metadata[field]))
                 ];
             }
             return files;
         }
         async clear() {
             // On veut supprimer tous les fichiers
-            await main_12.FILE_HELPER.empty('forms', true);
-            if (await main_12.FILE_HELPER.exists('form_data')) {
-                await main_12.FILE_HELPER.empty('form_data', true);
+            await main_13.FILE_HELPER.empty('forms', true);
+            if (await main_13.FILE_HELPER.exists('form_data')) {
+                await main_13.FILE_HELPER.empty('form_data', true);
             }
-            if (device.platform === "Android" && main_12.SD_FILE_HELPER) {
+            if (device.platform === "Android" && main_13.SD_FILE_HELPER) {
                 try {
-                    await main_12.SD_FILE_HELPER.empty('forms', true);
-                    await main_12.SD_FILE_HELPER.empty('form_data', true);
+                    await main_13.SD_FILE_HELPER.empty('forms', true);
+                    await main_13.SD_FILE_HELPER.empty('form_data', true);
                 }
                 catch (e) {
                     // Tant pis, ça ne marche pas
@@ -6567,15 +6626,15 @@ define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"]
             await SyncManager_7.SyncManager.clear();
         }
         async rm(id) {
-            await main_12.FILE_HELPER.rm("forms/" + id + ".json");
-            if (await main_12.FILE_HELPER.exists("form_data/" + id)) {
-                await main_12.FILE_HELPER.rm("form_data/" + id, true);
+            await main_13.FILE_HELPER.rm("forms/" + id + ".json");
+            if (await main_13.FILE_HELPER.exists("form_data/" + id)) {
+                await main_13.FILE_HELPER.rm("form_data/" + id, true);
             }
-            if (device.platform === 'Android' && main_12.SD_FILE_HELPER) {
+            if (device.platform === 'Android' && main_13.SD_FILE_HELPER) {
                 // Tente de supprimer depuis la carte SD
                 try {
-                    await main_12.SD_FILE_HELPER.rm("form_data/" + id, true);
-                    await main_12.SD_FILE_HELPER.rm("forms/" + id + '.json');
+                    await main_13.SD_FILE_HELPER.rm("form_data/" + id, true);
+                    await main_13.SD_FILE_HELPER.rm("forms/" + id + '.json');
                 }
                 catch (e) { }
             }

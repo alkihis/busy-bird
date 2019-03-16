@@ -96,7 +96,16 @@ export type FormSchema = {[formName: string] : Form};
 // Type de fonction à passer en paramètre à onReady(callback)
 type FormCallback = (available?: FormSchema, current?: Form) => any;
 
-// Classe contenant le formulaire JSON chargé et parsé
+
+/**
+ * Contient les différents schémas de formulaire,
+ * le schéma actuellement chargé,
+ * et charge automatiquement au démarrage, depuis le serveur
+ * ou depuis le stockage interne, les schémas disponibles.
+ * 
+ * Après création de l'objet, lancez l'initialisation avec init() 
+ * puis attendez la fin de l'initialisation avec onReady().
+ */
 class FormSchemas {
     protected available_forms: FormSchema;
     protected _current_key: string = null;
@@ -120,7 +129,7 @@ class FormSchemas {
     /**
      * Sauvegarde les schémas actuellement chargés dans cet objet sur le stockage interne de l'appareil.
      */
-    public saveForms() {
+    public save() {
         if (this.available_forms) {
             FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
         }
@@ -251,7 +260,7 @@ class FormSchemas {
         // On sauvegarde les formulaires dans loaded_forms.json
         // uniquement si demandé
         if (save) {
-            this.saveForms();
+            this.save();
         }
     }
 
@@ -272,7 +281,7 @@ class FormSchemas {
      * Renvoie vrai si le formulaire existe. Renvoie également vrai pour null.
      * @param name Clé du formulaire
      */
-    public formExists(name: string) : boolean {
+    public exists(name: string) : boolean {
         return name === null || name in this.available_forms;
     }
 
@@ -281,7 +290,7 @@ class FormSchemas {
      * @param name clé d'accès au formulaire
      * @param make_default enregistre le nouveau formulaire comme clé par défaut
      */
-    public changeForm(name: string, make_default: boolean = false) : void {
+    public change(name: string, make_default: boolean = false) : void {
         if (name === null) {
             // On supprime le formulaire chargé
             this._current_key = null;
@@ -292,7 +301,7 @@ class FormSchemas {
             return;
         }
 
-        if (this.formExists(name)) {
+        if (this.exists(name)) {
             this._current_key = name;
 
             if (make_default) {
@@ -308,8 +317,8 @@ class FormSchemas {
      * Renvoie un formulaire, sans modifier le courant
      * @param name clé d'accès au formulaire
      */
-    public getForm(name: string) : Form {
-        if (this.formExists(name)) {
+    public get(name: string) : Form {
+        if (this.exists(name)) {
             return this.available_forms[name];
         }
         else {
@@ -317,13 +326,21 @@ class FormSchemas {
         }
     }
 
-    public deleteForm(name: string) : void {
-        if (this.formExists(name) && name !== null) {
+    /**
+     * Supprime un schéma existant
+     * @param name 
+     * @param will_save Sauvegarder les forms après suppression
+     */
+    public delete(name: string, will_save = false) : void {
+        if (this.exists(name) && name !== null) {
             delete this.available_forms[name];
 
             if (this._current_key === name) {
                 this._current_key = null;
             }
+
+            if (will_save)
+                this.save();
         }
     }
 
@@ -333,7 +350,7 @@ class FormSchemas {
      * et en seconde position son nom textuel à présenter à l'utilisateur
      * @returns [string, string][]
      */
-    public getAvailableForms() : [string, string][] {
+    public available() : [string, string][] {
         const keys = Object.keys(this.available_forms);
         const tuples: [string, string][] = [];
 
@@ -349,11 +366,11 @@ class FormSchemas {
     }
 
     public get current() : Form {
-        if (this.current_key === null || !this.formExists(this.current_key)) {
+        if (this.current_key === null || !this.exists(this.current_key)) {
             return this.DEAD_FORM_SCHEMA;
         }
         else {
-            return this.getForm(this.current_key);
+            return this.get(this.current_key);
         }
     }
 
@@ -379,7 +396,7 @@ class FormSchemas {
             this._current_key = null;
         }
 
-        this.saveForms();
+        this.save();
     }
 }
 

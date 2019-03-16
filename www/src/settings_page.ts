@@ -104,7 +104,7 @@ export function initSettingsPage(base: HTMLElement) {
     container.appendChild(select);
     
     Forms.onReady(function() {
-        const available = [["", "Aucun"], ...Forms.getAvailableForms()];
+        const available = [["", "Aucun"], ...Forms.available()];
 
         for (const option of available) {
             const o = document.createElement('option');
@@ -123,8 +123,8 @@ export function initSettingsPage(base: HTMLElement) {
     select.addEventListener('change', function() {
         const value = select.value || null;
 
-        if (Forms.formExists(value)) {
-            Forms.changeForm(value, true);
+        if (Forms.exists(value)) {
+            Forms.change(value, true);
         }
     });
 
@@ -439,10 +439,10 @@ async function subscriptionsModal() : Promise<void> {
 
                 // Suppression des formulaires demandés à être unsub
                 for (const f of to_uncheck) {
-                    Forms.deleteForm(f);
+                    Forms.delete(f, false);
                 }
 
-                Forms.saveForms();
+                Forms.save();
             }
 
             let subs: FormSchema = undefined;

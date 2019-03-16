@@ -13,14 +13,14 @@ enum SaveState {
 
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
-    if (form.type === null || !Forms.formExists(form.type)) {
+    if (form.type === null || !Forms.exists(form.type)) {
         showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type+ "\".", 10000);
         return;
     }
 
-    const current_form = Forms.getForm(form.type);
+    const current_form = Forms.get(form.type);
     
-    PageManager.pushPage(AppPageName.form, "Modifier", {form: current_form, name, save: form});
+    PageManager.push(AppPageName.form, "Modifier", {form: current_form, name, save: form});
 }
 
 async function deleteAll() : Promise<any> {
@@ -61,8 +61,8 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     let state = SaveState.error;
     let type = "Type inconnu";
 
-    if (save.type !== null && Forms.formExists(save.type)) {
-        const form = Forms.getForm(save.type);
+    if (save.type !== null && Forms.exists(save.type)) {
+        const form = Forms.get(save.type);
         type = form.name;
 
         if (form.id_field) {
