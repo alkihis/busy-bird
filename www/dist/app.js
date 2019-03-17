@@ -553,7 +553,7 @@ define("user_manager", ["require", "exports", "main", "helpers", "form_schema"],
                     if (Array.isArray(json.subscriptions)) {
                         json.subscriptions = {};
                     }
-                    form_schema_1.Forms.schemas = json.subscriptions;
+                    form_schema_1.Schemas.schemas = json.subscriptions;
                     resolve();
                 })
                     .catch((error) => {
@@ -2770,7 +2770,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         catch (e) { }
         // Initialise les blocs principaux du code: L'utilitaire de log, les schémas de form et le gestionnaire de sync
         logger_3.Logger.init();
-        form_schema_2.Forms.init();
+        form_schema_2.Schemas.init();
         SyncManager_1.SyncManager.init();
         // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
         if (window.MobileAccessibility) {
@@ -2797,7 +2797,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             href = tmp[tmp.length - 1];
         }
         // Quand les forms sont prêts, on affiche l'app !
-        return form_schema_2.Forms.onReady()
+        return form_schema_2.Schemas.onReady()
             .then(() => {
             // On montre l'écran
             navigator.splashscreen.hide();
@@ -2831,7 +2831,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             getLocation: helpers_4.getLocation,
             testDistance: helpers_4.testDistance,
             Logger: logger_3.Logger,
-            Forms: form_schema_2.Forms,
+            Schemas: form_schema_2.Schemas,
             SyncEvent: SyncManager_1.SyncEvent,
             askModalList: helpers_4.askModalList,
             FileHelper: file_helper_2.FileHelper,
@@ -2985,17 +2985,8 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                     contraintes[name] = value;
                 });
             }
-            // Valide des contraintes externes si jamais l'élément a une valeur
-            if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
-                const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
-                if (element.required) {
-                    elements_failed.push([name, str, element.parentElement]);
-                }
-                else {
-                    elements_warn.push([name, str, element.parentElement]);
-                }
-            }
-            else if (element.tagName === "INPUT" && element.type === "checkbox") {
+            // Si c'est une checkbox, on regarde si elle est indéterminée
+            if (element.tagName === "INPUT" && element.type === "checkbox") {
                 if (element.indeterminate) {
                     if (element.required) {
                         elements_failed.push([element.nextElementSibling.innerText, "Ce champ est requis.", element.parentElement]);
@@ -3005,6 +2996,7 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                     }
                 }
             }
+            // Si l'élément est requis mais qu'il n'a aucune valeur
             else if (element.required && !element.value) {
                 if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
                     elements_failed.push([name, "Champ requis", element.parentElement]);
@@ -3213,12 +3205,13 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
     exports.beginFormSave = beginFormSave;
     /**
      * Sauvegarde le formulaire actuel dans un fichier .json
-     * @param type
-     * @param name
-     * @param location
-     * @param form_save
+     * @param type Type du formulaire à sauvegarder
+     * @param name ID du formulaire
+     * @param location Localisation choisie par l'utilisateur (peut être chaîne vide si non précisée)
+     * @param form_save Ancienne sauvegarde (si mode édition)
      */
     function saveForm(type, name, location, form_save) {
+        // On construit l'objet représentant une sauvegarde
         const form_values = {
             fields: {},
             type,
@@ -3226,6 +3219,7 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
             owner: (form_save ? form_save.owner : user_manager_3.UserManager.username),
             metadata: {}
         };
+        // On récupère les valeurs des éléments "classiques" (hors fichiers)
         for (const input of document.getElementsByClassName('input-form-element')) {
             const i = input;
             if (input.tagName === "SELECT" && input.multiple) {
@@ -3260,9 +3254,9 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
     /**
      * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
      * puis crée le formulaire
-     * @param name Nom du formulaire (sans le .json)
-     * @param form_values
-     * @param older_save
+     * @param name ID du formulaire (sans le .json)
+     * @param form_values Valeurs à sauvegarder
+     * @param older_save Anciennes valeurs (si mode édition)
      */
     async function writeDataThenForm(name, form_values, older_save) {
         async function deleteOlderFile(input_name) {
@@ -3365,6 +3359,7 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                 }
             }
         }
+        // Attend que les sauvegardes soient terminées
         await Promise.all(promises);
         // On supprime les metadonnées vides du form
         for (const n in form_values.metadata) {
@@ -3380,9 +3375,11 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
         return form_values;
     }
     /**
+     * __DEPRECATED__ : cette fonctionnalité a été supprimée.
      * Valide les contraintes externes d'un champ
      * @param constraints
      * @param e
+     * @deprecated
      */
     function validConstraints(constraints, e) {
         const cons = constraints.split(';');
@@ -3862,19 +3859,15 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
                     });
                     real_wrapper.appendChild(mic_btn);
                 }
-                htmle.dataset.e_constraints = ele.external_constraints || "";
                 htmle.dataset.invalid_tip = ele.tip_on_invalid || "";
-                // Évènement pour le select: contraintes externes ou si select multiple.required
-                if (htmle.multiple || ele.external_constraints) {
+                // Évènement pour le select: si select multiple.required
+                if (htmle.multiple) {
                     // Création du tip
                     createTip(wrapper, ele);
                     htmle.addEventListener('change', function () {
                         let valid = true;
                         if (this.multiple && this.required && $(this).val().length === 0) {
                             valid = false;
-                        }
-                        else if (this.value && ele.external_constraints) {
-                            valid = save_a_form_1.validConstraints(ele.external_constraints, this);
                         }
                         if (valid) {
                             setValid(this, label);
@@ -4163,8 +4156,8 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
             loadFormPage(base, edition_mode.form, edition_mode);
         }
         else {
-            form_schema_3.Forms.onReady(function (_, current) {
-                if (form_schema_3.Forms.current_key === null) {
+            form_schema_3.Schemas.onReady(function (_, current) {
+                if (form_schema_3.Schemas.current_key === null) {
                     // Aucun formulaire n'est chargé !
                     base.innerHTML = helpers_7.displayErrorMessage("Aucun schéma n'est chargé.", "Sélectionnez le schéma de formulaire à utiliser dans les paramètres.");
                     PageManager_3.PageManager.should_wait = false;
@@ -4221,7 +4214,7 @@ define("form", ["require", "exports", "vocal_recognition", "form_schema", "helpe
         const btn = document.createElement('div');
         btn.classList.add('btn-flat', 'right', 'red-text');
         btn.innerText = "Enregistrer";
-        const current_form_key = form_schema_3.Forms.current_key;
+        const current_form_key = form_schema_3.Schemas.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
                 save_a_form_1.beginFormSave(edition_mode.save.type, current_form, edition_mode.name, edition_mode.save);
@@ -4489,8 +4482,8 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
             <span class="red-text text-darken-2">Cette erreur est probablement grave. 
             Nous vous conseillons de ne pas tenter d'enregistrer d'entrée et de vérifier votre stockage interne.</span>`));
         }
-        form_schema_4.Forms.onReady(function (available, current) {
-            if (form_schema_4.Forms.current_key === null) {
+        form_schema_4.Schemas.onReady(function (available, current) {
+            if (form_schema_4.Schemas.current_key === null) {
                 return;
             }
             const locations = current.locations;
@@ -4671,7 +4664,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
     function formActualisationModal() {
         const instance = helpers_9.initModal({ dismissible: false }, helpers_9.getModalPreloader("Actualisation..."));
         instance.open();
-        form_schema_5.Forms.forceSchemaDownloadFromServer()
+        form_schema_5.Schemas.forceSchemaDownloadFromServer()
             .then(() => {
             helpers_9.showToast("Actualisation terminée.");
             instance.close();
@@ -4745,13 +4738,13 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         const select = document.createElement('select');
         select.classList.add('material-select');
         container.appendChild(select);
-        form_schema_5.Forms.onReady(function () {
-            const available = [["", "Aucun"], ...form_schema_5.Forms.available()];
+        form_schema_5.Schemas.onReady(function () {
+            const available = [["", "Aucun"], ...form_schema_5.Schemas.available()];
             for (const option of available) {
                 const o = document.createElement('option');
                 o.value = option[0];
                 o.innerText = option[1];
-                if (option[0] === form_schema_5.Forms.current_key || (option[0] === "" && form_schema_5.Forms.current_key === null)) {
+                if (option[0] === form_schema_5.Schemas.current_key || (option[0] === "" && form_schema_5.Schemas.current_key === null)) {
                     o.selected = true;
                 }
                 select.appendChild(o);
@@ -4760,8 +4753,8 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
         });
         select.addEventListener('change', function () {
             const value = select.value || null;
-            if (form_schema_5.Forms.exists(value)) {
-                form_schema_5.Forms.change(value, true);
+            if (form_schema_5.Schemas.exists(value)) {
+                form_schema_5.Schemas.change(value, true);
             }
         });
         // Bouton pour accéder aux souscriptions
@@ -5012,9 +5005,9 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                     await unsubscribe(to_uncheck, false);
                     // Suppression des formulaires demandés à être unsub
                     for (const f of to_uncheck) {
-                        form_schema_5.Forms.delete(f, false);
+                        form_schema_5.Schemas.delete(f, false);
                     }
-                    form_schema_5.Forms.save();
+                    form_schema_5.Schemas.save();
                 }
                 let subs = undefined;
                 // Appel à subscribe
@@ -5025,7 +5018,7 @@ define("settings_page", ["require", "exports", "user_manager", "form_schema", "h
                 instance.close();
                 // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
                 if (subs) {
-                    form_schema_5.Forms.schemas = subs;
+                    form_schema_5.Schemas.schemas = subs;
                 }
             }
             catch (e) {
@@ -5054,11 +5047,11 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
     ;
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
-        if (form.type === null || !form_schema_6.Forms.exists(form.type)) {
+        if (form.type === null || !form_schema_6.Schemas.exists(form.type)) {
             helpers_10.showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
             return;
         }
-        const current_form = form_schema_6.Forms.get(form.type);
+        const current_form = form_schema_6.Schemas.get(form.type);
         PageManager_5.PageManager.push(PageManager_5.AppPages.form, "Modifier", { form: current_form, name, save: form });
     }
     async function deleteAll() {
@@ -5092,8 +5085,8 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
         container.dataset.formid = id_without_json;
         let state = SaveState.error;
         let type = "Type inconnu";
-        if (save.type !== null && form_schema_6.Forms.exists(save.type)) {
-            const form = form_schema_6.Forms.get(save.type);
+        if (save.type !== null && form_schema_6.Schemas.exists(save.type)) {
+            const form = form_schema_6.Schemas.get(save.type);
             type = form.name;
             if (form.id_field) {
                 // Si un champ existe pour ce formulaire
@@ -5217,7 +5210,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             base.innerHTML = helpers_10.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             return;
         }
-        form_schema_6.Forms.onReady(function () {
+        form_schema_6.Schemas.onReady(function () {
             readAllFilesOfDirectory('forms').then(all_promises => Promise.all(all_promises)
                 .then(async function (files) {
                 // Tri des fichiers; le plus récent en premier
@@ -6234,16 +6227,16 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
     }
     exports.askModalList = askModalList;
     async function createRandomForms(count = 50) {
-        if (form_schema_7.Forms.current_key === null) {
+        if (form_schema_7.Schemas.current_key === null) {
             throw "Impossible de créer une entrée sans base";
         }
-        const current = form_schema_7.Forms.get(form_schema_7.Forms.current_key);
+        const current = form_schema_7.Schemas.get(form_schema_7.Schemas.current_key);
         const promises = [];
         for (let i = 0; i < count; i++) {
             const save = {
                 fields: {},
                 location: "",
-                type: form_schema_7.Forms.current_key,
+                type: form_schema_7.Schemas.current_key,
                 owner: "randomizer",
                 metadata: {}
             };
@@ -6580,7 +6573,7 @@ define("form_schema", ["require", "exports", "helpers", "user_manager", "main", 
             this.save();
         }
     }
-    exports.Forms = new FormSchemas;
+    exports.Schemas = new FormSchemas;
 });
 define("FormSaves", ["require", "exports", "main", "file_helper", "SyncManager"], function (require, exports, main_13, file_helper_5, SyncManager_7) {
     "use strict";

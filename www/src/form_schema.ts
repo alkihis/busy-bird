@@ -26,7 +26,7 @@ import { FileHelper } from "./file_helper";
 /**
  * Interfaces représentant un schéma de formulaire, les lieux d'un formulaire, un champ de formulaire puis une option d'un SELECT
  */
-export interface Form {
+export interface Schema {
     /**
      * Nom réel du schéma (à afficher à l'écran)
      */
@@ -102,10 +102,10 @@ export enum FormEntityType {
 }
 
 // Représente tous les schémas de Formulaire dispo
-export type FormSchema = {[formName: string] : Form};
+export type FormSchema = {[formName: string] : Schema};
 
 // Type de fonction à passer en paramètre à onReady(callback)
-type FormCallback = (available?: FormSchema, current?: Form) => any;
+type FormCallback = (available?: FormSchema, current?: Schema) => any;
 
 
 /**
@@ -124,7 +124,7 @@ class FormSchemas {
     protected on_ready: Promise<void> = null;
 
     protected readonly FORM_LOCATION: string = 'loaded_forms.json';
-    protected readonly DEAD_FORM_SCHEMA: Form = {name: null, fields: [], locations: {}};
+    protected readonly DEAD_FORM_SCHEMA: Schema = {name: null, fields: [], locations: {}};
 
     constructor() { 
         if (localStorage.getItem('default_form_key')) {
@@ -328,7 +328,7 @@ class FormSchemas {
      * Renvoie un formulaire, sans modifier le courant
      * @param name clé d'accès au formulaire
      */
-    public get(name: string) : Form {
+    public get(name: string) : Schema {
         if (this.exists(name)) {
             return this.available_forms[name];
         }
@@ -376,7 +376,7 @@ class FormSchemas {
         return this._current_key;
     }
 
-    public get current() : Form {
+    public get current() : Schema {
         if (this.current_key === null || !this.exists(this.current_key)) {
             return this.DEAD_FORM_SCHEMA;
         }
@@ -411,7 +411,7 @@ class FormSchemas {
     }
 }
 
-export const Forms = new FormSchemas;
+export const Schemas = new FormSchemas;
 
 /**
  * Interfaces représentant la sauvegarde d'un formulaire

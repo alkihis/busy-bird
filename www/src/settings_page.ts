@@ -1,5 +1,5 @@
 import { UserManager, loginUser, createNewUser } from "./user_manager";
-import { Forms, FormSchema } from "./form_schema";
+import { Schemas, FormSchema } from "./form_schema";
 import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText } from "./helpers";
 import { SyncManager } from "./SyncManager";
 import { PageManager } from "./PageManager";
@@ -18,7 +18,7 @@ function formActualisationModal() : void {
     const instance = initModal({dismissible: false}, getModalPreloader("Actualisation..."));
     instance.open();
 
-    Forms.forceSchemaDownloadFromServer()
+    Schemas.forceSchemaDownloadFromServer()
         .then(() => {
             showToast("Actualisation terminée.");
             instance.close();
@@ -103,15 +103,15 @@ export function initSettingsPage(base: HTMLElement) {
 
     container.appendChild(select);
     
-    Forms.onReady(function() {
-        const available = [["", "Aucun"], ...Forms.available()];
+    Schemas.onReady(function() {
+        const available = [["", "Aucun"], ...Schemas.available()];
 
         for (const option of available) {
             const o = document.createElement('option');
             o.value = option[0];
             o.innerText = option[1];
 
-            if (option[0] === Forms.current_key || (option[0] === "" && Forms.current_key === null)) {
+            if (option[0] === Schemas.current_key || (option[0] === "" && Schemas.current_key === null)) {
                 o.selected = true;
             }
             select.appendChild(o);
@@ -123,8 +123,8 @@ export function initSettingsPage(base: HTMLElement) {
     select.addEventListener('change', function() {
         const value = select.value || null;
 
-        if (Forms.exists(value)) {
-            Forms.change(value, true);
+        if (Schemas.exists(value)) {
+            Schemas.change(value, true);
         }
     });
 
@@ -439,10 +439,10 @@ async function subscriptionsModal() : Promise<void> {
 
                 // Suppression des formulaires demandés à être unsub
                 for (const f of to_uncheck) {
-                    Forms.delete(f, false);
+                    Schemas.delete(f, false);
                 }
 
-                Forms.save();
+                Schemas.save();
             }
 
             let subs: FormSchema = undefined;
@@ -456,7 +456,7 @@ async function subscriptionsModal() : Promise<void> {
 
             // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
             if (subs) {
-                Forms.schemas = subs;
+                Schemas.schemas = subs;
             }
         } catch (e) {
             showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");

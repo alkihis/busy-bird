@@ -1,5 +1,5 @@
 import { PageManager } from "./PageManager";
-import { Forms, FormSave, FormEntityType } from "./form_schema";
+import { Schemas, FormSave, FormEntityType } from "./form_schema";
 import { SyncManager } from "./SyncManager";
 import { FILE_HELPER, SD_FILE_HELPER } from "./main";
 
@@ -710,17 +710,17 @@ export function askModalList(items: string[]) : Promise<number> {
 }
 
 export async function createRandomForms(count: number = 50) : Promise<void> {
-    if (Forms.current_key === null) {
+    if (Schemas.current_key === null) {
         throw "Impossible de créer une entrée sans base";
     }
 
-    const current = Forms.get(Forms.current_key);
+    const current = Schemas.get(Schemas.current_key);
     const promises: Promise<any>[] = [];
     for (let i = 0; i < count; i++) {
         const save: FormSave = {
             fields: {},
             location: "",
-            type: Forms.current_key,
+            type: Schemas.current_key,
             owner: "randomizer",
             metadata: {}
         };

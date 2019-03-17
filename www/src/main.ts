@@ -2,7 +2,7 @@ import { PageManager, SIDENAV_OBJ, AppPages } from './PageManager';
 import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
-import { FormEntityType, Forms } from "./form_schema";
+import { FormEntityType, Schemas } from "./form_schema";
 import { prompt } from "./vocal_recognition";
 import { createNewUser, UserManager } from "./user_manager";
 import { SyncManager, SyncEvent } from "./SyncManager";
@@ -116,7 +116,7 @@ async function initApp() {
 
     // Initialise les blocs principaux du code: L'utilitaire de log, les schémas de form et le gestionnaire de sync
     Logger.init();
-    Forms.init(); 
+    Schemas.init(); 
     SyncManager.init();
 
     // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
@@ -150,7 +150,7 @@ async function initApp() {
     }
 
     // Quand les forms sont prêts, on affiche l'app !
-    return Forms.onReady()
+    return Schemas.onReady()
         .then(() => {
             // On montre l'écran
             navigator.splashscreen.hide();
@@ -191,7 +191,7 @@ function initDebug() {
         getLocation,
         testDistance,
         Logger,
-        Forms,
+        Schemas,
         SyncEvent,
         askModalList,
         FileHelper,

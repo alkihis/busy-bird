@@ -1,5 +1,5 @@
 import { formatDate, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
-import { FormSave, Forms } from "./form_schema";
+import { FormSave, Schemas } from "./form_schema";
 import { PageManager, AppPages } from "./PageManager";
 import { SyncManager } from "./SyncManager";
 import { Logger } from "./logger";
@@ -13,12 +13,12 @@ enum SaveState {
 
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
-    if (form.type === null || !Forms.exists(form.type)) {
+    if (form.type === null || !Schemas.exists(form.type)) {
         showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type+ "\".", 10000);
         return;
     }
 
-    const current_form = Forms.get(form.type);
+    const current_form = Schemas.get(form.type);
     
     PageManager.push(AppPages.form, "Modifier", {form: current_form, name, save: form});
 }
@@ -61,8 +61,8 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     let state = SaveState.error;
     let type = "Type inconnu";
 
-    if (save.type !== null && Forms.exists(save.type)) {
-        const form = Forms.get(save.type);
+    if (save.type !== null && Schemas.exists(save.type)) {
+        const form = Schemas.get(save.type);
         type = form.name;
 
         if (form.id_field) {
@@ -210,7 +210,7 @@ export async function initSavedForm(base: HTMLElement) {
         return;
     }
 
-    Forms.onReady(function() {
+    Schemas.onReady(function() {
         readAllFilesOfDirectory('forms').then(all_promises => 
             Promise.all(all_promises)
                 .then(async function(files: [File, FormSave][]) {

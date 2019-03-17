@@ -1,6 +1,6 @@
 import { API_URL } from "./main";
 import { getModal, initModal, getModalPreloader, showToast } from "./helpers";
-import { Forms } from "./form_schema";
+import { Schemas } from "./form_schema";
 
 /**
  * Permet de gérer l'utilisateur connecté, ou la création d'un nouvel utilisateur.
@@ -56,7 +56,7 @@ class _UserManager {
                         json.subscriptions = {};
                     }
 
-                    Forms.schemas = json.subscriptions;
+                    Schemas.schemas = json.subscriptions;
                     
                     resolve();
                 })

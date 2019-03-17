@@ -1,5 +1,5 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
-import { FormEntityType, FormEntity, Forms, Form, FormSave, FormLocations } from './form_schema';
+import { FormEntityType, FormEntity, Schemas, Schema, FormSave, FormLocations } from './form_schema';
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal } from "./helpers";
 import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "./main";
 import { PageManager } from "./PageManager";
@@ -107,7 +107,7 @@ function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement | H
  * @param current_form Formulaire courant
  * @param filled_form Formulaire déjà rempli (utilisé pour l'édition)
  */
-export function constructForm(placeh: HTMLElement, current_form: Form, filled_form?: FormSave) : void {
+export function constructForm(placeh: HTMLElement, current_form: Schema, filled_form?: FormSave) : void {
 
     // Si le formulaire accepte la localisation
     if (!current_form.no_location) {
@@ -896,13 +896,13 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
  * @param base
  * @param edition_mode
  */
-export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, name: string, form: Form}) {
+export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, name: string, form: Schema}) {
     if (edition_mode) {
         loadFormPage(base, edition_mode.form, edition_mode);
     }
     else {
-        Forms.onReady(function(_, current) {
-            if (Forms.current_key === null) {
+        Schemas.onReady(function(_, current) {
+            if (Schemas.current_key === null) {
                 // Aucun formulaire n'est chargé !
                 base.innerHTML = displayErrorMessage(
                     "Aucun schéma n'est chargé.", 
@@ -923,7 +923,7 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
  * @param current_form
  * @param edition_mode
  */
-export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode?: {save: FormSave, name: string}) {
+export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mode?: {save: FormSave, name: string}) {
     base.innerHTML = "";
 
     if (!edition_mode && !UserManager.logged) {
@@ -976,7 +976,7 @@ export function loadFormPage(base: HTMLElement, current_form: Form, edition_mode
     btn.classList.add('btn-flat', 'right', 'red-text');
     btn.innerText = "Enregistrer";
 
-    const current_form_key = Forms.current_key;
+    const current_form_key = Schemas.current_key;
     btn.addEventListener('click', function() {
         if (edition_mode) {
             beginFormSave(edition_mode.save.type, current_form, edition_mode.name, edition_mode.save);
@@ -1017,7 +1017,7 @@ function cancelGeoLocModal(required = true) : void {
  * Charge le sélecteur de localisation depuis un schéma de formulaire
  * @param current_form Schéma de formulaire chargé
  */
-function callLocationSelector(current_form: Form) : void {
+function callLocationSelector(current_form: Schema) : void {
     // Obtient l'élément HTML du modal
     const modal = getModal();
     const instance = initModal({

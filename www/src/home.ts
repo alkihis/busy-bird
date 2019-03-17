@@ -2,7 +2,7 @@ import { UserManager } from "./user_manager";
 import { SyncManager } from "./SyncManager";
 import { hasGoodConnection, toValidUrl, getBase } from "./helpers";
 import { APP_VERSION, FILE_HELPER } from "./main";
-import { Forms } from "./form_schema";
+import { Schemas } from "./form_schema";
 import { createLocationInputSelector } from "./location";
 import { launchQuizz } from "./test_vocal_reco";
 
@@ -104,8 +104,8 @@ export async function initHomePage(base: HTMLElement) {
         ));
     }
 
-    Forms.onReady(function(available, current) {
-        if (Forms.current_key === null) {
+    Schemas.onReady(function(available, current) {
+        if (Schemas.current_key === null) {
             return;
         }
 

@@ -1,6 +1,6 @@
 import { FILE_HELPER, SD_FILE_HELPER, ID_COMPLEXITY, ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK, SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK } from "./main";
 import { urlToBlob, generateId, showToast, getModalPreloader, sleep, initModal, getModal } from "./helpers";
-import { FormSave, Form } from "./form_schema";
+import { FormSave, Schema } from "./form_schema";
 import { UserManager } from "./user_manager";
 import { PageManager, AppPages } from "./PageManager";
 import { Logger } from "./logger";
@@ -30,7 +30,7 @@ function scrollToAnElementOnClick(element_base: HTMLElement, element_related: HT
  * @param force_name? Force un identifiant pour le form à enregistrer
  * @param form_save? Précédente sauvegarde du formulaire
  */
-export async function beginFormSave(type: string, current_form: Form, force_name?: string, form_save?: FormSave) : Promise<void> {
+export async function beginFormSave(type: string, current_form: Schema, force_name?: string, form_save?: FormSave) : Promise<void> {
     // Ouverture du modal de verification
     const modal = getModal();
     const instance = initModal({ dismissible: false, outDuration: 100 }, getModalPreloader(
