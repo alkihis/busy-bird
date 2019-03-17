@@ -8,7 +8,7 @@ import { newModalRecord } from "./audio_listener";
 import { UserManager } from "./user_manager";
 import { createLocationInputSelector } from "./location";
 import { FileHelperReadMode } from "./file_helper";
-import { validConstraints, beginFormSave } from "./save_a_form";
+import { beginFormSave } from "./save_a_form";
 
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
@@ -529,20 +529,16 @@ export function constructForm(placeh: HTMLElement, current_form: Form, filled_fo
                 real_wrapper.appendChild(mic_btn);
             }
 
-            htmle.dataset.e_constraints = ele.external_constraints || "";
             htmle.dataset.invalid_tip = ele.tip_on_invalid || "";
 
-            // Évènement pour le select: contraintes externes ou si select multiple.required
-            if (htmle.multiple || ele.external_constraints) {
+            // Évènement pour le select: si select multiple.required
+            if (htmle.multiple) {
                 // Création du tip
                 createTip(wrapper, ele);
                 htmle.addEventListener('change', function(this: HTMLSelectElement) {
                     let valid = true;
                     if (this.multiple && this.required && ($(this).val() as string[]).length === 0) {
                         valid = false;
-                    }
-                    else if (this.value && ele.external_constraints) {
-                        valid = validConstraints(ele.external_constraints, this);
                     }
 
                     if (valid) {

@@ -2681,6 +2681,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
     exports.MP3_BITRATE = 256; /** En kb/s */
+    exports.DEFAULT_PAGE = PageManager_1.AppPages.home; /** Page chargée par défaut */
     exports.MAX_SLEEPING_PAGES = 20; /** Nombre de pages maximum qui restent en attente en arrière-plan */
     exports.SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
     exports.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK = true; /** Active le scroll lorsqu'on clique sur un élément lors du modal de vérification */
@@ -2802,10 +2803,10 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
             navigator.splashscreen.hide();
             let prom;
             if (href && PageManager_1.PageManager.exists(href)) {
-                prom = PageManager_1.PageManager.change(href);
+                prom = PageManager_1.PageManager.change(PageManager_1.AppPages[href]);
             }
             else {
-                prom = PageManager_1.PageManager.change(PageManager_1.AppPageName.home);
+                prom = PageManager_1.PageManager.change(exports.DEFAULT_PAGE);
             }
             return prom;
         });
@@ -3173,7 +3174,7 @@ define("save_a_form", ["require", "exports", "main", "helpers", "user_manager", 
                         </div>
                         `;
                         document.getElementById('__after_save_entries').onclick = function () {
-                            PageManager_2.PageManager.change(PageManager_2.AppPageName.saved, false);
+                            PageManager_2.PageManager.change(PageManager_2.AppPages.saved, false);
                         };
                         document.getElementById('__after_save_new').onclick = function () {
                             setTimeout(() => {
@@ -5058,7 +5059,7 @@ define("saved_forms", ["require", "exports", "helpers", "form_schema", "PageMana
             return;
         }
         const current_form = form_schema_6.Forms.get(form.type);
-        PageManager_5.PageManager.push(PageManager_5.AppPageName.form, "Modifier", { form: current_form, name, save: form });
+        PageManager_5.PageManager.push(PageManager_5.AppPages.form, "Modifier", { form: current_form, name, save: form });
     }
     async function deleteAll() {
         const instance = helpers_10.unclosableBottomModal(`
@@ -5294,14 +5295,33 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
-    var AppPageName;
-    (function (AppPageName) {
-        AppPageName["form"] = "form";
-        AppPageName["settings"] = "settings";
-        AppPageName["saved"] = "saved";
-        AppPageName["home"] = "home";
-    })(AppPageName = exports.AppPageName || (exports.AppPageName = {}));
-    const DEFAULT_PAGE = AppPageName.home;
+    /**
+     * Déclaration des pages possibles.
+     * @readonly
+     */
+    exports.AppPages = {
+        home: {
+            name: "Tableau de bord",
+            callback: home_2.initHomePage,
+            reload_on_restore: true
+        },
+        form: {
+            name: "Nouvelle entrée",
+            callback: form_1.initFormPage,
+            ask_change: true,
+            reload_on_restore: false
+        },
+        saved: {
+            name: "Entrées",
+            callback: saved_forms_1.initSavedForm,
+            reload_on_restore: true
+        },
+        settings: {
+            name: "Paramètres",
+            callback: settings_page_1.initSettingsPage,
+            reload_on_restore: false
+        }
+    };
     /**
      * Gère les pages de l'application.
      * Utilisée pour gérer le système de pile de pages.
@@ -5313,33 +5333,6 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
     class _PageManager {
         constructor() {
             this.lock_return_button = false;
-            /**
-             * Déclaration des pages possibles
-             * Chaque clé de AppPages doit être une possibilité de AppPageName
-             */
-            this.app_pages = {
-                home: {
-                    name: "Tableau de bord",
-                    callback: home_2.initHomePage,
-                    reload_on_restore: true
-                },
-                form: {
-                    name: "Nouvelle entrée",
-                    callback: form_1.initFormPage,
-                    ask_change: true,
-                    reload_on_restore: false
-                },
-                saved: {
-                    name: "Entrées",
-                    callback: saved_forms_1.initSavedForm,
-                    reload_on_restore: true
-                },
-                settings: {
-                    name: "Paramètres",
-                    callback: settings_page_1.initSettingsPage,
-                    reload_on_restore: false
-                }
-            };
             this.pages_holder = [];
             // Génération du sidenav
             const sidenav = document.getElementById('__sidenav_base_menu');
@@ -5354,15 +5347,15 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             </div>
         </li>`);
             // Ajoute chaque page au menu
-            for (const page in this.app_pages) {
+            for (const page in exports.AppPages) {
                 const li = document.createElement('li');
                 li.id = "__sidenav_base_element_" + page;
                 li.onclick = () => {
-                    exports.PageManager.push(this.app_pages[page]);
+                    exports.PageManager.push(exports.AppPages[page]);
                 };
                 const link = document.createElement('a');
                 link.href = "#!";
-                link.innerText = this.app_pages[page].name;
+                link.innerText = exports.AppPages[page].name;
                 li.appendChild(link);
                 sidenav.appendChild(li);
             }
@@ -5408,12 +5401,12 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
                         throw new ReferenceError("Page does not exists");
                     }
                     pagename = page;
-                    page = this.app_pages[page];
+                    page = exports.AppPages[page];
                 }
                 else {
                     // Recherche de la clé correspondante
-                    for (const k in this.app_pages) {
-                        if (this.app_pages[k] === page) {
+                    for (const k in exports.AppPages) {
+                        if (exports.AppPages[k] === page) {
                             pagename = k;
                             break;
                         }
@@ -5508,7 +5501,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
          */
         pop() {
             if (this.pages_holder.length === 0) {
-                this.change(DEFAULT_PAGE);
+                this.change(main_10.DEFAULT_PAGE);
                 return;
             }
             // Récupère la dernière page poussée dans le tableau
@@ -5578,7 +5571,7 @@ define("PageManager", ["require", "exports", "helpers", "form", "settings_page",
             this._should_wait = v;
         }
         exists(name) {
-            return name in this.app_pages;
+            return name in exports.AppPages;
         }
         isPageWaiting() {
             return this.pages_holder.length > 0;

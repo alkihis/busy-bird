@@ -4,7 +4,7 @@ import { initSettingsPage } from "./settings_page";
 import { initSavedForm } from "./saved_forms";
 import { initHomePage, APP_NAME } from "./home";
 import { Logger } from "./logger";
-import { MAX_SLEEPING_PAGES } from "./main";
+import { MAX_SLEEPING_PAGES, DEFAULT_PAGE } from "./main";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 
@@ -16,20 +16,40 @@ interface AppPage {
     reload_on_restore: boolean | Function;
 }
 
-export enum AppPageName {
-    form = "form", settings = "settings", saved = "saved", home = "home"
-}
-
-type AppPages = {[pageName: string]: AppPage};
-
 interface PageSave {
     save: DocumentFragment;
     name: string;
     page: AppPage;
-    ask: boolean
+    ask: boolean;
 }
 
-const DEFAULT_PAGE = AppPageName.home;
+/**
+ * Déclaration des pages possibles.
+ * @readonly
+ */
+export const AppPages: { [pageId: string]: AppPage } = {
+    home: {
+        name: "Tableau de bord",
+        callback: initHomePage,
+        reload_on_restore: true
+    },
+    form: {
+        name: "Nouvelle entrée",
+        callback: initFormPage,
+        ask_change: true,
+        reload_on_restore: false
+    },
+    saved: {
+        name: "Entrées",
+        callback: initSavedForm,
+        reload_on_restore: true
+    },
+    settings: {
+        name: "Paramètres",
+        callback: initSettingsPage,
+        reload_on_restore: false
+    }
+};
 
 /**
  * Gère les pages de l'application.
@@ -43,34 +63,6 @@ class _PageManager {
     protected actual_page: AppPage;
     protected _should_wait: boolean;
     public lock_return_button: boolean = false;
-
-    /**
-     * Déclaration des pages possibles
-     * Chaque clé de AppPages doit être une possibilité de AppPageName
-     */
-    protected app_pages: AppPages = {
-        home: {
-            name: "Tableau de bord",
-            callback: initHomePage,
-            reload_on_restore: true
-        },
-        form: {
-            name: "Nouvelle entrée",
-            callback: initFormPage,
-            ask_change: true,
-            reload_on_restore: false
-        },
-        saved: {
-            name: "Entrées",
-            callback: initSavedForm,
-            reload_on_restore: true
-        },
-        settings: {
-            name: "Paramètres",
-            callback: initSettingsPage,
-            reload_on_restore: false
-        }
-    };
 
     protected pages_holder: PageSave[] = [];
 
@@ -90,16 +82,16 @@ class _PageManager {
         </li>`);
 
         // Ajoute chaque page au menu
-        for (const page in this.app_pages) {
+        for (const page in AppPages) {
             const li = document.createElement('li');
             li.id = "__sidenav_base_element_" + page;
             li.onclick = () => {
-                PageManager.push(this.app_pages[page]);
+                PageManager.push(AppPages[page]);
             };
 
             const link = document.createElement('a');
             link.href = "#!";
-            link.innerText = this.app_pages[page].name;
+            link.innerText = AppPages[page].name;
             li.appendChild(link);
 
             sidenav.appendChild(li);
@@ -141,7 +133,7 @@ class _PageManager {
      * @param additionnals Variable à passer en paramètre au callback de page
      * @param reset_scroll Réinitiliser le scroll de la page en haut
      */
-    public change(page: AppPageName | AppPage, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
+    public change(page: AppPage, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
         // Tente de charger la page
         try {
             let pagename: string = "";
@@ -152,12 +144,12 @@ class _PageManager {
                 }
                 
                 pagename = page;
-                page = this.app_pages[page];
+                page = AppPages[page];
             }
             else {
                 // Recherche de la clé correspondante
-                for (const k in this.app_pages) {
-                    if (this.app_pages[k] === page) {
+                for (const k in AppPages) {
+                    if (AppPages[k] === page) {
                         pagename = k;
                         break;
                     }
@@ -228,7 +220,7 @@ class _PageManager {
      * @param force_name Nom à mettre dans la navbar
      * @param additionnals Variable à passer au callback de la page à charger
      */
-    public push(page: AppPageName | AppPage, force_name?: string | null, additionnals?: any) : Promise<any> {
+    public push(page: AppPage, force_name?: string | null, additionnals?: any) : Promise<any> {
         if (typeof page === 'string' && !this.exists(page)) {
             throw new ReferenceError("Page does not exists");
         }
@@ -346,7 +338,7 @@ class _PageManager {
     }
 
     public exists(name: string) : boolean {
-        return name in this.app_pages;
+        return name in AppPages;
     }
 
     public isPageWaiting() : boolean {

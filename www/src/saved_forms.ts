@@ -1,9 +1,9 @@
 import { formatDate, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
 import { FormSave, Forms } from "./form_schema";
-import { PageManager, AppPageName } from "./PageManager";
+import { PageManager, AppPages } from "./PageManager";
 import { SyncManager } from "./SyncManager";
 import { Logger } from "./logger";
-import { FILE_HELPER, SD_FILE_HELPER } from "./main";
+import { FILE_HELPER } from "./main";
 import { EntryObject } from "./file_helper";
 import { FormSaves } from "./FormSaves";
 
@@ -20,7 +20,7 @@ function editAForm(form: FormSave, name: string) {
 
     const current_form = Forms.get(form.type);
     
-    PageManager.push(AppPageName.form, "Modifier", {form: current_form, name, save: form});
+    PageManager.push(AppPages.form, "Modifier", {form: current_form, name, save: form});
 }
 
 async function deleteAll() : Promise<any> {

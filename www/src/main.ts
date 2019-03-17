@@ -1,4 +1,4 @@
-import { PageManager, AppPageName, SIDENAV_OBJ } from './PageManager';
+import { PageManager, SIDENAV_OBJ, AppPages } from './PageManager';
 import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder } from "./helpers";
 import { Logger } from "./logger";
 import { newModalRecord } from "./audio_listener";
@@ -17,6 +17,7 @@ export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLAS
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
 export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
 export const MP3_BITRATE = 256; /** En kb/s */
+export const DEFAULT_PAGE = AppPages.home; /** Page chargée par défaut */
 export const MAX_SLEEPING_PAGES = 20; /** Nombre de pages maximum qui restent en attente en arrière-plan */
 export const SYNC_FREQUENCY_POSSIBILITIES = [15, 30, 60, 120, 240, 480, 1440]; /** En minutes */
 export const ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK = true; /** Active le scroll lorsqu'on clique sur un élément lors du modal de vérification */
@@ -157,10 +158,10 @@ async function initApp() {
             let prom: Promise<any>;
 
             if (href && PageManager.exists(href)) {
-                prom = PageManager.change(href as AppPageName);
+                prom = PageManager.change(AppPages[href]);
             }
             else {
-                prom = PageManager.change(AppPageName.home);
+                prom = PageManager.change(DEFAULT_PAGE);
             }
     
             return prom;

@@ -12,29 +12,47 @@ import { FileHelper } from "./file_helper";
         "fields": [
             {}: FormEntity
         ],
-        "locations": [
-            {}: FormLocation
-        ]
+        "locations": {
+            "location_id": FormLocation,
+            "...": FormLocation,
+            ...
+        }
     },
     "nom_d_un_autre_formulaire": Form
 }
 
-Le formulaire DOIT comporter un champ de type "datetime",
-nommé "__date__" pour être affiché correctement dans 
-la liste des formulaires enregistrés.
-Il peut être n'importe où dans le formulaire.
 */
 
 /**
- * Interfaces représentant un formulaire, les lieux d'un formulaire, un champ de formulaire puis une option d'un SELECT
+ * Interfaces représentant un schéma de formulaire, les lieux d'un formulaire, un champ de formulaire puis une option d'un SELECT
  */
 export interface Form {
+    /**
+     * Nom réel du schéma (à afficher à l'écran)
+     */
     name: string;
-    id_field?: string; /* Indique le nom du champ qui sert à l'ID; Ne pas préciser si il n'y en a pas */
+    /**
+     * Indique le nom du champ qui sert à l'ID; Ne pas préciser si il n'y en a pas
+     */
+    id_field?: string;
+    /**
+     * Champs du formulaire. Les éléments sont affichés tel l'ordre défini dans le tableau
+     */
     fields: FormEntity[];
     
-    skip_location?: boolean; /** Autorise le fait que la localisation peut ne pas être précisée (champ non obligatoire) */
-    no_location?: boolean; /** Désactive la génération de l'entrée de localisation pour ce formulaire */
+    /**
+     * Autorise le fait que la localisation puisse ne pas être précisée (champ non obligatoire)
+     */
+    skip_location?: boolean;
+    /**
+     * Désactive la génération de l'entrée de localisation pour ce formulaire
+     */
+    no_location?: boolean;
+    /**
+     * Lieux valides pour ce schéma. 
+     * Attention: un champ avec la clé "\_\_unknown\_\_" est toujours ajoutée et correspond
+     * à une localisation qui n'existe pas encore.
+     */
     locations: FormLocations;
 }
 
@@ -64,14 +82,7 @@ export interface FormEntity {
     allow_voice_control?: boolean;
     indeterminate?: boolean; /* for type.checkbox */
     remove_whitespaces?: boolean; /* for type.string / type.bigstring; during vocal reco */
-    external_constraints?: string; /* for type.select only; Définit des contraintes externes de façon simpliste */
 }
-
-//// Guide pour external_constraints
-//// format: nom_du_champ=*;nom_du_champ_2=green;nom_du_champ_3!=*;champ_4!=^
-//// Lire > Le champ actuel est valide si: nom_du_champ a une valeur, nom_du_champ_2 vaut "green",
-//// nom_champ_3 n'a aucune valeur et enfin que champ_4 ait une valeur différente du champ actuel
-//// Attention: le champ actuel est forcément valide si il n'a aucune valeur.
 
 interface SelectOption {
     label: string;

@@ -2,7 +2,7 @@ import { FILE_HELPER, SD_FILE_HELPER, ID_COMPLEXITY, ENABLE_SCROLL_ON_FORM_VERIF
 import { urlToBlob, generateId, showToast, getModalPreloader, sleep, initModal, getModal } from "./helpers";
 import { FormSave, Form } from "./form_schema";
 import { UserManager } from "./user_manager";
-import { PageManager, AppPageName } from "./PageManager";
+import { PageManager, AppPages } from "./PageManager";
 import { Logger } from "./logger";
 import { SyncManager } from "./SyncManager";
 import { UNKNOWN_NAME } from "./location";
@@ -90,17 +90,8 @@ export async function beginFormSave(type: string, current_form: Form, force_name
             });
         }
 
-        // Valide des contraintes externes si jamais l'élément a une valeur
-        if (element.value && element.dataset.e_constraints && !validConstraints(element.dataset.e_constraints, element)) {
-            const str = element.dataset.invalid_tip || "Les contraintes externes du champ ne sont pas remplies.";
-            if (element.required) {
-                elements_failed.push([name, str, element.parentElement]);
-            }
-            else {
-                elements_warn.push([name, str, element.parentElement]);
-            }
-        }
-        else if (element.tagName === "INPUT" && element.type === "checkbox") {
+        // Si c'est une checkbox, on regarde si elle est indéterminée
+        if (element.tagName === "INPUT" && element.type === "checkbox") {
             if ((element as HTMLInputElement).indeterminate) {
                 if (element.required) {
                     elements_failed.push([(element.nextElementSibling as HTMLElement).innerText, "Ce champ est requis.", element.parentElement]);
@@ -110,6 +101,7 @@ export async function beginFormSave(type: string, current_form: Form, force_name
                 }
             }
         }
+        // Si l'élément est requis mais qu'il n'a aucune valeur
         else if (element.required && !element.value) {
             if (element.tagName !== "SELECT" || (element.multiple && ($(element).val() as string[]).length === 0)) {
                 elements_failed.push([name, "Champ requis", element.parentElement]);
@@ -312,7 +304,7 @@ export async function beginFormSave(type: string, current_form: Form, force_name
                         `;
 
                         document.getElementById('__after_save_entries').onclick = function() {
-                            PageManager.change(AppPageName.saved, false);
+                            PageManager.change(AppPages.saved, false);
                         };
 
                         document.getElementById('__after_save_new').onclick = function() {
@@ -357,12 +349,13 @@ export async function beginFormSave(type: string, current_form: Form, force_name
 
 /**
  * Sauvegarde le formulaire actuel dans un fichier .json
- * @param type
- * @param name
- * @param location
- * @param form_save
+ * @param type Type du formulaire à sauvegarder
+ * @param name ID du formulaire 
+ * @param location Localisation choisie par l'utilisateur (peut être chaîne vide si non précisée)
+ * @param form_save Ancienne sauvegarde (si mode édition)
  */
 export function saveForm(type: string, name: string, location: string, form_save?: FormSave) : Promise<FormSave> {
+    // On construit l'objet représentant une sauvegarde
     const form_values: FormSave = {
         fields: {},
         type,
@@ -371,6 +364,7 @@ export function saveForm(type: string, name: string, location: string, form_save
         metadata: {}
     };
 
+    // On récupère les valeurs des éléments "classiques" (hors fichiers)
     for (const input of document.getElementsByClassName('input-form-element')) {
         const i = input as HTMLInputElement;
         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
@@ -406,9 +400,9 @@ export function saveForm(type: string, name: string, location: string, form_save
 /**
  * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
  * puis crée le formulaire
- * @param name Nom du formulaire (sans le .json)
- * @param form_values
- * @param older_save
+ * @param name ID du formulaire (sans le .json)
+ * @param form_values Valeurs à sauvegarder
+ * @param older_save Anciennes valeurs (si mode édition)
  */
 async function writeDataThenForm(name: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
     async function deleteOlderFile(input_name: string) : Promise<void> {
@@ -529,6 +523,7 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
         }
     }
 
+    // Attend que les sauvegardes soient terminées
     await Promise.all(promises);
 
     // On supprime les metadonnées vides du form
@@ -549,9 +544,11 @@ async function writeDataThenForm(name: string, form_values: FormSave, older_save
 }
 
 /**
+ * __DEPRECATED__ : cette fonctionnalité a été supprimée.
  * Valide les contraintes externes d'un champ
  * @param constraints 
  * @param e 
+ * @deprecated
  */
 export function validConstraints(constraints: string, e: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) : boolean {
     const cons = constraints.split(';');
