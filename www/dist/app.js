@@ -5697,46 +5697,6 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         }
     }
     exports.changeDir = changeDir;
-    let DIR_ENTRY = null;
-    /**
-     * Lit un fichier et passe son résultat sous forme de texte ou base64 à callback
-     * @param fileName Nom du fichier
-     * @param callback Fonction appelée si réussie
-     * @param callbackIfFailed Fonction appelée en cas d'échec
-     * @param asBase64 true si le fichier doit être passé encodé en base64
-     */
-    function __readFromFile(fileName, callback, callbackIfFailed, asBase64 = false) {
-        const pathToFile = FOLDER + fileName;
-        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-            fileEntry.file(function (file) {
-                const reader = new FileReader();
-                reader.onloadend = function () {
-                    callback(this.result);
-                };
-                if (asBase64) {
-                    reader.readAsDataURL(file);
-                }
-                else {
-                    reader.readAsText(file);
-                }
-            }, function () {
-                if (callbackIfFailed) {
-                    callbackIfFailed();
-                }
-                else {
-                    console.log("not readable");
-                }
-            });
-        }, function () {
-            if (callbackIfFailed) {
-                callbackIfFailed();
-            }
-            else {
-                console.log("not found");
-            }
-        });
-    }
-    exports.__readFromFile = __readFromFile;
     /**
      * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
      */
@@ -5747,70 +5707,6 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         return cordova.file.applicationDirectory + 'www/';
     }
     exports.toValidUrl = toValidUrl;
-    function __readFileAsArrayBuffer(file) {
-        return new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = function () {
-                resolve(this.result);
-            };
-            r.onerror = function (error) {
-                // Erreur de lecture du fichier => on rejette
-                reject(error);
-            };
-            r.readAsArrayBuffer(file);
-        });
-    }
-    exports.__readFileAsArrayBuffer = __readFileAsArrayBuffer;
-    /**
-     * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
-     * @param fileName Nom du fichier
-     * @param asBase64 true si fichier passé en base64 dans la promesse
-     * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
-     */
-    function __readFile(fileName, asBase64 = false, forceBaseDir = FOLDER) {
-        const pathToFile = forceBaseDir + fileName;
-        return new Promise(function (resolve, reject) {
-            window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-                fileEntry.file(function (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = function () {
-                        resolve(this.result);
-                    };
-                    if (asBase64) {
-                        reader.readAsDataURL(file);
-                    }
-                    else {
-                        reader.readAsText(file);
-                    }
-                }, reject);
-            }, function (err) {
-                reject(err);
-            });
-        });
-    }
-    exports.__readFile = __readFile;
-    /**
-     * Lit un fichier en texte ou base64 depuis son FileEntry et envoie son résultat dans une Promise
-     * @param fileEntry FileEntry
-     * @param asBase64 true si fichier passé en base64 à la Promise
-     */
-    function __readFileFromEntry(fileEntry, asBase64 = false) {
-        return new Promise(function (resolve, reject) {
-            fileEntry.file(function (file) {
-                const reader = new FileReader();
-                reader.onloadend = function () {
-                    resolve(this.result);
-                };
-                if (asBase64) {
-                    reader.readAsDataURL(file);
-                }
-                else {
-                    reader.readAsText(file);
-                }
-            }, reject);
-        });
-    }
-    exports.__readFileFromEntry = __readFileFromEntry;
     function sleep(ms) {
         return new Promise(resolve => {
             setTimeout(resolve, ms);
@@ -6121,12 +6017,23 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         return navigator.connection.type !== Connection.NONE;
     }
     exports.hasConnection = hasConnection;
+    /**
+     * Convertit une chaîne contenant de l'HTML en un élément.
+     * La chaîne ne doit contenir qu'un seul élément à sa racine !
+     *
+     * @param htmlString
+     */
     function convertHTMLToElement(htmlString) {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = htmlString;
         return tempDiv.firstElementChild;
     }
     exports.convertHTMLToElement = convertHTMLToElement;
+    /**
+     * Affiche un toast (bulle) native au système d'exploitation
+     * @param message
+     * @param duration Usually, Android ignores it.
+     */
     function showToast(message, duration = 4000) {
         if (device.platform === "browser") {
             M.toast({ html: message, displayLength: duration });
@@ -6142,6 +6049,10 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         }
     }
     exports.showToast = showToast;
+    /**
+     * Convertit les minutes en texte compréhensible
+     * @param min
+     */
     function convertMinutesToText(min) {
         if (min < 60) {
             return `${min} minutes`;
@@ -6189,6 +6100,10 @@ define("helpers", ["require", "exports", "PageManager", "form_schema", "SyncMana
         });
     }
     exports.askModalList = askModalList;
+    /**
+     * Fonction de test: Crée des formulaires automatiques
+     * @param count Nombre de formulaires à créer
+     */
     async function createRandomForms(count = 50) {
         if (form_schema_7.Schemas.current_key === null) {
             throw "Impossible de créer une entrée sans base";

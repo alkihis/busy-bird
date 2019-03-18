@@ -164,48 +164,6 @@ export function changeDir() {
     }
 }
 
-let DIR_ENTRY = null;
-/**
- * Lit un fichier et passe son résultat sous forme de texte ou base64 à callback
- * @param fileName Nom du fichier
- * @param callback Fonction appelée si réussie
- * @param callbackIfFailed Fonction appelée en cas d'échec
- * @param asBase64 true si le fichier doit être passé encodé en base64
- */
-export function __readFromFile(fileName: string, callback: Function, callbackIfFailed?: Function, asBase64 = false) : void {
-    const pathToFile = FOLDER + fileName;
-    window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-        (fileEntry as FileEntry).file(function (file) {
-            const reader = new FileReader();
-
-            reader.onloadend = function () {
-                callback(this.result);
-            };
-
-            if (asBase64) {
-                reader.readAsDataURL(file);
-            }
-            else {
-                reader.readAsText(file);
-            }
-        }, function() {
-            if (callbackIfFailed) {
-                callbackIfFailed();
-            }
-            else {
-                console.log("not readable");
-            }
-        });
-    }, function() {
-        if (callbackIfFailed) {
-            callbackIfFailed();
-        }
-        else {
-            console.log("not found");
-        }
-    });
-}
-
 /**
  * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
  */
@@ -214,78 +172,6 @@ export function toValidUrl() : string {
         return '';
     }
     return cordova.file.applicationDirectory + 'www/';
-}
-
-export function __readFileAsArrayBuffer(file: File) : Promise<ArrayBuffer> {
-    return new Promise((resolve, reject) => {
-        const r = new FileReader();
-
-        r.onload = function() {
-            resolve(this.result as ArrayBuffer);
-        }
-
-        r.onerror = function(error) {
-            // Erreur de lecture du fichier => on rejette
-            reject(error);
-        }
-
-        r.readAsArrayBuffer(file);
-    });
-}
-
-/**
- * Lit un fichier fileName en tant que texte ou base64, et passe le résultat ou l'échec sous forme de Promise
- * @param fileName Nom du fichier
- * @param asBase64 true si fichier passé en base64 dans la promesse
- * @param forceBaseDir Forcer un répertoire d'origine pour le nom du fichier. (défaut: dossier de stockage de données)
- */
-export function __readFile(fileName: string, asBase64 = false, forceBaseDir = FOLDER) : Promise<string> {
-    const pathToFile = forceBaseDir + fileName;
-
-    return new Promise(function(resolve, reject) {
-        window.resolveLocalFileSystemURL(pathToFile, function (fileEntry) {
-            (fileEntry as FileEntry).file(function (file) {
-                const reader = new FileReader();
-    
-                reader.onloadend = function () {
-                    resolve(this.result as string);
-                };
-    
-                if (asBase64) {
-                    reader.readAsDataURL(file);
-                }
-                else {
-                    reader.readAsText(file);
-                }
-            }, reject);
-        }, function(err) {
-            reject(err);
-        });
-    });
-}
-
-/**
- * Lit un fichier en texte ou base64 depuis son FileEntry et envoie son résultat dans une Promise
- * @param fileEntry FileEntry
- * @param asBase64 true si fichier passé en base64 à la Promise
- */
-export function __readFileFromEntry(fileEntry, asBase64 = false) : Promise<string> {
-    return new Promise(function(resolve, reject) {
-        fileEntry.file(function (file) {
-            const reader = new FileReader();
-    
-            reader.onloadend = function () {
-                resolve(this.result as string);
-            };
-    
-            if (asBase64) {
-                reader.readAsDataURL(file);
-            }
-            else {
-                reader.readAsText(file);
-            }
-        }, reject);
-    });
 }
 
 export function sleep(ms: number) : Promise<void> {
@@ -633,12 +519,23 @@ export function hasConnection() : boolean {
     return navigator.connection.type !== Connection.NONE;
 }
 
+/**
+ * Convertit une chaîne contenant de l'HTML en un élément.
+ * La chaîne ne doit contenir qu'un seul élément à sa racine !
+ * 
+ * @param htmlString 
+ */
 export function convertHTMLToElement(htmlString: string) : HTMLElement {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlString;
     return tempDiv.firstElementChild as HTMLElement;
 }
 
+/**
+ * Affiche un toast (bulle) native au système d'exploitation
+ * @param message 
+ * @param duration Usually, Android ignores it.
+ */
 export function showToast(message: string, duration: number = 4000) : void {
     if (device.platform === "browser") {
         M.toast({html: message, displayLength: duration});
@@ -654,6 +551,10 @@ export function showToast(message: string, duration: number = 4000) : void {
     }
 }
 
+/**
+ * Convertit les minutes en texte compréhensible
+ * @param min 
+ */
 export function convertMinutesToText(min: number) : string {
     if (min < 60) {
         return `${min} minutes`;
@@ -709,6 +610,10 @@ export function askModalList(items: string[]) : Promise<number> {
     });
 }
 
+/**
+ * Fonction de test: Crée des formulaires automatiques
+ * @param count Nombre de formulaires à créer
+ */
 export async function createRandomForms(count: number = 50) : Promise<void> {
     if (Schemas.current_key === null) {
         throw "Impossible de créer une entrée sans base";
