@@ -1,3 +1,7 @@
+/**
+ * Représente les paramètres globaux de l'application.
+ * Ils sont stockés dans le localStorage.
+ */
 class AppSettings {
     protected _sync_freq = 30; /** En minutes */
     protected _sync_bg = true; /** Activer la sync en arrière plan */
@@ -34,6 +38,10 @@ class AppSettings {
 
 export const Settings = new AppSettings;
 
+/**
+ * Permet de sauvegarder en arrière-plan.
+ * Cette classe ne doit pas être utilisée seule. SyncManager s'en occupe.
+ */
 class BgSyncObj {
     //// credit to https://github.com/transistorsoft/cordova-plugin-background-fetch
     protected background_sync: any = null;

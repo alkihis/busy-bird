@@ -1,12 +1,12 @@
-import { ID_COMPLEXITY, ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK, SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK } from "./main";
+import { ID_COMPLEXITY, ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK, SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK } from "../main";
 import { generateId, showToast, getModalPreloader, sleep, initModal, getModal } from "./helpers";
-import { FormSave, Schema } from "./form_schema";
-import { UserManager } from "./user_manager";
-import { PageManager, AppPages } from "./PageManager";
+import { FormSave, Schema } from "../base/FormSchema";
+import { UserManager } from "../base/UserManager";
+import { PageManager, AppPages } from "../base/PageManager";
 import { Logger } from "./logger";
-import { SyncManager } from "./SyncManager";
+import { SyncManager } from "../base/SyncManager";
 import { UNKNOWN_NAME } from "./location";
-import { FormSaves } from "./FormSaves";
+import { FormSaves } from "../base/FormSaves";
 
 function scrollToAnElementOnClick(element_base: HTMLElement, element_related: HTMLElement, modal: M.Modal, center = false) : void {
     element_base.onclick = () => {

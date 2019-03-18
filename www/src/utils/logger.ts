@@ -1,4 +1,4 @@
-import { FILE_HELPER } from "./main";
+import { FILE_HELPER } from "../main";
 
 // Objet Logger
 // Sert à écrire dans un fichier de log formaté

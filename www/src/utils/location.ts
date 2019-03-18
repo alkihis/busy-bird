@@ -1,4 +1,4 @@
-import { FormLocations } from "./form_schema";
+import { FormLocations } from "../base/FormSchema";
 import { showToast } from "./helpers";
 
 export const UNKNOWN_NAME = "__unknown__";

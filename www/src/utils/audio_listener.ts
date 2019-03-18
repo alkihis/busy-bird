@@ -1,6 +1,6 @@
 import { getModal, initModal, getModalPreloader, blobToBase64 } from "./helpers";
 import { Logger } from "./logger";
-import { MP3_BITRATE } from "./main";
+import { MP3_BITRATE } from "../main";
 
 export interface RecordResult {
     /** base64 représentant le fichier audio */

@@ -1,11 +1,11 @@
-import { formatDate, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, unclosableBottomModal, SMALL_PRELOADER } from "./helpers";
-import { FormSave, Schemas } from "./form_schema";
-import { PageManager, AppPages } from "./PageManager";
-import { SyncManager } from "./SyncManager";
-import { Logger } from "./logger";
-import { FILE_HELPER } from "./main";
-import { EntryObject, FileHelperReadMode } from "./file_helper";
-import { FormSaves } from "./FormSaves";
+import { formatDate, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, unclosableBottomModal, SMALL_PRELOADER } from "../utils/helpers";
+import { FormSave, Schemas } from "../base/FormSchema";
+import { PageManager, AppPages } from "../base/PageManager";
+import { SyncManager } from "../base/SyncManager";
+import { Logger } from "../utils/logger";
+import { FILE_HELPER } from "../main";
+import { FileHelperReadMode } from "../base/FileHelper";
+import { FormSaves } from "../base/FormSaves";
 
 /** État de sauvegarde d'une entrée */
 enum SaveState {
@@ -211,6 +211,8 @@ function deleteForm(id: string): Promise<void> {
 export async function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
+
+    console.log(await FILE_HELPER.readAll('forms', FileHelperReadMode.fileobj));
 
     try {
         await FILE_HELPER.mkdir('forms');

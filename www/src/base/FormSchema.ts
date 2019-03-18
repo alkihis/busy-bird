@@ -1,8 +1,8 @@
-import { showToast, hasConnection } from "./helpers";
-import { UserManager } from "./user_manager";
-import { API_URL, ENABLE_FORM_DOWNLOAD, FILE_HELPER } from "./main";
-import fetch from './fetch_timeout';
-import { FileHelper } from "./file_helper";
+import { showToast, hasConnection } from "../utils/helpers";
+import { UserManager } from "./UserManager";
+import { API_URL, ENABLE_FORM_DOWNLOAD, FILE_HELPER } from "../main";
+import fetch from '../utils/fetch_timeout';
+import { FileHelper } from "./FileHelper";
 
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /* 

@@ -1,7 +1,7 @@
-import { PageManager } from "./PageManager";
-import { Schemas, FormSave, FormEntityType } from "./form_schema";
-import { SyncManager } from "./SyncManager";
-import { FILE_HELPER, SD_FILE_HELPER } from "./main";
+import { PageManager } from "../base/PageManager";
+import { Schemas, FormSave, FormEntityType } from "../base/FormSchema";
+import { SyncManager } from "../base/SyncManager";
+import { FILE_HELPER, SD_FILE_HELPER } from "../main";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `

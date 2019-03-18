@@ -1,13 +1,13 @@
-import { PageManager, SIDENAV_OBJ, AppPages } from './PageManager';
-import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder } from "./helpers";
-import { Logger } from "./logger";
-import { newModalRecord } from "./audio_listener";
-import { FormEntityType, Schemas } from "./form_schema";
-import { prompt } from "./vocal_recognition";
-import { createNewUser, UserManager } from "./user_manager";
-import { SyncManager, SyncEvent } from "./SyncManager";
-import { launchQuizz } from './test_vocal_reco';
-import { FileHelper, FileHelperReadMode } from './file_helper';
+import { PageManager, SIDENAV_OBJ, AppPages } from './base/PageManager';
+import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder } from "./utils/helpers";
+import { Logger } from "./utils/logger";
+import { newModalRecord } from "./utils/audio_listener";
+import { Schemas } from "./base/FormSchema";
+import { prompt } from "./utils/vocal_recognition";
+import { createNewUser, UserManager } from "./base/UserManager";
+import { SyncManager, SyncEvent } from "./base/SyncManager";
+import { launchQuizz } from './utils/test_vocal_reco';
+import { FileHelper, FileHelperReadMode } from './base/FileHelper';
 
 // Constantes de l'application
 export const APP_VERSION = 0.7;

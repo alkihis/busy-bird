@@ -1,12 +1,12 @@
-import { FormSave } from "./form_schema";
-import { Logger } from "./logger";
+import { FormSave } from "./FormSchema";
+import { Logger } from "../utils/logger";
 import localforage from 'localforage';
-import { API_URL, FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "./main";
-import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "./helpers";
-import { UserManager } from "./user_manager";
-import fetch from './fetch_timeout';
-import { BackgroundSync, Settings } from "./Settings";
-import { FileHelperReadMode, EntryObject } from "./file_helper";
+import { API_URL, FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
+import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "../utils/helpers";
+import { UserManager } from "./UserManager";
+import fetch from '../utils/fetch_timeout';
+import { BackgroundSync, Settings } from "../utils/Settings";
+import { FileHelperReadMode, EntryObject } from "./FileHelper";
 
 class _SyncList {
     public init() {

@@ -1,14 +1,14 @@
-import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "./vocal_recognition";
-import { FormEntityType, FormEntity, Schemas, Schema, FormSave, FormLocations } from './form_schema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal } from "./helpers";
-import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "./main";
-import { PageManager } from "./PageManager";
-import { Logger } from "./logger";
-import { newModalRecord } from "./audio_listener";
-import { UserManager } from "./user_manager";
-import { createLocationInputSelector } from "./location";
-import { FileHelperReadMode } from "./file_helper";
-import { beginFormSave } from "./save_a_form";
+import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "../utils/vocal_recognition";
+import { FormEntityType, FormEntity, Schemas, Schema, FormSave, FormLocations } from '../base/FormSchema';
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal } from "../utils/helpers";
+import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "../main";
+import { PageManager } from "../base/PageManager";
+import { Logger } from "../utils/logger";
+import { newModalRecord } from "../utils/audio_listener";
+import { UserManager } from "../base/UserManager";
+import { createLocationInputSelector } from "../utils/location";
+import { FileHelperReadMode } from "../base/FileHelper";
+import { beginFormSave } from "../utils/save_a_form";
 
 /**
  * Crée une base classique dans lequel insérer un input texte ou number.

@@ -467,12 +467,23 @@ export class FileHelper {
         });
     }
 
+    // read() method: Prototype declaration
+    public async read(path: string | FileEntry): Promise<string>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode.json): Promise<any>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode.array): Promise<ArrayBuffer>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode.fileobj): Promise<File>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode.text): Promise<string>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode.internalURL): Promise<string>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode.url): Promise<string>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode.binarystr): Promise<string>;
+    public async read(path: string | FileEntry, mode: FileHelperReadMode): Promise<any | string | ArrayBuffer | File>;
+    
     /**
      * Read a existing file located in path
      * @param path Path to the file or file via FileEntry
      * @param mode Read mode. Should be a FileHelperReadMode instance. By default, read as classic text.
      */
-    public async read(path: string | FileEntry, mode = FileHelperReadMode.text) : Promise<any | string | ArrayBuffer | File> {
+    public async read(path: string | FileEntry, mode = FileHelperReadMode.text) : Promise<any> {
         if (mode === FileHelperReadMode.internalURL) {
             return (typeof path === 'string' ? 
                 (await this.get(path)).toInternalURL() : 
@@ -509,6 +520,17 @@ export class FileHelper {
         return this.read(path, FileHelperReadMode.url);
     }
 
+    // readAll() method: Prototype declaration
+    public async readAll(path: string | DirectoryEntry): Promise<string[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode.json): Promise<any[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode.array): Promise<ArrayBuffer[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode.fileobj): Promise<File[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode.text): Promise<string[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode.internalURL): Promise<string[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode.url): Promise<string[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode.binarystr): Promise<string[]>;
+    public async readAll(path: string | DirectoryEntry, mode: FileHelperReadMode): Promise<any[] | string[] | ArrayBuffer[] | File[]>;
+
     /**
      * Read all files of a directory with a specific mode.
      * Existing directories inside the directory will be ignored.
@@ -516,7 +538,7 @@ export class FileHelper {
      * @param path Path to directory
      * @param mode Read mode
      */
-    public async readAll(path: string | DirectoryEntry = "", mode = FileHelperReadMode.text) : Promise<string[] | any[] | ArrayBuffer[] | File[]> {
+    public async readAll(path: string | DirectoryEntry = "", mode = FileHelperReadMode.text) : Promise<any[]> {
         const entries = await this.entriesOf(path);
 
         const files = [];

@@ -1,10 +1,10 @@
-import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance } from "./helpers";
-import { initFormPage } from "./form";
-import { initSettingsPage } from "./settings_page";
-import { initSavedForm } from "./saved_forms";
-import { initHomePage, APP_NAME } from "./home";
-import { Logger } from "./logger";
-import { MAX_SLEEPING_PAGES, DEFAULT_PAGE } from "./main";
+import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance } from "../utils/helpers";
+import { initFormPage } from "../pages/form";
+import { initSettingsPage } from "../pages/settings_page";
+import { initSavedForm } from "../pages/saved_forms";
+import { initHomePage, APP_NAME } from "../pages/home";
+import { Logger } from "../utils/logger";
+import { MAX_SLEEPING_PAGES, DEFAULT_PAGE } from "../main";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 

@@ -1,19 +1,16 @@
-import { UserManager, loginUser, createNewUser } from "./user_manager";
-import { Schemas, FormSchema } from "./form_schema";
-import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText } from "./helpers";
-import { SyncManager } from "./SyncManager";
-import { PageManager } from "./PageManager";
-import fetch from './fetch_timeout';
-import { API_URL, SYNC_FREQUENCY_POSSIBILITIES } from "./main";
+import { UserManager, loginUser, createNewUser } from "../base/UserManager";
+import { Schemas, FormSchema } from "../base/FormSchema";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText } from "../utils/helpers";
+import { SyncManager } from "../base/SyncManager";
+import { PageManager } from "../base/PageManager";
+import fetch from '../utils/fetch_timeout';
+import { API_URL, SYNC_FREQUENCY_POSSIBILITIES } from "../main";
 import { APP_NAME } from "./home";
-import { Settings } from './Settings';
+import { Settings } from '../utils/Settings';
 
-function headerText() : string {
-    return `${UserManager.logged ? 
-        "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + UserManager.username + "</span>" 
-        : "Vous n'êtes pas connecté-e"}.`;
-}
-
+/** 
+ * Lance la mise à jour des schémas via le serveur
+ */
 function formActualisationModal() : void {
     const instance = initModal({dismissible: false}, getModalPreloader("Actualisation..."));
     instance.open();
@@ -30,13 +27,19 @@ function formActualisationModal() : void {
         })
 }
 
+/**
+ * Base pour la page des paramètres
+ * @param base Element dans lequel écrire
+ */
 export function initSettingsPage(base: HTMLElement) {
     const connecte = UserManager.logged;
 
     base.innerHTML = `
     <div class="container row" id="main_settings_container">
         <h4>Utilisateur</h4>
-        <p class="flow-text no-margin-bottom">${headerText()}</p>
+        <p class="flow-text no-margin-bottom">${UserManager.logged ? 
+            "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + UserManager.username + "</span>" 
+            : "Vous n'êtes pas connecté-e"}.</p>
     </div>
     `;
 
@@ -171,10 +174,9 @@ export function initSettingsPage(base: HTMLElement) {
             askModal(
                 "Actualiser les schémas ?", 
                 "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE."
-            ).then(() => {
-                // L'utilisateur a dit oui
-                formActualisationModal();
-            });
+            )
+            .then(formActualisationModal)
+            .catch(() => {});
         }
         else {
             informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
@@ -275,6 +277,11 @@ export function initSettingsPage(base: HTMLElement) {
     container.appendChild(syncbtn);
 }
 
+// FONCTIONS RELATIVES AUX SOUSCRIPTIONS
+
+/**
+ * Représente un élément renvoyé par l'API de souscription
+ */
 interface SubscriptionObject {
     [formId: string]: [
         string, // Nom du formulaire à afficher à l'utilisateur
@@ -282,6 +289,9 @@ interface SubscriptionObject {
     ]
 }
 
+/**
+ * Obtient les souscriptions disponibles depuis le serveur
+ */
 async function getSubscriptions() : Promise<SubscriptionObject> {
     return fetch(API_URL + "schemas/available.json", {
         headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
@@ -291,6 +301,11 @@ async function getSubscriptions() : Promise<SubscriptionObject> {
         .then(response => response.json());
 }
 
+/**
+ * Procédure d'abonnement à des schémas
+ * @param ids Identifiants des schémas auquels s'abonner
+ * @param fetch_subs Retourner les schémas après souscription: oui, non
+ */
 async function subscribe(ids: string[], fetch_subs: boolean) : Promise<void | FormSchema> {
     const form_data = new FormData();
     form_data.append('ids', ids.join(','));
@@ -307,6 +322,11 @@ async function subscribe(ids: string[], fetch_subs: boolean) : Promise<void | Fo
         .then(response => response.json());
 }
 
+/**
+ * Procédure de désabonnement à des schémas
+ * @param ids Identifiants des schémas auquels se désabonner
+ * @param fetch_subs Retourner la liste de schémas actualisée après désincription: oui, non
+ */
 async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | FormSchema> {
     const form_data = new FormData();
     form_data.append('ids', ids.join(','));
@@ -323,7 +343,11 @@ async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | 
         .then(response => response.json());
 }
 
+/**
+ * Lance le modal de gestion des souscriptions
+ */
 async function subscriptionsModal() : Promise<void> {
+    // Initialise le modal
     const modal = getModal();
     const instance = initModal(
         { inDuration: 200, outDuration: 150 }, 
@@ -333,8 +357,10 @@ async function subscriptionsModal() : Promise<void> {
         )
     );
 
+    // Ouvre le modal
     instance.open();
 
+    // Obtient les souscriptions disponibles
     const content = document.createElement('div');
     content.classList.add('modal-content');
 
@@ -359,6 +385,7 @@ async function subscriptionsModal() : Promise<void> {
     //     <span>LABEL</span>
     //   </label>
     // </p>
+    // Construit la liste de souscriptions
     content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Souscriptions</h5>`);
     content.insertAdjacentHTML('beforeend', `
         <p class="flow-text">
@@ -371,6 +398,7 @@ async function subscriptionsModal() : Promise<void> {
     row.classList.add('row');
     content.appendChild(row);
 
+    // Construit les checkboxs et note les éléments qui sont cochés 
     const first_checked: {[formId: string]: true} = {};
     for (const form_id in subscriptions) {
         const p = document.createElement('p');
@@ -397,11 +425,13 @@ async function subscriptionsModal() : Promise<void> {
     }
 
 
+    // Création du footer
     const footer = document.createElement('div');
     footer.classList.add('modal-footer');
 
     footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Annuler</a>`);
 
+    // Bouton d'enregistrement
     const valid_btn = document.createElement('a');
     valid_btn.classList.add('btn-flat', 'right', 'green-text');
     valid_btn.href = "#!";

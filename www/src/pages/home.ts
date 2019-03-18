@@ -1,10 +1,10 @@
-import { UserManager } from "./user_manager";
-import { SyncManager } from "./SyncManager";
-import { hasGoodConnection, toValidUrl, getBase } from "./helpers";
-import { APP_VERSION, FILE_HELPER } from "./main";
-import { Schemas } from "./form_schema";
-import { createLocationInputSelector } from "./location";
-import { launchQuizz } from "./test_vocal_reco";
+import { UserManager } from "../base/UserManager";
+import { SyncManager } from "../base/SyncManager";
+import { hasGoodConnection, getBase } from "../utils/helpers";
+import { APP_VERSION, FILE_HELPER } from "../main";
+import { Schemas } from "../base/FormSchema";
+import { createLocationInputSelector } from "../utils/location";
+import { launchQuizz } from "../utils/test_vocal_reco";
 
 export const APP_NAME = "Busy Bird";
 

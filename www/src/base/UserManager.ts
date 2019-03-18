@@ -1,6 +1,6 @@
-import { API_URL } from "./main";
-import { getModal, initModal, getModalPreloader, showToast } from "./helpers";
-import { Schemas } from "./form_schema";
+import { API_URL } from "../main";
+import { getModal, initModal, getModalPreloader, showToast } from "../utils/helpers";
+import { Schemas } from "./FormSchema";
 
 /**
  * Permet de gérer l'utilisateur connecté, ou la création d'un nouvel utilisateur.

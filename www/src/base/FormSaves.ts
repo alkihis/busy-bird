@@ -1,8 +1,8 @@
-import { FormSave } from "./form_schema";
-import { FILE_HELPER, SD_FILE_HELPER, ID_COMPLEXITY } from "./main";
-import { FileHelperReadMode } from "./file_helper";
+import { FormSave } from "./FormSchema";
+import { FILE_HELPER, SD_FILE_HELPER, ID_COMPLEXITY } from "../main";
+import { FileHelperReadMode } from "./FileHelper";
 import { SyncManager } from "./SyncManager";
-import { urlToBlob, generateId, showToast } from "./helpers";
+import { urlToBlob, generateId, showToast } from "../utils/helpers";
 
 // Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
 
