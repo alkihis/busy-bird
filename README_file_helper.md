@@ -285,6 +285,7 @@ Read modes are:
 - `FileHelperReadMode.internalURL` : Get internal URL of the file
 - `FileHelperReadMode.json` : Read as text and parse to JSON automatically
 - `FileHelperReadMode.binarystr` : Read as binary string
+- `FileHelperReadMode.fileobj` : Return a `File` object that represent the file
 
 ```js
 helper.read(path, method); // => Promise<string | any | ArrayBuffer>
@@ -302,6 +303,15 @@ helper.readJSON("forms.json"); // => Promise<any>
 helper.readDataURL("img.jpeg"); // => Promise<string>
 
 helper.toInternalURL("test.txt"); // => Promise<string>
+```
+
+#### readAll
+Read all files of a directory using a specific mode.
+
+```js
+helper.readAll(directory_path_or_entry, read_mode = FileHelperReadMode.text); // => Promise<string[] | File[] | ArrayBuffer[] | any[]>
+
+const forms = await helper.readAll('forms', FileHelperReadMode.json);
 ```
 
 #### write
@@ -371,6 +381,20 @@ Get entries of a directory entry.
 
 ```js
 helper.entriesOf(dir_entry); // Promise<Entry[]>
+```
+
+#### newFromCd
+Create a new `FileHelper` instance using current instance as base path.
+Ensure that the directory exists before creating the instance, 
+then wait that the new instance is ready before returning it.
+
+```js
+helper.newFromCd(relative_path); // => Promise<FileHelper>
+
+const newHelper = await helper.newFromCd('forms');
+
+helper.pwd();// example: cdvfile://localhost/temporary/
+newHelper.pwd(); // example: cdvfile://localhost/temporary/forms/
 ```
 
 #### toBlob

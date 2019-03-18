@@ -198,12 +198,7 @@ function initDebug() {
         FileHelperReadMode,
         createRandomForms,
         recorder: function() {
-            newModalRecord(document.createElement('button'), document.createElement('input'),
-            {
-                name: "__test__",
-                label: "Test",
-                type: FormEntityType.audio
-            });
+            newModalRecord("Test");
         },
         dateFormatter,
         prompt,

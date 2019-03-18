@@ -4,26 +4,35 @@ import { PageManager, AppPages } from "./PageManager";
 import { SyncManager } from "./SyncManager";
 import { Logger } from "./logger";
 import { FILE_HELPER } from "./main";
-import { EntryObject } from "./file_helper";
+import { EntryObject, FileHelperReadMode } from "./file_helper";
 import { FormSaves } from "./FormSaves";
 
+/** État de sauvegarde d'une entrée */
 enum SaveState {
     saved, waiting, error
 };
 
+/**
+ * Lance la modification d'une sauvegarde d'une entrée form.
+ * @param form Sauvegarde d'une entrée
+ * @param name Identifiant du formulaire (sans le .json)
+ */
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
     if (form.type === null || !Schemas.exists(form.type)) {
-        showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type+ "\".", 10000);
+        showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
         return;
     }
 
     const current_form = Schemas.get(form.type);
-    
-    PageManager.push(AppPages.form, "Modifier", {form: current_form, name, save: form});
+
+    PageManager.push(AppPages.form, "Modifier", { form: current_form, name, save: form });
 }
 
-async function deleteAll() : Promise<any> {
+/**
+ * Supprime toutes les entrées sauvegardées sur l'appareil
+ */
+async function deleteAll(): Promise<any> {
     const instance = unclosableBottomModal(`
         ${SMALL_PRELOADER}
         <p class="flow-text">Suppression en cours</p>
@@ -48,15 +57,21 @@ async function deleteAll() : Promise<any> {
     }
 }
 
-async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
-    const save = json[1];
+/**
+ * Construit la card d'entrée sur la page des entrées
+ * @param json Fichier JSON contenant l'entrée
+ * @param ph Element dans lequel écrire la card
+ */
+async function appendFileEntry(json: File, ph: HTMLElement) {
+    const save = await FILE_HELPER.readFileAs(json, FileHelperReadMode.json) as FormSave;
+
     const selector = document.createElement('li');
     selector.classList.add('collection-item');
 
     const container = document.createElement('div');
     container.classList.add('saved-form-item');
-    let id = json[0].name;
-    let id_without_json = id.split('.json')[0];
+    let id = json.name;
+    const id_without_json = id.split('.json')[0];
     container.dataset.formid = id_without_json;
     let state = SaveState.error;
     let type = "Type inconnu";
@@ -67,7 +82,7 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
 
         if (form.id_field) {
             // Si un champ existe pour ce formulaire
-            id = (save.fields[form.id_field] as string) || json[0].name;
+            id = (save.fields[form.id_field] as string) || json.name;
         }
     }
 
@@ -106,25 +121,26 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     container.insertAdjacentHTML('beforeend', `
         <div class="left">
             [${type}] ${id} <br> 
-            Modifié le ${formatDate(new Date(json[0].lastModified), true)}
+            Modifié le ${formatDate(new Date(json.lastModified), true)}
         </div>`);
 
     // Ajout des actions de l'élément
     //// ACTION 1: Modifier
     const modify_element = () => {
-        editAForm(json[1], json[0].name.split(/\.json$/)[0]);
+        editAForm(save, json.name.split(/\.json$/)[0]);
     };
 
     const delete_element = () => {
-        modalDeleteForm(json[0].name);
+        modalDeleteForm(json.name);
     }
 
     // Définit l'événement de clic sur le formulaire
-    selector.addEventListener('click', function() {
-        const list = ["Modifier"];
-
-        list.push((container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser");
-        list.push("Supprimer");
+    selector.addEventListener('click', function () {
+        const list = [
+            "Modifier",
+            (container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser",
+            "Supprimer"
+        ];
 
         askModalList(list)
             .then(index => {
@@ -149,34 +165,20 @@ async function appendFileEntry(json: [File, FormSave], ph: HTMLElement) {
     ph.appendChild(selector);
 }
 
-async function readAllFilesOfDirectory(dirName: string) : Promise<[File, FormSave][]> {
-    const entries = await FILE_HELPER.ls(dirName, "e") as EntryObject;
-    // Bon, vu que ls n'est pas récursif, EntryObject ne contient qu'un seul chemin
-
-    const data: [File, FormSave][] = [];
-
-    for (const d in entries) {
-        for (const entry of entries[d]) {
-            const file = await FILE_HELPER.getFile(entry as FileEntry);
-            const content = JSON.parse(await FILE_HELPER.readFileAs(file) as string) as FormSave;
-
-            data.push([file, content]);
-        }
-    }
-
-    return data;
-}
-
+/**
+ * Lance un modal qui demandera si on veut supprimer une entrée id
+ * @param id Identifiant de l'entrée
+ */
 function modalDeleteForm(id: string) {
     askModal("Supprimer cette entrée ?", "Vous ne pourrez pas la restaurer ultérieurement.", "Supprimer", "Annuler")
         .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
-                .then(function() {
+                .then(function () {
                     showToast("Entrée supprimée.");
                     PageManager.reload();
                 })
-                .catch(function(err) {
+                .catch(function (err) {
                     showToast("Impossible de supprimer: " + err);
                 });
         })
@@ -185,7 +187,11 @@ function modalDeleteForm(id: string) {
         });
 }
 
-function deleteForm(id: string) : Promise<void> {
+/**
+ * Supprime un formulaire id
+ * @param id Identifiant du formulaire
+ */
+function deleteForm(id: string): Promise<void> {
     if (id.match(/\.json$/)) {
         id = id.substring(0, id.length - 5);
     }
@@ -198,6 +204,10 @@ function deleteForm(id: string) : Promise<void> {
     }
 }
 
+/**
+ * Point d'entrée de la page de visionnage des formulaires sauvegardés
+ * @param base Element dans lequel écrire 
+ */
 export async function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
@@ -206,77 +216,78 @@ export async function initSavedForm(base: HTMLElement) {
         await FILE_HELPER.mkdir('forms');
     } catch (err) {
         Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
-        base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. ("+err.message+")");
+        base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
         return;
     }
 
-    Schemas.onReady(function() {
-        readAllFilesOfDirectory('forms').then(all_promises => 
-            Promise.all(all_promises)
-                .then(async function(files: [File, FormSave][]) {
-                    // Tri des fichiers; le plus récent en premier
-                    files = files.sort(
-                        (a, b) => b[0].lastModified - a[0].lastModified
-                    );
+    Schemas.onReady()
+        .then(() => {
+            return FILE_HELPER.readAll('forms', FileHelperReadMode.fileobj) as Promise<File[]>;
+        })
+        .then(async (files: File[]) => {
+            // Tri des fichiers; le plus récent en premier
+            files = files.sort(
+                (a, b) => b.lastModified - a.lastModified
+            );
 
-                    for (const f of files) {
-                        await appendFileEntry(f, placeholder);
-                    }
+            for (const f of files) {
+                await appendFileEntry(f, placeholder);
+            }
 
-                    base.innerHTML = "";
-                    base.appendChild(placeholder);
+            base.innerHTML = "";
+            base.appendChild(placeholder);
 
-                    /// Insère un div avec une margin pour forcer de la
-                    /// place en bas, pour les boutons
-                    base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
-        
-                    if (files.length === 0) {
-                        base.innerHTML = displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
-                    }
-                    else {
-                        //// Bouton de synchronisation
-                        const syncbtn = convertHTMLToElement(`
+            /// Insère un div avec une margin pour forcer de la
+            /// place en bas, pour les boutons
+            base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
+
+            if (files.length === 0) {
+                base.innerHTML = displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
+            }
+            else {
+                //// Bouton de synchronisation
+                const syncbtn = convertHTMLToElement(`
                             <div class="fixed-action-btn" style="margin-right: 50px;">
                                 <a class="btn-floating waves-effect waves-light green">
                                     <i class="material-icons">sync</i>
                                 </a>
                             </div>`
-                        );
-                        syncbtn.onclick = function() {
-                            askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
-                                .then(() => {
-                                    return SyncManager.inlineSync();
-                                })
-                                .then(() => {
-                                    // PageManager.reload();
-                                })
-                                .catch(() => {});
-                        }
-                        base.appendChild(syncbtn);
+                );
+                syncbtn.onclick = function () {
+                    askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
+                        .then(() => {
+                            return SyncManager.inlineSync();
+                        })
+                        .then(() => {
+                            // PageManager.reload();
+                        })
+                        .catch(() => { });
+                }
+                base.appendChild(syncbtn);
 
-                        // Bouton de suppression globale
-                        const delete_btn = convertHTMLToElement(`
+                // Bouton de suppression globale
+                const delete_btn = convertHTMLToElement(`
                             <div class="fixed-action-btn">
                                 <a class="btn-floating waves-effect waves-light red">
                                     <i class="material-icons">delete_sweep</i>
                                 </a>
                             </div>`
-                        );
+                );
 
-                        delete_btn.addEventListener('click', () => {
-                            askModal(
-                                "Tout supprimer ?", 
-                                "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés."
-                            )
-                            .then(() => {
-                                setTimeout(function() {
-                                    // Attend que le modal précédent se ferme
-                                    askModal(
-                                        "Êtes-vous sûr-e ?", 
-                                        "La suppression est irréversible.",
-                                        "Annuler",
-                                        "Supprimer"
-                                    )
+                delete_btn.addEventListener('click', () => {
+                    askModal(
+                        "Tout supprimer ?",
+                        "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés."
+                    )
+                        .then(() => {
+                            setTimeout(function () {
+                                // Attend que le modal précédent se ferme
+                                askModal(
+                                    "Êtes-vous sûr-e ?",
+                                    "La suppression est irréversible.",
+                                    "Annuler",
+                                    "Supprimer"
+                                )
                                     .then(() => {
                                         // @ts-ignore bugfix
                                         document.body.style.overflow = ''; M.Modal._modalsOpen = 0;
@@ -287,18 +298,16 @@ export async function initSavedForm(base: HTMLElement) {
                                         document.body.style.overflow = ''; M.Modal._modalsOpen = 0;
                                         deleteAll();
                                     });
-                                }, 150);
-                            })
-                            .catch(() => {});
-                        });
+                            }, 150);
+                        })
+                        .catch(() => { });
+                });
 
-                        base.insertAdjacentElement('beforeend', delete_btn);
-                    }
-                    
-                })
-        ).catch(function(err) {
+                base.insertAdjacentElement('beforeend', delete_btn);
+            }
+        })
+        .catch(err => {
             Logger.error("Impossible de charger les fichiers", err.message, err.stack);
-            base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. ("+err.message+")");
+            base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
         });
-    });
 }

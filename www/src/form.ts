@@ -10,6 +10,9 @@ import { createLocationInputSelector } from "./location";
 import { FileHelperReadMode } from "./file_helper";
 import { beginFormSave } from "./save_a_form";
 
+/**
+ * Crée une base classique dans lequel insérer un input texte ou number.
+ */
 function createInputWrapper() : HTMLElement {
     const e = document.createElement('div');
     e.classList.add("row", "input-field", "col", "s12");
@@ -17,6 +20,11 @@ function createInputWrapper() : HTMLElement {
     return e;
 }
 
+/**
+ * Crée automatiquement le tip d'invalidité d'un champ
+ * @param wrapper Wrapper dans lequel est l'input
+ * @param ele Champ
+ */
 function createTip(wrapper: HTMLElement, ele: FormEntity) : HTMLElement {
     if (ele.tip_on_invalid) {
         const tip = document.createElement('div');
@@ -30,6 +38,11 @@ function createTip(wrapper: HTMLElement, ele: FormEntity) : HTMLElement {
     return wrapper;
 }
 
+/**
+ * Montre ou cache le tip d'invalidité
+ * @param current La plupart du temps, l'input. Doit être l'élément **AVANT** le tip dans le DOM.
+ * @param show Montrer: oui ou non
+ */
 function showHideTip(current: HTMLElement, show: boolean) : void {
     if (current.nextElementSibling && current.nextElementSibling.classList.contains("invalid-tip")) {
         // Si il y a un tip, on le fait appraître
@@ -389,13 +402,19 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, filled_
 
                 mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
 
+                const voice_replacements = ele.voice_control_replacements ? 
+                    ele.voice_control_replacements : 
+                    [[' ', ''], ['à', 'a'], ['-', '']];                
+
                 let timer: number;
                 const gestion_click = function(erase = true) {
                     prompt().then(function(value) {
                         let val = value as string;
 
                         if (ele.remove_whitespaces) {
-                            val = val.replace(/ /g, '').replace(/à/iug, 'a').replace(/-/g, '');
+                            for (const [regex, replacement] of voice_replacements) {
+                                val = val.replace(new RegExp(regex, "iug"), replacement);
+                            }
                         }
 
                         if (erase) {
@@ -826,7 +845,17 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, filled_
 
             button.addEventListener('click', function() {
                 // Crée un modal qui sert à enregistrer de l'audio
-                newModalRecord(button, real_input, ele);
+                newModalRecord(ele.label, real_input.value)
+                    .then(recres => {
+                        real_input.value = recres.content;
+                        real_input.dataset.duration = recres.duration.toString();
+            
+                        // Met à jour le bouton
+                        button.innerText = "Enregistrement (" + recres.duration.toFixed(0) + "s" + ")";
+                        button.classList.remove('blue');
+                        button.classList.add('green');
+                    })
+                    .catch(() => {}); // Rien n'a changé
             });
 
             wrapper.appendChild(button);

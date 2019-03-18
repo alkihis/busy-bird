@@ -65,29 +65,68 @@ export interface FormLocation {
 }
 
 export interface FormEntity {
-    name: string; /* MUST BE UNIQUE */
+    /** Nom du champ (interne, doit être compréhensible pour un ordinateur) */
+    name: string;
+    /** Nom affiché du champ à l'utilisateur */
     label: string;
-    placeholder?: string;
-    required?: boolean;
-    suggested_not_blank?: boolean; /* for type.string && type.bigstring && type.integer && type.float */
+    /** Type du champ. Doit être une valeur de FormEntityType. */
     type: FormEntityType;
-    range?: {min?: number, max?: number}; /* for type.integer && type.float */
-    select_options?: {options: SelectOption[], multiple: boolean}; /* for type.select */
-    slider_options?: {name: string, label: string}[] /* for type.slider */
-    file_type?: string; /* for type.file */
-    float_precision?: number; /* for type.float */
-    default_value?: string | boolean;
+    /** Suggestion de remplissage du champ. Valable pour type.(big)string && type.integer && type.float */
+    placeholder?: string;
+    /** Spécifie si le champ est requis. Si non précisé, vaut faux. */
+    required?: boolean;
+    /** Lors de la vérification, si le champ est vide, afficher un warning. 
+     * for type.string && type.bigstring && type.integer && type.float */
+    suggested_not_blank?: boolean;
+    /** Définit un nombre minimum ou maximum (intervalle, pour les types nombres)
+     * Définit un nombre minimum ou maximum de caractères (pour les types chaînes de caractères)
+     * for type.integer && type.float && type.(big)string  */
+    range?: {min?: number, max?: number};
+    /** for type.select: Liste les paramètres d'une liste de choix.
+     * Doit être un objet avec deux champs: multiple (si la liste est à choix multiple ou non)
+     * et options qui est un tableau de choix possibles */
+    select_options?: {options: SelectOption[], multiple: boolean};
+    /** for type.slider: Liste de deux objets composés de deux champs, 
+     * name pour le nom interne du choix, label pour le nom affiché */
+    slider_options?: {name: string, label: string}[];
+    /** for type.file: Spécifie le type MIME du fichier accepté */
+    file_type?: string;
+    /** for type.float: Précision décimale pour les nombres flottants */
+    float_precision?: number;
+    /** Valeur par défaut pour le champ en question. 
+     * boolean pour type.checkbox, string[] pour type.select AVEC multiple=true, string pour le reste */
+    default_value?: string | boolean | string[];
+    /** Message d'erreur marqué si le champ est détecté invalide */
     tip_on_invalid?: string;
+    /** 
+     * @deprecated
+     * Mots clés pour l'accès vocal au champ. N'est PAS utilisé par le code.
+     */
     vocal_access_words?: string[];
+    /** for type.integer && type.float && type.(big)string && type.select
+     * Autorise la génération du bouton de remplissage vocal pour ce champ. */
     allow_voice_control?: boolean;
-    indeterminate?: boolean; /* for type.checkbox */
-    remove_whitespaces?: boolean; /* for type.string / type.bigstring; during vocal reco */
+    /** for type.checkbox: La checkbox aura l'état indéterminé par défaut */
+    indeterminate?: boolean;
+    /** for type.(big)string: Lors du remplissage vocal, les éléments suivants seront automatiquement supprimés: 
+     * espaces, à transformé en a, -. Si vous n'êtes pas satisfait des éléments remplacés, précisez vos
+     * propres éléments à remplacer dans voice_control_replacements. */
+    remove_whitespaces?: boolean;
+    /** for type.(big)string: Voir "remove_whitespaces". 
+     * Liste de tuples ["élement à remplacer", "remplacement"]. 
+     * Attention: "élement à remplacer" est une EXPRESSION RÉGULIÈRE et aura automatiquement les flags suivants:
+     * "i" (insensible à la casse), "u" (compatible unicode) et "g" (remplacement global). */
+    voice_control_replacements?: [string, string][];
 }
 
 interface SelectOption {
+    /** Valeur affichée à l'écran pour ce choix */
     label: string;
+    /** Valeur interne utilisée pour ce choix */
     value: string;
+    /** Champ sélectionné par défaut: oui ou non */
     selected?: boolean;
+    /** @deprecated: Champ non utilisé */
     voice_hints?: string[];
 }
 
@@ -139,11 +178,18 @@ class FormSchemas {
 
     /**
      * Sauvegarde les schémas actuellement chargés dans cet objet sur le stockage interne de l'appareil.
+     * Retourne une promesse qui contient le FileEntry du fichier écrit.
+     * 
+     * Si aucun schéma n'est disponible (available_forms = null), la promesse est rejectée.
+     * 
+     * @throws {Error} Si aucun schéma n'est disponible => message:"Forms are not available."
+     * @throws {FileError} Erreur d'écriture du fichier
      */
-    public save() {
+    public save() : Promise<FileEntry> {
         if (this.available_forms) {
-            FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
+            return FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
         }
+        return Promise.reject(new Error("Forms are not available."));
     }
 
     /**
@@ -279,10 +325,11 @@ class FormSchemas {
      * Exécute callback quand l'objet est prêt.
      * @param callback Fonction à appeler quand le formulaire est prêt
      */
-    public async onReady(callback?: FormCallback) : Promise<void> {
+    public onReady(callback?: FormCallback) : Promise<void> {
         if (callback) {
-            await this.on_ready;
-            callback(this.available_forms, this.current);
+            this.on_ready.then(() => {
+                callback(this.available_forms, this.current);
+            });
         }
 
         return this.on_ready;
@@ -350,8 +397,9 @@ class FormSchemas {
                 this._current_key = null;
             }
 
-            if (will_save)
+            if (will_save) {
                 this.save();
+            }
         }
     }
 

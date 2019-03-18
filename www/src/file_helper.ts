@@ -1,5 +1,5 @@
 export enum FileHelperReadMode {
-    text, array, url, binarystr, json, internalURL
+    text, array, url, binarystr, json, internalURL, fileobj
 }
 
 /**
@@ -472,7 +472,7 @@ export class FileHelper {
      * @param path Path to the file or file via FileEntry
      * @param mode Read mode. Should be a FileHelperReadMode instance. By default, read as classic text.
      */
-    public async read(path: string | FileEntry, mode = FileHelperReadMode.text) : Promise<any | string | ArrayBuffer> {
+    public async read(path: string | FileEntry, mode = FileHelperReadMode.text) : Promise<any | string | ArrayBuffer | File> {
         if (mode === FileHelperReadMode.internalURL) {
             return (typeof path === 'string' ? 
                 (await this.get(path)).toInternalURL() : 
@@ -507,6 +507,26 @@ export class FileHelper {
      */
     public readDataURL(path: string | FileEntry) : Promise<string> {
         return this.read(path, FileHelperReadMode.url);
+    }
+
+    /**
+     * Read all files of a directory with a specific mode.
+     * Existing directories inside the directory will be ignored.
+     * 
+     * @param path Path to directory
+     * @param mode Read mode
+     */
+    public async readAll(path: string | DirectoryEntry = "", mode = FileHelperReadMode.text) : Promise<string[] | any[] | ArrayBuffer[] | File[]> {
+        const entries = await this.entriesOf(path);
+
+        const files = [];
+        for (const e of entries) {
+            if (e.isFile) {
+                files.push(await this.read(e as FileEntry, mode));
+            }
+        }
+
+        return files;
     }
 
     /**
@@ -812,6 +832,20 @@ export class FileHelper {
     }
 
     /**
+     * Create a new FileHelper instance from a relative path of this current instance,
+     * ensure that new path exists and return the FileHelper instance when its ready.
+     * 
+     * @param relative_path Relative path from where creating the new instance
+     */
+    public async newFromCd(relative_path: string) : Promise<FileHelper> {
+        const instance = new FileHelper(normalize(this.pwd() + relative_path));
+
+        await instance.waitInit();
+
+        return instance;
+    }
+
+    /**
      * Find files into a directory using a glob bash pattern.
      * @param pattern 
      * @param recursive Make glob function recursive. To use ** pattern, you MUST use recursive mode.
@@ -848,7 +882,7 @@ export class FileHelper {
     }
 
     /**
-     * see pwd()
+     * Alias for pwd()
      */
     public toString() : string {
         return this.pwd();
@@ -919,7 +953,11 @@ export class FileHelper {
      * @param file File obj
      * @param mode Mode
      */
-    public readFileAs(file: File, mode = FileHelperReadMode.text) : Promise<any | string | ArrayBuffer> {
+    public readFileAs(file: File, mode = FileHelperReadMode.text) : Promise<any | File | string | ArrayBuffer> {
+        if (mode === FileHelperReadMode.fileobj) {
+            return Promise.resolve(file);
+        }
+
         return new Promise((resolve, reject) => {
             const r = new FileReader();
     
@@ -955,6 +993,9 @@ export class FileHelper {
             }
             else if (mode === FileHelperReadMode.binarystr) {
                 r.readAsBinaryString(file);
+            }
+            else {
+                throw new Error("Mode not found");
             }
         });
     }
