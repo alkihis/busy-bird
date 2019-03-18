@@ -51,7 +51,7 @@ export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Pr
                         const speech_reco = window.webkitSpeechRecognition || window.SpeechRecognition;
 
                         const recognition = new speech_reco();
-                        recognition.onresult = (event) => {
+                        recognition.onresult = (event: any) => {
                             if (event.results && event.results.length > 0) {
                                 if (as_array) {
                                     const array: string[] = [];

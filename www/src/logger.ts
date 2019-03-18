@@ -13,7 +13,7 @@ export enum LogLevel {
  * Permet de logger dans un fichier texte des messages.
  */
 class _Logger {
-    protected fileEntry: any;
+    protected fileEntry: FileEntry;
     protected _onWrite: boolean = false;
     protected delayed: [any[], LogLevel][] = [];
     protected waiting_callee: Function[] = [];
@@ -68,7 +68,7 @@ class _Logger {
      * le logger est prêt à recevoir des instructions. 
      * @param callback? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand le logger est prêt
      */
-    public onReady(callback?: (any?) => void) : Promise<void> {
+    public onReady(callback?: (any?: any) => void) : Promise<void> {
         const oninit: Promise<void> = new Promise((resolve) => {
             if (this.isInit()) {
                 resolve();
@@ -130,7 +130,7 @@ class _Logger {
         }
 
         // Create a FileWriter object for our FileEntry (log.txt).
-        this.fileEntry.createWriter((fileWriter) => {
+        this.fileEntry.createWriter((fileWriter: FileWriter) => {
             fileWriter.onwriteend = () => {
                 this.onWrite = false;
             };
@@ -172,7 +172,7 @@ class _Logger {
                 this.delayWrite(data, level);
             }
         }, (error) => {
-            console.error("Impossible d'écrire: ", error.message);
+            console.error("Impossible d'écrire: ", error.code);
             this.delayWrite(data, level);
             this.init();
         });
@@ -204,7 +204,7 @@ class _Logger {
      * le logger a fini toutes ses opérations d'écriture. 
      * @param callbackSuccess? Function Si précisé, la fonction ne renvoie rien et le callback sera exécuté quand toutes les opérations d'écriture sont terminées.
      */
-    public onWriteEnd(callbackSuccess?: (any?) => void) : Promise<void> {
+    public onWriteEnd(callbackSuccess?: (any?: any) => void) : Promise<void> {
         const onwriteend: Promise<void> = new Promise((resolve) => {
             if (!this.onWrite && this.isInit()) {
                 resolve();
@@ -232,7 +232,7 @@ class _Logger {
                 reject("Logger must be initialized");
             }
 
-            this.fileEntry.createWriter((fileWriter) => {
+            this.fileEntry.createWriter((fileWriter: FileWriter) => {
                 fileWriter.onwriteend = () => {
                     this.onWrite = false;
                     resolve();
@@ -265,7 +265,7 @@ class _Logger {
                 reject("Logger must be initialized");
             }
 
-            this.fileEntry.file(function (file) {
+            this.fileEntry.file(function (file: File) {
                 const reader = new FileReader();
         
                 reader.onloadend = function() {

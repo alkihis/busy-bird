@@ -641,11 +641,11 @@ class _SyncManager {
                 // Pour chaque clé disponible
                 promises.push(
                     id_getter(id)
-                        .catch(error => {
+                        .catch((error: any) => {
                             error_id = id;
                             return Promise.reject({code: "id_getter", error});
                         })
-                        .then(value => {
+                        .then((value: SList) => {
                             receiver.dispatchEvent(eventCreator("send", { id, data: value, number: i+position, total: entries.length }));
                             i++;
     

@@ -75,17 +75,19 @@ async function initApp() {
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
 
+    type hasPerm = { hasPermission: boolean };
+
     await new Promise((resolve) => {
-        permissions.requestPermission(permissions.RECORD_AUDIO, (status) => {
+        permissions.requestPermission(permissions.RECORD_AUDIO, (status: hasPerm) => {
             resolve(status);
-        }, e => { console.log(e); resolve(); });
+        }, (e: any) => { console.log(e); resolve(); });
     });
 
     // Force à demander la permission pour accéder à la SD
-    const permission_write: { hasPermission: boolean } = await new Promise((resolve) => {
-        permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, (status: { hasPermission: boolean }) => {
+    const permission_write: hasPerm = await new Promise((resolve) => {
+        permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, (status: hasPerm) => {
             resolve(status);
-        }, e => { console.log(e); resolve(undefined); });
+        }, (e: any) => { console.log(e); resolve(); });
     });
     
     // Essaie de trouver le chemin de la carte SD
@@ -183,7 +185,7 @@ function appWrapper() {
 }
 
 function initDebug() {
-
+    // @ts-ignore
     window["DEBUG"] = {
         launchQuizz,
         PageManager,

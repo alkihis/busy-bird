@@ -36,9 +36,9 @@ export const Settings = new AppSettings;
 
 class BgSyncObj {
     //// credit to https://github.com/transistorsoft/cordova-plugin-background-fetch
-    protected background_sync = null;
-    protected fetchCb = null;
-    protected failCb = null;
+    protected background_sync: any = null;
+    protected fetchCb: Function = null;
+    protected failCb: Function = null;
 
     public isInit() {
         return this.background_sync !== null;

@@ -283,7 +283,7 @@ define("logger", ["require", "exports", "main"], function (require, exports, mai
                     this.delayWrite(data, level);
                 }
             }, (error) => {
-                console.error("Impossible d'écrire: ", error.message);
+                console.error("Impossible d'écrire: ", error.code);
                 this.delayWrite(data, level);
                 this.init();
             });
@@ -2378,11 +2378,11 @@ define("SyncManager", ["require", "exports", "logger", "localforage", "main", "h
                 for (const id of subset) {
                     // Pour chaque clé disponible
                     promises.push(id_getter(id)
-                        .catch(error => {
+                        .catch((error) => {
                         error_id = id;
                         return Promise.reject({ code: "id_getter", error });
                     })
-                        .then(value => {
+                        .then((value) => {
                         receiver.dispatchEvent(eventCreator("send", { id, data: value, number: i + position, total: entries.length }));
                         i++;
                         return this.sendForm(id, value)
@@ -2782,13 +2782,13 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         await new Promise((resolve) => {
             permissions.requestPermission(permissions.RECORD_AUDIO, (status) => {
                 resolve(status);
-            }, e => { console.log(e); resolve(); });
+            }, (e) => { console.log(e); resolve(); });
         });
         // Force à demander la permission pour accéder à la SD
         const permission_write = await new Promise((resolve) => {
             permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, (status) => {
                 resolve(status);
-            }, e => { console.log(e); resolve(undefined); });
+            }, (e) => { console.log(e); resolve(); });
         });
         // Essaie de trouver le chemin de la carte SD
         try {
@@ -2870,6 +2870,7 @@ define("main", ["require", "exports", "PageManager", "helpers", "logger", "audio
         });
     }
     function initDebug() {
+        // @ts-ignore
         window["DEBUG"] = {
             launchQuizz: test_vocal_reco_1.launchQuizz,
             PageManager: PageManager_1.PageManager,
@@ -2900,6 +2901,15 @@ define("location", ["require", "exports", "helpers"], function (require, exports
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.UNKNOWN_NAME = "__unknown__";
     const UNKNOWN_LABEL = "Lieu inconnu";
+    /**
+     * Crée le sélecteur de localisation
+     *
+     * @param container Conteneur (usuellement, .modal-content)
+     * @param input Champ sur lequel on va choisir (usuellement, un document.createElement('input') suffit)
+     * @param locations Localisations possibles
+     * @param open_on_complete Ouvrir Google Maps quand l'utilisateur clique sur une suggestion
+     * @param with_unknown Ajouter un champ "\_\_unknown\_\_"
+     */
     function createLocationInputSelector(container, input, locations, open_on_complete = false, with_unknown = false) {
         const row = document.createElement('div');
         row.classList.add('row');
@@ -4484,120 +4494,6 @@ define("home", ["require", "exports", "user_manager", "SyncManager", "helpers", 
         };
     }
 });
-// ////// DEPRECATED
-// /**
-//  * Initie la sauvegarde: présente et vérifie les champs
-//  *  @param type
-//  */
-// function initFormSave(type: string, force_name?: string, form_save?: FormSave): any {
-//     console.log("Demarrage initFormSave")
-//     // Ouverture du modal de verification
-//     const modal = getModal();
-//     const instance = initModal({ dismissible: true }, getModalPreloader(
-//         "La vérification a probablement planté.<br>Merci de patienter quand même, on sait jamais.",
-//         `<div class="modal-footer">
-//             <a href="#!" id="cancel_verif" class="btn-flat red-text">Annuler</a>
-//         </div>`
-//     ));
-//     modal.classList.add('modal-fixed-footer');
-//     // Ouverture du premiere modal de chargement
-//     instance.open();
-//     // creation de la liste d'erreurs
-//     let list_erreur = document.createElement("div");
-//     list_erreur.classList.add("modal-content");
-//     let element_erreur = document.createElement("ul");
-//     element_erreur.classList.add("collection")
-//     list_erreur.appendChild(element_erreur);
-//     //Ajouter verification avant d'ajouter bouton valider
-//     let erreur_critique: boolean = false;
-//     //Parcours tous les elements remplits ou non
-//     for (const input of document.getElementsByClassName('input-form-element')) {
-//         //Attribution du label plutot que son nom interne
-//         const i = input as HTMLInputElement;
-//         const label = document.querySelector(`label[for="${i.id}"]`);
-//         let name = i.name;
-//         if (label) {
-//             name = label.textContent;
-//         };
-//         const contraintes: any = {};
-//         if (i.dataset.constraints) {
-//             i.dataset.constraints.split(';').map((e: string) => {
-//                 const [name, value] = e.split('=');
-//                 contraintes[name] = value;
-//             });
-//         }
-//         //Si l'attribut est obligatoirement requis et qu'il est vide -> erreur critique impossible de sauvegarder
-//         if (i.required && !i.value) {
-//             let erreur = document.createElement("li");
-//             erreur.classList.add("collection-item");
-//             erreur.innerHTML = "<strong style='color: red;' >" + name + "</strong> : Champ requis";
-//             element_erreur.insertBefore(erreur, element_erreur.firstChild);
-//             erreur_critique = true;
-//             continue;
-//         }
-//         if (input.tagName === "SELECT" && (input as HTMLSelectElement).multiple) {
-//             const selected = [...(input as HTMLSelectElement).options].filter(option => option.selected).map(option => option.value);
-//             if (selected.length == 0) {
-//                 let erreur = document.createElement("li");
-//                 erreur.classList.add("collection-item");
-//                 erreur.innerHTML = "<strong>" + name + "</strong> : Non renseigné";
-//                 element_erreur.appendChild(erreur);
-//             }
-//         }
-//         else if (i.type !== "checkbox") {
-//             if (!i.value) {
-//                 let erreur = document.createElement("li");
-//                 erreur.classList.add("collection-item");
-//                 erreur.innerHTML = "<strong>" + name + "</strong> : Non renseigné";
-//                 element_erreur.appendChild(erreur);
-//             }
-//             else if (i.type === "number") {
-//                 if (contraintes) {
-//                     if ((Number(i.value) <= Number(contraintes['min'])) || (Number(i.value) >= Number(contraintes['max']))) {
-//                         let erreur = document.createElement("li");
-//                         erreur.classList.add("collection-item");
-//                         erreur.innerHTML = "<strong>" + name + "</strong> : Intervale non respecté";
-//                         element_erreur.appendChild(erreur);
-//                     }
-//                     // ajouter precision else if ()
-//                 }
-//             }
-//             else if (i.type === "text") {
-//                 if (contraintes) {
-//                     if ((i.value.length < Number(contraintes['min'])) || (i.value.length > Number(contraintes['max']))) {
-//                         let erreur = document.createElement("li");
-//                         erreur.classList.add("collection-item");
-//                         erreur.innerHTML = "<strong>" + name + "</strong> : Taille non respecté";
-//                         element_erreur.appendChild(erreur);
-//                     };
-//                 }
-//             }
-//         }
-//     }
-//     modal.innerHTML = "";
-//     modal.appendChild(list_erreur);
-//     let footer = document.createElement("div");
-//     footer.classList.add("modal-footer");
-//     if (erreur_critique) {
-//         footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a>
-//         </div>`;
-//     }
-//     else {
-//         footer.innerHTML = `<a href="#!" id="cancel_verif" class="btn-flat red-text">Corriger</a><a href="#!" id="valid_verif" class="btn-flat green-text">Valider</a>
-//         </div>`;
-//     }
-//     modal.appendChild(footer);
-//     document.getElementById("cancel_verif").onclick = function() {
-//         getModalInstance().close();
-//     };
-//     if (!erreur_critique) {
-//         document.getElementById("valid_verif").onclick = function() {
-//             getModalInstance().close();
-//             saveForm(type, force_name, form_save);
-//         }
-//     };
-//     // Si champ invalide suggéré (dépassement de range, notamment) ou champ vide, message d'alerte, mais
-// }
 define("settings_page", ["require", "exports", "user_manager", "form_schema", "helpers", "SyncManager", "PageManager", "fetch_timeout", "main", "home", "Settings"], function (require, exports, user_manager_6, form_schema_5, helpers_9, SyncManager_4, PageManager_4, fetch_timeout_2, main_8, home_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });

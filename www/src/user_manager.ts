@@ -7,8 +7,8 @@ import { Schemas } from "./form_schema";
  * Cette classe doit être instanciée qu'une seule fois.
  */
 class _UserManager {
-    protected _username = null;
-    protected _token = null;
+    protected _username: string = null;
+    protected _token: string = null;
 
     /**
      * Initialise l'utilisateur connecté depuis les données sauvegardées.

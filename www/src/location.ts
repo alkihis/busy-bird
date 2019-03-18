@@ -4,6 +4,15 @@ import { showToast } from "./helpers";
 export const UNKNOWN_NAME = "__unknown__";
 const UNKNOWN_LABEL = "Lieu inconnu";
 
+/**
+ * Crée le sélecteur de localisation
+ * 
+ * @param container Conteneur (usuellement, .modal-content)
+ * @param input Champ sur lequel on va choisir (usuellement, un document.createElement('input') suffit)
+ * @param locations Localisations possibles
+ * @param open_on_complete Ouvrir Google Maps quand l'utilisateur clique sur une suggestion
+ * @param with_unknown Ajouter un champ "\_\_unknown\_\_"
+ */
 export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocations, open_on_complete = false, with_unknown = false) {
     const row = document.createElement('div');
     row.classList.add('row');

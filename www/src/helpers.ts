@@ -196,7 +196,7 @@ export function printObj(ele: HTMLElement, obj: any) : void {
  * @param onSuccess Function(coords: Position) => void
  * @param onFailed Function(error) => void
  */
-export function getLocation(onSuccess: (coords: Position) => any, onFailed?) {
+export function getLocation(onSuccess: (coords: Position) => any, onFailed?: (positionError: PositionError) => void) {
     navigator.geolocation.getCurrentPosition(onSuccess,
         onFailed,
         { timeout: 30 * 1000, maximumAge: 5 * 60 * 1000 }
@@ -278,7 +278,7 @@ export function dateFormatter(schema: string, date = new Date()) : string {
     const g = date.getHours();
     const s = ((date.getSeconds()) < 10 ? "0" : "") + String(date.getSeconds());
 
-    const replacements = {
+    const replacements: any = {
         Y, m, d, i, H, g, s, n, N, L, v: date.getMilliseconds(), z: getDayOfTheYear, w: date.getDay()
     };
 
