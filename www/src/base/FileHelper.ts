@@ -385,7 +385,7 @@ export class FileHelper {
         let cur_entry = await this.get() as DirectoryEntry;
 
         for (const step of steps) {
-            if (step.trim() === ".") {
+            if (step.trim() === "." || step.trim() === "") {
                 continue;
             }
 

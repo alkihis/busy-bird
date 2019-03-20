@@ -656,7 +656,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
             const steps = path.split('/');
             let cur_entry = await this.get();
             for (const step of steps) {
-                if (step.trim() === ".") {
+                if (step.trim() === "." || step.trim() === "") {
                     continue;
                 }
                 cur_entry = await new Promise((resolve, reject) => {
@@ -3580,6 +3580,8 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
 define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base/SyncManager", "utils/helpers"], function (require, exports, main_7, FileHelper_3, SyncManager_2, helpers_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ENTRIES_DIR = "forms/";
+    exports.METADATA_DIR = "form_data/";
     // Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
     /**
      * Gérer les sauvegardes d'entrée actuellement présentes sur l'appareil
@@ -3590,19 +3592,19 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
          * @param id Identifiant de la sauvegarde
          */
         get(id) {
-            return main_7.FILE_HELPER.readJSON("forms/" + id + ".json");
+            return main_7.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
         }
         /**
          * Obtenir les fichiers associés à un formulaire sauvegardé
          * @param id Identifiant de l'entrée
          */
         async getMetadata(id) {
-            const save = await main_7.FILE_HELPER.readJSON("forms/" + id + ".json");
+            const save = await main_7.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
             const files = {};
             for (const field in save.metadata) {
                 files[field] = [
                     save.metadata[field],
-                    await main_7.FILE_HELPER.read("form_data/" + id + "/" + save.metadata[field], FileHelper_3.FileHelperReadMode.fileobj)
+                    await main_7.FILE_HELPER.read(exports.METADATA_DIR + id + "/" + save.metadata[field], FileHelper_3.FileHelperReadMode.fileobj)
                 ];
             }
             return files;
@@ -3611,7 +3613,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
          * Liste toutes les sauvegardes disponibles (par identifiant)
          */
         async list() {
-            const files = await main_7.FILE_HELPER.entriesOf('forms');
+            const files = await main_7.FILE_HELPER.entriesOf(exports.ENTRIES_DIR);
             const ids = [];
             for (const f of files) {
                 if (f.isFile) {
@@ -3621,21 +3623,21 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
             return ids;
         }
         listAsFormSave() {
-            return main_7.FILE_HELPER.readAll("forms", FileHelper_3.FileHelperReadMode.json);
+            return main_7.FILE_HELPER.readAll(exports.ENTRIES_DIR, FileHelper_3.FileHelperReadMode.json);
         }
         /**
          * Supprimer tous les formulaires sauvegardés
          */
         async clear() {
             // On veut supprimer tous les fichiers
-            await main_7.FILE_HELPER.empty('forms', true);
-            if (await main_7.FILE_HELPER.exists('form_data')) {
-                await main_7.FILE_HELPER.empty('form_data', true);
+            await main_7.FILE_HELPER.empty(exports.ENTRIES_DIR, true);
+            if (await main_7.FILE_HELPER.exists(exports.METADATA_DIR)) {
+                await main_7.FILE_HELPER.empty(exports.METADATA_DIR, true);
             }
             if (device.platform === "Android" && main_7.SD_FILE_HELPER) {
                 try {
-                    await main_7.SD_FILE_HELPER.empty('forms', true);
-                    await main_7.SD_FILE_HELPER.empty('form_data', true);
+                    await main_7.SD_FILE_HELPER.empty(exports.ENTRIES_DIR, true);
+                    await main_7.SD_FILE_HELPER.empty(exports.METADATA_DIR, true);
                 }
                 catch (e) {
                     // Tant pis, ça ne marche pas
@@ -3648,15 +3650,15 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
          * @param id Identifiant de l'entrée
          */
         async rm(id) {
-            await main_7.FILE_HELPER.rm("forms/" + id + ".json");
-            if (await main_7.FILE_HELPER.exists("form_data/" + id)) {
-                await main_7.FILE_HELPER.rm("form_data/" + id, true);
+            await main_7.FILE_HELPER.rm(exports.ENTRIES_DIR + id + ".json");
+            if (await main_7.FILE_HELPER.exists(exports.METADATA_DIR + id)) {
+                await main_7.FILE_HELPER.rm(exports.METADATA_DIR + id, true);
             }
             if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
                 // Tente de supprimer depuis la carte SD
                 try {
-                    await main_7.SD_FILE_HELPER.rm("form_data/" + id, true);
-                    await main_7.SD_FILE_HELPER.rm("forms/" + id + '.json');
+                    await main_7.SD_FILE_HELPER.rm(exports.METADATA_DIR + id, true);
+                    await main_7.SD_FILE_HELPER.rm(exports.ENTRIES_DIR + id + '.json');
                 }
                 catch (e) { }
             }
@@ -3675,12 +3677,12 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
         async save(identifier, form_values, older_save) {
             async function deleteOlderFile(input_name) {
                 if (main_7.SD_FILE_HELPER) {
-                    main_7.SD_FILE_HELPER.rm(older_save.fields[input_name]);
+                    main_7.SD_FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
                 }
-                return main_7.FILE_HELPER.rm(older_save.fields[input_name]);
+                return main_7.FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
             }
             async function saveBlobToFile(filename, input_name, blob) {
-                const full_path = 'form_data/' + identifier + '/' + filename;
+                const full_path = exports.METADATA_DIR + identifier + '/' + filename;
                 try {
                     await main_7.FILE_HELPER.write(full_path, blob);
                     if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
@@ -3688,8 +3690,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                     }
                     // Enregistre le nom du fichier sauvegardé dans le formulaire,
                     // dans la valeur du champ field
-                    form_values.fields[input_name] = full_path;
-                    form_values.metadata[input_name] = filename;
+                    form_values.fields[input_name] = form_values.metadata[input_name] = filename;
                     if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
                         // Si une image était déjà présente
                         if (older_save.fields[input_name] !== form_values.fields[input_name]) {
@@ -3781,9 +3782,9 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                     delete form_values.metadata[n];
                 }
             }
-            await main_7.FILE_HELPER.write('forms/' + identifier + '.json', form_values);
+            await main_7.FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values);
             if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
-                main_7.SD_FILE_HELPER.write('forms/' + identifier + '.json', form_values).catch((e) => console.log(e));
+                main_7.SD_FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
             }
             console.log(form_values);
             return form_values;

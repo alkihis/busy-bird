@@ -4,6 +4,9 @@ import { FileHelperReadMode } from "./FileHelper";
 import { SyncManager } from "./SyncManager";
 import { urlToBlob, generateId, showToast } from "../utils/helpers";
 
+export const ENTRIES_DIR = "forms/";
+export const METADATA_DIR = "form_data/";
+
 // Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
 
 /**
@@ -15,7 +18,7 @@ class _FormSaves {
      * @param id Identifiant de la sauvegarde
      */
     public get(id: string) : Promise<FormSave> {
-        return FILE_HELPER.readJSON("forms/" + id + ".json");
+        return FILE_HELPER.readJSON(ENTRIES_DIR + id + ".json");
     }
 
     /**
@@ -23,13 +26,13 @@ class _FormSaves {
      * @param id Identifiant de l'entrée
      */
     public async getMetadata(id: string) : Promise<{ [fieldName: string]: [string, File] }> {
-        const save = await FILE_HELPER.readJSON("forms/" + id + ".json") as FormSave;
+        const save = await FILE_HELPER.readJSON(ENTRIES_DIR + id + ".json") as FormSave;
 
         const files: { [fieldName: string]: [string, File] } = {};
         for (const field in save.metadata) {
             files[field] = [
                 save.metadata[field],
-                await FILE_HELPER.read("form_data/" + id + "/" + save.metadata[field], FileHelperReadMode.fileobj) as File
+                await FILE_HELPER.read(METADATA_DIR + id + "/" + save.metadata[field], FileHelperReadMode.fileobj) as File
             ];
         }
 
@@ -40,7 +43,7 @@ class _FormSaves {
      * Liste toutes les sauvegardes disponibles (par identifiant)
      */
     public async list() : Promise<string[]> {
-        const files = await FILE_HELPER.entriesOf('forms');
+        const files = await FILE_HELPER.entriesOf(ENTRIES_DIR);
 
         const ids: string[] = [];
 
@@ -54,7 +57,7 @@ class _FormSaves {
     }
 
     public listAsFormSave() : Promise<FormSave[]> {
-        return FILE_HELPER.readAll("forms", FileHelperReadMode.json) as Promise<FormSave[]>;
+        return FILE_HELPER.readAll(ENTRIES_DIR, FileHelperReadMode.json) as Promise<FormSave[]>;
     }
 
     /**
@@ -62,16 +65,16 @@ class _FormSaves {
      */
     public async clear() {
         // On veut supprimer tous les fichiers
-        await FILE_HELPER.empty('forms', true);
+        await FILE_HELPER.empty(ENTRIES_DIR, true);
 
-        if (await FILE_HELPER.exists('form_data')) {
-            await FILE_HELPER.empty('form_data', true);
+        if (await FILE_HELPER.exists(METADATA_DIR)) {
+            await FILE_HELPER.empty(METADATA_DIR, true);
         }
 
         if (device.platform === "Android" && SD_FILE_HELPER) {
             try {
-                await SD_FILE_HELPER.empty('forms', true);
-                await SD_FILE_HELPER.empty('form_data', true);
+                await SD_FILE_HELPER.empty(ENTRIES_DIR, true);
+                await SD_FILE_HELPER.empty(METADATA_DIR, true);
             } catch (e) {
                 // Tant pis, ça ne marche pas
             }
@@ -85,17 +88,17 @@ class _FormSaves {
      * @param id Identifiant de l'entrée
      */
     public async rm(id: string) {
-        await FILE_HELPER.rm("forms/" + id + ".json");
+        await FILE_HELPER.rm(ENTRIES_DIR + id + ".json");
 
-        if (await FILE_HELPER.exists("form_data/" + id)) {
-            await FILE_HELPER.rm("form_data/" + id, true);
+        if (await FILE_HELPER.exists(METADATA_DIR + id)) {
+            await FILE_HELPER.rm(METADATA_DIR + id, true);
         }
 
         if (device.platform === 'Android' && SD_FILE_HELPER) {
             // Tente de supprimer depuis la carte SD
             try {
-                await SD_FILE_HELPER.rm("form_data/" + id, true);
-                await SD_FILE_HELPER.rm("forms/" + id + '.json');
+                await SD_FILE_HELPER.rm(METADATA_DIR + id, true);
+                await SD_FILE_HELPER.rm(ENTRIES_DIR + id + '.json');
             } catch (e) { }
         }
 
@@ -115,13 +118,13 @@ class _FormSaves {
     public async save(identifier: string, form_values: FormSave, older_save?: FormSave) : Promise<FormSave> {
         async function deleteOlderFile(input_name: string) : Promise<void> {
             if (SD_FILE_HELPER) {
-                SD_FILE_HELPER.rm((older_save.fields[input_name] as string));
+                SD_FILE_HELPER.rm(METADATA_DIR + identifier + "/" + (older_save.fields[input_name] as string));
             }
-            return FILE_HELPER.rm((older_save.fields[input_name] as string));
+            return FILE_HELPER.rm(METADATA_DIR + identifier + "/" + (older_save.fields[input_name] as string));
         }
     
         async function saveBlobToFile(filename: string, input_name: string, blob: Blob) : Promise<void> {
-            const full_path = 'form_data/' + identifier + '/' + filename;
+            const full_path = METADATA_DIR + identifier + '/' + filename;
     
             try {
                 await FILE_HELPER.write(full_path, blob);
@@ -130,8 +133,8 @@ class _FormSaves {
                 }
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
-                form_values.fields[input_name] = full_path;
-                form_values.metadata[input_name] = filename;
+                form_values.fields[input_name] = form_values.metadata[input_name] = filename;
+                
                 if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
                     // Si une image était déjà présente
                     if (older_save.fields[input_name] !== form_values.fields[input_name]) {
@@ -241,10 +244,10 @@ class _FormSaves {
             }
         }
     
-        await FILE_HELPER.write('forms/' + identifier + '.json', form_values);
+        await FILE_HELPER.write(ENTRIES_DIR + identifier + '.json', form_values);
     
         if (device.platform === 'Android' && SD_FILE_HELPER) {
-            SD_FILE_HELPER.write('forms/' + identifier + '.json', form_values).catch((e) => console.log(e));
+            SD_FILE_HELPER.write(ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
         }
     
         console.log(form_values);
