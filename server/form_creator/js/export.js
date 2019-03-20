@@ -21,12 +21,12 @@ function exportFormModal() {
         <div class="input-field col s12">
             <input id="__form_key" placeholder="Contient uniquement des caractères alphanumériques" 
                 type="text" class="validate" required pattern="[a-zA-Z0-9_-]+" value="${form_key}">
-            <label for="__form_key">Nom formel</label>
+            <label for="__form_key">Nom interne</label>
         </div>
 
         <div class="input-field col s12">
             <input id="__form_label" placeholder="Par exemple, 'Cincle Plongeur'" type="text" class="validate" required value="${form_name}">
-            <label for="__form_label">Nom complet du formulaire</label>
+            <label for="__form_label">Nom affiché du formulaire</label>
         </div>
 
         <div class="input-field col s12">

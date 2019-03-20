@@ -3,7 +3,7 @@ import { generateId, showToast, getModalPreloader, sleep, initModal, getModal } 
 import { FormSave, Schema } from "../base/FormSchema";
 import { UserManager } from "../base/UserManager";
 import { PageManager, AppPages } from "../base/PageManager";
-import { Logger } from "./logger";
+import { Logger } from "./Logger";
 import { SyncManager } from "../base/SyncManager";
 import { UNKNOWN_NAME } from "./location";
 import { FormSaves } from "../base/FormSaves";

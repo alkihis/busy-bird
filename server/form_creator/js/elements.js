@@ -15,8 +15,7 @@ const PROPERTIES_INTERNAL_NAME = {
     indeterminate: "indeterminate_chk",
     vocal_access_words: false,
     allow_voice_control: "vocal_command",
-    remove_whitespaces: "rm_whitesp", /* for type.string / type.bigstring; during vocal reco */
-    external_constraints: "external_c" /* for type.select only; Définit des contraintes externes de façon simpliste */
+    remove_whitespaces: "rm_whitesp" /* for type.string / type.bigstring; during vocal reco */
 };
 
 const FORM_PROPERTIES = {
@@ -35,8 +34,7 @@ const FORM_PROPERTIES = {
     tip_on_invalid: generateInvalidTip,
     vocal_access_words: "string[]",
     allow_voice_control: generateAllowVoice,
-    remove_whitespaces: generateRmWhitespace, /* for type.string / type.bigstring; during vocal reco */
-    external_constraints: generateExternalC /* for type.select only; Définit des contraintes externes de façon simpliste */
+    remove_whitespaces: generateRmWhitespace /* for type.string / type.bigstring; during vocal reco */
 };
 
 const FORM_TYPES = {
@@ -46,7 +44,7 @@ const FORM_TYPES = {
     integer: {label: "Nombre entier", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
     float: {label: "Nombre à virgule", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "float_precision", "placeholder"]}, 
     slider: {label: "Choix binaire", props: ["slider_options"]},
-    select: {label: "Liste de choix", props: ["allow_voice_control", "tip_on_invalid", "external_constraints", "select_options"]}, 
+    select: {label: "Liste de choix", props: ["allow_voice_control", "tip_on_invalid", "select_options"]}, 
     checkbox: {label: "Case à cocher", info: "La valeur par défaut est le statut décoché ou indéterminé.", props: ['indeterminate']},
     datetime: {label: "Date et heure", props: []},
     date: {label: "Date", props: []},

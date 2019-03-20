@@ -218,7 +218,7 @@ export class FileHelper {
 
     /**
      * Create a new FileHelper object using a root path.
-     * Root are automatically setted to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
+     * Root is automatically set to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
      * and to "cdvfile://localhost/temporary/" on browser.
      * 
      * You can create a new FileHelper instance using a FileHelper instance, working directory will be used as root.
@@ -562,7 +562,7 @@ export class FileHelper {
         return new Promise((resolve, reject) => {
             window.resolveLocalFileSystemURL(path, resolve, err => {
                 if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
-                    reject(new Error("File not found")); return;
+                    reject(new Error("File not found"));
                 }
 
                 reject(err);

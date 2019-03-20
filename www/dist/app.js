@@ -505,7 +505,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
     class FileHelper {
         /**
          * Create a new FileHelper object using a root path.
-         * Root are automatically setted to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
+         * Root is automatically set to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
          * and to "cdvfile://localhost/temporary/" on browser.
          *
          * You can create a new FileHelper instance using a FileHelper instance, working directory will be used as root.
@@ -785,7 +785,6 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
                 window.resolveLocalFileSystemURL(path, resolve, err => {
                     if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
                         reject(new Error("File not found"));
-                        return;
                     }
                     reject(err);
                 });
@@ -3685,7 +3684,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                 try {
                     await main_7.FILE_HELPER.write(full_path, blob);
                     if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
-                        return main_7.SD_FILE_HELPER.write(full_path, blob).then(() => { }).catch(e => console.log(e));
+                        main_7.SD_FILE_HELPER.write(full_path, blob).then(() => { }).catch(e => console.log(e));
                     }
                     // Enregistre le nom du fichier sauvegardé dans le formulaire,
                     // dans la valeur du champ field
@@ -3792,7 +3791,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
     }
     exports.FormSaves = new _FormSaves;
 });
-define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "base/UserManager", "base/PageManager", "utils/logger", "base/SyncManager", "utils/location", "base/FormSaves"], function (require, exports, main_8, helpers_7, UserManager_3, PageManager_2, logger_3, SyncManager_3, location_1, FormSaves_1) {
+define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "base/UserManager", "base/PageManager", "utils/logger", "base/SyncManager", "utils/location", "base/FormSaves"], function (require, exports, main_8, helpers_7, UserManager_3, PageManager_2, Logger_1, SyncManager_3, location_1, FormSaves_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function scrollToAnElementOnClick(element_base, element_related, modal, center = false) {
@@ -4064,7 +4063,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                     </div>
                     `;
                     PageManager_2.PageManager.lock_return_button = false;
-                    logger_3.Logger.error(error, error.message, error.stack);
+                    Logger_1.Logger.error(error, error.message, error.stack);
                 });
             };
             footer.appendChild(save_btn);
@@ -4179,7 +4178,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
     }
     exports.validConstraints = validConstraints;
 });
-define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_9, PageManager_3, logger_4, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1) {
+define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_9, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -4844,7 +4843,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                     })
                         .catch(err => {
-                        logger_4.Logger.warn("Impossible de charger le fichier", err);
+                        logger_3.Logger.warn("Impossible de charger le fichier", err);
                     });
                     // On crée un bouton "supprimer ce fichier"
                     // pour supprimer l'entrée existante
@@ -5002,7 +5001,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                     save_a_form_1.beginFormSave(current_form_key, current_form);
                 }
                 catch (e) {
-                    logger_4.Logger.error(JSON.stringify(e));
+                    logger_3.Logger.error(JSON.stringify(e));
                 }
             }
         });
@@ -5868,7 +5867,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         modal.appendChild(footer);
     }
 });
-define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSchema", "base/PageManager", "base/SyncManager", "utils/logger", "main", "base/FileHelper", "base/FormSaves"], function (require, exports, helpers_11, FormSchema_6, PageManager_5, SyncManager_6, logger_5, main_12, FileHelper_5, FormSaves_2) {
+define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSchema", "base/PageManager", "base/SyncManager", "utils/logger", "main", "base/FileHelper", "base/FormSaves"], function (require, exports, helpers_11, FormSchema_6, PageManager_5, SyncManager_6, logger_4, main_12, FileHelper_5, FormSaves_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /** État de sauvegarde d'une entrée */
@@ -5912,7 +5911,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
         catch (e) {
             PageManager_5.PageManager.lock_return_button = false;
             instance.close();
-            logger_5.Logger.error("Unable to delete", e);
+            logger_4.Logger.error("Unable to delete", e);
             throw e;
         }
     }
@@ -6055,7 +6054,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
             await main_12.FILE_HELPER.mkdir('forms');
         }
         catch (err) {
-            logger_5.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
+            logger_4.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
             base.innerHTML = helpers_11.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
             return;
         }
@@ -6129,13 +6128,13 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
             }
         })
             .catch(err => {
-            logger_5.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
+            logger_4.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
             base.innerHTML = helpers_11.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
         });
     }
     exports.initSavedForm = initSavedForm;
 });
-define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form", "pages/settings_page", "pages/saved_forms", "pages/home", "utils/logger", "main"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_2, logger_6, main_13) {
+define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form", "pages/settings_page", "pages/saved_forms", "pages/home", "utils/logger", "main"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_2, logger_5, main_13) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -6292,7 +6291,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
                 }
             }
             catch (e) {
-                logger_6.Logger.error("Erreur lors du changement de page", e);
+                logger_5.Logger.error("Erreur lors du changement de page", e);
                 return Promise.reject(e);
             }
         }
@@ -6429,7 +6428,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
         }
     }
 });
-define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper"], function (require, exports, PageManager_6, helpers_13, logger_7, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6) {
+define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper"], function (require, exports, PageManager_6, helpers_13, Logger_2, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Constantes de l'application
@@ -6528,7 +6527,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
         }
         catch (e) { }
         // Initialise les blocs principaux du code: L'utilitaire de log, les schémas de form et le gestionnaire de sync
-        logger_7.Logger.init();
+        Logger_2.Logger.init();
         FormSchema_7.Schemas.init();
         SyncManager_7.SyncManager.init();
         // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
@@ -6590,15 +6589,15 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
             saveDefaultForm: helpers_13.saveDefaultForm,
             getLocation: helpers_13.getLocation,
             testDistance: helpers_13.testDistance,
-            Logger: logger_7.Logger,
+            Logger: Logger_2.Logger,
             Schemas: FormSchema_7.Schemas,
             SyncEvent: SyncManager_7.SyncEvent,
             askModalList: helpers_13.askModalList,
             FileHelper: FileHelper_6.FileHelper,
             FileHelperReadMode: FileHelper_6.FileHelperReadMode,
             createRandomForms: helpers_13.createRandomForms,
-            recorder: function () {
-                audio_listener_2.newModalRecord("Test");
+            recorder: () => {
+                return audio_listener_2.newModalRecord("Test");
             },
             dateFormatter: helpers_13.dateFormatter,
             prompt: vocal_recognition_3.prompt,

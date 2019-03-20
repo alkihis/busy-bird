@@ -126,7 +126,7 @@ class _FormSaves {
             try {
                 await FILE_HELPER.write(full_path, blob);
                 if (device.platform === 'Android' && SD_FILE_HELPER) {
-                    return SD_FILE_HELPER.write(full_path, blob).then(() => {}).catch(e => console.log(e));
+                    SD_FILE_HELPER.write(full_path, blob).then(() => {}).catch(e => console.log(e));
                 }
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field

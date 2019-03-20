@@ -1,6 +1,6 @@
 import { PageManager, SIDENAV_OBJ, AppPages } from './base/PageManager';
 import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder } from "./utils/helpers";
-import { Logger } from "./utils/logger";
+import { Logger } from "./utils/Logger";
 import { newModalRecord } from "./utils/audio_listener";
 import { Schemas } from "./base/FormSchema";
 import { prompt } from "./utils/vocal_recognition";
@@ -199,8 +199,8 @@ function initDebug() {
         FileHelper,
         FileHelperReadMode,
         createRandomForms,
-        recorder: function() {
-            newModalRecord("Test");
+        recorder: () => {
+            return newModalRecord("Test");
         },
         dateFormatter,
         prompt,
