@@ -7,6 +7,7 @@ import { UserManager } from "./UserManager";
 import fetch from '../utils/fetch_timeout';
 import { BackgroundSync, Settings } from "../utils/Settings";
 import { FileHelperReadMode, EntryObject } from "./FileHelper";
+import { ENTRIES_DIR, METADATA_DIR } from "./FormSaves";
 
 class _SyncList {
     public init() {
@@ -208,7 +209,7 @@ class _SyncManager {
         // et de ses métadonnées a réussi.
         let content: string;
         try {
-            content = await FILE_HELPER.read('forms/' + id + ".json") as string;
+            content = await FILE_HELPER.read(ENTRIES_DIR + id + ".json") as string;
         } catch (error) {
             Logger.info("Impossible de lire le fichier", error.message);
             throw {code: "file_read", error};
@@ -258,7 +259,7 @@ class _SyncManager {
         // Le JSON du form est envoyé !
         if (json.status && json.send_metadata) {
             // Si on doit envoyer les fichiers en plus
-            const base_path = "form_data/" + id + "/";
+            const base_path = METADATA_DIR + id + "/";
 
             // json.send_metadata est un tableau de fichiers à envoyer
 
@@ -330,7 +331,7 @@ class _SyncManager {
     }
 
     public async getSpecificFile(id: string) : Promise<SList> {
-        const entries = await FILE_HELPER.ls('forms', "e") as EntryObject;
+        const entries = await FILE_HELPER.ls(ENTRIES_DIR, "e") as EntryObject;
         
         const filename = id + ".json";
 
@@ -352,7 +353,7 @@ class _SyncManager {
      * Obtient tous les fichiers JSON disponibles sur l'appareil
      */
     protected async getAllCurrentFiles() : Promise<[string, SList][]> {
-        const entries = await FILE_HELPER.ls("forms", "e") as EntryObject;
+        const entries = await FILE_HELPER.ls(ENTRIES_DIR, "e") as EntryObject;
         
         const promises: Promise<[string, SList]>[] = [];
 

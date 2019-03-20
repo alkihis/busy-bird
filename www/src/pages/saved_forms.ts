@@ -5,7 +5,7 @@ import { SyncManager } from "../base/SyncManager";
 import { Logger } from "../utils/logger";
 import { FILE_HELPER } from "../main";
 import { FileHelperReadMode } from "../base/FileHelper";
-import { FormSaves } from "../base/FormSaves";
+import { FormSaves, ENTRIES_DIR } from "../base/FormSaves";
 
 /** État de sauvegarde d'une entrée */
 enum SaveState {
@@ -212,10 +212,10 @@ export async function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
 
-    console.log(await FILE_HELPER.readAll('forms', FileHelperReadMode.fileobj));
+    console.log(await FILE_HELPER.readAll(ENTRIES_DIR, FileHelperReadMode.fileobj));
 
     try {
-        await FILE_HELPER.mkdir('forms');
+        await FILE_HELPER.mkdir(ENTRIES_DIR);
     } catch (err) {
         Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
         base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
@@ -224,7 +224,7 @@ export async function initSavedForm(base: HTMLElement) {
 
     Schemas.onReady()
         .then(() => {
-            return FILE_HELPER.readAll('forms', FileHelperReadMode.fileobj) as Promise<File[]>;
+            return FILE_HELPER.readAll(ENTRIES_DIR, FileHelperReadMode.fileobj) as Promise<File[]>;
         })
         .then(async (files: File[]) => {
             // Tri des fichiers; le plus récent en premier

@@ -562,7 +562,7 @@ export class FileHelper {
         return new Promise((resolve, reject) => {
             window.resolveLocalFileSystemURL(path, resolve, err => {
                 if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
-                    reject(new Error("File not found"));
+                    reject(new Error("File not found: " + path));
                 }
 
                 reject(err);
@@ -600,14 +600,26 @@ export class FileHelper {
      * Get content of a directory.
      * 
      * @param path Path of thing to explore
-     * @param option_string Options. Can be e, l, d, r, p or f. See docs. Warning: recursive can be very slow.
+     * 
+     * @param option_string Options, in a string. Can be e, l, d, p or f.
+     * Options letters can be combined.
+     * - "e": Return a `EntryObject` instead of returning file names.
+     * - "l": Return an array of `FileStats` instead of returning file names.
+     * - "d": Return only directories.
+     * - "f": Return only files.
+     * - "p": Disable directory prefixing. 
+     *  Remove autoprefixed names if you use a non-empty path parameter.
+     *  Does not work if max_depth is not equal to 0.
+     * 
+     * @param max_depth Recursive mode. For unlimited depth, use a negative value. Recursive exploration can be very slow.
+     * max_depth mean maximum depth UNDER specified directory. 0 = Non-recursive, 1 = Current dir + one nested level, ...
      */
-    public async ls(path: string | DirectoryEntry = "", option_string: string = "") : Promise<string[] | FileStats[] | EntryObject> {
+    public async ls(path: string | DirectoryEntry = "", option_string: string = "", max_depth = 0) : Promise<string[] | FileStats[] | EntryObject> {
         if (typeof path !== 'string') {
             const new_instance = new FileHelper(path);
             await new_instance.waitInit();
 
-            return new_instance.ls(undefined, option_string);
+            return new_instance.ls(undefined, option_string, max_depth);
         }
 
         // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
@@ -615,10 +627,14 @@ export class FileHelper {
 
         const entry = await this.get(path);
 
-        const [e, l, f, d, r, p] = [
+        const [e, l, f, d, p, old_recursive] = [
             option_string.includes("e"), option_string.includes("l"), option_string.includes("f"),
-            option_string.includes("d"), option_string.includes("r"), option_string.includes("p")
+            option_string.includes("d"), option_string.includes("p"), option_string.includes("r")
         ];
+
+        if (old_recursive) {
+            max_depth = -1;
+        }
 
         if (entry.isFile) {
             if (e) {
@@ -635,23 +651,23 @@ export class FileHelper {
 
         // Si jamais on veut chercher récursivement les entrées, avec un path non vide
         // et qu'on veut en plus supprimer les préfixes
-        if (p && e && r && path) {
+        if (p && e && max_depth && path) {
             const new_root = new FileHelper(this.pwd() + path);
             await new_root.waitInit();
 
-            return new_root.ls(undefined, "per");
+            return new_root.ls(undefined, "pe", max_depth);
         }
 
         let entries = await this.entriesOf(entry as DirectoryEntry);
         let obj_entries: EntryObject = { [path]: entries };
 
-        if (r) {
+        if (max_depth) {
             // Si la func est récursive, on recherche dans tous les dossiers
             // L'appel sera fait récursivement dans les nouveaux ls
 
             for (const e of entries) {
                 if (e.isDirectory) {
-                    obj_entries = {...obj_entries, ...(await this.ls(path + "/" + e.name, "re") as EntryObject)};
+                    obj_entries = {...obj_entries, ...(await this.ls(path + "/" + e.name, "e", max_depth - 1) as EntryObject)};
                 }
             }
         }
@@ -683,7 +699,7 @@ export class FileHelper {
                     if (e.isDirectory) {
                         paths.push({
                             // p n'est pas activable si r est activé
-                            name: (rel_path && (!p || r) ? rel_path + "/" : "") + e.name,
+                            name: (rel_path && (!p || max_depth) ? rel_path + "/" : "") + e.name,
                             mdate: undefined,
                             mtime: undefined,
                             size: 4096,
@@ -693,7 +709,7 @@ export class FileHelper {
                     else {
                         const entry = await this.getFile(e as FileEntry);
                         const stats = this.getStatsFromFile(entry);
-                        stats.name = (rel_path && (!p || r) ? rel_path + "/" : "") + stats.name;
+                        stats.name = (rel_path && (!p || max_depth) ? rel_path + "/" : "") + stats.name;
 
                         paths.push(stats);
                     }
@@ -701,7 +717,7 @@ export class FileHelper {
                 else {
                     // Sinon, on traite les entrées comme un string[]
                     // Enregistrement du bon nom
-                    paths.push((rel_path && (!p || r) ? rel_path + "/" : "") + e.name); 
+                    paths.push((rel_path && (!p || max_depth) ? rel_path + "/" : "") + e.name); 
                 }
             }
         }
@@ -713,9 +729,10 @@ export class FileHelper {
      * Get a tree to see files below a certain directory
      * @param path Base path for tree
      * @param mime_type Get MIME type of files instead of null
+     * @param max_depth See ls() max_depth parameter
      */
-    public async tree(path: string | DirectoryEntry = "", mime_type = false) : Promise<EntryTree> {
-        const flat_tree = await this.ls(path, "pre") as EntryObject;
+    public async tree(path: string | DirectoryEntry = "", mime_type = false, max_depth = -1) : Promise<EntryTree> {
+        const flat_tree = await this.ls(path, "pe", max_depth) as EntryObject;
 
         // Désaplatissement de l'arbre
         const tree: EntryTree = {};
@@ -850,7 +867,7 @@ export class FileHelper {
             throw new Error("New root can't be a file !");
         }
         
-        this.root = new_root.toInternalURL();
+        this.root = new_root.toInternalURL().replace(/\/$/, '') + "/";
     }
 
     /**
@@ -874,7 +891,7 @@ export class FileHelper {
      * @param regex_flags Add additionnal flags to regex pattern matching
      */
     public async glob(pattern: string, recursive = false, regex_flags = "") : Promise<string[]> {
-        const entries = await this.ls(undefined, "e" + (recursive ? "r" : "")) as EntryObject;
+        const entries = await this.ls(undefined, "e", recursive ? -1 : 0) as EntryObject;
 
         const matched: string[] = [];
 

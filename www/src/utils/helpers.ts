@@ -2,6 +2,7 @@ import { PageManager } from "../base/PageManager";
 import { Schemas, FormSave, FormEntityType } from "../base/FormSchema";
 import { SyncManager } from "../base/SyncManager";
 import { FILE_HELPER, SD_FILE_HELPER } from "../main";
+import { ENTRIES_DIR } from "../base/FormSaves";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -659,14 +660,14 @@ export async function createRandomForms(count: number = 50) : Promise<void> {
         const id = generateId(20);
 
         promises.push(
-            FILE_HELPER.write("forms/" + id + ".json", save)
+            FILE_HELPER.write(ENTRIES_DIR + id + ".json", save)
                 .then(() => {
                     return SyncManager.add(id, save)
                 })
         );
 
         if (SD_FILE_HELPER) {
-            SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
+            SD_FILE_HELPER.write(ENTRIES_DIR + id + ".json", save).catch(error => console.log(error));
         }
     }
 

@@ -5,6 +5,7 @@ import { APP_VERSION, FILE_HELPER } from "../main";
 import { Schemas } from "../base/FormSchema";
 import { createLocationInputSelector } from "../utils/location";
 import { launchQuizz } from "../utils/test_vocal_reco";
+import { ENTRIES_DIR } from "../base/FormSaves";
 
 export const APP_NAME = "Busy Bird";
 
@@ -84,10 +85,10 @@ export async function initHomePage(base: HTMLElement) {
     try {
         let nb_files: number;
         try {
-            nb_files = (await FILE_HELPER.ls('forms') as string[]).length;
+            nb_files = (await FILE_HELPER.ls(ENTRIES_DIR) as string[]).length;
         } catch (e) {
             nb_files = 0;
-            await FILE_HELPER.mkdir('forms');
+            await FILE_HELPER.mkdir(ENTRIES_DIR);
         }
         
 

@@ -784,7 +784,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
             return new Promise((resolve, reject) => {
                 window.resolveLocalFileSystemURL(path, resolve, err => {
                     if (err.code === FileError.NOT_FOUND_ERR || err.code === FileError.SYNTAX_ERR) {
-                        reject(new Error("File not found"));
+                        reject(new Error("File not found: " + path));
                     }
                     reject(err);
                 });
@@ -815,21 +815,36 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
          * Get content of a directory.
          *
          * @param path Path of thing to explore
-         * @param option_string Options. Can be e, l, d, r, p or f. See docs. Warning: recursive can be very slow.
+         *
+         * @param option_string Options, in a string. Can be e, l, d, p or f.
+         * Options letters can be combined.
+         * - "e": Return a `EntryObject` instead of returning file names.
+         * - "l": Return an array of `FileStats` instead of returning file names.
+         * - "d": Return only directories.
+         * - "f": Return only files.
+         * - "p": Disable directory prefixing.
+         *  Remove autoprefixed names if you use a non-empty path parameter.
+         *  Does not work if max_depth is not equal to 0.
+         *
+         * @param max_depth Recursive mode. For unlimited depth, use a negative value. Recursive exploration can be very slow.
+         * max_depth mean maximum depth UNDER specified directory. 0 = Non-recursive, 1 = Current dir + one nested level, ...
          */
-        async ls(path = "", option_string = "") {
+        async ls(path = "", option_string = "", max_depth = 0) {
             if (typeof path !== 'string') {
                 const new_instance = new FileHelper(path);
                 await new_instance.waitInit();
-                return new_instance.ls(undefined, option_string);
+                return new_instance.ls(undefined, option_string, max_depth);
             }
             // Enlève le slash terminal et le slash initial (les chemins ne doivent jamais commencer par /)
             path = path.replace(/\/$/, '').replace(/^\//, '');
             const entry = await this.get(path);
-            const [e, l, f, d, r, p] = [
+            const [e, l, f, d, p, old_recursive] = [
                 option_string.includes("e"), option_string.includes("l"), option_string.includes("f"),
-                option_string.includes("d"), option_string.includes("r"), option_string.includes("p")
+                option_string.includes("d"), option_string.includes("p"), option_string.includes("r")
             ];
+            if (old_recursive) {
+                max_depth = -1;
+            }
             if (entry.isFile) {
                 if (e) {
                     const dir = this.getDirUrlOfPath(path);
@@ -844,19 +859,19 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
             }
             // Si jamais on veut chercher récursivement les entrées, avec un path non vide
             // et qu'on veut en plus supprimer les préfixes
-            if (p && e && r && path) {
+            if (p && e && max_depth && path) {
                 const new_root = new FileHelper(this.pwd() + path);
                 await new_root.waitInit();
-                return new_root.ls(undefined, "per");
+                return new_root.ls(undefined, "pe", max_depth);
             }
             let entries = await this.entriesOf(entry);
             let obj_entries = { [path]: entries };
-            if (r) {
+            if (max_depth) {
                 // Si la func est récursive, on recherche dans tous les dossiers
                 // L'appel sera fait récursivement dans les nouveaux ls
                 for (const e of entries) {
                     if (e.isDirectory) {
-                        obj_entries = Object.assign({}, obj_entries, await this.ls(path + "/" + e.name, "re"));
+                        obj_entries = Object.assign({}, obj_entries, await this.ls(path + "/" + e.name, "e", max_depth - 1));
                     }
                 }
             }
@@ -884,7 +899,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
                         if (e.isDirectory) {
                             paths.push({
                                 // p n'est pas activable si r est activé
-                                name: (rel_path && (!p || r) ? rel_path + "/" : "") + e.name,
+                                name: (rel_path && (!p || max_depth) ? rel_path + "/" : "") + e.name,
                                 mdate: undefined,
                                 mtime: undefined,
                                 size: 4096,
@@ -894,14 +909,14 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
                         else {
                             const entry = await this.getFile(e);
                             const stats = this.getStatsFromFile(entry);
-                            stats.name = (rel_path && (!p || r) ? rel_path + "/" : "") + stats.name;
+                            stats.name = (rel_path && (!p || max_depth) ? rel_path + "/" : "") + stats.name;
                             paths.push(stats);
                         }
                     }
                     else {
                         // Sinon, on traite les entrées comme un string[]
                         // Enregistrement du bon nom
-                        paths.push((rel_path && (!p || r) ? rel_path + "/" : "") + e.name);
+                        paths.push((rel_path && (!p || max_depth) ? rel_path + "/" : "") + e.name);
                     }
                 }
             }
@@ -911,9 +926,10 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
          * Get a tree to see files below a certain directory
          * @param path Base path for tree
          * @param mime_type Get MIME type of files instead of null
+         * @param max_depth See ls() max_depth parameter
          */
-        async tree(path = "", mime_type = false) {
-            const flat_tree = await this.ls(path, "pre");
+        async tree(path = "", mime_type = false, max_depth = -1) {
+            const flat_tree = await this.ls(path, "pe", max_depth);
             // Désaplatissement de l'arbre
             const tree = {};
             for (const p in flat_tree) {
@@ -1027,7 +1043,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
             if (new_root.isFile) {
                 throw new Error("New root can't be a file !");
             }
-            this.root = new_root.toInternalURL();
+            this.root = new_root.toInternalURL().replace(/\/$/, '') + "/";
         }
         /**
          * Create a new FileHelper instance from a relative path of this current instance,
@@ -1047,7 +1063,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
          * @param regex_flags Add additionnal flags to regex pattern matching
          */
         async glob(pattern, recursive = false, regex_flags = "") {
-            const entries = await this.ls(undefined, "e" + (recursive ? "r" : ""));
+            const entries = await this.ls(undefined, "e", recursive ? -1 : 0);
             const matched = [];
             const regex = globToRegex(pattern, regex_flags);
             for (const path in entries) {
@@ -1891,7 +1907,222 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
     }
     exports.BackgroundSync = new BgSyncObj;
 });
-define("base/SyncManager", ["require", "exports", "utils/logger", "localforage", "main", "utils/helpers", "base/UserManager", "utils/fetch_timeout", "utils/Settings", "base/FileHelper"], function (require, exports, logger_1, localforage_1, main_4, helpers_3, UserManager_2, fetch_timeout_2, Settings_1, FileHelper_2) {
+define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base/SyncManager", "utils/helpers"], function (require, exports, main_4, FileHelper_2, SyncManager_1, helpers_3) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ENTRIES_DIR = "forms/";
+    exports.METADATA_DIR = "form_data/";
+    // Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
+    /**
+     * Gérer les sauvegardes d'entrée actuellement présentes sur l'appareil
+     */
+    class _FormSaves {
+        /**
+         * Obtenir une sauvegarde
+         * @param id Identifiant de la sauvegarde
+         */
+        get(id) {
+            return main_4.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
+        }
+        /**
+         * Obtenir les fichiers associés à un formulaire sauvegardé
+         * @param id Identifiant de l'entrée
+         */
+        async getMetadata(id) {
+            const save = await main_4.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
+            const files = {};
+            for (const field in save.metadata) {
+                files[field] = [
+                    save.metadata[field],
+                    await main_4.FILE_HELPER.read(exports.METADATA_DIR + id + "/" + save.metadata[field], FileHelper_2.FileHelperReadMode.fileobj)
+                ];
+            }
+            return files;
+        }
+        /**
+         * Liste toutes les sauvegardes disponibles (par identifiant)
+         */
+        async list() {
+            const files = await main_4.FILE_HELPER.entriesOf(exports.ENTRIES_DIR);
+            const ids = [];
+            for (const f of files) {
+                if (f.isFile) {
+                    ids.push(f.name.split('.json')[0]);
+                }
+            }
+            return ids;
+        }
+        listAsFormSave() {
+            return main_4.FILE_HELPER.readAll(exports.ENTRIES_DIR, FileHelper_2.FileHelperReadMode.json);
+        }
+        /**
+         * Supprimer tous les formulaires sauvegardés
+         */
+        async clear() {
+            // On veut supprimer tous les fichiers
+            await main_4.FILE_HELPER.empty(exports.ENTRIES_DIR, true);
+            if (await main_4.FILE_HELPER.exists(exports.METADATA_DIR)) {
+                await main_4.FILE_HELPER.empty(exports.METADATA_DIR, true);
+            }
+            if (device.platform === "Android" && main_4.SD_FILE_HELPER) {
+                try {
+                    await main_4.SD_FILE_HELPER.empty(exports.ENTRIES_DIR, true);
+                    await main_4.SD_FILE_HELPER.empty(exports.METADATA_DIR, true);
+                }
+                catch (e) {
+                    // Tant pis, ça ne marche pas
+                }
+            }
+            await SyncManager_1.SyncManager.clear();
+        }
+        /**
+         * Supprimer une seule entrée
+         * @param id Identifiant de l'entrée
+         */
+        async rm(id) {
+            await main_4.FILE_HELPER.rm(exports.ENTRIES_DIR + id + ".json");
+            if (await main_4.FILE_HELPER.exists(exports.METADATA_DIR + id)) {
+                await main_4.FILE_HELPER.rm(exports.METADATA_DIR + id, true);
+            }
+            if (device.platform === 'Android' && main_4.SD_FILE_HELPER) {
+                // Tente de supprimer depuis la carte SD
+                try {
+                    await main_4.SD_FILE_HELPER.rm(exports.METADATA_DIR + id, true);
+                    await main_4.SD_FILE_HELPER.rm(exports.ENTRIES_DIR + id + '.json');
+                }
+                catch (e) { }
+            }
+            await SyncManager_1.SyncManager.remove(id);
+        }
+        /**
+         * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
+         * puis crée le formulaire.
+         * Lit les fichiers depuis les input, doit donc être forcément
+         * appelé depuis la page de création d'entrée !
+         *
+         * @param identifier ID du formulaire (sans le .json)
+         * @param form_values Valeurs à sauvegarder
+         * @param older_save Anciennes valeurs (si mode édition)
+         */
+        async save(identifier, form_values, older_save) {
+            async function deleteOlderFile(input_name) {
+                if (main_4.SD_FILE_HELPER) {
+                    main_4.SD_FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
+                }
+                return main_4.FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
+            }
+            async function saveBlobToFile(filename, input_name, blob) {
+                const full_path = exports.METADATA_DIR + identifier + '/' + filename;
+                try {
+                    await main_4.FILE_HELPER.write(full_path, blob);
+                    if (device.platform === 'Android' && main_4.SD_FILE_HELPER) {
+                        main_4.SD_FILE_HELPER.write(full_path, blob).then(() => { }).catch(e => console.log(e));
+                    }
+                    // Enregistre le nom du fichier sauvegardé dans le formulaire,
+                    // dans la valeur du champ field
+                    form_values.fields[input_name] = form_values.metadata[input_name] = filename;
+                    if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
+                        // Si une image était déjà présente
+                        if (older_save.fields[input_name] !== form_values.fields[input_name]) {
+                            // Si le fichier enregistré est différent du fichier actuel
+                            // Suppression de l'ancien fichier
+                            deleteOlderFile(input_name);
+                        }
+                    }
+                }
+                catch (error) {
+                    helpers_3.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                    return Promise.reject(error);
+                }
+            }
+            // Récupère les images du formulaire
+            const images_from_form = document.getElementsByClassName('input-image-element');
+            // Sauvegarde les images !
+            const promises = [];
+            for (const img of images_from_form) {
+                const file = img.files[0];
+                const input_name = img.name;
+                if (file) {
+                    const filename = file.name;
+                    promises.push(saveBlobToFile(filename, input_name, file));
+                }
+                else {
+                    // Si il n'y a aucun fichier
+                    if (older_save && input_name in older_save.fields) {
+                        // Si il a une sauvegarde précédente
+                        form_values.fields[input_name] = older_save.fields[input_name];
+                        form_values.metadata[input_name] = null;
+                        if (typeof older_save.fields[input_name] === 'string') {
+                            // Si le fichier doit être supprimé
+                            if (img.dataset.toremove === "true") {
+                                form_values.fields[input_name] = null;
+                                // Suppression du fichier en question
+                                deleteOlderFile(input_name);
+                            }
+                            else {
+                                const parts = older_save.fields[input_name].split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                        }
+                    }
+                    else {
+                        form_values.fields[input_name] = null;
+                        form_values.metadata[input_name] = null;
+                    }
+                }
+            }
+            // Récupère les données audio du formulaire
+            const audio_from_form = document.getElementsByClassName('input-audio-element');
+            for (const audio of audio_from_form) {
+                const file = audio.value;
+                const input_name = audio.name;
+                if (file) {
+                    const filename = helpers_3.generateId(main_4.ID_COMPLEXITY) + '.mp3';
+                    promises.push(helpers_3.urlToBlob(file).then(function (blob) {
+                        return saveBlobToFile(filename, input_name, blob);
+                    }));
+                }
+                else {
+                    if (older_save && input_name in older_save.fields) {
+                        form_values.fields[input_name] = older_save.fields[input_name];
+                        form_values.metadata[input_name] = null;
+                        if (typeof older_save.fields[input_name] === 'string') {
+                            if (audio.dataset.toremove === "true") {
+                                form_values.fields[input_name] = null;
+                                // Suppression du fichier en question
+                                deleteOlderFile(input_name);
+                            }
+                            else {
+                                const parts = older_save.fields[input_name].split('/');
+                                form_values.metadata[input_name] = parts[parts.length - 1];
+                            }
+                        }
+                    }
+                    else {
+                        form_values.fields[input_name] = null;
+                        form_values.metadata[input_name] = null;
+                    }
+                }
+            }
+            // Attend que les sauvegardes soient terminées
+            await Promise.all(promises);
+            // On supprime les metadonnées vides du form
+            for (const n in form_values.metadata) {
+                if (form_values.metadata[n] === null) {
+                    delete form_values.metadata[n];
+                }
+            }
+            await main_4.FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values);
+            if (device.platform === 'Android' && main_4.SD_FILE_HELPER) {
+                main_4.SD_FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
+            }
+            console.log(form_values);
+            return form_values;
+        }
+    }
+    exports.FormSaves = new _FormSaves;
+});
+define("base/SyncManager", ["require", "exports", "utils/logger", "localforage", "main", "utils/helpers", "base/UserManager", "utils/fetch_timeout", "utils/Settings", "base/FileHelper", "base/FormSaves"], function (require, exports, logger_1, localforage_1, main_5, helpers_4, UserManager_2, fetch_timeout_2, Settings_1, FileHelper_3, FormSaves_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
@@ -1983,7 +2214,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                 console.log("La synchronisation n'a pas pu se lancer.");
                 const checkbox_setting_bgsync = document.getElementById('__sync_bg_checkbox_settings');
                 if (checkbox_setting_bgsync) {
-                    helpers_3.showToast("Impossible de lancer la synchronisation");
+                    helpers_4.showToast("Impossible de lancer la synchronisation");
                     checkbox_setting_bgsync.checked = false;
                 }
             };
@@ -2074,7 +2305,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
             // et de ses métadonnées a réussi.
             let content;
             try {
-                content = await main_4.FILE_HELPER.read('forms/' + id + ".json");
+                content = await main_5.FILE_HELPER.read(FormSaves_1.ENTRIES_DIR + id + ".json");
             }
             catch (error) {
                 logger_1.Logger.info("Impossible de lire le fichier", error.message);
@@ -2095,12 +2326,12 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     this.running_fetchs.push(controller);
                 }
                 let signal = controller ? controller.signal : undefined;
-                const response = await fetch_timeout_2.default(main_4.API_URL + "forms/send.json", {
+                const response = await fetch_timeout_2.default(main_5.API_URL + "forms/send.json", {
                     method: "POST",
                     body: d,
                     signal,
                     headers: new Headers({ "Authorization": "Bearer " + UserManager_2.UserManager.token })
-                }, main_4.MAX_TIMEOUT_FOR_FORM);
+                }, main_5.MAX_TIMEOUT_FOR_FORM);
                 json = await response.json();
             }
             catch (error) {
@@ -2116,7 +2347,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
             // Le JSON du form est envoyé !
             if (json.status && json.send_metadata) {
                 // Si on doit envoyer les fichiers en plus
-                const base_path = "form_data/" + id + "/";
+                const base_path = FormSaves_1.METADATA_DIR + id + "/";
                 // json.send_metadata est un tableau de fichiers à envoyer
                 for (const metadata in data.metadata) {
                     if (json.send_metadata.indexOf(metadata) === -1) {
@@ -2129,7 +2360,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     // Pour des raisons de charge réseau, on envoie les fichiers un par un.
                     let base64;
                     try {
-                        base64 = await main_4.FILE_HELPER.read(file, FileHelper_2.FileHelperReadMode.url);
+                        base64 = await main_5.FILE_HELPER.read(file, FileHelper_3.FileHelperReadMode.url);
                     }
                     catch (e) {
                         // Le fichier n'existe pas en local. On passe.
@@ -2151,12 +2382,12 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                             this.running_fetchs.push(controller);
                         }
                         let signal = controller ? controller.signal : undefined;
-                        const resp = await fetch_timeout_2.default(main_4.API_URL + "forms/metadata_send.json", {
+                        const resp = await fetch_timeout_2.default(main_5.API_URL + "forms/metadata_send.json", {
                             method: "POST",
                             body: md,
                             signal,
                             headers: new Headers({ "Authorization": "Bearer " + UserManager_2.UserManager.token })
-                        }, main_4.MAX_TIMEOUT_FOR_METADATA);
+                        }, main_5.MAX_TIMEOUT_FOR_METADATA);
                         const json = await resp.json();
                         if (json.error_code) {
                             throw { code: "metadata_treatement", error_code: json.error_code, "message": json.message };
@@ -2164,7 +2395,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                         // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
                     }
                     catch (error) {
-                        helpers_3.showToast("Impossible d'envoyer " + basename + ".");
+                        helpers_4.showToast("Impossible d'envoyer " + basename + ".");
                         throw { code: "metadata_send", error };
                     }
                 } // end for in
@@ -2175,12 +2406,12 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
             return this.list.listSaved();
         }
         async getSpecificFile(id) {
-            const entries = await main_4.FILE_HELPER.ls('forms', "e");
+            const entries = await main_5.FILE_HELPER.ls(FormSaves_1.ENTRIES_DIR, "e");
             const filename = id + ".json";
             for (const d in entries) {
                 for (const entry of entries[d]) {
                     if (entry.name === filename) {
-                        const json = JSON.parse(await main_4.FILE_HELPER.read(entry));
+                        const json = JSON.parse(await main_5.FILE_HELPER.read(entry));
                         return { type: json.type, metadata: json.metadata };
                     }
                 }
@@ -2192,13 +2423,13 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * Obtient tous les fichiers JSON disponibles sur l'appareil
          */
         async getAllCurrentFiles() {
-            const entries = await main_4.FILE_HELPER.ls("forms", "e");
+            const entries = await main_5.FILE_HELPER.ls(FormSaves_1.ENTRIES_DIR, "e");
             const promises = [];
             // On ajoute chaque entrée
             for (const d in entries) {
                 for (const entry of entries[d]) {
                     promises.push(new Promise(async (resolve) => {
-                        const json = JSON.parse(await main_4.FILE_HELPER.read(entry));
+                        const json = JSON.parse(await main_5.FILE_HELPER.read(entry));
                         resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
                     }));
                 }
@@ -2237,14 +2468,14 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * @param clear_cache Supprimer le cache actuel d'envoi et forcer tout l'envoi (ne fonctionne qu'avec force_all)
          */
         graphicalSync(force_all = false, clear_cache = false) {
-            const modal = helpers_3.getModal();
-            const instance = helpers_3.initModal({ dismissible: false }, helpers_3.getModalPreloader("Initialisation...", `<div class="modal-footer">
+            const modal = helpers_4.getModal();
+            const instance = helpers_4.initModal({ dismissible: false }, helpers_4.getModalPreloader("Initialisation...", `<div class="modal-footer">
                     <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Annuler</a>
                     <div class="clearb"></div>
                 </div>`));
             instance.open();
             let cancel_clicked = false;
-            const text = document.getElementById(helpers_3.MODAL_PRELOADER_TEXT_ID);
+            const text = document.getElementById(helpers_4.MODAL_PRELOADER_TEXT_ID);
             const modal_cancel = document.getElementById('__sync_modal_cancel');
             modal_cancel.onclick = () => {
                 cancel_clicked = true;
@@ -2263,7 +2494,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
             });
             return this.sync(force_all, clear_cache, undefined, receiver)
                 .then(data => {
-                helpers_3.showToast("Synchronisation réussie");
+                helpers_4.showToast("Synchronisation réussie");
                 instance.close();
                 return data;
             })
@@ -2386,7 +2617,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
             });
             try {
                 const data = await this.sync(undefined, undefined, force_specific_elements, receiver);
-                helpers_3.showToast("Synchronisation réussie");
+                helpers_4.showToast("Synchronisation réussie");
                 return data;
             }
             catch (reason) {
@@ -2394,7 +2625,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     logger_1.Logger.error("Sync fail:", reason);
                     // Si jamais la syncho a été refusée parce qu'une est déjà en cours
                     if (reason.code === "already") {
-                        helpers_3.showToast('Une synchronisation est déjà en cours.');
+                        helpers_4.showToast('Une synchronisation est déjà en cours.');
                     }
                     else if (typeof reason.code === "string") {
                         let cause = (function (reason_1) {
@@ -2408,11 +2639,11 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                             }
                         })(reason.code);
                         // Modifie le texte du modal
-                        helpers_3.showToast("Impossible de synchroniser: " + cause);
+                        helpers_4.showToast("Impossible de synchroniser: " + cause);
                     }
                 }
                 else {
-                    helpers_3.showToast("Une erreur est survenue lors de la synchronisation");
+                    helpers_4.showToast("Une erreur est survenue lors de la synchronisation");
                 }
                 throw reason;
             }
@@ -2424,9 +2655,9 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * @param receiver Récepteur aux événements lancés par la synchro
          */
         async subSyncDivider(id_getter, entries, receiver) {
-            for (let position = 0; position < entries.length; position += main_4.MAX_CONCURRENT_SYNC_ENTRIES) {
+            for (let position = 0; position < entries.length; position += main_5.MAX_CONCURRENT_SYNC_ENTRIES) {
                 // Itère par groupe de formulaire. Groupe de taille MAX_CONCURRENT_SYNC_ENTRIES
-                const subset = entries.slice(position, main_4.MAX_CONCURRENT_SYNC_ENTRIES + position);
+                const subset = entries.slice(position, main_5.MAX_CONCURRENT_SYNC_ENTRIES + position);
                 const promises = [];
                 receiver.dispatchEvent(eventCreator("groupsend", subset));
                 let i = 1;
@@ -2467,7 +2698,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * Lance la synchronisation en arrière plan
          */
         launchBackgroundSync() {
-            if (helpers_3.hasGoodConnection()) {
+            if (helpers_4.hasGoodConnection()) {
                 return this.sync();
             }
             return Promise.reject({ code: "no_good_connection" });
@@ -2629,7 +2860,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
         }
     }
 });
-define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSchema", "base/SyncManager", "main"], function (require, exports, PageManager_1, FormSchema_2, SyncManager_1, main_5) {
+define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSchema", "base/SyncManager", "main", "base/FormSaves"], function (require, exports, PageManager_1, FormSchema_2, SyncManager_2, main_6, FormSaves_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -2913,7 +3144,7 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      * @param element HTMLImageElement
      */
     async function createImgSrc(path, element) {
-        const file = await main_5.FILE_HELPER.get(path);
+        const file = await main_6.FILE_HELPER.get(path);
         element.src = file.toURL();
         element.dataset.original = path;
     }
@@ -3232,12 +3463,12 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
             }
             // Sauvegarde du formulaire
             const id = generateId(20);
-            promises.push(main_5.FILE_HELPER.write("forms/" + id + ".json", save)
+            promises.push(main_6.FILE_HELPER.write(FormSaves_2.ENTRIES_DIR + id + ".json", save)
                 .then(() => {
-                return SyncManager_1.SyncManager.add(id, save);
+                return SyncManager_2.SyncManager.add(id, save);
             }));
-            if (main_5.SD_FILE_HELPER) {
-                main_5.SD_FILE_HELPER.write("forms/" + id + ".json", save).catch(error => console.log(error));
+            if (main_6.SD_FILE_HELPER) {
+                main_6.SD_FILE_HELPER.write(FormSaves_2.ENTRIES_DIR + id + ".json", save).catch(error => console.log(error));
             }
         }
         await Promise.all(promises);
@@ -3382,7 +3613,7 @@ define("utils/vocal_recognition", ["require", "exports"], function (require, exp
     }
     exports.testMultipleOptionsVesusExpected = testMultipleOptionsVesusExpected;
 });
-define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/logger", "main"], function (require, exports, helpers_4, logger_2, main_6) {
+define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/logger", "main"], function (require, exports, helpers_5, logger_2, main_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -3395,8 +3626,8 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
      */
     function newModalRecord(title, default_value) {
         let recorder = null;
-        const modal = helpers_4.getModal();
-        const instance = helpers_4.initModal({}, helpers_4.getModalPreloader("Chargement"));
+        const modal = helpers_5.getModal();
+        const instance = helpers_5.initModal({}, helpers_5.getModalPreloader("Chargement"));
         instance.open();
         let audioContent = null;
         let blobSize = 0;
@@ -3432,7 +3663,7 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
         </p>`;
             // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
             recorder = new MicRecorder({
-                bitRate: main_6.MP3_BITRATE
+                bitRate: main_7.MP3_BITRATE
             });
             recorder.start().then(function () {
                 player.innerHTML = `<p class='flow-text center'>
@@ -3454,7 +3685,7 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
                 .getMp3()
                 .then(([, blob]) => {
                 blobSize = blob.size;
-                return helpers_4.blobToBase64(blob);
+                return helpers_5.blobToBase64(blob);
             })
                 .then((base64) => {
                 audioContent = base64;
@@ -3479,7 +3710,7 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
                 // Clean le modal et donc les variables associées
                 modal.innerHTML = "";
                 if (audioContent) {
-                    const duration = (blobSize / (main_6.MP3_BITRATE * 1000)) * 8;
+                    const duration = (blobSize / (main_7.MP3_BITRATE * 1000)) * 8;
                     resolve({
                         content: audioContent,
                         duration
@@ -3503,7 +3734,7 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
     }
     exports.newModalRecord = newModalRecord;
 });
-define("utils/location", ["require", "exports", "utils/helpers"], function (require, exports, helpers_5) {
+define("utils/location", ["require", "exports", "utils/helpers"], function (require, exports, helpers_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.UNKNOWN_NAME = "__unknown__";
@@ -3569,7 +3800,7 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
                     }
                 }
                 else {
-                    helpers_5.showToast("Ce lieu n'existe pas.");
+                    helpers_6.showToast("Ce lieu n'existe pas.");
                 }
             }
         });
@@ -3577,222 +3808,7 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base/SyncManager", "utils/helpers"], function (require, exports, main_7, FileHelper_3, SyncManager_2, helpers_6) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.ENTRIES_DIR = "forms/";
-    exports.METADATA_DIR = "form_data/";
-    // Les classes anonymes font foirer la doc. Les classes ont donc des noms génériques
-    /**
-     * Gérer les sauvegardes d'entrée actuellement présentes sur l'appareil
-     */
-    class _FormSaves {
-        /**
-         * Obtenir une sauvegarde
-         * @param id Identifiant de la sauvegarde
-         */
-        get(id) {
-            return main_7.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
-        }
-        /**
-         * Obtenir les fichiers associés à un formulaire sauvegardé
-         * @param id Identifiant de l'entrée
-         */
-        async getMetadata(id) {
-            const save = await main_7.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
-            const files = {};
-            for (const field in save.metadata) {
-                files[field] = [
-                    save.metadata[field],
-                    await main_7.FILE_HELPER.read(exports.METADATA_DIR + id + "/" + save.metadata[field], FileHelper_3.FileHelperReadMode.fileobj)
-                ];
-            }
-            return files;
-        }
-        /**
-         * Liste toutes les sauvegardes disponibles (par identifiant)
-         */
-        async list() {
-            const files = await main_7.FILE_HELPER.entriesOf(exports.ENTRIES_DIR);
-            const ids = [];
-            for (const f of files) {
-                if (f.isFile) {
-                    ids.push(f.name.split('.json')[0]);
-                }
-            }
-            return ids;
-        }
-        listAsFormSave() {
-            return main_7.FILE_HELPER.readAll(exports.ENTRIES_DIR, FileHelper_3.FileHelperReadMode.json);
-        }
-        /**
-         * Supprimer tous les formulaires sauvegardés
-         */
-        async clear() {
-            // On veut supprimer tous les fichiers
-            await main_7.FILE_HELPER.empty(exports.ENTRIES_DIR, true);
-            if (await main_7.FILE_HELPER.exists(exports.METADATA_DIR)) {
-                await main_7.FILE_HELPER.empty(exports.METADATA_DIR, true);
-            }
-            if (device.platform === "Android" && main_7.SD_FILE_HELPER) {
-                try {
-                    await main_7.SD_FILE_HELPER.empty(exports.ENTRIES_DIR, true);
-                    await main_7.SD_FILE_HELPER.empty(exports.METADATA_DIR, true);
-                }
-                catch (e) {
-                    // Tant pis, ça ne marche pas
-                }
-            }
-            await SyncManager_2.SyncManager.clear();
-        }
-        /**
-         * Supprimer une seule entrée
-         * @param id Identifiant de l'entrée
-         */
-        async rm(id) {
-            await main_7.FILE_HELPER.rm(exports.ENTRIES_DIR + id + ".json");
-            if (await main_7.FILE_HELPER.exists(exports.METADATA_DIR + id)) {
-                await main_7.FILE_HELPER.rm(exports.METADATA_DIR + id, true);
-            }
-            if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
-                // Tente de supprimer depuis la carte SD
-                try {
-                    await main_7.SD_FILE_HELPER.rm(exports.METADATA_DIR + id, true);
-                    await main_7.SD_FILE_HELPER.rm(exports.ENTRIES_DIR + id + '.json');
-                }
-                catch (e) { }
-            }
-            await SyncManager_2.SyncManager.remove(id);
-        }
-        /**
-         * Ecrit les fichiers présents dans le formulaire dans un dossier spécifique,
-         * puis crée le formulaire.
-         * Lit les fichiers depuis les input, doit donc être forcément
-         * appelé depuis la page de création d'entrée !
-         *
-         * @param identifier ID du formulaire (sans le .json)
-         * @param form_values Valeurs à sauvegarder
-         * @param older_save Anciennes valeurs (si mode édition)
-         */
-        async save(identifier, form_values, older_save) {
-            async function deleteOlderFile(input_name) {
-                if (main_7.SD_FILE_HELPER) {
-                    main_7.SD_FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
-                }
-                return main_7.FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
-            }
-            async function saveBlobToFile(filename, input_name, blob) {
-                const full_path = exports.METADATA_DIR + identifier + '/' + filename;
-                try {
-                    await main_7.FILE_HELPER.write(full_path, blob);
-                    if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
-                        main_7.SD_FILE_HELPER.write(full_path, blob).then(() => { }).catch(e => console.log(e));
-                    }
-                    // Enregistre le nom du fichier sauvegardé dans le formulaire,
-                    // dans la valeur du champ field
-                    form_values.fields[input_name] = form_values.metadata[input_name] = filename;
-                    if (older_save && input_name in older_save.fields && older_save.fields[input_name] !== null) {
-                        // Si une image était déjà présente
-                        if (older_save.fields[input_name] !== form_values.fields[input_name]) {
-                            // Si le fichier enregistré est différent du fichier actuel
-                            // Suppression de l'ancien fichier
-                            deleteOlderFile(input_name);
-                        }
-                    }
-                }
-                catch (error) {
-                    helpers_6.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
-                    return Promise.reject(error);
-                }
-            }
-            // Récupère les images du formulaire
-            const images_from_form = document.getElementsByClassName('input-image-element');
-            // Sauvegarde les images !
-            const promises = [];
-            for (const img of images_from_form) {
-                const file = img.files[0];
-                const input_name = img.name;
-                if (file) {
-                    const filename = file.name;
-                    promises.push(saveBlobToFile(filename, input_name, file));
-                }
-                else {
-                    // Si il n'y a aucun fichier
-                    if (older_save && input_name in older_save.fields) {
-                        // Si il a une sauvegarde précédente
-                        form_values.fields[input_name] = older_save.fields[input_name];
-                        form_values.metadata[input_name] = null;
-                        if (typeof older_save.fields[input_name] === 'string') {
-                            // Si le fichier doit être supprimé
-                            if (img.dataset.toremove === "true") {
-                                form_values.fields[input_name] = null;
-                                // Suppression du fichier en question
-                                deleteOlderFile(input_name);
-                            }
-                            else {
-                                const parts = older_save.fields[input_name].split('/');
-                                form_values.metadata[input_name] = parts[parts.length - 1];
-                            }
-                        }
-                    }
-                    else {
-                        form_values.fields[input_name] = null;
-                        form_values.metadata[input_name] = null;
-                    }
-                }
-            }
-            // Récupère les données audio du formulaire
-            const audio_from_form = document.getElementsByClassName('input-audio-element');
-            for (const audio of audio_from_form) {
-                const file = audio.value;
-                const input_name = audio.name;
-                if (file) {
-                    const filename = helpers_6.generateId(main_7.ID_COMPLEXITY) + '.mp3';
-                    promises.push(helpers_6.urlToBlob(file).then(function (blob) {
-                        return saveBlobToFile(filename, input_name, blob);
-                    }));
-                }
-                else {
-                    if (older_save && input_name in older_save.fields) {
-                        form_values.fields[input_name] = older_save.fields[input_name];
-                        form_values.metadata[input_name] = null;
-                        if (typeof older_save.fields[input_name] === 'string') {
-                            if (audio.dataset.toremove === "true") {
-                                form_values.fields[input_name] = null;
-                                // Suppression du fichier en question
-                                deleteOlderFile(input_name);
-                            }
-                            else {
-                                const parts = older_save.fields[input_name].split('/');
-                                form_values.metadata[input_name] = parts[parts.length - 1];
-                            }
-                        }
-                    }
-                    else {
-                        form_values.fields[input_name] = null;
-                        form_values.metadata[input_name] = null;
-                    }
-                }
-            }
-            // Attend que les sauvegardes soient terminées
-            await Promise.all(promises);
-            // On supprime les metadonnées vides du form
-            for (const n in form_values.metadata) {
-                if (form_values.metadata[n] === null) {
-                    delete form_values.metadata[n];
-                }
-            }
-            await main_7.FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values);
-            if (device.platform === 'Android' && main_7.SD_FILE_HELPER) {
-                main_7.SD_FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
-            }
-            console.log(form_values);
-            return form_values;
-        }
-    }
-    exports.FormSaves = new _FormSaves;
-});
-define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "base/UserManager", "base/PageManager", "utils/logger", "base/SyncManager", "utils/location", "base/FormSaves"], function (require, exports, main_8, helpers_7, UserManager_3, PageManager_2, Logger_1, SyncManager_3, location_1, FormSaves_1) {
+define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "base/UserManager", "base/PageManager", "utils/logger", "base/SyncManager", "utils/location", "base/FormSaves"], function (require, exports, main_8, helpers_7, UserManager_3, PageManager_2, Logger_1, SyncManager_3, location_1, FormSaves_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function scrollToAnElementOnClick(element_base, element_related, modal, center = false) {
@@ -4122,7 +4138,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                 form_values.fields[i.name] = i.value;
             }
         }
-        return FormSaves_1.FormSaves.save(name, form_values, form_save);
+        return FormSaves_3.FormSaves.save(name, form_values, form_save);
     }
     exports.saveForm = saveForm;
     /**
@@ -4179,7 +4195,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
     }
     exports.validConstraints = validConstraints;
 });
-define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_9, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1) {
+define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form", "base/FormSaves"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_9, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1, FormSaves_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -4278,7 +4294,9 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
      * @param current_form Formulaire courant
      * @param filled_form Formulaire déjà rempli (utilisé pour l'édition)
      */
-    function constructForm(placeh, current_form, filled_form) {
+    function constructForm(placeh, current_form, edition_mode) {
+        const filled_form = edition_mode ? edition_mode.save : undefined;
+        const filled_form_id = edition_mode ? edition_mode.name : undefined;
         // Si le formulaire accepte la localisation
         if (!current_form.no_location) {
             // Crée le champ de lieu
@@ -4759,7 +4777,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                     img_miniature.classList.add('image-form-wrapper', 'relative-container');
                     const img_balise = document.createElement('img');
                     img_balise.classList.add('img-form-element');
-                    helpers_8.createImgSrc(filled_form.fields[ele.name], img_balise);
+                    helpers_8.createImgSrc(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], img_balise);
                     img_miniature.appendChild(img_balise);
                     placeh.appendChild(img_miniature);
                     // On crée un bouton "supprimer ce fichier"
@@ -4771,8 +4789,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                             .then(() => {
                             // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
                             input.dataset.toremove = "true";
-                            delete_file_btn.remove();
-                            $("[data-original='" + filled_form.fields[ele.name] + "']").remove();
+                            img_miniature.remove();
                         })
                             .catch(() => { });
                     };
@@ -4835,7 +4852,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    main_9.FILE_HELPER.read(filled_form.fields[ele.name], FileHelper_4.FileHelperReadMode.url)
+                    main_9.FILE_HELPER.read(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], FileHelper_4.FileHelperReadMode.url)
                         .then(base64 => {
                         button.classList.remove('blue');
                         button.classList.add('green');
@@ -4969,7 +4986,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         base_block.appendChild(placeh);
         // Appelle la fonction pour construire
         if (edition_mode) {
-            constructForm(placeh, current_form, edition_mode.save);
+            constructForm(placeh, current_form, edition_mode);
         }
         else {
             constructForm(placeh, current_form);
@@ -5324,7 +5341,7 @@ define("utils/test_vocal_reco", ["require", "exports", "utils/vocal_recognition"
     }
     exports.launchQuizz = launchQuizz;
 });
-define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManager", "utils/helpers", "main", "base/FormSchema", "utils/location", "utils/test_vocal_reco"], function (require, exports, UserManager_5, SyncManager_4, helpers_9, main_10, FormSchema_4, location_3, test_vocal_reco_1) {
+define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManager", "utils/helpers", "main", "base/FormSchema", "utils/location", "utils/test_vocal_reco", "base/FormSaves"], function (require, exports, UserManager_5, SyncManager_4, helpers_9, main_10, FormSchema_4, location_3, test_vocal_reco_1, FormSaves_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -5388,11 +5405,11 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
         try {
             let nb_files;
             try {
-                nb_files = (await main_10.FILE_HELPER.ls('forms')).length;
+                nb_files = (await main_10.FILE_HELPER.ls(FormSaves_5.ENTRIES_DIR)).length;
             }
             catch (e) {
                 nb_files = 0;
-                await main_10.FILE_HELPER.mkdir('forms');
+                await main_10.FILE_HELPER.mkdir(FormSaves_5.ENTRIES_DIR);
             }
             home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
@@ -5868,7 +5885,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         modal.appendChild(footer);
     }
 });
-define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSchema", "base/PageManager", "base/SyncManager", "utils/logger", "main", "base/FileHelper", "base/FormSaves"], function (require, exports, helpers_11, FormSchema_6, PageManager_5, SyncManager_6, logger_4, main_12, FileHelper_5, FormSaves_2) {
+define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSchema", "base/PageManager", "base/SyncManager", "utils/logger", "main", "base/FileHelper", "base/FormSaves"], function (require, exports, helpers_11, FormSchema_6, PageManager_5, SyncManager_6, logger_4, main_12, FileHelper_5, FormSaves_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /** État de sauvegarde d'une entrée */
@@ -5903,7 +5920,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
     `);
         PageManager_5.PageManager.lock_return_button = true;
         try {
-            await FormSaves_2.FormSaves.clear();
+            await FormSaves_6.FormSaves.clear();
             helpers_11.showToast("Fichiers supprimés avec succès");
             PageManager_5.PageManager.lock_return_button = false;
             instance.close();
@@ -6037,7 +6054,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
             id = id.substring(0, id.length - 5);
         }
         if (id) {
-            return FormSaves_2.FormSaves.rm(id);
+            return FormSaves_6.FormSaves.rm(id);
         }
         else {
             return Promise.reject("ID invalide");
@@ -6050,9 +6067,9 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
     async function initSavedForm(base) {
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
-        console.log(await main_12.FILE_HELPER.readAll('forms', FileHelper_5.FileHelperReadMode.fileobj));
+        console.log(await main_12.FILE_HELPER.readAll(FormSaves_6.ENTRIES_DIR, FileHelper_5.FileHelperReadMode.fileobj));
         try {
-            await main_12.FILE_HELPER.mkdir('forms');
+            await main_12.FILE_HELPER.mkdir(FormSaves_6.ENTRIES_DIR);
         }
         catch (err) {
             logger_4.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
@@ -6061,7 +6078,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
         }
         FormSchema_6.Schemas.onReady()
             .then(() => {
-            return main_12.FILE_HELPER.readAll('forms', FileHelper_5.FileHelperReadMode.fileobj);
+            return main_12.FILE_HELPER.readAll(FormSaves_6.ENTRIES_DIR, FileHelper_5.FileHelperReadMode.fileobj);
         })
             .then(async (files) => {
             // Tri des fichiers; le plus récent en premier

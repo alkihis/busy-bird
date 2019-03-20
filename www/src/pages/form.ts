@@ -9,6 +9,7 @@ import { UserManager } from "../base/UserManager";
 import { createLocationInputSelector } from "../utils/location";
 import { FileHelperReadMode } from "../base/FileHelper";
 import { beginFormSave } from "../utils/save_a_form";
+import { METADATA_DIR } from "../base/FormSaves";
 
 /**
  * Crée une base classique dans lequel insérer un input texte ou number.
@@ -120,7 +121,9 @@ function fillStandardInputValues(htmle: HTMLInputElement | HTMLSelectElement | H
  * @param current_form Formulaire courant
  * @param filled_form Formulaire déjà rempli (utilisé pour l'édition)
  */
-export function constructForm(placeh: HTMLElement, current_form: Schema, filled_form?: FormSave) : void {
+export function constructForm(placeh: HTMLElement, current_form: Schema, edition_mode?: {save: FormSave, name: string}) : void {
+    const filled_form = edition_mode ? edition_mode.save : undefined;
+    const filled_form_id = edition_mode ? edition_mode.name : undefined;
 
     // Si le formulaire accepte la localisation
     if (!current_form.no_location) {
@@ -712,7 +715,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, filled_
                 const img_balise = document.createElement('img');
                 img_balise.classList.add('img-form-element');
 
-                createImgSrc(filled_form.fields[ele.name] as string, img_balise);
+                createImgSrc(METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name] as string, img_balise);
 
                 img_miniature.appendChild(img_balise);
                 placeh.appendChild(img_miniature);
@@ -727,9 +730,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, filled_
                         .then(() => {
                             // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
                             input.dataset.toremove = "true";
-                            delete_file_btn.remove();
-
-                            $("[data-original='"+ filled_form.fields[ele.name]+ "']").remove();
+                            img_miniature.remove();
                         })
                         .catch(() => {});
                 };
@@ -809,7 +810,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, filled_
 
             ////// Définition si un fichier son existe déjà
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                FILE_HELPER.read(filled_form.fields[ele.name] as string, FileHelperReadMode.url)
+                FILE_HELPER.read(METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name] as string, FileHelperReadMode.url)
                     .then(base64 => {
                         button.classList.remove('blue');
                         button.classList.add('green');
@@ -976,7 +977,7 @@ export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mo
 
     // Appelle la fonction pour construire
     if (edition_mode) {
-        constructForm(placeh, current_form, edition_mode.save);
+        constructForm(placeh, current_form, edition_mode);
     }
     else {
         constructForm(placeh, current_form);
