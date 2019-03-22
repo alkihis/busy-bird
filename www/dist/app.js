@@ -1429,6 +1429,7 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
         FormEntityType["audio"] = "audio";
         FormEntityType["date"] = "date";
         FormEntityType["time"] = "time";
+        FormEntityType["image"] = "image";
     })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
     /**
      * Contient les différents schémas de formulaire,
@@ -2093,13 +2094,13 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                     return Promise.reject(error);
                 }
             }
-            // Récupère les images du formulaire
-            const images_from_form = document.getElementsByClassName('input-image-element');
+            // Récupère les images et les fichiers du formulaire
+            const files_and_images_from_form = document.querySelectorAll('.input-image-element, .input-fileitem-element');
             // Sauvegarde les images !
             const promises = [];
-            for (const img of images_from_form) {
-                const file = img.files[0];
-                const input_name = img.name;
+            for (const item of files_and_images_from_form) {
+                const file = item.files[0];
+                const input_name = item.name;
                 if (file) {
                     const filename = file.name;
                     promises.push(saveBlobToFile(filename, input_name, file));
@@ -2112,7 +2113,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                         form_values.metadata[input_name] = null;
                         if (typeof older_save.fields[input_name] === 'string') {
                             // Si le fichier doit être supprimé
-                            if (img.dataset.toremove === "true") {
+                            if (item.dataset.toremove === "true") {
                                 form_values.fields[input_name] = null;
                                 // Suppression du fichier en question
                                 deleteOlderFile(input_name);
@@ -4000,8 +4001,20 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                 // Si c'est autre chose, l'élément est forcément valide
             }
         }
-        // Éléments FILE (ici, possiblement que des images)
+        // Éléments IMAGE
         for (const e of document.querySelectorAll('.input-image-element[required]')) {
+            const filei = e;
+            if (filei.files.length === 0) {
+                const label = document.querySelector(`input[data-for="${filei.id}"]`);
+                let name = filei.name;
+                if (label) {
+                    name = label.dataset.label;
+                }
+                elements_failed.push([name, "Required image", filei.parentElement]);
+            }
+        }
+        // Éléments FILE
+        for (const e of document.querySelectorAll('.input-fileitem-element[required]')) {
             const filei = e;
             if (filei.files.length === 0) {
                 const label = document.querySelector(`input[data-for="${filei.id}"]`);
@@ -4819,7 +4832,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 wrapper.appendChild(input);
                 element_to_add = wrapper;
             }
-            else if (ele.type === FormSchema_3.FormEntityType.file) {
+            else if (ele.type === FormSchema_3.FormEntityType.image || ele.type === FormSchema_3.FormEntityType.file) {
                 //// Attention ////
                 // L'input de type file pour les images, sur android,
                 // ne propose pas le choix entre prendre une nouvelle photo
@@ -4827,34 +4840,57 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 // de choisir une image enregistrée. 
                 // Le problème peut être contourné en créant un input personnalisé
                 // avec choix en utilisant navigator.camera et le plugin cordova camera.
+                const is_image = FormSchema_3.FormEntityType.image === ele.type || ele.file_type === "image/*";
                 let delete_file_btn = null;
                 const input = document.createElement('input');
                 const real_wrapper = document.createElement('div');
                 real_wrapper.className = "row col s12 no-margin-bottom";
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    // L'input file est déjà présent dans le formulaire
-                    // on affiche une miniature
-                    const img_miniature = document.createElement('div');
-                    img_miniature.classList.add('image-form-wrapper', 'relative-container');
-                    const img_balise = document.createElement('img');
-                    img_balise.classList.add('img-form-element');
-                    helpers_8.createImgSrc(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], img_balise);
-                    img_miniature.appendChild(img_balise);
-                    placeh.appendChild(img_miniature);
-                    // On crée un bouton "supprimer ce fichier"
-                    delete_file_btn = document.createElement('div');
-                    delete_file_btn.className = "remove-img-btn";
-                    delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
-                    delete_file_btn.onclick = () => {
-                        helpers_8.askModal("Remove this file ?", "")
-                            .then(() => {
-                            // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
-                            input.dataset.toremove = "true";
-                            img_miniature.remove();
-                        })
-                            .catch(() => { });
-                    };
-                    img_miniature.appendChild(delete_file_btn);
+                    if (is_image) {
+                        // L'input file est déjà présent dans le formulaire
+                        // on affiche une miniature
+                        const img_miniature = document.createElement('div');
+                        img_miniature.classList.add('image-form-wrapper', 'relative-container');
+                        const img_balise = document.createElement('img');
+                        img_balise.classList.add('img-form-element');
+                        helpers_8.createImgSrc(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], img_balise);
+                        img_miniature.appendChild(img_balise);
+                        placeh.appendChild(img_miniature);
+                        // On crée un bouton "supprimer ce fichier"
+                        delete_file_btn = document.createElement('div');
+                        delete_file_btn.className = "remove-img-btn";
+                        delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
+                        delete_file_btn.onclick = () => {
+                            helpers_8.askModal("Remove this file ?", "")
+                                .then(() => {
+                                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                                input.dataset.toremove = "true";
+                                img_miniature.remove();
+                            })
+                                .catch(() => { });
+                        };
+                        img_miniature.appendChild(delete_file_btn);
+                    }
+                    else {
+                        const description = document.createElement('p');
+                        description.className = "flow-text col s12";
+                        description.innerText = "File " + filled_form.fields[ele.name] + " is saved.";
+                        placeh.appendChild(description);
+                        delete_file_btn = document.createElement('div');
+                        delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
+                        delete_file_btn.innerText = "Delete this file";
+                        delete_file_btn.onclick = () => {
+                            helpers_8.askModal("Delete this file ?", "")
+                                .then(() => {
+                                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                                input.dataset.toremove = "true";
+                                input.value = "";
+                                delete_file_btn.remove();
+                                description.remove();
+                            })
+                                .catch(() => { });
+                        };
+                    }
                 }
                 // Input de type file
                 const wrapper = document.createElement('div');
@@ -4862,13 +4898,19 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 const divbtn = document.createElement('div');
                 divbtn.classList.add('btn');
                 const span = document.createElement('span');
-                span.innerText = "Fichier";
                 input.type = "file";
                 input.id = "id_" + ele.name;
                 input.name = ele.name;
                 input.required = ele.required;
                 input.accept = ele.file_type || "";
-                input.classList.add('input-image-element');
+                if (is_image) {
+                    input.classList.add('input-image-element');
+                    span.innerText = "Image";
+                }
+                else {
+                    input.classList.add('input-fileitem-element');
+                    span.innerText = "File";
+                }
                 divbtn.appendChild(span);
                 divbtn.appendChild(input);
                 wrapper.appendChild(divbtn);
@@ -5897,7 +5939,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     async function subscriptionsModal() {
         // Initialise le modal
         const modal = helpers_10.getModal();
-        const instance = helpers_10.initModal({ inDuration: 200, outDuration: 150 }, helpers_10.getModalPreloader("Récupération des souscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`));
+        const instance = helpers_10.initModal({ inDuration: 200, outDuration: 150 }, helpers_10.getModalPreloader("Fetching subscriptions", `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Cancel</a></div>`));
         // Ouvre le modal
         instance.open();
         // Obtient les souscriptions disponibles
@@ -5910,10 +5952,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         catch (e) {
             modal.innerHTML = `
         <div class="modal-content">
-            <h5 class="red-text no-margin-top">Erreur</h5>
-            <p class="flow-text">Impossible d'obtenir les souscriptions.</p>
+            <h5 class="red-text no-margin-top">Error</h5>
+            <p class="flow-text">Unable to obtain subscriptions.</p>
         </div>
-        <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Fermer</a></div>
+        <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Close</a></div>
         `;
             return;
         }
@@ -5925,11 +5967,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         //   </label>
         // </p>
         // Construit la liste de souscriptions
-        content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Souscriptions</h5>`);
+        content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Subscriptions</h5>`);
         content.insertAdjacentHTML('beforeend', `
         <p class="flow-text">
-            Gérez vos souscriptions et abonnez-vous à des nouveaux schémas de formulaire ici.
-            Cochez pour vous abonner.
+            Manage your subscriptions and subscribe to new form models here. Check to subscribe.
         </p>
     `);
         const row = document.createElement('div');
@@ -5958,12 +5999,12 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         // Création du footer
         const footer = document.createElement('div');
         footer.classList.add('modal-footer');
-        footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Annuler</a>`);
+        footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Cancel</a>`);
         // Bouton d'enregistrement
         const valid_btn = document.createElement('a');
         valid_btn.classList.add('btn-flat', 'right', 'green-text');
         valid_btn.href = "#!";
-        valid_btn.innerText = "Enregistrer";
+        valid_btn.innerText = "Save";
         // Si demande d'enregistrement > lance la procédure
         valid_btn.onclick = async function () {
             // Récupération des checkbox; cochées et non cochées
@@ -5981,7 +6022,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
                     to_uncheck.push(ch.dataset.id);
                 }
             }
-            modal.innerHTML = helpers_10.getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
+            modal.innerHTML = helpers_10.getModalPreloader("Updating subscriptions<br>Please do not close this window");
             modal.classList.remove('modal-fixed-footer');
             try {
                 // Appel à unsubscribe
@@ -5998,7 +6039,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
                 if (to_check.length > 0) {
                     subs = await subscribe(to_check, true);
                 }
-                helpers_10.showToast("Mise à jour des souscriptions réussie");
+                helpers_10.showToast("Subscription update complete");
                 instance.close();
                 // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
                 if (subs) {
@@ -6006,7 +6047,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
                 }
             }
             catch (e) {
-                helpers_10.showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
+                helpers_10.showToast("Unable to update subscriptions.\nCheck your Internet connection.");
                 instance.close();
             }
             PageManager_4.PageManager.reload();

@@ -161,8 +161,23 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
         }
     }
 
-    // Éléments FILE (ici, possiblement que des images)
+    // Éléments IMAGE
     for (const e of document.querySelectorAll('.input-image-element[required]')) {
+        const filei = e as HTMLInputElement;
+
+        if (filei.files.length === 0) {
+            const label = document.querySelector(`input[data-for="${filei.id}"]`) as HTMLElement;
+            let name = filei.name;
+            if (label) {
+                name = label.dataset.label;
+            }
+
+            elements_failed.push([name, "Required image", filei.parentElement]);
+        }
+    }
+
+    // Éléments FILE
+    for (const e of document.querySelectorAll('.input-fileitem-element[required]')) {
         const filei = e as HTMLInputElement;
 
         if (filei.files.length === 0) {

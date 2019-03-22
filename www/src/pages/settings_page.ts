@@ -445,8 +445,8 @@ async function subscriptionsModal() : Promise<void> {
     const instance = initModal(
         { inDuration: 200, outDuration: 150 }, 
         getModalPreloader(
-            "Récupération des souscriptions", 
-            `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Annuler</a></div>`
+            "Fetching subscriptions", 
+            `<div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Cancel</a></div>`
         )
     );
 
@@ -463,10 +463,10 @@ async function subscriptionsModal() : Promise<void> {
     } catch (e) {
         modal.innerHTML = `
         <div class="modal-content">
-            <h5 class="red-text no-margin-top">Erreur</h5>
-            <p class="flow-text">Impossible d'obtenir les souscriptions.</p>
+            <h5 class="red-text no-margin-top">Error</h5>
+            <p class="flow-text">Unable to obtain subscriptions.</p>
         </div>
-        <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Fermer</a></div>
+        <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Close</a></div>
         `;
         return;
     }
@@ -479,11 +479,10 @@ async function subscriptionsModal() : Promise<void> {
     //   </label>
     // </p>
     // Construit la liste de souscriptions
-    content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Souscriptions</h5>`);
+    content.insertAdjacentHTML('beforeend', `<h5 class="no-margin-top">Subscriptions</h5>`);
     content.insertAdjacentHTML('beforeend', `
         <p class="flow-text">
-            Gérez vos souscriptions et abonnez-vous à des nouveaux schémas de formulaire ici.
-            Cochez pour vous abonner.
+            Manage your subscriptions and subscribe to new form models here. Check to subscribe.
         </p>
     `);
 
@@ -522,13 +521,13 @@ async function subscriptionsModal() : Promise<void> {
     const footer = document.createElement('div');
     footer.classList.add('modal-footer');
 
-    footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Annuler</a>`);
+    footer.insertAdjacentHTML('beforeend', `<a href="#!" class="btn-flat left red-text modal-close">Cancel</a>`);
 
     // Bouton d'enregistrement
     const valid_btn = document.createElement('a');
     valid_btn.classList.add('btn-flat', 'right', 'green-text');
     valid_btn.href = "#!";
-    valid_btn.innerText = "Enregistrer";
+    valid_btn.innerText = "Save";
 
     // Si demande d'enregistrement > lance la procédure
     valid_btn.onclick = async function() {
@@ -552,7 +551,7 @@ async function subscriptionsModal() : Promise<void> {
             }
         }
 
-        modal.innerHTML = getModalPreloader("Mise à jour des souscriptions<br>Veuillez ne pas fermer cette fenêtre");
+        modal.innerHTML = getModalPreloader("Updating subscriptions<br>Please do not close this window");
         modal.classList.remove('modal-fixed-footer');
 
         try {
@@ -574,7 +573,7 @@ async function subscriptionsModal() : Promise<void> {
                 subs = await subscribe(to_check, true) as FormSchema;
             }
     
-            showToast("Mise à jour des souscriptions réussie");
+            showToast("Subscription update complete");
             instance.close();
 
             // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
@@ -582,7 +581,7 @@ async function subscriptionsModal() : Promise<void> {
                 Schemas.schemas = subs;
             }
         } catch (e) {
-            showToast("Impossible de mettre à jour les souscriptions.\nVérifiez votre connexion à Internet.");
+            showToast("Unable to update subscriptions.\nCheck your Internet connection.");
             instance.close();
         }
 

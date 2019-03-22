@@ -150,15 +150,15 @@ class _FormSaves {
             }
         }
     
-        // Récupère les images du formulaire
-        const images_from_form = document.getElementsByClassName('input-image-element');
+        // Récupère les images et les fichiers du formulaire
+        const files_and_images_from_form = document.querySelectorAll('.input-image-element, .input-fileitem-element');
     
         // Sauvegarde les images !
         const promises = [];
     
-        for (const img of images_from_form) {
-            const file = (img as HTMLInputElement).files[0];
-            const input_name = (img as HTMLInputElement).name;
+        for (const item of files_and_images_from_form) {
+            const file = (item as HTMLInputElement).files[0];
+            const input_name = (item as HTMLInputElement).name;
     
             if (file) {
                 const filename = file.name;
@@ -176,7 +176,7 @@ class _FormSaves {
     
                     if (typeof older_save.fields[input_name] === 'string') {
                         // Si le fichier doit être supprimé
-                        if ((img as HTMLInputElement).dataset.toremove === "true") {
+                        if ((item as HTMLInputElement).dataset.toremove === "true") {
                             form_values.fields[input_name] = null;
                             // Suppression du fichier en question
                             deleteOlderFile(input_name);

@@ -693,7 +693,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             element_to_add = wrapper;
         }
 
-        else if (ele.type === FormEntityType.file) {
+        else if (ele.type === FormEntityType.image || ele.type === FormEntityType.file) {
             //// Attention ////
             // L'input de type file pour les images, sur android,
             // ne propose pas le choix entre prendre une nouvelle photo
@@ -701,41 +701,68 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             // de choisir une image enregistrée. 
             // Le problème peut être contourné en créant un input personnalisé
             // avec choix en utilisant navigator.camera et le plugin cordova camera.
+
+            const is_image = FormEntityType.image === ele.type || ele.file_type === "image/*";
+
             let delete_file_btn: HTMLElement = null;
             const input = document.createElement('input');
             const real_wrapper = document.createElement('div');
             real_wrapper.className = "row col s12 no-margin-bottom";
 
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                // L'input file est déjà présent dans le formulaire
-                // on affiche une miniature
+                if (is_image) {
+                    // L'input file est déjà présent dans le formulaire
+                    // on affiche une miniature
 
-                const img_miniature = document.createElement('div');
-                img_miniature.classList.add('image-form-wrapper', 'relative-container');
-                const img_balise = document.createElement('img');
-                img_balise.classList.add('img-form-element');
+                    const img_miniature = document.createElement('div');
+                    img_miniature.classList.add('image-form-wrapper', 'relative-container');
+                    const img_balise = document.createElement('img');
+                    img_balise.classList.add('img-form-element');
 
-                createImgSrc(METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name] as string, img_balise);
+                    createImgSrc(METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name] as string, img_balise);
 
-                img_miniature.appendChild(img_balise);
-                placeh.appendChild(img_miniature);
+                    img_miniature.appendChild(img_balise);
+                    placeh.appendChild(img_miniature);
 
-                // On crée un bouton "supprimer ce fichier"
-                delete_file_btn = document.createElement('div');
-                delete_file_btn.className = "remove-img-btn";
-                delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
+                    // On crée un bouton "supprimer ce fichier"
+                    delete_file_btn = document.createElement('div');
+                    delete_file_btn.className = "remove-img-btn";
+                    delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
 
-                delete_file_btn.onclick = () => {
-                    askModal("Remove this file ?", "")
-                        .then(() => {
-                            // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
-                            input.dataset.toremove = "true";
-                            img_miniature.remove();
-                        })
-                        .catch(() => {});
-                };
+                    delete_file_btn.onclick = () => {
+                        askModal("Remove this file ?", "")
+                            .then(() => {
+                                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                                input.dataset.toremove = "true";
+                                img_miniature.remove();
+                            })
+                            .catch(() => { });
+                    };
 
-                img_miniature.appendChild(delete_file_btn);
+                    img_miniature.appendChild(delete_file_btn);
+                }
+                else {
+                    const description = document.createElement('p');
+                    description.className = "flow-text col s12";
+                    description.innerText = "File " + (filled_form.fields[ele.name] as string) + " is saved.";
+                    placeh.appendChild(description);
+
+                    delete_file_btn = document.createElement('div');
+                    delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
+                    delete_file_btn.innerText = "Delete this file";
+
+                    delete_file_btn.onclick = () => {
+                        askModal("Delete this file ?", "")
+                            .then(() => {
+                                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                                input.dataset.toremove = "true";
+                                input.value = "";
+                                delete_file_btn.remove();
+                                description.remove();
+                            })
+                            .catch(() => {});
+                    }
+                }
             }
 
             // Input de type file
@@ -745,13 +772,20 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             divbtn.classList.add('btn');
 
             const span = document.createElement('span');
-            span.innerText = "Fichier";
             input.type = "file";
             input.id = "id_" + ele.name;
             input.name = ele.name;
             input.required = ele.required;
             input.accept = ele.file_type || "";
-            input.classList.add('input-image-element');
+
+            if (is_image) {
+                input.classList.add('input-image-element');
+                span.innerText = "Image";
+            }
+            else {
+                input.classList.add('input-fileitem-element');
+                span.innerText = "File";
+            }
 
             divbtn.appendChild(span);
             divbtn.appendChild(input);
