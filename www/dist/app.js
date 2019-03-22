@@ -3238,7 +3238,7 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      * @param info string Information
      * @param text_close string Texte affiché sur le bouton de fermeture
      */
-    function informalBottomModal(title, info, text_close = "Fermer") {
+    function informalBottomModal(title, info, text_close = "Close") {
         const modal = getBottomModal();
         const instance = initBottomModal();
         modal.innerHTML = `
@@ -3281,7 +3281,7 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      * @returns {Promise<void | boolean>} Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
      * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
      */
-    function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox) {
+    function askModal(title, question, text_yes = "Yes", text_no = "No", checkbox) {
         const modal = getBottomModal();
         const instance = initBottomModal({ dismissible: false });
         modal.classList.add('unlimited');
@@ -3432,12 +3432,12 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      */
     function convertMinutesToText(min) {
         if (min < 60) {
-            return `${min} minutes`;
+            return `${min} min`;
         }
         else {
             const hours = Math.trunc(min / 60);
             const minutes = Math.trunc(min % 60);
-            return `${hours} heure${hours > 1 ? 's' : ''} ${minutes || ""}`;
+            return `${hours}h ${minutes || ""}`;
         }
     }
     exports.convertMinutesToText = convertMinutesToText;
@@ -3483,7 +3483,7 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      */
     async function createRandomForms(count = 50) {
         if (FormSchema_2.Schemas.current_key === null) {
-            throw "Impossible de créer une entrée sans base";
+            throw "Unable to create entries without form model";
         }
         const current = FormSchema_2.Schemas.get(FormSchema_2.Schemas.current_key);
         const promises = [];
@@ -3550,7 +3550,7 @@ define("utils/vocal_recognition", ["require", "exports", "utils/Settings"], func
     // options de la reconnaissance vocale
     let vocal_recognition_options = {
         language: "",
-        prompt: "Parlez maintenant"
+        prompt: "Talk now"
     };
     function talk(sentence) {
         const u = new SpeechSynthesisUtterance();
@@ -3568,7 +3568,7 @@ define("utils/vocal_recognition", ["require", "exports", "utils/Settings"], func
      * @param as_array Au lieu de renvoyer la phrase la plus probable dite par l'utilisateur, renvoie toutes les possibilités
      * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
      */
-    function prompt(prompt_text = "Parlez maintenant", as_array = false) {
+    function prompt(prompt_text = "Talk now", as_array = false) {
         return new Promise(function (resolve, reject) {
             vocal_recognition_options = {
                 language: Settings_4.Settings.voice_lang,
@@ -3688,27 +3688,27 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
     function newModalRecord(title, default_value) {
         let recorder = null;
         const modal = helpers_5.getModal();
-        const instance = helpers_5.initModal({}, helpers_5.getModalPreloader("Chargement"));
+        const instance = helpers_5.initModal({}, helpers_5.getModalPreloader("Loading"));
         instance.open();
         let audioContent = null;
         let blobSize = 0;
         modal.innerHTML = `
     <div class="modal-content">
         <h5 style="margin-top: 0;">${title}</h5>
-        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
-        <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
-        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
+        <p style="margin-top: 0; margin-bottom: 25px;">Approach your microphone from the source, then tap record.</p>
+        <a href="#!" class="btn col s12 orange" id="__media_record_record">Record</a>
+        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Stop</a>
         <div class=clearb></div>
         <div id="__media_record_player" class="modal-record-audio-player">${default_value ? `
             <figure>
-                <figcaption>Enregistrement</figcaption>
+                <figcaption>Record</figcaption>
                 <audio controls src="${default_value}"></audio>
             </figure>
         ` : ''}</div>
     </div>
     <div class="modal-footer">
-        <a href="#!" class="btn-flat green-text right ${default_value ? "" : "hide"}" id="__media_record_save">Sauvegarder</a>
-        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Annuler</a>
+        <a href="#!" class="btn-flat green-text right ${default_value ? "" : "hide"}" id="__media_record_save">Save</a>
+        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Cancel</a>
         <div class="clearb"></div>
     </div>
     `;
@@ -3720,7 +3720,7 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
         function startRecording() {
             btn_start.classList.add('hide');
             player.innerHTML = `<p class='flow-text center'>
-            Initialisation...
+            Loading...
         </p>`;
             // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
             recorder = new MicRecorder({
@@ -3729,18 +3729,18 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
             recorder.start().then(function () {
                 player.innerHTML = `<p class='flow-text center'>
                 <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
-                Enregistrement en cours
+                Recording
             </p>`;
                 btn_stop.classList.remove('hide');
             }).catch((e) => {
-                logger_2.Logger.error("Impossible de lancer l'écoute.", e);
-                player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
+                logger_2.Logger.error("Unable to start record.", e);
+                player.innerHTML = "<p class='flow-text center red-text bold-text'>Unable to start record.</p>";
             });
         }
         function stopRecording() {
             // Once you are done singing your best song, stop and get the mp3.
             btn_stop.classList.add('hide');
-            player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
+            player.innerHTML = "<p class='flow-text center'>Conversion in progress...</p>";
             recorder
                 .stop()
                 .getMp3()
@@ -3752,14 +3752,14 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
                 audioContent = base64;
                 btn_confirm.classList.remove('hide');
                 player.innerHTML = `<figure>
-                    <figcaption>Enregistrement</figcaption>
+                    <figcaption>Record</figcaption>
                     <audio controls src="${base64}"></audio>
                 </figure>`;
                 btn_start.classList.remove('hide');
             })
                 .catch((e) => {
-                M.toast({ html: 'Impossible de lire votre enregistrement' });
-                logger_2.Logger.error("Enregistrement échoué:", e.message);
+                M.toast({ html: 'Unable to read your record' });
+                logger_2.Logger.error("Failed to record:", e.message);
             });
         }
         //add events to those 2 buttons
@@ -3822,7 +3822,7 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
         input.type = "text";
         input.id = "autocomplete_field_id";
         label.htmlFor = "autocomplete_field_id";
-        label.textContent = "Lieu";
+        label.textContent = "Place";
         input.classList.add('autocomplete');
         input_f.appendChild(input);
         input_f.appendChild(label);
@@ -3861,7 +3861,7 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
                     }
                 }
                 else {
-                    helpers_6.showToast("Ce lieu n'existe pas.");
+                    helpers_6.showToast("This place does not exists.");
                 }
             }
         });
@@ -3895,8 +3895,8 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
     async function beginFormSave(type, current_form, force_name, form_save) {
         // Ouverture du modal de verification
         const modal = helpers_7.getModal();
-        const instance = helpers_7.initModal({ dismissible: false, outDuration: 100 }, helpers_7.getModalPreloader("Vérification du formulaire en cours", `<div class="modal-footer">
-            <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
+        const instance = helpers_7.initModal({ dismissible: false, outDuration: 100 }, helpers_7.getModalPreloader("Checking form...", `<div class="modal-footer">
+            <a href="#!" class="btn-flat red-text modal-close">Cancel</a>
         </div>`));
         instance.open();
         // Attend que le modal s'ouvre proprement (ralentissements sinon)
@@ -3914,12 +3914,12 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
         // (si il n'est pas requis, affiche un warning, sinon une erreur)
         if (!current_form.no_location && !location_str) {
             if (current_form.skip_location)
-                elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element.parentElement]);
+                elements_warn.push(["Location", "No place has been selected.", location_element.parentElement]);
             else
-                elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element.parentElement]);
+                elements_failed.push(["Location", "No place has been selected.", location_element.parentElement]);
         }
         if (location_str === location_1.UNKNOWN_NAME) {
-            elements_warn.push(["Lieu", "Le lieu choisi est un lieu inexistant.", location_element.parentElement]);
+            elements_warn.push(["Location", "Choosen place is an inexistant place.", location_element.parentElement]);
         }
         // Input classiques: checkbox/slider, text, textarea, select, number
         for (const e of document.getElementsByClassName('input-form-element')) {
@@ -3940,17 +3940,17 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
             if (element.tagName === "INPUT" && element.type === "checkbox") {
                 if (element.indeterminate) {
                     if (element.required) {
-                        elements_failed.push([element.nextElementSibling.innerText, "Ce champ est requis.", element.parentElement]);
+                        elements_failed.push([element.nextElementSibling.innerText, "Required field.", element.parentElement]);
                     }
                     else {
-                        elements_warn.push([element.nextElementSibling.innerText, "Vous n'avez pas interagi avec ce champ.", element.parentElement]);
+                        elements_warn.push([element.nextElementSibling.innerText, "You have not interacted with this field.", element.parentElement]);
                     }
                 }
             }
             // Si l'élément est requis mais qu'il n'a aucune valeur
             else if (element.required && !element.value) {
                 if (element.tagName !== "SELECT" || (element.multiple && $(element).val().length === 0)) {
-                    elements_failed.push([name, "Champ requis", element.parentElement]);
+                    elements_failed.push([name, "Required field.", element.parentElement]);
                 }
             }
             else {
@@ -3959,26 +3959,26 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                 if (Object.keys(contraintes).length > 0 || element.type === "number") {
                     if (element.type === "text" || element.tagName === "textarea") {
                         if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
-                            str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
+                            str += "Text length should be equal or greater to " + contraintes.min + " characters. ";
                         }
                         if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
-                            str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
+                            str += "Text length should be equal or less than " + contraintes.max + " characters. ";
                         }
                     }
                     else if (element.type === "number" && element.value !== "") {
                         if (element.validity.rangeUnderflow) {
-                            str += "Le nombre doit être égal ou supérieur à " + element.min + ". ";
+                            str += "Number should be equal or greater to " + element.min + ". ";
                         }
                         if (element.validity.rangeOverflow) {
-                            str += "Le nombre doit être égal ou inférieur à " + element.max + ". ";
+                            str += "Number should be equal or less than " + element.max + ". ";
                         }
                         // Vérification de la précision
                         if (element.step) {
                             if (element.validity.stepMismatch) {
-                                str += "Le nombre doit avoir une précision de " + element.step + ". ";
+                                str += "Number should have a precision of " + element.step + ". ";
                             }
                             else if (element.value.indexOf('.') === -1) {
-                                str += "Le nombre doit être à virgule. ";
+                                str += "Number should have floating point. ";
                             }
                         }
                     }
@@ -3987,7 +3987,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                 // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
                 // sont vides, la vérification lève une erreur fatale.
                 if (contraintes.suggest && !element.required && element.value === "") {
-                    str += "Cet élément ne devrait pas être vide. ";
+                    str += "This element should not be empty. ";
                 }
                 if (str) {
                     if (element.required) {
@@ -4009,14 +4009,14 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                 if (label) {
                     name = label.dataset.label;
                 }
-                elements_failed.push([name, "Fichier requis", filei.parentElement]);
+                elements_failed.push([name, "Required file", filei.parentElement]);
             }
         }
         // Éléments AUDIO (avec le modal permettant d'enregistrer du son)
         for (const e of document.querySelectorAll('.input-audio-element[required]')) {
             const hiddeni = e;
             if (!hiddeni.value) {
-                elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni.parentElement]);
+                elements_failed.push([hiddeni.dataset.label, "Required audio record", hiddeni.parentElement]);
             }
         }
         // Construit les éléments dans le modal
@@ -4025,12 +4025,12 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
         if (elements_warn.length > 0 || elements_failed.length > 0) {
             const par = document.createElement('p');
             par.classList.add('flow-text', 'no-margin-top');
-            par.innerText = "Des erreurs " + (!elements_failed.length ? 'potentielles' : '') + " ont été détectées.";
+            par.innerText = (!elements_failed.length ? 'Potential e' : 'E') + "rrors has been detected.";
             container.appendChild(par);
             if (!elements_failed.length) {
                 const tinypar = document.createElement('p');
                 tinypar.style.marginTop = "-15px";
-                tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
+                tinypar.innerText = "Please check your typing.";
                 container.appendChild(tinypar);
             }
             const list = document.createElement('ul');
@@ -4065,11 +4065,11 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
             // On affiche un message de succès
             const title = document.createElement('h5');
             title.classList.add('no-margin-top');
-            title.innerText = "Résumé";
+            title.innerText = "Sum up";
             container.appendChild(title);
             const par = document.createElement('p');
             par.classList.add('flow-text');
-            par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
+            par.innerText = "This entry does not contains errors. You could save your work now.";
             container.appendChild(par);
         }
         // Footer
@@ -4078,14 +4078,14 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
         const cancel_btn = document.createElement('a');
         cancel_btn.href = "#!";
         cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
-        cancel_btn.innerText = "Corriger";
+        cancel_btn.innerText = "Correct";
         footer.appendChild(cancel_btn);
         // Si aucun élément requis n'est oublié ou invalide, alors on autorise la sauvegarde
         if (elements_failed.length === 0) {
             const save_btn = document.createElement('a');
             save_btn.href = "#!";
             save_btn.classList.add('btn-flat', 'right', 'green-text');
-            save_btn.innerText = "Sauvegarder";
+            save_btn.innerText = "Save";
             save_btn.onclick = function () {
                 modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
                 modal.classList.remove('modal-fixed-footer');
@@ -4096,7 +4096,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                     SyncManager_3.SyncManager.add(unique_id, form_values);
                     if (form_save) {
                         instance.close();
-                        helpers_7.showToast("Écriture de l'entrée et de ses données réussie.");
+                        helpers_7.showToast("Entry has been saved successfully.");
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager_2.PageManager.pop();
                         // PageManager.reload(); la page se recharge toute seule au pop
@@ -4105,14 +4105,14 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                         // On demande si on veut faire une nouvelle entrée
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="no-margin-top">Entrée enregistrée avec succès</h5>
+                            <h5 class="no-margin-top">Entry saved successfully</h5>
                             <p class="flow-text">
-                                Voulez-vous saisir une nouvelle entrée ?
+                                Do you want to begin a new entry ?
                             </p>
                         </div>
                         <div class="modal-footer">
-                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">Non</a>
-                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Oui</a>
+                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">No</a>
+                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Yes</a>
                             <div class="clearb"></div>
                         </div>
                         `;
@@ -4129,14 +4129,14 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                     .catch((error) => {
                     modal.innerHTML = `
                     <div class="modal-content">
-                        <h5 class="no-margin-top red-text">Erreur</h5>
+                        <h5 class="no-margin-top red-text">Error</h5>
                         <p class="flow-text">
-                            Impossible d'enregistrer cette entrée.
-                            Veuillez réessayer.
+                            Unable to save this entry.
+                            Please try again.
                         </p>
                     </div>
                     <div class="modal-footer">
-                        <a href="#!" class="btn-flat right red-text modal-close">Fermer</a>
+                        <a href="#!" class="btn-flat right red-text modal-close">Close</a>
                         <div class="clearb"></div>
                     </div>
                     `;
@@ -4382,7 +4382,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                     location.value = `${filled_form.location} - ${label_location.label}`;
                 }
                 else if (filled_form.location !== null) {
-                    helpers_8.showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
+                    helpers_8.showToast("Warning: Entry location does not exists in form model.");
                 }
             }
             loc_wrapper.appendChild(location);
@@ -4507,7 +4507,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                             else {
                                 // Affichage forcé en toast Materialize:
                                 // La reconnaissance vocale ouvre un toast natif qui masquerait celui-ci
-                                M.toast({ html: "Nombre incorrect reconnu." });
+                                M.toast({ html: "Unknown number recognized." });
                             }
                         });
                     });
@@ -4684,7 +4684,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                     mic_btn.innerHTML = `<i class="material-icons red-text">mic</i>`;
                     const sel_opt = Array.from(htmle.options).map(e => [e.label, e.value]);
                     mic_btn.firstChild.addEventListener('click', function () {
-                        vocal_recognition_1.prompt("Parlez maintenant", true).then(function (value) {
+                        vocal_recognition_1.prompt("Speak now", true).then(function (value) {
                             let val;
                             if (htmle.multiple)
                                 val = vocal_recognition_1.testMultipleOptionsVesusExpected(sel_opt, value);
@@ -4701,7 +4701,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                             }
                             else {
                                 // Force M.toast: Les toasts natifs ne s'affichent pas à cause du toast affiché par Google
-                                M.toast({ html: "Aucune option ne correspond à votre demande" });
+                                M.toast({ html: "Any option has matched your speech" });
                             }
                         });
                     });
@@ -4846,7 +4846,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                     delete_file_btn.className = "remove-img-btn";
                     delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
                     delete_file_btn.onclick = () => {
-                        helpers_8.askModal("Supprimer ce fichier ?", "")
+                        helpers_8.askModal("Remove this file ?", "")
                             .then(() => {
                             // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
                             input.dataset.toremove = "true";
@@ -4898,7 +4898,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 wrapper.appendChild(label);
                 const button = document.createElement('button');
                 button.classList.add('btn', 'blue', 'col', 's12', 'btn-perso');
-                button.innerText = "Enregistrement audio";
+                button.innerText = "Audio record";
                 button.type = "button";
                 const real_input = document.createElement('input');
                 real_input.type = "hidden";
@@ -4919,25 +4919,25 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                         button.classList.add('green');
                         real_input.value = base64;
                         const duration = ((base64.length * 0.7) / (main_8.MP3_BITRATE * 1000)) * 8;
-                        button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                        button.innerText = "Record (" + duration.toFixed(0) + "s" + ")";
                     })
                         .catch(err => {
-                        logger_3.Logger.warn("Impossible de charger le fichier", err);
+                        logger_3.Logger.warn("Unable to load file", err);
                     });
                     // On crée un bouton "supprimer ce fichier"
                     // pour supprimer l'entrée existante
                     delete_file_btn = document.createElement('div');
                     delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
-                    delete_file_btn.innerText = "Supprimer ce fichier";
+                    delete_file_btn.innerText = "Delete this file";
                     delete_file_btn.onclick = () => {
-                        helpers_8.askModal("Supprimer ce fichier ?", "")
+                        helpers_8.askModal("Delete this file ?", "")
                             .then(() => {
                             // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
                             real_input.dataset.toremove = "true";
                             real_input.value = "";
                             delete_file_btn.remove();
                             button.className = 'btn blue col s12 btn-perso';
-                            button.innerText = "Enregistrement audio";
+                            button.innerText = "Audio record";
                         })
                             .catch(() => { });
                     };
@@ -4950,7 +4950,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                         real_input.value = recres.content;
                         real_input.dataset.duration = recres.duration.toString();
                         // Met à jour le bouton
-                        button.innerText = "Enregistrement (" + recres.duration.toFixed(0) + "s" + ")";
+                        button.innerText = "Record (" + recres.duration.toFixed(0) + "s" + ")";
                         button.classList.remove('blue');
                         button.classList.add('green');
                     })
@@ -5015,7 +5015,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
             FormSchema_3.Schemas.onReady(function (_, current) {
                 if (FormSchema_3.Schemas.current_key === null) {
                     // Aucun formulaire n'est chargé !
-                    base.innerHTML = helpers_8.displayErrorMessage("Aucun schéma n'est chargé.", "Sélectionnez le schéma de formulaire à utiliser dans les paramètres.");
+                    base.innerHTML = helpers_8.displayErrorMessage("No form model is loaded.", "Select model to use in settings.");
                     PageManager_3.PageManager.should_wait = false;
                 }
                 else {
@@ -5035,7 +5035,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         base.innerHTML = "";
         if (!edition_mode && !UserManager_4.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = base.innerHTML = helpers_8.displayErrorMessage("Vous devez vous connecter pour saisir une nouvelle entrée.", "Connectez-vous dans les paramètres.");
+            base.innerHTML = base.innerHTML = helpers_8.displayErrorMessage("You have to login to register a new entry.", "Login in settings.");
             PageManager_3.PageManager.should_wait = false;
             return;
         }
@@ -5116,9 +5116,9 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
-        modal.innerHTML = helpers_8.getModalPreloader("Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.", `<div class="modal-footer">
-            <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
-            <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
+        modal.innerHTML = helpers_8.getModalPreloader("Finding you location...\nThis could take up to 30 seconds", `<div class="modal-footer">
+            <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Manual mode</a>
+            <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Cancel</a>
             <div class="clearb"></div>
         </div>`);
         let is_loc_canceled = false;
@@ -5167,7 +5167,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         const input = document.createElement('input');
         // Sélection manuelle
         const title = document.createElement('h5');
-        title.innerText = "Sélection manuelle";
+        title.innerText = "Manual select";
         content.appendChild(title);
         // Vide le modal actuel et le remplace par le contenu et footer créés
         modal.innerHTML = "";
@@ -5192,7 +5192,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
             lieux_dispo = lieux_dispo.sort((a, b) => a.distance - b.distance);
             // Titre
             const title = document.createElement('h5');
-            title.innerText = "Lieux proches";
+            title.innerText = "Near locations";
             content.appendChild(title);
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
@@ -5220,10 +5220,10 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
             // Affichage d'une erreur: géolocalisation impossible
             const error = document.createElement('h6');
             error.classList.add('red-text');
-            error.innerText = "Impossible de vous géolocaliser.";
+            error.innerText = "Unable to find your location.";
             const subtext = document.createElement('div');
             subtext.classList.add('red-text', 'flow-text');
-            subtext.innerText = "Choisissez un lieu manuellement.";
+            subtext.innerText = "Please choose a place.";
             content.appendChild(error);
             content.appendChild(subtext);
         }
@@ -5234,7 +5234,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         ok.classList.add("btn-flat", "green-text", "right");
         ok.addEventListener('click', function () {
             if (input.value.trim() === "") {
-                helpers_8.showToast("Vous devez préciser un lieu.");
+                helpers_8.showToast("You must specify a place.");
             }
             else if (input.value in labels_to_name) {
                 const loc_input = document.getElementById('__location__id');
@@ -5245,7 +5245,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 modal.classList.remove('modal-fixed-footer');
             }
             else {
-                helpers_8.showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
+                helpers_8.showToast("Entered place has no matching correspondance in places database.");
             }
         });
         footer.appendChild(ok);
@@ -5414,14 +5414,12 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${main_9.APP_VERSION}</span>
         <p class="flow-text center">
-            Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
-            sur le terrain !
+            Welcome to ${exports.APP_NAME}, the application that makes specie tracking easy !
         </p>
         <p class="flow-text red-text">
             ${!UserManager_5.UserManager.logged ? `
-                Vous n'êtes pas connecté dans l'application. Vous ne serez pas en mesure de
-                saisir de nouvelles entrées sans être authentifié. Veuillez vous connecter via
-                les paramètres de l'application.
+                You are not currently logged in. You will not be able to make new entries
+                without being authentificated. Please log in into settings.
             ` : ''}
         </p>
         <div id="__home_container"></div>
@@ -5436,31 +5434,30 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
             const remaining_count = await SyncManager_4.SyncManager.remainingToSync();
             if (helpers_9.hasGoodConnection()) {
                 if (remaining_count > 15) {
-                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
-                    <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`, "Synchronisation");
+                    home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">You have many elements to sync (${remaining_count} entries).</span><br>
+                    <span class="blue-text text-darken-2">Please go to the entries section to start synchronisation.</span>`, "Synchronisation");
                 }
                 else if (remaining_count > 0) {
                     home_container.innerHTML = createCardPanel(`<span class="blue-text text-darken-2">
-                        Vous avez ${remaining_count} entrée${remaining_count > 1 ? 's' : ''} en attente de synchronisation.
+                        You have ${remaining_count} waiting to sync entr${remaining_count > 1 ? 'ies' : 'y'}.
                     </span>`);
                 }
             }
             else if (remaining_count > 0) {
                 home_container.innerHTML = createCardPanel(`
-                <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
-                <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
-                <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`);
+                <span class="blue-text text-darken-2">You have entries that wait synchronisation.</span><br>
+                <span class="red-text text-darken-2">When you'll have a good Internet connection again,</span>
+                <span class="blue-text text-darken-2">please start a new synchronisation.</span>`);
             }
         }
         catch (e) {
-            home_container.innerHTML = createCardPanel(`<span class="red-text text-darken-2">Impossible de relever les entrées disponibles.</span><br>
-            <span class="red-text text-darken-2">Cette erreur est possiblement grave. 
-            Nous vous conseillons de ne pas enregistrer d'entrée.</span>`, "Erreur");
+            home_container.innerHTML = createCardPanel(`<span class="red-text text-darken-2">Unable to fetch waiting to sync entries.</span><br>
+            <span class="red-text text-darken-2">This error could be serious.</span>`, "Error");
         }
         // Montre l'utilisateur connecté
         if (UserManager_5.UserManager.logged) {
             home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="grey-text text-darken-1">${UserManager_5.UserManager.username}</span>
-            <span class="blue-text text-darken-2">est connecté-e.</span>`));
+            <span class="blue-text text-darken-2">is logged in.</span>`));
         }
         // Nombre de formulaires enregistrés sur l'appareil
         try {
@@ -5472,21 +5469,20 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
                 nb_files = 0;
                 await main_9.FILE_HELPER.mkdir(FormSaves_5.ENTRIES_DIR);
             }
-            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
-            ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
+            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'No' : nb_files} entr${nb_files > 1 ? 'ies' : 'y'} 
+            ${nb_files > 1 ? 'are' : 'is'} stored into this device.</span>`));
         }
         catch (e) {
             // Impossible d'obtenir les fichiers
-            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span><br>
-            <span class="red-text text-darken-2">Cette erreur est probablement grave. 
-            Nous vous conseillons de ne pas tenter d'enregistrer d'entrée et de vérifier votre stockage interne.</span>`));
+            home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="red-text text-darken-2">Unable to list existing files into this devices.</span><br>
+            <span class="red-text text-darken-2">This error could be serious. Please check your internal storage.</span>`));
         }
         if (FormSchema_4.Schemas.current_key !== null) {
             const locations = FormSchema_4.Schemas.current.locations;
             if (Object.keys(locations).length > 0) {
                 // Navigation vers nichoir
                 home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
-                <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${FormSchema_4.Schemas.current.name.toLowerCase()}</h6>`);
+                <h6 style="margin-left: 10px; font-size: 1.25rem">Navigate to an habitat of ${FormSchema_4.Schemas.current.name.toLowerCase()}</h6>`);
                 location_3.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
             }
         }
@@ -5544,16 +5540,16 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
      * Lance la mise à jour des schémas via le serveur
      */
     function formActualisationModal() {
-        const instance = helpers_10.initModal({ dismissible: false }, helpers_10.getModalPreloader("Actualisation..."));
+        const instance = helpers_10.initModal({ dismissible: false }, helpers_10.getModalPreloader("Updating..."));
         instance.open();
         FormSchema_5.Schemas.forceSchemaDownloadFromServer()
             .then(() => {
-            helpers_10.showToast("Actualisation terminée.");
+            helpers_10.showToast("Update complete.");
             instance.close();
             PageManager_4.PageManager.reload();
         })
             .catch(() => {
-            helpers_10.showToast("Impossible d'actualiser les schémas.");
+            helpers_10.showToast("Unable to update form models.");
             instance.close();
         });
     }
@@ -5565,10 +5561,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         const connecte = UserManager_6.UserManager.logged;
         base.innerHTML = `
     <div class="container row" id="main_settings_container">
-        <h4>Utilisateur</h4>
+        <h4>User</h4>
         <p class="flow-text no-margin-bottom">${UserManager_6.UserManager.logged ?
-            "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + UserManager_6.UserManager.username + "</span>"
-            : "Vous n'êtes pas connecté-e"}.</p>
+            "You are currently logged as <span class='orange-text text-darken-2'>" + UserManager_6.UserManager.username + "</span>"
+            : "You are not logged in"}.</p>
     </div>
     `;
         ////// DEFINITION DU BOUTON DE CONNEXION
@@ -5577,11 +5573,11 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         container.appendChild(button);
         if (connecte) {
             button.type = "button";
-            button.innerHTML = "Déconnexion";
+            button.innerHTML = "Log out";
             button.classList.remove('blue');
             button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
             button.onclick = function () {
-                helpers_10.askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+                helpers_10.askModal("Log out ?", "You can't make new entries until you're logged in again.")
                     .then(function () {
                     // L'utilisateur veut se déconnecter
                     UserManager_6.UserManager.unlog();
@@ -5594,7 +5590,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         }
         else {
             button.type = "button";
-            button.innerHTML = "Se connecter";
+            button.innerHTML = "Login";
             button.classList.remove('red');
             button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
             button.onclick = function () {
@@ -5607,7 +5603,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         if (!connecte) {
             const createaccbtn = document.createElement('button');
             createaccbtn.classList.add('col', 's12', 'blue-grey', 'btn', 'btn-perso', 'btn-small-margins');
-            createaccbtn.innerHTML = "Créer un compte";
+            createaccbtn.innerHTML = "Create an account";
             createaccbtn.style.marginTop = "-5px";
             createaccbtn.onclick = UserManager_6.createNewUser;
             container.appendChild(createaccbtn);
@@ -5616,10 +5612,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
-    <h4>Formulaires</h4>
-    <h5>Schéma actif</h5>
+    <h4>Forms</h4>
+    <h5>Active model</h5>
     <p class="flow-text">
-        Ce schéma d'entrée correspond à celui proposé dans la page "Nouvelle entrée".
+        Active model is the model to the proposed one in "new entry" page.
     </p>
     `);
         // Choix du formulaire actif
@@ -5627,7 +5623,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         select.classList.add('material-select');
         container.appendChild(select);
         FormSchema_5.Schemas.onReady(function () {
-            const available = [["", "Aucun"], ...FormSchema_5.Schemas.available()];
+            const available = [["", "None"], ...FormSchema_5.Schemas.available()];
             for (const option of available) {
                 const o = document.createElement('option');
                 o.value = option[0];
@@ -5647,47 +5643,47 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         });
         // Bouton pour accéder aux souscriptions
         container.insertAdjacentHTML('beforeend', `
-    <h5>Souscriptions aux schémas</h5>
+    <h5>Model subscriptions</h5>
     <p class="flow-text">
-        Les schémas de formulaires sont les types de formulaires vous étant proposés à la saisie dans ${home_1.APP_NAME}.
+        Form model are the forms eligibles for filling in ${home_1.APP_NAME}.
         ${UserManager_6.UserManager.logged ? `
-            Consultez et modifiez ici les différents schémas auquel l'application autorise "${UserManager_6.UserManager.username}" à remplir.
+            Manage the differents models that the application allows "${UserManager_6.UserManager.username}" to fill.
         ` : ''}
     </p>
     `);
         const subs_btn = document.createElement('button');
         subs_btn.classList.add('col', 's12', 'purple', 'btn', 'btn-perso', 'btn-small-margins');
-        subs_btn.innerHTML = "Gérer souscriptions";
+        subs_btn.innerHTML = "Manage subcriptions";
         subs_btn.onclick = function () {
             if (UserManager_6.UserManager.logged) {
                 subscriptionsModal();
             }
             else {
-                helpers_10.informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
+                helpers_10.informalBottomModal("Log in", "Subscription management is allowed to logged users only.");
             }
         };
         container.appendChild(subs_btn);
         // Bouton pour actualiser les schémas
         container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
-    <h5>Actualiser les schémas</h5>
+    <h5>Update models</h5>
     <p class="flow-text">
-        Une actualisation automatique est faite à chaque démarrage de l'application.
-        Si vous pensez que les schémas auquel vous avez souscrit ont changé depuis le dernier
-        démarrage, vous pouvez les actualiser.
+        An automatic update is realized at every application start.
+        If you think subscribed models has been changed since the last start, you could
+        update them here.
     </p>
     `);
         const formbtn = document.createElement('button');
         formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
-        formbtn.innerHTML = "Actualiser schémas formulaire";
+        formbtn.innerHTML = "Update models";
         formbtn.onclick = function () {
             if (UserManager_6.UserManager.logged) {
-                helpers_10.askModal("Actualiser les schémas ?", "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE.")
+                helpers_10.askModal("Update form models ?", "Form models will be updated from server.")
                     .then(formActualisationModal)
                     .catch(() => { });
             }
             else {
-                helpers_10.informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+                helpers_10.informalBottomModal("Log in", "Update of form models are only available if you're logged in.");
             }
         };
         container.appendChild(formbtn);
@@ -5696,10 +5692,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
     <h4>Synchronisation</h4>
-    <h5>Arrière-plan</h5>
+    <h5>Background sync</h5>
     <p class="flow-text">
-        L'application tente de synchroniser régulièrement les entrées 
-        si une connexion à Internet est disponible.
+        ${home_1.APP_NAME} tries to periodically sync entries if a good Internet
+        connection is available.
     </p>
     `);
         // Select pour choisir la fréquence de synchro
@@ -5717,7 +5713,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
             SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_5.Settings.sync_freq);
         };
         const select_label = document.createElement('label');
-        select_label.innerText = "Fréquence de synchronisation";
+        select_label.innerText = "Synchronisation interval";
         select_field.appendChild(select_input);
         select_field.appendChild(select_label);
         container.appendChild(select_field);
@@ -5728,7 +5724,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         <p style="margin-bottom: 20px">
             <label>
                 <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_5.Settings.sync_bg ? 'checked' : ''}>
-                <span>Activer la synchronisation en arrière-plan</span>
+                <span>Enable background synchronisation</span>
             </label>
         </p>`);
         document.getElementById('__sync_bg_checkbox_settings').onchange = function () {
@@ -5743,26 +5739,25 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         // Bouton pour forcer sync
         container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
-    <h5>Forcer synchronisation</h5>
+    <h5>Force synchronisation</h5>
     <p class="flow-text">
-        La synchronisation standard se trouve dans la page des entrées.
-        Vous pouvez forcer le renvoi complet des données vers le serveur,
-        y compris celles déjà synchronisées, ici. 
+        Standard sync is located in entries page.
+        You could force full entries data send, even for already synced forms, here.
     </p>
     `);
         const syncbtn = document.createElement('button');
         syncbtn.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
-        syncbtn.innerHTML = "Tout resynchroniser";
+        syncbtn.innerHTML = "Synchronize all";
         syncbtn.onclick = function () {
             if (UserManager_6.UserManager.logged) {
-                helpers_10.askModal("Tout synchroniser ?", "Veillez à disposer d'une bonne connexion à Internet.\
-                Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.", "Oui", "Non", "Vider cache de synchronisation").then(checked_val => {
+                helpers_10.askModal("Synchronize all ?", "Take care of having a decent Internet connection.\
+                Empty cache force to sync all device's files, even if you cancel sync.", "Yes", "No", "Empty sync cache").then(checked_val => {
                     // L'utilisateur a dit oui
                     SyncManager_5.SyncManager.graphicalSync(true, checked_val);
                 });
             }
             else {
-                helpers_10.informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
+                helpers_10.informalBottomModal("Log in", "You should be logged in to perform this action.");
             }
         };
         container.appendChild(syncbtn);
@@ -6043,11 +6038,11 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
     function editAForm(form, name) {
         // Vérifie que le formulaire est d'un type disponible
         if (form.type === null || !FormSchema_6.Schemas.exists(form.type)) {
-            helpers_11.showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
+            helpers_11.showToast("Unable to load this entry.\nUnknwon type of entry.\nPlease check your subscription of this form model: \"" + form.type + "\".", 10000);
             return;
         }
         const current_form = FormSchema_6.Schemas.get(form.type);
-        PageManager_5.PageManager.push(PageManager_5.AppPages.form, "Modifier", { form: current_form, name, save: form });
+        PageManager_5.PageManager.push(PageManager_5.AppPages.form, "Edit", { form: current_form, name, save: form });
     }
     /**
      * Supprime toutes les entrées sauvegardées sur l'appareil
@@ -6055,12 +6050,12 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
     async function deleteAll() {
         const instance = helpers_11.unclosableBottomModal(`
         ${helpers_11.SMALL_PRELOADER}
-        <p class="flow-text">Suppression en cours</p>
+        <p class="flow-text">Removing...</p>
     `);
         PageManager_5.PageManager.lock_return_button = true;
         try {
             await FormSaves_6.FormSaves.clear();
-            helpers_11.showToast("Fichiers supprimés avec succès");
+            helpers_11.showToast("Files has been removed successfully.");
             PageManager_5.PageManager.lock_return_button = false;
             instance.close();
             PageManager_5.PageManager.reload();
@@ -6139,9 +6134,9 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
         // Définit l'événement de clic sur le formulaire
         selector.addEventListener('click', function () {
             const list = [
-                "Modifier",
-                (container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser",
-                "Supprimer"
+                "Edit",
+                (container.dataset.synced === "true" ? "Res" : "S") + "ynchronize",
+                "Remove"
             ];
             helpers_11.askModalList(list)
                 .then(index => {
@@ -6168,16 +6163,16 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
      * @param id Identifiant de l'entrée
      */
     function modalDeleteForm(id) {
-        helpers_11.askModal("Supprimer cette entrée ?", "Vous ne pourrez pas la restaurer ultérieurement.", "Supprimer", "Annuler")
+        helpers_11.askModal("Remove this entry ?", "You will not be able to restore it later.", "Remove", "Cancel")
             .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
                 .then(function () {
-                helpers_11.showToast("Entrée supprimée.");
+                helpers_11.showToast("Entry has beed removed successfully.");
                 PageManager_5.PageManager.reload();
             })
                 .catch(function (err) {
-                helpers_11.showToast("Impossible de supprimer: " + err);
+                helpers_11.showToast("Unable to remove: " + err);
             });
         })
             .catch(() => {
@@ -6196,7 +6191,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
             return FormSaves_6.FormSaves.rm(id);
         }
         else {
-            return Promise.reject("ID invalide");
+            return Promise.reject("Invalid ID");
         }
     }
     /**
@@ -6211,8 +6206,8 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
             await main_11.FILE_HELPER.mkdir(FormSaves_6.ENTRIES_DIR);
         }
         catch (err) {
-            logger_4.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
-            base.innerHTML = helpers_11.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+            logger_4.Logger.error("Unable to create entry directory", err.message, err.stack);
+            base.innerHTML = helpers_11.displayErrorMessage("Error", "Unable to load files. (" + err.message + ")");
             return;
         }
         FormSchema_6.Schemas.onReady()
@@ -6231,7 +6226,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
             /// place en bas, pour les boutons
             base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
             if (files.length === 0) {
-                base.innerHTML = helpers_11.displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
+                base.innerHTML = helpers_11.displayInformalMessage("You have no saved entries.");
             }
             else {
                 //// Bouton de synchronisation
@@ -6242,7 +6237,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
                                 </a>
                             </div>`);
                 syncbtn.onclick = function () {
-                    helpers_11.askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
+                    helpers_11.askModal("Synchronize ?", "Do you want to launch entries synchronisation now ?")
                         .then(() => {
                         return SyncManager_6.SyncManager.inlineSync();
                     })
@@ -6260,11 +6255,11 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
                                 </a>
                             </div>`);
                 delete_btn.addEventListener('click', () => {
-                    helpers_11.askModal("Tout supprimer ?", "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés.")
+                    helpers_11.askModal("Delete all ?", "All saved entries, even potentially unsynced, will be removed.")
                         .then(() => {
                         setTimeout(function () {
                             // Attend que le modal précédent se ferme
-                            helpers_11.askModal("Êtes-vous sûr-e ?", "La suppression est irréversible.", "Annuler", "Supprimer")
+                            helpers_11.askModal("Are you sure ?", "Deletion is irreversible.", "Cancel", "Delete all")
                                 .then(() => {
                                 // @ts-ignore bugfix
                                 document.body.style.overflow = '';
@@ -6285,8 +6280,8 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
             }
         })
             .catch(err => {
-            logger_4.Logger.error("Impossible de charger les fichiers", err.message, err.stack);
-            base.innerHTML = helpers_11.displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+            logger_4.Logger.error("Unable to load files", err.message, err.stack);
+            base.innerHTML = helpers_11.displayErrorMessage("Error", "Unable to load files. (" + err.message + ")");
         });
     }
     exports.initSavedForm = initSavedForm;

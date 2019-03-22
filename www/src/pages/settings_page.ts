@@ -12,17 +12,17 @@ import { Settings, getAvailableLanguages } from '../utils/Settings';
  * Lance la mise à jour des schémas via le serveur
  */
 function formActualisationModal() : void {
-    const instance = initModal({dismissible: false}, getModalPreloader("Actualisation..."));
+    const instance = initModal({dismissible: false}, getModalPreloader("Updating..."));
     instance.open();
 
     Schemas.forceSchemaDownloadFromServer()
         .then(() => {
-            showToast("Actualisation terminée.");
+            showToast("Update complete.");
             instance.close();
             PageManager.reload();
         })
         .catch(() => {
-            showToast("Impossible d'actualiser les schémas.");
+            showToast("Unable to update form models.");
             instance.close();
         })
 }
@@ -36,10 +36,10 @@ export function initSettingsPage(base: HTMLElement) {
 
     base.innerHTML = `
     <div class="container row" id="main_settings_container">
-        <h4>Utilisateur</h4>
+        <h4>User</h4>
         <p class="flow-text no-margin-bottom">${UserManager.logged ? 
-            "Vous êtes connecté-e en tant que <span class='orange-text text-darken-2'>" + UserManager.username + "</span>" 
-            : "Vous n'êtes pas connecté-e"}.</p>
+            "You are currently logged as <span class='orange-text text-darken-2'>" + UserManager.username + "</span>" 
+            : "You are not logged in"}.</p>
     </div>
     `;
 
@@ -50,13 +50,13 @@ export function initSettingsPage(base: HTMLElement) {
 
     if (connecte) {
         button.type = "button";
-        button.innerHTML = "Déconnexion";
+        button.innerHTML = "Log out";
         button.classList.remove('blue');
         button.classList.add('col', 's12', 'red', 'btn', 'btn-perso', 'btn-margins');
 
 
         button.onclick = function() {
-            askModal("Se déconnecter ?", "Vous ne pourrez pas saisir une entrée de formulaire tant que vous ne serez pas reconnecté-e.")
+            askModal("Log out ?", "You can't make new entries until you're logged in again.")
                 .then(function() {
                     // L'utilisateur veut se déconnecter
                     UserManager.unlog();
@@ -69,7 +69,7 @@ export function initSettingsPage(base: HTMLElement) {
     }
     else {
         button.type = "button";
-        button.innerHTML = "Se connecter";
+        button.innerHTML = "Login";
         button.classList.remove('red');
         button.classList.add('col', 's12', 'blue', 'btn', 'btn-perso', 'btn-margins', 'white-text');
 
@@ -84,7 +84,7 @@ export function initSettingsPage(base: HTMLElement) {
     if (!connecte) {
         const createaccbtn = document.createElement('button');
         createaccbtn.classList.add('col', 's12', 'blue-grey', 'btn', 'btn-perso', 'btn-small-margins');
-        createaccbtn.innerHTML = "Créer un compte";
+        createaccbtn.innerHTML = "Create an account";
         createaccbtn.style.marginTop = "-5px";
         createaccbtn.onclick = createNewUser;
         container.appendChild(createaccbtn);
@@ -94,10 +94,10 @@ export function initSettingsPage(base: HTMLElement) {
     container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
-    <h4>Formulaires</h4>
-    <h5>Schéma actif</h5>
+    <h4>Forms</h4>
+    <h5>Active model</h5>
     <p class="flow-text">
-        Ce schéma d'entrée correspond à celui proposé dans la page "Nouvelle entrée".
+        Active model is the model to the proposed one in "new entry" page.
     </p>
     `);
     // Choix du formulaire actif
@@ -107,7 +107,7 @@ export function initSettingsPage(base: HTMLElement) {
     container.appendChild(select);
     
     Schemas.onReady(function() {
-        const available = [["", "Aucun"], ...Schemas.available()];
+        const available = [["", "None"], ...Schemas.available()];
 
         for (const option of available) {
             const o = document.createElement('option');
@@ -133,24 +133,24 @@ export function initSettingsPage(base: HTMLElement) {
 
     // Bouton pour accéder aux souscriptions
     container.insertAdjacentHTML('beforeend', `
-    <h5>Souscriptions aux schémas</h5>
+    <h5>Model subscriptions</h5>
     <p class="flow-text">
-        Les schémas de formulaires sont les types de formulaires vous étant proposés à la saisie dans ${APP_NAME}.
+        Form model are the forms eligibles for filling in ${APP_NAME}.
         ${UserManager.logged ? `
-            Consultez et modifiez ici les différents schémas auquel l'application autorise "${UserManager.username}" à remplir.
+            Manage the differents models that the application allows "${UserManager.username}" to fill.
         ` : ''}
     </p>
     `);
 
     const subs_btn = document.createElement('button');
     subs_btn.classList.add('col', 's12', 'purple', 'btn', 'btn-perso', 'btn-small-margins');
-    subs_btn.innerHTML = "Gérer souscriptions";
+    subs_btn.innerHTML = "Manage subcriptions";
     subs_btn.onclick = function() {
         if (UserManager.logged) {
             subscriptionsModal();
         }
         else {
-            informalBottomModal("Connectez-vous", "La gestion des souscriptions à des schémas est uniquement possible en étant connecté.");
+            informalBottomModal("Log in", "Subscription management is allowed to logged users only.");
         }
     }
     container.appendChild(subs_btn);
@@ -158,28 +158,28 @@ export function initSettingsPage(base: HTMLElement) {
     // Bouton pour actualiser les schémas
     container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
-    <h5>Actualiser les schémas</h5>
+    <h5>Update models</h5>
     <p class="flow-text">
-        Une actualisation automatique est faite à chaque démarrage de l'application.
-        Si vous pensez que les schémas auquel vous avez souscrit ont changé depuis le dernier
-        démarrage, vous pouvez les actualiser.
+        An automatic update is realized at every application start.
+        If you think subscribed models has been changed since the last start, you could
+        update them here.
     </p>
     `);
 
     const formbtn = document.createElement('button');
     formbtn.classList.add('col', 's12', 'green', 'btn', 'btn-perso', 'btn-small-margins');
-    formbtn.innerHTML = "Actualiser schémas formulaire";
+    formbtn.innerHTML = "Update models";
     formbtn.onclick = function() {
         if (UserManager.logged) {
             askModal(
-                "Actualiser les schémas ?", 
-                "L'actualisation des schémas de formulaire récupèrera les schémas à jour depuis le serveur du LBBE."
+                "Update form models ?", 
+                "Form models will be updated from server."
             )
             .then(formActualisationModal)
             .catch(() => {});
         }
         else {
-            informalBottomModal("Connectez-vous", "L'actualisation des schémas est uniquement possible en étant connecté.");
+            informalBottomModal("Log in", "Update of form models are only available if you're logged in.");
         }
     }
     container.appendChild(formbtn);
@@ -189,10 +189,10 @@ export function initSettingsPage(base: HTMLElement) {
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
     <h4>Synchronisation</h4>
-    <h5>Arrière-plan</h5>
+    <h5>Background sync</h5>
     <p class="flow-text">
-        L'application tente de synchroniser régulièrement les entrées 
-        si une connexion à Internet est disponible.
+        ${APP_NAME} tries to periodically sync entries if a good Internet
+        connection is available.
     </p>
     `);
 
@@ -214,7 +214,7 @@ export function initSettingsPage(base: HTMLElement) {
     };
 
     const select_label = document.createElement('label');
-    select_label.innerText = "Fréquence de synchronisation";
+    select_label.innerText = "Synchronisation interval";
     select_field.appendChild(select_input);
     select_field.appendChild(select_label);
 
@@ -228,7 +228,7 @@ export function initSettingsPage(base: HTMLElement) {
         <p style="margin-bottom: 20px">
             <label>
                 <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings.sync_bg ? 'checked' : ''}>
-                <span>Activer la synchronisation en arrière-plan</span>
+                <span>Enable background synchronisation</span>
             </label>
         </p>`);
 
@@ -245,33 +245,32 @@ export function initSettingsPage(base: HTMLElement) {
     // Bouton pour forcer sync
     container.insertAdjacentHTML('beforeend', `
     <div class="clearb"></div>
-    <h5>Forcer synchronisation</h5>
+    <h5>Force synchronisation</h5>
     <p class="flow-text">
-        La synchronisation standard se trouve dans la page des entrées.
-        Vous pouvez forcer le renvoi complet des données vers le serveur,
-        y compris celles déjà synchronisées, ici. 
+        Standard sync is located in entries page.
+        You could force full entries data send, even for already synced forms, here.
     </p>
     `);
 
     const syncbtn = document.createElement('button');
     syncbtn.classList.add('col', 's12', 'orange', 'btn', 'btn-perso', 'btn-small-margins');
-    syncbtn.innerHTML = "Tout resynchroniser";
+    syncbtn.innerHTML = "Synchronize all";
     syncbtn.onclick = function() {
         if (UserManager.logged) {
             askModal(
-                "Tout synchroniser ?", 
-                "Veillez à disposer d'une bonne connexion à Internet.\
-                Vider le cache obligera à resynchroniser tout l'appareil, même si vous annulez la synchronisation.",
-                "Oui",
-                "Non",
-                "Vider cache de synchronisation"
+                "Synchronize all ?", 
+                "Take care of having a decent Internet connection.\
+                Empty cache force to sync all device's files, even if you cancel sync.",
+                "Yes",
+                "No",
+                "Empty sync cache"
             ).then(checked_val => {
                 // L'utilisateur a dit oui
                 SyncManager.graphicalSync(true, checked_val);
             });
         }
         else {
-            informalBottomModal("Connectez-vous", "Vous devez vous connecter pour effectuer cette action.");
+            informalBottomModal("Log in", "You should be logged in to perform this action.");
         }
     }
     container.appendChild(syncbtn);

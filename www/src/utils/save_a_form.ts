@@ -35,9 +35,9 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
     // Ouverture du modal de verification
     const modal = getModal();
     const instance = initModal({ dismissible: false, outDuration: 100 }, getModalPreloader(
-        "Vérification du formulaire en cours",
+        "Checking form...",
         `<div class="modal-footer">
-            <a href="#!" class="btn-flat red-text modal-close">Annuler</a>
+            <a href="#!" class="btn-flat red-text modal-close">Cancel</a>
         </div>`
     ));
 
@@ -66,12 +66,12 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
     // (si il n'est pas requis, affiche un warning, sinon une erreur)
     if (!current_form.no_location && !location_str) {
         if (current_form.skip_location)
-            elements_warn.push(["Lieu", "Aucun lieu n'a été précisé.", location_element.parentElement]);
+            elements_warn.push(["Location", "No place has been selected.", location_element.parentElement]);
         else
-            elements_failed.push(["Lieu", "Aucun lieu n'a été précisé.", location_element.parentElement]);
+            elements_failed.push(["Location", "No place has been selected.", location_element.parentElement]);
     }
     if (location_str === UNKNOWN_NAME) {
-        elements_warn.push(["Lieu", "Le lieu choisi est un lieu inexistant.", location_element.parentElement]);
+        elements_warn.push(["Location", "Choosen place is an inexistant place.", location_element.parentElement]);
     }
 
     // Input classiques: checkbox/slider, text, textarea, select, number
@@ -95,17 +95,17 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
         if (element.tagName === "INPUT" && element.type === "checkbox") {
             if ((element as HTMLInputElement).indeterminate) {
                 if (element.required) {
-                    elements_failed.push([(element.nextElementSibling as HTMLElement).innerText, "Ce champ est requis.", element.parentElement]);
+                    elements_failed.push([(element.nextElementSibling as HTMLElement).innerText, "Required field.", element.parentElement]);
                 }
                 else {
-                    elements_warn.push([(element.nextElementSibling as HTMLElement).innerText, "Vous n'avez pas interagi avec ce champ.", element.parentElement]);
+                    elements_warn.push([(element.nextElementSibling as HTMLElement).innerText, "You have not interacted with this field.", element.parentElement]);
                 }
             }
         }
         // Si l'élément est requis mais qu'il n'a aucune valeur
         else if (element.required && !element.value) {
             if (element.tagName !== "SELECT" || (element.multiple && ($(element).val() as string[]).length === 0)) {
-                elements_failed.push([name, "Champ requis", element.parentElement]);
+                elements_failed.push([name, "Required field.", element.parentElement]);
             }
         }
         else {
@@ -115,27 +115,27 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
             if (Object.keys(contraintes).length > 0 || element.type === "number") {
                 if (element.type === "text" || element.tagName === "textarea") {
                     if (typeof contraintes.min !== 'undefined' && element.value.length < contraintes.min) {
-                        str += "La taille du texte doit être égale ou supérieure à " + contraintes.min + " caractères. ";
+                        str += "Text length should be equal or greater to " + contraintes.min + " characters. ";
                     }
                     if (typeof contraintes.max !== 'undefined' && element.value.length > contraintes.max) {
-                        str += "La taille du texte doit être égale ou inférieure à " + contraintes.max + " caractères. ";
+                        str += "Text length should be equal or less than " + contraintes.max + " characters. ";
                     }
                 }
                 else if (element.type === "number" && element.value !== "") {
                     if (element.validity.rangeUnderflow) {
-                        str += "Le nombre doit être égal ou supérieur à " + (element as HTMLInputElement).min + ". ";
+                        str += "Number should be equal or greater to " + (element as HTMLInputElement).min + ". ";
                     }
                     if (element.validity.rangeOverflow) {
-                        str += "Le nombre doit être égal ou inférieur à " + (element as HTMLInputElement).max + ". ";
+                        str += "Number should be equal or less than " + (element as HTMLInputElement).max + ". ";
                     }
 
                     // Vérification de la précision
                     if ((element as HTMLInputElement).step) {
                         if (element.validity.stepMismatch) {
-                            str += "Le nombre doit avoir une précision de " + (element as HTMLInputElement).step + ". ";
+                            str += "Number should have a precision of " + (element as HTMLInputElement).step + ". ";
                         }
                         else if (element.value.indexOf('.') === -1) {
-                            str += "Le nombre doit être à virgule. ";
+                            str += "Number should have floating point. ";
                         }
                     }
                 }
@@ -145,7 +145,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
             // Le warning ne peut pas s'afficher pour les éléments non requis: de toute façon, si ils
             // sont vides, la vérification lève une erreur fatale.
             if (contraintes.suggest && !element.required && element.value === "") {
-                str += "Cet élément ne devrait pas être vide. ";
+                str += "This element should not be empty. ";
             }
 
             if (str) {
@@ -172,7 +172,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
                 name = label.dataset.label;
             }
 
-            elements_failed.push([name, "Fichier requis", filei.parentElement]);
+            elements_failed.push([name, "Required file", filei.parentElement]);
         }
     }
 
@@ -181,7 +181,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
         const hiddeni = e as HTMLInputElement;
 
         if (!hiddeni.value) {
-            elements_failed.push([hiddeni.dataset.label, "Enregistrement audio requis", hiddeni.parentElement]);
+            elements_failed.push([hiddeni.dataset.label, "Required audio record", hiddeni.parentElement]);
         }
     }
 
@@ -192,13 +192,13 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
     if (elements_warn.length > 0 || elements_failed.length > 0) {
         const par = document.createElement('p');
         par.classList.add('flow-text', 'no-margin-top');
-        par.innerText = "Des erreurs "+ (!elements_failed.length ? 'potentielles' : '') +" ont été détectées.";
+        par.innerText = (!elements_failed.length ? 'Potential e' : 'E') +"rrors has been detected.";
         container.appendChild(par);
 
         if (!elements_failed.length) {
             const tinypar = document.createElement('p');
             tinypar.style.marginTop = "-15px";
-            tinypar.innerText = "Veuillez vérifier votre saisie avant de continuer.";
+            tinypar.innerText = "Please check your typing.";
             container.appendChild(tinypar);
         }
 
@@ -243,12 +243,12 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
         // On affiche un message de succès
         const title = document.createElement('h5');
         title.classList.add('no-margin-top');
-        title.innerText = "Résumé";
+        title.innerText = "Sum up";
         container.appendChild(title);
 
         const par = document.createElement('p');
         par.classList.add('flow-text');
-        par.innerText = "Votre saisie ne contient aucune erreur. Vous pouvez désormais enregistrer cette entrée.";
+        par.innerText = "This entry does not contains errors. You could save your work now.";
         container.appendChild(par);
     }
 
@@ -259,7 +259,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
     const cancel_btn = document.createElement('a');
     cancel_btn.href = "#!";
     cancel_btn.classList.add('btn-flat', 'left', 'modal-close', 'red-text');
-    cancel_btn.innerText = "Corriger";
+    cancel_btn.innerText = "Correct";
 
     footer.appendChild(cancel_btn);
 
@@ -268,7 +268,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
         const save_btn = document.createElement('a');
         save_btn.href = "#!";
         save_btn.classList.add('btn-flat', 'right', 'green-text');
-        save_btn.innerText = "Sauvegarder";
+        save_btn.innerText = "Save";
 
         save_btn.onclick = function() {
             modal.innerHTML = getModalPreloader("Sauvegarde en cours");
@@ -282,7 +282,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
 
                     if (form_save) {
                         instance.close();
-                        showToast("Écriture de l'entrée et de ses données réussie.");
+                        showToast("Entry has been saved successfully.");
 
                         // On vient de la page d'édition de formulaire déjà créés
                         PageManager.pop();
@@ -292,14 +292,14 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
                         // On demande si on veut faire une nouvelle entrée
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="no-margin-top">Entrée enregistrée avec succès</h5>
+                            <h5 class="no-margin-top">Entry saved successfully</h5>
                             <p class="flow-text">
-                                Voulez-vous saisir une nouvelle entrée ?
+                                Do you want to begin a new entry ?
                             </p>
                         </div>
                         <div class="modal-footer">
-                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">Non</a>
-                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Oui</a>
+                            <a href="#!" id="__after_save_entries" class="modal-close btn-flat blue-text left">No</a>
+                            <a href="#!" id="__after_save_new" class="modal-close btn-flat green-text right">Yes</a>
                             <div class="clearb"></div>
                         </div>
                         `;
@@ -319,14 +319,14 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
                 .catch((error) => {
                     modal.innerHTML = `
                     <div class="modal-content">
-                        <h5 class="no-margin-top red-text">Erreur</h5>
+                        <h5 class="no-margin-top red-text">Error</h5>
                         <p class="flow-text">
-                            Impossible d'enregistrer cette entrée.
-                            Veuillez réessayer.
+                            Unable to save this entry.
+                            Please try again.
                         </p>
                     </div>
                     <div class="modal-footer">
-                        <a href="#!" class="btn-flat right red-text modal-close">Fermer</a>
+                        <a href="#!" class="btn-flat right red-text modal-close">Close</a>
                         <div class="clearb"></div>
                     </div>
                     `;

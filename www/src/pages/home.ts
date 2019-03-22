@@ -17,14 +17,12 @@ export async function initHomePage(base: HTMLElement) {
     <div class="container relative-container">
         <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>
         <p class="flow-text center">
-            Bienvenue dans ${APP_NAME}, l'application qui facilite le suivi d'espèces 
-            sur le terrain !
+            Welcome to ${APP_NAME}, the application that makes specie tracking easy !
         </p>
         <p class="flow-text red-text">
             ${!UserManager.logged ? `
-                Vous n'êtes pas connecté dans l'application. Vous ne serez pas en mesure de
-                saisir de nouvelles entrées sans être authentifié. Veuillez vous connecter via
-                les paramètres de l'application.
+                You are not currently logged in. You will not be able to make new entries
+                without being authentificated. Please log in into settings.
             ` : ''}
         </p>
         <div id="__home_container"></div>
@@ -44,32 +42,31 @@ export async function initHomePage(base: HTMLElement) {
         if (hasGoodConnection()) {
             if (remaining_count > 15) {
                 home_container.innerHTML = createCardPanel(
-                    `<span class="blue-text text-darken-2">Vous avez beaucoup d'éléments à synchroniser (${remaining_count} entrées).</span><br>
-                    <span class="blue-text text-darken-2">Rendez-vous dans les entrées pour lancer la synchronisation.</span>`,
+                    `<span class="blue-text text-darken-2">You have many elements to sync (${remaining_count} entries).</span><br>
+                    <span class="blue-text text-darken-2">Please go to the entries section to start synchronisation.</span>`,
                     "Synchronisation"
                 );
             }
             else if (remaining_count > 0) {
                 home_container.innerHTML = createCardPanel(
                     `<span class="blue-text text-darken-2">
-                        Vous avez ${remaining_count} entrée${remaining_count > 1 ? 's' : ''} en attente de synchronisation.
+                        You have ${remaining_count} waiting to sync entr${remaining_count > 1 ? 'ies' : 'y'}.
                     </span>`
                 );
             }
         }
         else if (remaining_count > 0) {
             home_container.innerHTML = createCardPanel(`
-                <span class="blue-text text-darken-2">Vous avez des éléments en attente de synchronisation.</span><br>
-                <span class="red-text text-darken-2">Lorsque vous retrouverez une bonne connexion Internet,</span>
-                <span class="blue-text text-darken-2">lancez une synchronisation dans les paramètres.</span>`
+                <span class="blue-text text-darken-2">You have entries that wait synchronisation.</span><br>
+                <span class="red-text text-darken-2">When you'll have a good Internet connection again,</span>
+                <span class="blue-text text-darken-2">please start a new synchronisation.</span>`
             );
         }
     } catch (e) {
         home_container.innerHTML = createCardPanel(
-            `<span class="red-text text-darken-2">Impossible de relever les entrées disponibles.</span><br>
-            <span class="red-text text-darken-2">Cette erreur est possiblement grave. 
-            Nous vous conseillons de ne pas enregistrer d'entrée.</span>`,
-            "Erreur"
+            `<span class="red-text text-darken-2">Unable to fetch waiting to sync entries.</span><br>
+            <span class="red-text text-darken-2">This error could be serious.</span>`,
+            "Error"
         );
     }
 
@@ -77,7 +74,7 @@ export async function initHomePage(base: HTMLElement) {
     if (UserManager.logged) {
         home_container.insertAdjacentHTML('beforeend', createCardPanel(
             `<span class="grey-text text-darken-1">${UserManager.username}</span>
-            <span class="blue-text text-darken-2">est connecté-e.</span>`
+            <span class="blue-text text-darken-2">is logged in.</span>`
         ));
     }
 
@@ -93,15 +90,14 @@ export async function initHomePage(base: HTMLElement) {
         
 
         home_container.insertAdjacentHTML('beforeend', createCardPanel(
-            `<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
-            ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`
+            `<span class="blue-text text-darken-2">${nb_files === 0 ? 'No' : nb_files} entr${nb_files > 1 ? 'ies' : 'y'} 
+            ${nb_files > 1 ? 'are' : 'is'} stored into this device.</span>`
         ));
     } catch (e) {
         // Impossible d'obtenir les fichiers
         home_container.insertAdjacentHTML('beforeend', createCardPanel(
-            `<span class="red-text text-darken-2">Impossible d'obtenir la liste des fichiers présents sur l'appareil.</span><br>
-            <span class="red-text text-darken-2">Cette erreur est probablement grave. 
-            Nous vous conseillons de ne pas tenter d'enregistrer d'entrée et de vérifier votre stockage interne.</span>`
+            `<span class="red-text text-darken-2">Unable to list existing files into this devices.</span><br>
+            <span class="red-text text-darken-2">This error could be serious. Please check your internal storage.</span>`
         ));
     }
 
@@ -112,7 +108,7 @@ export async function initHomePage(base: HTMLElement) {
             // Navigation vers nichoir
             home_container.insertAdjacentHTML('beforeend',
                 `<div class="divider divider-margin big"></div>
-                <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${Schemas.current.name.toLowerCase()}</h6>`
+                <h6 style="margin-left: 10px; font-size: 1.25rem">Navigate to an habitat of ${Schemas.current.name.toLowerCase()}</h6>`
             );
 
             createLocationInputSelector(home_container, document.createElement('input'), locations, true);

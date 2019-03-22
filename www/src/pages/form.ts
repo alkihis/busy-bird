@@ -152,7 +152,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                 location.value = `${filled_form.location} - ${label_location.label}`;
             }
             else if (filled_form.location !== null) {
-                showToast("Attention: La localisation de cette entrée n'existe plus dans le schéma du formulaire.");
+                showToast("Warning: Entry location does not exists in form model.");
             }
         }
 
@@ -303,7 +303,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                         else {
                             // Affichage forcé en toast Materialize:
                             // La reconnaissance vocale ouvre un toast natif qui masquerait celui-ci
-                            M.toast({html: "Nombre incorrect reconnu."});
+                            M.toast({html: "Unknown number recognized."});
                         }
                     });
                 });
@@ -521,7 +521,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                 const sel_opt = Array.from(htmle.options).map(e => [e.label, e.value]);
 
                 mic_btn.firstChild.addEventListener('click', function() {
-                    prompt("Parlez maintenant", true).then(function(value) {
+                    prompt("Speak now", true).then(function(value) {
                         let val: string | string[]
                         
                         if (htmle.multiple)
@@ -543,7 +543,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                         }
                         else {
                             // Force M.toast: Les toasts natifs ne s'affichent pas à cause du toast affiché par Google
-                            M.toast({html:"Aucune option ne correspond à votre demande"});
+                            M.toast({html: "Any option has matched your speech"});
                         }
                     });
                 });
@@ -726,7 +726,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                 delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
 
                 delete_file_btn.onclick = () => {
-                    askModal("Supprimer ce fichier ?", "")
+                    askModal("Remove this file ?", "")
                         .then(() => {
                             // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
                             input.dataset.toremove = "true";
@@ -791,7 +791,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             const button = document.createElement('button');
             button.classList.add('btn', 'blue', 'col', 's12', 'btn-perso');
 
-            button.innerText = "Enregistrement audio";
+            button.innerText = "Audio record";
             button.type = "button";
 
             const real_input = document.createElement('input');
@@ -816,20 +816,20 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                         button.classList.add('green');
                         real_input.value = base64 as string;
                         const duration = (((base64 as string).length * 0.7) / (MP3_BITRATE * 1000)) * 8;
-                        button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
+                        button.innerText = "Record (" + duration.toFixed(0) + "s" + ")";
                     })
                     .catch(err => {
-                        Logger.warn("Impossible de charger le fichier", err);
+                        Logger.warn("Unable to load file", err);
                     });
 
                 // On crée un bouton "supprimer ce fichier"
                 // pour supprimer l'entrée existante
                 delete_file_btn = document.createElement('div');
                 delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
-                delete_file_btn.innerText = "Supprimer ce fichier";
+                delete_file_btn.innerText = "Delete this file";
 
                 delete_file_btn.onclick = () => {
-                    askModal("Supprimer ce fichier ?", "")
+                    askModal("Delete this file ?", "")
                         .then(() => {
                             // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
                             real_input.dataset.toremove = "true";
@@ -837,7 +837,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                             delete_file_btn.remove();
 
                             button.className = 'btn blue col s12 btn-perso';
-                            button.innerText = "Enregistrement audio";
+                            button.innerText = "Audio record";
                         })
                         .catch(() => {});
                 };
@@ -852,7 +852,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                         real_input.dataset.duration = recres.duration.toString();
             
                         // Met à jour le bouton
-                        button.innerText = "Enregistrement (" + recres.duration.toFixed(0) + "s" + ")";
+                        button.innerText = "Record (" + recres.duration.toFixed(0) + "s" + ")";
                         button.classList.remove('blue');
                         button.classList.add('green');
                     })
@@ -935,8 +935,8 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
             if (Schemas.current_key === null) {
                 // Aucun formulaire n'est chargé !
                 base.innerHTML = displayErrorMessage(
-                    "Aucun schéma n'est chargé.", 
-                    "Sélectionnez le schéma de formulaire à utiliser dans les paramètres."
+                    "No form model is loaded.", 
+                    "Select model to use in settings."
                 );
                 PageManager.should_wait = false;
             }
@@ -959,8 +959,8 @@ export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mo
     if (!edition_mode && !UserManager.logged) {
         // Si on est en mode création et qu'on est pas connecté
         base.innerHTML = base.innerHTML = displayErrorMessage(
-            "Vous devez vous connecter pour saisir une nouvelle entrée.", 
-            "Connectez-vous dans les paramètres."
+            "You have to login to register a new entry.", 
+            "Login in settings."
         );
         PageManager.should_wait = false;
         return;
@@ -1056,10 +1056,10 @@ function callLocationSelector(current_form: Schema) : void {
     // Ouvre le modal et insère un chargeur
     instance.open();
     modal.innerHTML = getModalPreloader(
-        "Recherche de votre position...\nCeci peut prendre jusqu'à 30 secondes.",
+        "Finding you location...\nThis could take up to 30 seconds",
         `<div class="modal-footer">
-            <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Saisie manuelle</a>
-            <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Annuler</a>
+            <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Manual mode</a>
+            <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Cancel</a>
             <div class="clearb"></div>
         </div>`
     );
@@ -1117,7 +1117,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
 
     // Sélection manuelle
     const title = document.createElement('h5');
-    title.innerText = "Sélection manuelle";
+    title.innerText = "Manual select";
     content.appendChild(title);
 
     // Vide le modal actuel et le remplace par le contenu et footer créés
@@ -1149,7 +1149,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
 
         // Titre
         const title = document.createElement('h5');
-        title.innerText = "Lieux proches";
+        title.innerText = "Near locations";
         content.appendChild(title);
 
         // Construction de la liste des lieux proches
@@ -1181,10 +1181,10 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
         // Affichage d'une erreur: géolocalisation impossible
         const error = document.createElement('h6');
         error.classList.add('red-text');
-        error.innerText = "Impossible de vous géolocaliser.";
+        error.innerText = "Unable to find your location.";
         const subtext = document.createElement('div');
         subtext.classList.add('red-text', 'flow-text');
-        subtext.innerText = "Choisissez un lieu manuellement.";
+        subtext.innerText = "Please choose a place.";
 
         content.appendChild(error);
         content.appendChild(subtext);
@@ -1197,7 +1197,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
     ok.classList.add("btn-flat", "green-text", "right");
     ok.addEventListener('click', function() {
         if (input.value.trim() === "") {
-            showToast("Vous devez préciser un lieu.");
+            showToast("You must specify a place.");
         }
         else if (input.value in labels_to_name) {
             const loc_input = document.getElementById('__location__id') as HTMLInputElement;
@@ -1210,7 +1210,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
             modal.classList.remove('modal-fixed-footer');
         }
         else {
-            showToast("Le lieu entré n'a aucune correspondance dans la base de données.");
+            showToast("Entered place has no matching correspondance in places database.");
         }
     });
     footer.appendChild(ok);

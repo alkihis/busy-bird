@@ -3,7 +3,7 @@ import { Settings } from "./Settings";
 // options de la reconnaissance vocale
 let vocal_recognition_options: {language: string, prompt: string} = {
     language: "",
-    prompt: "Parlez maintenant"
+    prompt: "Talk now"
 };
 
 export function talk(sentence: string) : Promise<void> {
@@ -24,7 +24,7 @@ export function talk(sentence: string) : Promise<void> {
  * @param as_array Au lieu de renvoyer la phrase la plus probable dite par l'utilisateur, renvoie toutes les possibilités
  * @returns Promesse résolue contenant le texte dicté si réussi. Dans tous les autres cas, promesse rompue.
  */
-export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Promise<string | string[]> {
+export function prompt(prompt_text = "Talk now", as_array = false) : Promise<string | string[]> {
     return new Promise(function(resolve, reject) {
         vocal_recognition_options = {
             language: Settings.voice_lang,

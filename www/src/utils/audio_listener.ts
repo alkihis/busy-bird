@@ -21,7 +21,7 @@ export function newModalRecord(title: string, default_value?: string) : Promise<
     let recorder: any = null;
 
     const modal = getModal();
-    const instance = initModal({}, getModalPreloader("Chargement"));
+    const instance = initModal({}, getModalPreloader("Loading"));
 
     instance.open();
     let audioContent: string | null = null;
@@ -30,20 +30,20 @@ export function newModalRecord(title: string, default_value?: string) : Promise<
     modal.innerHTML = `
     <div class="modal-content">
         <h5 style="margin-top: 0;">${title}</h5>
-        <p style="margin-top: 0; margin-bottom: 25px;">Approchez votre micro de la source, puis appuyez sur enregistrer.</p>
-        <a href="#!" class="btn col s12 orange" id="__media_record_record">Enregistrer</a>
-        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Arrêter</a>
+        <p style="margin-top: 0; margin-bottom: 25px;">Approach your microphone from the source, then tap record.</p>
+        <a href="#!" class="btn col s12 orange" id="__media_record_record">Record</a>
+        <a href="#!" class="btn hide col s12 red" id="__media_record_stop">Stop</a>
         <div class=clearb></div>
         <div id="__media_record_player" class="modal-record-audio-player">${default_value ? `
             <figure>
-                <figcaption>Enregistrement</figcaption>
+                <figcaption>Record</figcaption>
                 <audio controls src="${default_value}"></audio>
             </figure>
         ` : ''}</div>
     </div>
     <div class="modal-footer">
-        <a href="#!" class="btn-flat green-text right ${default_value ? "" : "hide"}" id="__media_record_save">Sauvegarder</a>
-        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Annuler</a>
+        <a href="#!" class="btn-flat green-text right ${default_value ? "" : "hide"}" id="__media_record_save">Save</a>
+        <a href="#!" class="btn-flat red-text left" id="__media_record_cancel">Cancel</a>
         <div class="clearb"></div>
     </div>
     `;
@@ -57,7 +57,7 @@ export function newModalRecord(title: string, default_value?: string) : Promise<
     function startRecording() {
         btn_start.classList.add('hide');
         player.innerHTML = `<p class='flow-text center'>
-            Initialisation...
+            Loading...
         </p>`;
 
         // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
@@ -68,19 +68,19 @@ export function newModalRecord(title: string, default_value?: string) : Promise<
         recorder.start().then(function() {
             player.innerHTML = `<p class='flow-text center'>
                 <i class='material-icons blink fast v-bottom red-text'>mic</i><br>
-                Enregistrement en cours
+                Recording
             </p>`;
             btn_stop.classList.remove('hide');
         }).catch((e: Error) => {
-            Logger.error("Impossible de lancer l'écoute.", e);
-            player.innerHTML = "<p class='flow-text center red-text bold-text'>Impossible de lancer l'écoute.</p>";
+            Logger.error("Unable to start record.", e);
+            player.innerHTML = "<p class='flow-text center red-text bold-text'>Unable to start record.</p>";
         });
     }
     
     function stopRecording() {
         // Once you are done singing your best song, stop and get the mp3.
         btn_stop.classList.add('hide');
-        player.innerHTML = "<p class='flow-text center'>Conversion en cours...</p>";
+        player.innerHTML = "<p class='flow-text center'>Conversion in progress...</p>";
 
         recorder
             .stop()
@@ -95,15 +95,15 @@ export function newModalRecord(title: string, default_value?: string) : Promise<
     
                 btn_confirm.classList.remove('hide');
                 player.innerHTML = `<figure>
-                    <figcaption>Enregistrement</figcaption>
+                    <figcaption>Record</figcaption>
                     <audio controls src="${base64}"></audio>
                 </figure>`;
     
                 btn_start.classList.remove('hide');
             })
             .catch((e: Error) => {
-                M.toast({html:'Impossible de lire votre enregistrement'});
-                Logger.error("Enregistrement échoué:", e.message);
+                M.toast({html:'Unable to read your record'});
+                Logger.error("Failed to record:", e.message);
             });
     }
 

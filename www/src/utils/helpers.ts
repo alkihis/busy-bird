@@ -351,7 +351,7 @@ export function urlToBlob(str: string) : Promise<Blob> {
  * @param info string Information
  * @param text_close string Texte affiché sur le bouton de fermeture
  */
-export function informalBottomModal(title: string, info: string, text_close = "Fermer") : void {
+export function informalBottomModal(title: string, info: string, text_close = "Close") : void {
     const modal = getBottomModal();
     const instance = initBottomModal();
 
@@ -399,7 +399,7 @@ export function unclosableBottomModal(content: string) : M.Modal {
  * @returns {Promise<void | boolean>} Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
  * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
  */
-export function askModal(title: string, question: string, text_yes = "Oui", text_no = "Non", checkbox?: string) : Promise<any> {
+export function askModal(title: string, question: string, text_yes = "Yes", text_no = "No", checkbox?: string) : Promise<any> {
     const modal = getBottomModal();
     const instance = initBottomModal({ dismissible: false });
 
@@ -558,13 +558,13 @@ export function showToast(message: string, duration: number = 4000) : void {
  */
 export function convertMinutesToText(min: number) : string {
     if (min < 60) {
-        return `${min} minutes`;
+        return `${min} min`;
     }
     else {
         const hours = Math.trunc(min / 60);
         const minutes = Math.trunc(min % 60);
 
-        return `${hours} heure${hours > 1 ? 's' : ''} ${minutes || ""}`;
+        return `${hours}h ${minutes || ""}`;
     }
 }
 
@@ -617,7 +617,7 @@ export function askModalList(items: string[]) : Promise<number> {
  */
 export async function createRandomForms(count: number = 50) : Promise<void> {
     if (Schemas.current_key === null) {
-        throw "Impossible de créer une entrée sans base";
+        throw "Unable to create entries without form model";
     }
 
     const current = Schemas.get(Schemas.current_key);

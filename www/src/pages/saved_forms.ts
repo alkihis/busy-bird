@@ -20,13 +20,13 @@ enum SaveState {
 function editAForm(form: FormSave, name: string) {
     // Vérifie que le formulaire est d'un type disponible
     if (form.type === null || !Schemas.exists(form.type)) {
-        showToast("Impossible de charger ce fichier.\nLe type de cette entrée est indisponible.\nVérifiez que vous avez souscrit à ce schéma de formulaire: \"" + form.type + "\".", 10000);
+        showToast("Unable to load this entry.\nUnknwon type of entry.\nPlease check your subscription of this form model: \"" + form.type + "\".", 10000);
         return;
     }
 
     const current_form = Schemas.get(form.type);
 
-    PageManager.push(AppPages.form, "Modifier", { form: current_form, name, save: form });
+    PageManager.push(AppPages.form, "Edit", { form: current_form, name, save: form });
 }
 
 /**
@@ -35,7 +35,7 @@ function editAForm(form: FormSave, name: string) {
 async function deleteAll(): Promise<any> {
     const instance = unclosableBottomModal(`
         ${SMALL_PRELOADER}
-        <p class="flow-text">Suppression en cours</p>
+        <p class="flow-text">Removing...</p>
     `);
 
     PageManager.lock_return_button = true;
@@ -43,7 +43,7 @@ async function deleteAll(): Promise<any> {
     try {
         await FormSaves.clear();
 
-        showToast("Fichiers supprimés avec succès");
+        showToast("Files has been removed successfully.");
 
         PageManager.lock_return_button = false;
         instance.close();
@@ -137,9 +137,9 @@ async function appendFileEntry(json: File, ph: HTMLElement) {
     // Définit l'événement de clic sur le formulaire
     selector.addEventListener('click', function () {
         const list = [
-            "Modifier",
-            (container.dataset.synced === "true" ? "Res" : "S") + "ynchroniser",
-            "Supprimer"
+            "Edit",
+            (container.dataset.synced === "true" ? "Res" : "S") + "ynchronize",
+            "Remove"
         ];
 
         askModalList(list)
@@ -170,16 +170,16 @@ async function appendFileEntry(json: File, ph: HTMLElement) {
  * @param id Identifiant de l'entrée
  */
 function modalDeleteForm(id: string) {
-    askModal("Supprimer cette entrée ?", "Vous ne pourrez pas la restaurer ultérieurement.", "Supprimer", "Annuler")
+    askModal("Remove this entry ?", "You will not be able to restore it later.", "Remove", "Cancel")
         .then(() => {
             // L'utilisateur demande la suppression
             deleteForm(id)
                 .then(function () {
-                    showToast("Entrée supprimée.");
+                    showToast("Entry has beed removed successfully.");
                     PageManager.reload();
                 })
                 .catch(function (err) {
-                    showToast("Impossible de supprimer: " + err);
+                    showToast("Unable to remove: " + err);
                 });
         })
         .catch(() => {
@@ -200,7 +200,7 @@ function deleteForm(id: string): Promise<void> {
         return FormSaves.rm(id);
     }
     else {
-        return Promise.reject("ID invalide");
+        return Promise.reject("Invalid ID");
     }
 }
 
@@ -217,8 +217,8 @@ export async function initSavedForm(base: HTMLElement) {
     try {
         await FILE_HELPER.mkdir(ENTRIES_DIR);
     } catch (err) {
-        Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
-        base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+        Logger.error("Unable to create entry directory", err.message, err.stack);
+        base.innerHTML = displayErrorMessage("Error", "Unable to load files. (" + err.message + ")");
         return;
     }
 
@@ -244,7 +244,7 @@ export async function initSavedForm(base: HTMLElement) {
             base.insertAdjacentHTML('beforeend', "<div class='saver-collection-margin'></div>");
 
             if (files.length === 0) {
-                base.innerHTML = displayInformalMessage("Vous n'avez aucune entrée sauvegardée.");
+                base.innerHTML = displayInformalMessage("You have no saved entries.");
             }
             else {
                 //// Bouton de synchronisation
@@ -256,7 +256,7 @@ export async function initSavedForm(base: HTMLElement) {
                             </div>`
                 );
                 syncbtn.onclick = function () {
-                    askModal("Synchroniser ?", "Voulez-vous lancer la synchronisation des entrées maintenant ?")
+                    askModal("Synchronize ?", "Do you want to launch entries synchronisation now ?")
                         .then(() => {
                             return SyncManager.inlineSync();
                         })
@@ -278,17 +278,17 @@ export async function initSavedForm(base: HTMLElement) {
 
                 delete_btn.addEventListener('click', () => {
                     askModal(
-                        "Tout supprimer ?",
-                        "Toutes les entrées enregistrés, même possiblement non synchronisés, seront supprimés."
+                        "Delete all ?",
+                        "All saved entries, even potentially unsynced, will be removed."
                     )
                         .then(() => {
                             setTimeout(function () {
                                 // Attend que le modal précédent se ferme
                                 askModal(
-                                    "Êtes-vous sûr-e ?",
-                                    "La suppression est irréversible.",
-                                    "Annuler",
-                                    "Supprimer"
+                                    "Are you sure ?",
+                                    "Deletion is irreversible.",
+                                    "Cancel",
+                                    "Delete all"
                                 )
                                     .then(() => {
                                         // @ts-ignore bugfix
@@ -309,7 +309,7 @@ export async function initSavedForm(base: HTMLElement) {
             }
         })
         .catch(err => {
-            Logger.error("Impossible de charger les fichiers", err.message, err.stack);
-            base.innerHTML = displayErrorMessage("Erreur", "Impossible de charger les fichiers. (" + err.message + ")");
+            Logger.error("Unable to load files", err.message, err.stack);
+            base.innerHTML = displayErrorMessage("Error", "Unable to load files. (" + err.message + ")");
         });
 }

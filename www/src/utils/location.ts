@@ -28,7 +28,7 @@ export function createLocationInputSelector(container: HTMLElement, input: HTMLI
     input.type = "text";
     input.id = "autocomplete_field_id";
     label.htmlFor = "autocomplete_field_id";
-    label.textContent = "Lieu";
+    label.textContent = "Place";
     input.classList.add('autocomplete');
 
     input_f.appendChild(input);
@@ -76,7 +76,7 @@ export function createLocationInputSelector(container: HTMLElement, input: HTMLI
                 }
             }
             else {
-                showToast("Ce lieu n'existe pas.");
+                showToast("This place does not exists.");
             }
         }
     });
