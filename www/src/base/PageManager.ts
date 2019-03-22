@@ -29,23 +29,23 @@ interface PageSave {
  */
 export const AppPages: { [pageId: string]: AppPage } = {
     home: {
-        name: "Tableau de bord",
+        name: "Dashboard",
         callback: initHomePage,
         reload_on_restore: true
     },
     form: {
-        name: "Nouvelle entrée",
+        name: "New entry",
         callback: initFormPage,
         ask_change: true,
         reload_on_restore: false
     },
     saved: {
-        name: "Entrées",
+        name: "Entries",
         callback: initSavedForm,
         reload_on_restore: true
     },
     settings: {
-        name: "Paramètres",
+        name: "Settings",
         callback: initSettingsPage,
         reload_on_restore: false
     }
@@ -163,7 +163,7 @@ class _PageManager {
     
             // On écrit le preloader dans la base et on change l'historique
             const base = getBase();
-            base.innerHTML = getPreloader("Chargement");
+            base.innerHTML = getPreloader("Loading");
             if (window.history) {
                 window.history.pushState({}, "", "?" + pagename);
             }
@@ -200,7 +200,7 @@ class _PageManager {
                 return Promise.resolve(result);
             }
         } catch (e) {
-            Logger.error("Erreur lors du changement de page", e);
+            Logger.error("Error while changing pages", e);
             return Promise.reject(e);
         }
     }
@@ -320,7 +320,7 @@ class _PageManager {
         };
     
         if (this.should_wait || force_asking) {
-            askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
+            askModal("Go to previous page ?", "Modifications on this page will be lost.", "Previous page", "Cancel")
                 .then(stepBack)
                 .catch(() => {})
         }

@@ -1,12 +1,12 @@
 import { UserManager, loginUser, createNewUser } from "../base/UserManager";
 import { Schemas, FormSchema } from "../base/FormSchema";
-import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText } from "../utils/helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML } from "../utils/helpers";
 import { SyncManager } from "../base/SyncManager";
 import { PageManager } from "../base/PageManager";
 import fetch from '../utils/fetch_timeout';
-import { API_URL, SYNC_FREQUENCY_POSSIBILITIES } from "../main";
+import { SYNC_FREQUENCY_POSSIBILITIES } from "../main";
 import { APP_NAME } from "./home";
-import { Settings } from '../utils/Settings';
+import { Settings, getAvailableLanguages } from '../utils/Settings';
 
 /** 
  * Lance la mise à jour des schémas via le serveur
@@ -275,6 +275,100 @@ export function initSettingsPage(base: HTMLElement) {
         }
     }
     container.appendChild(syncbtn);
+
+    //// PARTIE QUATRE: URL API
+    container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>${APP_NAME} server</h4>
+    <h5>Server location</h5>
+    <p class="flow-text">
+        Current location is <span class="blue-text text-darken-2 api-url">${escapeHTML(Settings.api_url)}</span>.
+    </p>
+    `);
+
+    const changeapibutton = document.createElement('button');
+    changeapibutton.className = "teal darken-4 col s12 btn btn-perso btn-small-margins"
+    changeapibutton.innerHTML = "Change API URL";
+    changeapibutton.onclick = changeURL;
+
+    container.appendChild(changeapibutton);
+
+    //// PARTIE CINQ: VOICE RECO LANG
+    container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>Voice recognition language</h4>
+    <p class="flow-text">
+        Choose language used for voice recognition.
+    </p>
+    `);
+
+    const changelangselection = document.createElement('select');
+    
+    for (const opt of getAvailableLanguages()) {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.innerText = opt;
+
+        if (opt === Settings.voice_lang) {
+            o.selected = true;
+        }
+
+        changelangselection.appendChild(o);
+    }
+
+    changelangselection.onchange = function () {
+        Settings.voice_lang = changelangselection.value;
+    };
+
+    container.appendChild(changelangselection);
+    M.FormSelect.init(changelangselection);
+}
+
+// Modal API URL
+function changeURL() : void {
+    const modal = getModal();
+    const instance = initModal();
+
+    modal.innerHTML = `
+    <div class="modal-content row">
+        <h5 class="no-margin-top">API URL</h5>
+        <p>
+            Make sure you know what you're doing !
+            This will change the location where ${APP_NAME} send forms and download form models.
+            <br>
+            If you want to build our own ${APP_NAME} server, please check the docs.
+        </p>
+
+        <div class="input-field col s12">
+            <input id="__api_url_modifier" type="text">
+            <label for="__api_url_modifier">API URL</label>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a class="btn-flat modal-close red-text">Close</a>
+        <a class="btn-flat green-text" id="__api_url_save">Save</a>
+    </div>
+    `;
+
+    const input = document.getElementById("__api_url_modifier") as HTMLInputElement;
+    input.value = Settings.api_url;
+
+    document.getElementById('__api_url_save').onclick = () => {
+        try {
+            Settings.api_url = input.value;
+            instance.close();
+            modal.innerHTML = "";
+            (document.querySelector('span.api-url') as HTMLElement).innerText = Settings.api_url;
+        } catch (e) {
+            showToast("Specified URL is not a valid URL.");
+        }
+    }
+
+    M.updateTextFields();
+
+    instance.open();
 }
 
 // FONCTIONS RELATIVES AUX SOUSCRIPTIONS
@@ -293,7 +387,7 @@ interface SubscriptionObject {
  * Obtient les souscriptions disponibles depuis le serveur
  */
 async function getSubscriptions() : Promise<SubscriptionObject> {
-    return fetch(API_URL + "schemas/available.json", {
+    return fetch(Settings.api_url + "schemas/available.json", {
         headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
         method: "GET",
         mode: "cors"
@@ -313,7 +407,7 @@ async function subscribe(ids: string[], fetch_subs: boolean) : Promise<void | Fo
         form_data.append('trim_subs', 'true');
     }
 
-    return fetch(API_URL + "schemas/subscribe.json", {
+    return fetch(Settings.api_url + "schemas/subscribe.json", {
         headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
         method: "POST",
         mode: "cors",
@@ -334,7 +428,7 @@ async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | 
         form_data.append('trim_subs', 'true');
     }
 
-    return fetch(API_URL + "schemas/unsubscribe.json", {
+    return fetch(Settings.api_url + "schemas/unsubscribe.json", {
         headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
         method: "POST",
         mode: "cors",

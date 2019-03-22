@@ -3,16 +3,33 @@
  * Ils sont stockés dans le localStorage.
  */
 class AppSettings {
-    protected _sync_freq = 30; /** En minutes */
-    protected _sync_bg = true; /** Activer la sync en arrière plan */
+    protected _sync_freq: number; /** En minutes */
+    protected _sync_bg: boolean; /** Activer la sync en arrière plan */
+    protected _api_url: string; /** URL du serveur. DOIT avoir un slash final !! */
+    protected _voice_lang: string; /** Langage utilisé pour la reconnaissance vocale */
 
     constructor() {
+        this.initDefaults();
+
         if (localStorage.getItem('_settings_sync_freq')) {
             this._sync_freq = Number(localStorage.getItem('_settings_sync_freq'));
         }
         if (localStorage.getItem('_settings_sync_bg')) {
             this._sync_bg = localStorage.getItem('_settings_sync_bg') === 'true';
         }
+        if (localStorage.getItem('_settings_api_url')) {
+            this._api_url = localStorage.getItem('_settings_api_url');
+        }
+        if (localStorage.getItem('_settings_voice_lang')) {
+            this._voice_lang = localStorage.getItem('_settings_voice_lang');;
+        }
+    }
+
+    protected initDefaults() : void {
+        this._sync_bg = true;
+        this._sync_freq = 30;
+        this._api_url = "https://projet.alkihis.fr/";
+        this._voice_lang = "fr-FR";
     }
 
     public set sync_bg(val: boolean) {
@@ -25,6 +42,34 @@ class AppSettings {
         return this._sync_bg;
     }
 
+    public set api_url(val: string) {
+        if (!validURL(val)) {
+            throw new Error("Must be an url");
+        }
+
+        val = val.replace(/\/$/, '') + '/';
+
+        this._api_url = val;
+
+        localStorage.setItem('_settings_api_url', val);
+    }
+
+    public get voice_lang() : string {
+        return this._voice_lang;
+    }
+
+    public set voice_lang(lang: string) {
+        if (lang in lang_possibilities) {
+            this._voice_lang = lang_possibilities[lang];
+
+            localStorage.setItem('_settings_voice_lang', lang_possibilities[lang]);
+        }
+    }
+
+    public get api_url() : string {
+        return this._api_url;
+    }
+
     public set sync_freq(val: number) {
         this._sync_freq = val;
 
@@ -34,6 +79,37 @@ class AppSettings {
     public get sync_freq() : number {
         return this._sync_freq;
     }
+
+    /**
+     * Remet à zéro les paramètres
+     */
+    public reset() : void {
+        this.initDefaults();
+        
+        this.sync_bg = this._sync_bg;
+        this.sync_freq = this._sync_freq;
+        this.api_url = this._api_url;
+        this.voice_lang = this._voice_lang;
+    }
+}
+
+const lang_possibilities: {[lang: string]: string} = {
+    "Français": "fr-FR",
+    "Anglais": "en-US"
+};
+
+export function getAvailableLanguages() : string[] {
+    return Object.keys(lang_possibilities);
+}
+
+function validURL(str: string) : boolean {
+    var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+      '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+      '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+      '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+      '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+      '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+    return !!pattern.test(str);
 }
 
 export const Settings = new AppSettings;

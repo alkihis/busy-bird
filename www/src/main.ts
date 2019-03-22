@@ -8,12 +8,12 @@ import { createNewUser, UserManager } from "./base/UserManager";
 import { SyncManager, SyncEvent } from "./base/SyncManager";
 import { launchQuizz } from './utils/test_vocal_reco';
 import { FileHelper, FileHelperReadMode } from './base/FileHelper';
+import { Settings } from './utils/Settings';
 
 // Constantes de l'application
 export const APP_VERSION = 0.7;
 const FIXED_NAVBAR = true; /** Active la barre de navigation fixe */
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
-export const API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
 export const ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
 export const MP3_BITRATE = 256; /** En kb/s */
@@ -180,7 +180,7 @@ function appWrapper() {
             SIDENAV_OBJ.destroy();
         } catch (e) {}
 
-        getBase().innerHTML = displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+        getBase().innerHTML = displayErrorMessage("Unable to initialize application", "Error: " + err.stack);
     });
 }
 
@@ -194,6 +194,7 @@ function initDebug() {
         testDistance,
         Logger,
         Schemas,
+        Settings,
         SyncEvent,
         askModalList,
         FileHelper,
@@ -206,7 +207,8 @@ function initDebug() {
         prompt,
         createNewUser,
         UserManager,
-        SyncManager
+        SyncManager,
+        api_url: Settings.api_url
     };
 }
 

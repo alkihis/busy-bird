@@ -1,6 +1,6 @@
-import { API_URL } from "../main";
 import { getModal, initModal, getModalPreloader, showToast } from "../utils/helpers";
 import { Schemas } from "./FormSchema";
+import { Settings } from "../utils/Settings";
 
 /**
  * Permet de gérer l'utilisateur connecté, ou la création d'un nouvel utilisateur.
@@ -43,7 +43,7 @@ class _UserManager {
             data.append("username", username);
             data.append('password', password);
 
-            fetch(API_URL + "users/login.json", {body: data, method: 'POST'})
+            fetch(Settings.api_url + "users/login.json", {body: data, method: 'POST'})
                 .then((response) => {
                     return response.json();
                 })
@@ -105,7 +105,7 @@ class _UserManager {
         data.append("admin_password", admin_password);
 
         return new Promise((resolve, reject) => {
-            fetch(API_URL + "users/create.json", {
+            fetch(Settings.api_url + "users/create.json", {
                 method: "POST",
                 body: data
             }).then((response) => {
@@ -131,29 +131,29 @@ export function createNewUser() : void {
 
     modal.innerHTML = `
     <div class="modal-content">
-        <h5 class="no-margin-top">Créer un utilisateur</h5>
+        <h5 class="no-margin-top">Create new user</h5>
         <form class="row" id="__modal_form_new_user">
             <div class="row col s12 input-field">
-                <label for="__user_new">Nom d'utilisateur</label>
+                <label for="__user_new">Username</label>
                 <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
             </div>
             <div class="row col s12 input-field">
-                <label for="__user_psw">Mot de passe</label>
+                <label for="__user_psw">Password</label>
                 <input type="password" class="validate" required id="__user_psw" name="user_psw">
             </div>
             <div class="row col s12 input-field">
-                <label for="__user_psw_r">Mot de passe (confirmation)</label>
+                <label for="__user_psw_r">Password (confirmation)</label>
                 <input type="password" class="validate" required id="__user_psw_r" name="user_psw_r">
             </div>
             <div class="row col s12 input-field">
-                <label for="__user_psw_a">Mot de passe administrateur</label>
+                <label for="__user_psw_a">Administrator password</label>
                 <input type="password" class="validate" required id="__user_psw_a" name="user_psw_a">
             </div>
         </form>
     </div>
     <div class="modal-footer">
-        <a href="#!" class="btn-flat red-text left modal-close">Annuler</a>
-        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Créer utilisateur</a>
+        <a href="#!" class="btn-flat red-text left modal-close">Cancel</a>
+        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Create an user</a>
         <div class="clearb"></div>
     </div>
     `;
@@ -185,20 +185,19 @@ export function createNewUser() : void {
         const psw_a = form.user_psw_a.value.trim();
 
         if (!name) {
-            showToast("Le nom ne peut pas être vide.");
-            showToast("Le nom ne peut pas être vide.");
+            showToast("Name cannot be empty.");
             return;
         }
         if (!psw) {
-            showToast("Le mot de passe ne peut pas être vide.");
+            showToast("Password cannot be empty.");
             return;
         }
         if (psw !== psw_r) {
-            showToast("Mot de passe et confirmation doivent correspondre.");
+            showToast("Password and confirmation should be equal.");
             return;
         }
         if (!psw_a) {
-            showToast("Le mot de passe administrateur est nécessaire.");
+            showToast("Administrator password is needed.");
             return;
         }
 
@@ -208,22 +207,22 @@ export function createNewUser() : void {
             modal_save.appendChild(child);
         }
         
-        modal.innerHTML = getModalPreloader("Création de l'utilisateur...");
+        modal.innerHTML = getModalPreloader("Creating user...");
         UserManager.createUser(name, psw, psw_a)
             .then(function() {
-                showToast("Utilisateur créé avec succès.");
+                showToast("User has been created successfully.");
                 instance.close();
             }).catch(function(error) {
                 console.log(error);
                 if (typeof error === 'number') {
                     if (error === 6) {
-                        showToast("Le mot de passe administrateur est invalide.");
+                        showToast("Administrator password is invalid.");
                     }
                     else if (error === 12) {
-                        showToast("Cet utilisateur existe déjà.");
+                        showToast("This user already exists.");
                     }
                     else {
-                        showToast("Une erreur inconnue est survenue.");
+                        showToast("An unknown error occurred.");
                     }
                 }
 
@@ -244,21 +243,21 @@ export function loginUser() : Promise<void> {
     
         modal.innerHTML = `
         <div class="modal-content">
-            <h5 class="no-margin-top">Connexion</h5>
+            <h5 class="no-margin-top">Login</h5>
             <form class="row" id="__modal_form_new_user">
                 <div class="row col s12 input-field">
-                    <label for="__user_new">Nom d'utilisateur</label>
+                    <label for="__user_new">Username</label>
                     <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
                 </div>
                 <div class="row col s12 input-field">
-                    <label for="__user_psw">Mot de passe</label>
+                    <label for="__user_psw">Password</label>
                     <input type="password" autocomplete="off" class="validate" required id="__user_psw" name="user_psw">
                 </div>
             </form>
         </div>
         <div class="modal-footer">
-            <a href="#!" id="__modal_cancel_user" class="btn-flat red-text left">Annuler</a>
-            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Connexion</a>
+            <a href="#!" id="__modal_cancel_user" class="btn-flat red-text left">Cancel</a>
+            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Login</a>
             <div class="clearb"></div>
         </div>
         `;
@@ -278,11 +277,11 @@ export function loginUser() : Promise<void> {
             const psw = form.user_psw.value.trim();
     
             if (!name) {
-                showToast("Le nom ne peut pas être vide.");
+                showToast("Name cannot be empty.");
                 return;
             }
             if (!psw) {
-                showToast("Le mot de passe ne peut pas être vide.");
+                showToast("Password cannot be empty.");
                 return;
             }
     
@@ -292,10 +291,10 @@ export function loginUser() : Promise<void> {
                 modal_save.appendChild(child);
             }
             
-            modal.innerHTML = getModalPreloader("Connexion");
+            modal.innerHTML = getModalPreloader("Login in...");
             UserManager.login(name, psw)
                 .then(function() {
-                    showToast("Vous avez été connecté-e avec succès.");
+                    showToast("You have been logged in successfully.");
                     instance.close();
 
                     // RESOLUTION DE LA PROMESSE
@@ -303,13 +302,13 @@ export function loginUser() : Promise<void> {
                 }).catch(function(error) {
                     if (typeof error === 'number') {
                         if (error === 10) {
-                            showToast("Cet utilisateur n'existe pas.");
+                            showToast("This user does not exists.");
                         }
                         else if (error === 11) {
-                            showToast("Votre mot de passe est invalide.");
+                            showToast("Password is invalid.");
                         }
                         else {
-                            showToast("Une erreur inconnue est survenue.");
+                            showToast("An unknown error occurred.");
                         }
                     }
                     else {

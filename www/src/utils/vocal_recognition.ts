@@ -1,6 +1,8 @@
+import { Settings } from "./Settings";
+
 // options de la reconnaissance vocale
-const options = {
-    language: "fr-FR",
+let vocal_recognition_options: {language: string, prompt: string} = {
+    language: "",
     prompt: "Parlez maintenant"
 };
 
@@ -24,7 +26,10 @@ export function talk(sentence: string) : Promise<void> {
  */
 export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Promise<string | string[]> {
     return new Promise(function(resolve, reject) {
-        options.prompt = prompt_text;
+        vocal_recognition_options = {
+            language: Settings.voice_lang,
+            prompt: prompt_text
+        };
 
         // @ts-ignore
         if (window.plugins && window.plugins.speechRecognition) {
@@ -83,7 +88,7 @@ export function prompt(prompt_text = "Parlez maintenant", as_array = false) : Pr
                         reject();
                     }
                 }, 
-                options
+                vocal_recognition_options
             )
         }
         else {

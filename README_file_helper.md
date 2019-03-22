@@ -146,8 +146,11 @@ If `path` parameter is not specified, list files and directories that are in cur
 - `f` return only files.
 - `d` return only directories.
 - `l` return `FileStats[]` objects instead of filenames (`string[]`).
-- `r` makes `ls()` recursive. This flag can make function very slow due to the high latency Cordova File System access.
 - `p` remove subdirectory auto-prefixing, if `path` is not current working directory. `p` will not work in recursive mode (`r`), except if `e` is enabled.
+
+`max_depth` parameter specify the maximum number of subdirectories where the function can search in.
+If `max_depth` is negative, recursive mode is unlimited. 
+This flag can make function very slow due to the high latency Cordova File System access.
 
 ---
 ***`EntryObject` information***
@@ -165,7 +168,7 @@ If your FS is like:
 
 The `EntryObject` will be organized like:
 ```js
-let o = await helper.ls(undefined /* will list current working directory */, "re");
+let o = await helper.ls(undefined /* will list current working directory */, "e", -1);
 o = {
     "": /* current working directory */ [ DirectoryEntry<"json">, DirectoryEntry<"assets"> ],
     "json": [],

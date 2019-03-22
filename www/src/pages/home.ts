@@ -105,21 +105,19 @@ export async function initHomePage(base: HTMLElement) {
         ));
     }
 
-    Schemas.onReady(function(available, current) {
-        if (Schemas.current_key === null) {
-            return;
+    if (Schemas.current_key !== null) {
+        const locations = Schemas.current.locations;
+
+        if (Object.keys(locations).length > 0) {
+            // Navigation vers nichoir
+            home_container.insertAdjacentHTML('beforeend',
+                `<div class="divider divider-margin big"></div>
+                <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${Schemas.current.name.toLowerCase()}</h6>`
+            );
+
+            createLocationInputSelector(home_container, document.createElement('input'), locations, true);
         }
-
-        const locations = current.locations;
-
-        // Navigation vers nichoir
-        home_container.insertAdjacentHTML('beforeend',
-            `<div class="divider divider-margin big"></div>
-            <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${current.name.toLowerCase()}</h6>`
-        );
-
-        createLocationInputSelector(home_container, document.createElement('input'), locations, true);
-    });
+    }
 
     // Initialise les champs materialize et le select
     M.updateTextFields();

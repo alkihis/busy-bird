@@ -1063,7 +1063,7 @@ export class FileHelper {
         if (s instanceof Blob || s instanceof File) {
             return s;
         }
-        else if (typeof s === 'string' || s instanceof ArrayBuffer) {
+        else if (typeof s === 'string' || s instanceof ArrayBuffer || ArrayBuffer.isView(s)) {
             return new Blob([s]);
         }
         else if (typeof s === "object") {

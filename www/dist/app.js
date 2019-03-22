@@ -4,7 +4,190 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 // Lance main.ts
 require(['main']);
-define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base/FormSchema"], function (require, exports, main_1, helpers_1, FormSchema_1) {
+define("utils/Settings", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Représente les paramètres globaux de l'application.
+     * Ils sont stockés dans le localStorage.
+     */
+    class AppSettings {
+        constructor() {
+            this.initDefaults();
+            if (localStorage.getItem('_settings_sync_freq')) {
+                this._sync_freq = Number(localStorage.getItem('_settings_sync_freq'));
+            }
+            if (localStorage.getItem('_settings_sync_bg')) {
+                this._sync_bg = localStorage.getItem('_settings_sync_bg') === 'true';
+            }
+            if (localStorage.getItem('_settings_api_url')) {
+                this._api_url = localStorage.getItem('_settings_api_url');
+            }
+            if (localStorage.getItem('_settings_voice_lang')) {
+                this._voice_lang = localStorage.getItem('_settings_voice_lang');
+                ;
+            }
+        }
+        initDefaults() {
+            this._sync_bg = true;
+            this._sync_freq = 30;
+            this._api_url = "https://projet.alkihis.fr/";
+            this._voice_lang = "fr-FR";
+        }
+        set sync_bg(val) {
+            this._sync_bg = val;
+            localStorage.setItem('_settings_sync_bg', String(val));
+        }
+        get sync_bg() {
+            return this._sync_bg;
+        }
+        set api_url(val) {
+            if (!validURL(val)) {
+                throw new Error("Must be an url");
+            }
+            val = val.replace(/\/$/, '') + '/';
+            this._api_url = val;
+            localStorage.setItem('_settings_api_url', val);
+        }
+        get voice_lang() {
+            return this._voice_lang;
+        }
+        set voice_lang(lang) {
+            if (lang in lang_possibilities) {
+                this._voice_lang = lang_possibilities[lang];
+                localStorage.setItem('_settings_voice_lang', lang_possibilities[lang]);
+            }
+        }
+        get api_url() {
+            return this._api_url;
+        }
+        set sync_freq(val) {
+            this._sync_freq = val;
+            localStorage.setItem('_settings_sync_freq', String(val));
+        }
+        get sync_freq() {
+            return this._sync_freq;
+        }
+        /**
+         * Remet à zéro les paramètres
+         */
+        reset() {
+            this.initDefaults();
+            this.sync_bg = this._sync_bg;
+            this.sync_freq = this._sync_freq;
+            this.api_url = this._api_url;
+            this.voice_lang = this._voice_lang;
+        }
+    }
+    const lang_possibilities = {
+        "Français": "fr-FR",
+        "Anglais": "en-US"
+    };
+    function getAvailableLanguages() {
+        return Object.keys(lang_possibilities);
+    }
+    exports.getAvailableLanguages = getAvailableLanguages;
+    function validURL(str) {
+        var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+            '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
+            '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+            '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+            '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+        return !!pattern.test(str);
+    }
+    exports.Settings = new AppSettings;
+    /**
+     * Permet de sauvegarder en arrière-plan.
+     * Cette classe ne doit pas être utilisée seule. SyncManager s'en occupe.
+     */
+    class BgSyncObj {
+        constructor() {
+            //// credit to https://github.com/transistorsoft/cordova-plugin-background-fetch
+            this.background_sync = null;
+            this.fetchCb = null;
+            this.failCb = null;
+        }
+        isInit() {
+            return this.background_sync !== null;
+        }
+        /**
+         * Initialise le module de background sync. Cette fonction ne doit être appelée qu'une seule fois !
+         * @param fetchCb Fonction à appeler lors du fetch
+         * @param failCb Fonction à appeler si échec
+         * @param interval Intervalle entre deux synchronisations (en minutes)
+         */
+        init(fetchCb, failCb, interval = exports.Settings.sync_freq) {
+            this.background_sync = ("BackgroundFetch" in window) ? window["BackgroundFetch"] : null;
+            return this.initBgSync(fetchCb, failCb, interval);
+        }
+        /**
+         * Modifie le module de background sync en cours d'exécution
+         * @param fetchCb Fonction à appeler lors du fetch
+         * @param failCb Fonction à appeler si échec
+         * @param interval Intervalle entre deux synchronisations (en minutes)
+         */
+        initBgSync(fetchCb, failCb, interval = exports.Settings.sync_freq) {
+            if (this.background_sync) {
+                this.stop();
+                console.log("Starting sync with interval: " + interval);
+                this.failCb = failCb;
+                this.fetchCb = fetchCb;
+                this.background_sync.configure(fetchCb, () => {
+                    // Désinitialise l'objet
+                    exports.Settings.sync_bg = false;
+                    this.background_sync = null;
+                    failCb();
+                }, {
+                    minimumFetchInterval: interval,
+                    stopOnTerminate: false // <-- Android only
+                });
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        finish() {
+            if (this.background_sync) {
+                this.background_sync.finish();
+            }
+        }
+        /**
+         * Change la fréquence de synchronisation
+         * @param interval Intervalle entre deux synchronisations (en minutes)
+         */
+        changeBgSyncInterval(interval) {
+            if (this.background_sync) {
+                return this.initBgSync(this.fetchCb, this.failCb, interval);
+            }
+            return false;
+        }
+        start() {
+            if (this.background_sync) {
+                this.background_sync.start(() => {
+                    console.log("Starting fetch");
+                }, () => {
+                    console.log("Failed to start fetch");
+                });
+            }
+        }
+        stop() {
+            try {
+                if (this.background_sync) {
+                    this.background_sync.stop(() => {
+                        console.log("Stopping sync");
+                    }, () => {
+                        console.log("Failed to stop sync");
+                    });
+                }
+            }
+            catch (e) { /** Ne fait rien si échoue à stopper (ce n'était pas lancé) */ }
+        }
+    }
+    exports.BackgroundSync = new BgSyncObj;
+});
+define("base/UserManager", ["require", "exports", "utils/helpers", "base/FormSchema", "utils/Settings"], function (require, exports, helpers_1, FormSchema_1, Settings_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -42,7 +225,7 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
                 let data = new FormData();
                 data.append("username", username);
                 data.append('password', password);
-                fetch(main_1.API_URL + "users/login.json", { body: data, method: 'POST' })
+                fetch(Settings_1.Settings.api_url + "users/login.json", { body: data, method: 'POST' })
                     .then((response) => {
                     return response.json();
                 })
@@ -97,7 +280,7 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
             data.append("password", password);
             data.append("admin_password", admin_password);
             return new Promise((resolve, reject) => {
-                fetch(main_1.API_URL + "users/create.json", {
+                fetch(Settings_1.Settings.api_url + "users/create.json", {
                     method: "POST",
                     body: data
                 }).then((response) => {
@@ -120,29 +303,29 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
         modal.classList.add('modal-fixed-footer');
         modal.innerHTML = `
     <div class="modal-content">
-        <h5 class="no-margin-top">Créer un utilisateur</h5>
+        <h5 class="no-margin-top">Create new user</h5>
         <form class="row" id="__modal_form_new_user">
             <div class="row col s12 input-field">
-                <label for="__user_new">Nom d'utilisateur</label>
+                <label for="__user_new">Username</label>
                 <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
             </div>
             <div class="row col s12 input-field">
-                <label for="__user_psw">Mot de passe</label>
+                <label for="__user_psw">Password</label>
                 <input type="password" class="validate" required id="__user_psw" name="user_psw">
             </div>
             <div class="row col s12 input-field">
-                <label for="__user_psw_r">Mot de passe (confirmation)</label>
+                <label for="__user_psw_r">Password (confirmation)</label>
                 <input type="password" class="validate" required id="__user_psw_r" name="user_psw_r">
             </div>
             <div class="row col s12 input-field">
-                <label for="__user_psw_a">Mot de passe administrateur</label>
+                <label for="__user_psw_a">Administrator password</label>
                 <input type="password" class="validate" required id="__user_psw_a" name="user_psw_a">
             </div>
         </form>
     </div>
     <div class="modal-footer">
-        <a href="#!" class="btn-flat red-text left modal-close">Annuler</a>
-        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Créer utilisateur</a>
+        <a href="#!" class="btn-flat red-text left modal-close">Cancel</a>
+        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Create an user</a>
         <div class="clearb"></div>
     </div>
     `;
@@ -167,20 +350,19 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
             const psw_r = form.user_psw_r.value.trim();
             const psw_a = form.user_psw_a.value.trim();
             if (!name) {
-                helpers_1.showToast("Le nom ne peut pas être vide.");
-                helpers_1.showToast("Le nom ne peut pas être vide.");
+                helpers_1.showToast("Name cannot be empty.");
                 return;
             }
             if (!psw) {
-                helpers_1.showToast("Le mot de passe ne peut pas être vide.");
+                helpers_1.showToast("Password cannot be empty.");
                 return;
             }
             if (psw !== psw_r) {
-                helpers_1.showToast("Mot de passe et confirmation doivent correspondre.");
+                helpers_1.showToast("Password and confirmation should be equal.");
                 return;
             }
             if (!psw_a) {
-                helpers_1.showToast("Le mot de passe administrateur est nécessaire.");
+                helpers_1.showToast("Administrator password is needed.");
                 return;
             }
             modal_save = document.createDocumentFragment();
@@ -188,22 +370,22 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
             while (child = modal.firstChild) {
                 modal_save.appendChild(child);
             }
-            modal.innerHTML = helpers_1.getModalPreloader("Création de l'utilisateur...");
+            modal.innerHTML = helpers_1.getModalPreloader("Creating user...");
             exports.UserManager.createUser(name, psw, psw_a)
                 .then(function () {
-                helpers_1.showToast("Utilisateur créé avec succès.");
+                helpers_1.showToast("User has been created successfully.");
                 instance.close();
             }).catch(function (error) {
                 console.log(error);
                 if (typeof error === 'number') {
                     if (error === 6) {
-                        helpers_1.showToast("Le mot de passe administrateur est invalide.");
+                        helpers_1.showToast("Administrator password is invalid.");
                     }
                     else if (error === 12) {
-                        helpers_1.showToast("Cet utilisateur existe déjà.");
+                        helpers_1.showToast("This user already exists.");
                     }
                     else {
-                        helpers_1.showToast("Une erreur inconnue est survenue.");
+                        helpers_1.showToast("An unknown error occurred.");
                     }
                 }
                 modal.innerHTML = "";
@@ -221,21 +403,21 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
             const instance = helpers_1.initModal({ dismissible: false });
             modal.innerHTML = `
         <div class="modal-content">
-            <h5 class="no-margin-top">Connexion</h5>
+            <h5 class="no-margin-top">Login</h5>
             <form class="row" id="__modal_form_new_user">
                 <div class="row col s12 input-field">
-                    <label for="__user_new">Nom d'utilisateur</label>
+                    <label for="__user_new">Username</label>
                     <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
                 </div>
                 <div class="row col s12 input-field">
-                    <label for="__user_psw">Mot de passe</label>
+                    <label for="__user_psw">Password</label>
                     <input type="password" autocomplete="off" class="validate" required id="__user_psw" name="user_psw">
                 </div>
             </form>
         </div>
         <div class="modal-footer">
-            <a href="#!" id="__modal_cancel_user" class="btn-flat red-text left">Annuler</a>
-            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Connexion</a>
+            <a href="#!" id="__modal_cancel_user" class="btn-flat red-text left">Cancel</a>
+            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Login</a>
             <div class="clearb"></div>
         </div>
         `;
@@ -250,11 +432,11 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
                 const name = form.user_new.value.trim();
                 const psw = form.user_psw.value.trim();
                 if (!name) {
-                    helpers_1.showToast("Le nom ne peut pas être vide.");
+                    helpers_1.showToast("Name cannot be empty.");
                     return;
                 }
                 if (!psw) {
-                    helpers_1.showToast("Le mot de passe ne peut pas être vide.");
+                    helpers_1.showToast("Password cannot be empty.");
                     return;
                 }
                 modal_save = document.createDocumentFragment();
@@ -262,23 +444,23 @@ define("base/UserManager", ["require", "exports", "main", "utils/helpers", "base
                 while (child = modal.firstChild) {
                     modal_save.appendChild(child);
                 }
-                modal.innerHTML = helpers_1.getModalPreloader("Connexion");
+                modal.innerHTML = helpers_1.getModalPreloader("Login in...");
                 exports.UserManager.login(name, psw)
                     .then(function () {
-                    helpers_1.showToast("Vous avez été connecté-e avec succès.");
+                    helpers_1.showToast("You have been logged in successfully.");
                     instance.close();
                     // RESOLUTION DE LA PROMESSE
                     resolve();
                 }).catch(function (error) {
                     if (typeof error === 'number') {
                         if (error === 10) {
-                            helpers_1.showToast("Cet utilisateur n'existe pas.");
+                            helpers_1.showToast("This user does not exists.");
                         }
                         else if (error === 11) {
-                            helpers_1.showToast("Votre mot de passe est invalide.");
+                            helpers_1.showToast("Password is invalid.");
                         }
                         else {
-                            helpers_1.showToast("Une erreur inconnue est survenue.");
+                            helpers_1.showToast("An unknown error occurred.");
                         }
                     }
                     else {
@@ -1211,7 +1393,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
             if (s instanceof Blob || s instanceof File) {
                 return s;
             }
-            else if (typeof s === 'string' || s instanceof ArrayBuffer) {
+            else if (typeof s === 'string' || s instanceof ArrayBuffer || ArrayBuffer.isView(s)) {
                 return new Blob([s]);
             }
             else if (typeof s === "object") {
@@ -1224,7 +1406,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
     }
     exports.FileHelper = FileHelper;
 });
-define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserManager", "main", "utils/fetch_timeout", "base/FileHelper"], function (require, exports, helpers_2, UserManager_1, main_2, fetch_timeout_1, FileHelper_1) {
+define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserManager", "main", "utils/fetch_timeout", "base/FileHelper", "utils/Settings"], function (require, exports, helpers_2, UserManager_1, main_1, fetch_timeout_1, FileHelper_1, Settings_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_1 = __importDefault(fetch_timeout_1);
@@ -1282,7 +1464,7 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
          */
         save() {
             if (this.available_forms) {
-                return main_2.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
+                return main_1.FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
             }
             return Promise.reject(new Error("Forms are not available."));
         }
@@ -1302,9 +1484,9 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
         async _init() {
             const init_text = document.getElementById('__init_text_center');
             if (init_text) {
-                init_text.innerText = "Mise à jour des schémas de formulaire";
+                init_text.innerText = "Updating form models";
             }
-            if (main_2.ENABLE_FORM_DOWNLOAD && helpers_2.hasConnection() && UserManager_1.UserManager.logged) {
+            if (main_1.ENABLE_FORM_DOWNLOAD && helpers_2.hasConnection() && UserManager_1.UserManager.logged) {
                 return this.downloadSchemaFromServer();
             }
             else {
@@ -1321,7 +1503,7 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
             // On tente d'actualiser les formulaires disponibles
             // On attend au max 20 secondes
             try {
-                const response = await fetch_timeout_1.default(main_2.API_URL + "schemas/subscribed.json", {
+                const response = await fetch_timeout_1.default(Settings_2.Settings.api_url + "schemas/subscribed.json", {
                     headers: new Headers({ "Authorization": "Bearer " + UserManager_1.UserManager.token }),
                     method: "GET"
                 }, timeout);
@@ -1358,7 +1540,7 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
         async readSchemaJSONFromFile() {
             // On vérifie si le fichier loaded_forms.json existe
             try {
-                const string = await main_2.FILE_HELPER.read(this.FORM_LOCATION);
+                const string = await main_1.FILE_HELPER.read(this.FORM_LOCATION);
                 this.loadFormSchemaInClass(JSON.parse(string));
             }
             catch (e) {
@@ -1376,7 +1558,7 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
                         this.loadFormSchemaInClass(JSON.parse(string_1));
                     })
                         .catch(() => {
-                        helpers_2.showToast("Impossible de charger les schémas." + " "
+                        helpers_2.showToast("Unable to load form models." + " "
                             + cordova.file.applicationDirectory + 'www/assets/form.json');
                     });
                 }
@@ -1519,7 +1701,7 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
     }
     exports.Schemas = new FormSchemas;
 });
-define("utils/logger", ["require", "exports", "main"], function (require, exports, main_3) {
+define("utils/logger", ["require", "exports", "main"], function (require, exports, main_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Objet Logger
@@ -1556,7 +1738,7 @@ define("utils/logger", ["require", "exports", "main"], function (require, export
                 return;
             }
             this.tries--;
-            main_3.FILE_HELPER.touch("log.txt")
+            main_2.FILE_HELPER.touch("log.txt")
                 .then(entry => {
                 this.fileEntry = entry;
                 this.init_done = true;
@@ -1783,131 +1965,7 @@ define("utils/logger", ["require", "exports", "main"], function (require, export
     }
     exports.Logger = new _Logger;
 });
-define("utils/Settings", ["require", "exports"], function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Représente les paramètres globaux de l'application.
-     * Ils sont stockés dans le localStorage.
-     */
-    class AppSettings {
-        constructor() {
-            this._sync_freq = 30; /** En minutes */
-            this._sync_bg = true; /** Activer la sync en arrière plan */
-            if (localStorage.getItem('_settings_sync_freq')) {
-                this._sync_freq = Number(localStorage.getItem('_settings_sync_freq'));
-            }
-            if (localStorage.getItem('_settings_sync_bg')) {
-                this._sync_bg = localStorage.getItem('_settings_sync_bg') === 'true';
-            }
-        }
-        set sync_bg(val) {
-            this._sync_bg = val;
-            localStorage.setItem('_settings_sync_bg', String(val));
-        }
-        get sync_bg() {
-            return this._sync_bg;
-        }
-        set sync_freq(val) {
-            this._sync_freq = val;
-            localStorage.setItem('_settings_sync_freq', String(val));
-        }
-        get sync_freq() {
-            return this._sync_freq;
-        }
-    }
-    exports.Settings = new AppSettings;
-    /**
-     * Permet de sauvegarder en arrière-plan.
-     * Cette classe ne doit pas être utilisée seule. SyncManager s'en occupe.
-     */
-    class BgSyncObj {
-        constructor() {
-            //// credit to https://github.com/transistorsoft/cordova-plugin-background-fetch
-            this.background_sync = null;
-            this.fetchCb = null;
-            this.failCb = null;
-        }
-        isInit() {
-            return this.background_sync !== null;
-        }
-        /**
-         * Initialise le module de background sync. Cette fonction ne doit être appelée qu'une seule fois !
-         * @param fetchCb Fonction à appeler lors du fetch
-         * @param failCb Fonction à appeler si échec
-         * @param interval Intervalle entre deux synchronisations (en minutes)
-         */
-        init(fetchCb, failCb, interval = exports.Settings.sync_freq) {
-            this.background_sync = ("BackgroundFetch" in window) ? window["BackgroundFetch"] : null;
-            return this.initBgSync(fetchCb, failCb, interval);
-        }
-        /**
-         * Modifie le module de background sync en cours d'exécution
-         * @param fetchCb Fonction à appeler lors du fetch
-         * @param failCb Fonction à appeler si échec
-         * @param interval Intervalle entre deux synchronisations (en minutes)
-         */
-        initBgSync(fetchCb, failCb, interval = exports.Settings.sync_freq) {
-            if (this.background_sync) {
-                this.stop();
-                console.log("Starting sync with interval: " + interval);
-                this.failCb = failCb;
-                this.fetchCb = fetchCb;
-                this.background_sync.configure(fetchCb, () => {
-                    // Désinitialise l'objet
-                    exports.Settings.sync_bg = false;
-                    this.background_sync = null;
-                    failCb();
-                }, {
-                    minimumFetchInterval: interval,
-                    stopOnTerminate: false // <-- Android only
-                });
-                return true;
-            }
-            else {
-                return false;
-            }
-        }
-        finish() {
-            if (this.background_sync) {
-                this.background_sync.finish();
-            }
-        }
-        /**
-         * Change la fréquence de synchronisation
-         * @param interval Intervalle entre deux synchronisations (en minutes)
-         */
-        changeBgSyncInterval(interval) {
-            if (this.background_sync) {
-                return this.initBgSync(this.fetchCb, this.failCb, interval);
-            }
-            return false;
-        }
-        start() {
-            if (this.background_sync) {
-                this.background_sync.start(() => {
-                    console.log("Starting fetch");
-                }, () => {
-                    console.log("Failed to start fetch");
-                });
-            }
-        }
-        stop() {
-            try {
-                if (this.background_sync) {
-                    this.background_sync.stop(() => {
-                        console.log("Stopping sync");
-                    }, () => {
-                        console.log("Failed to stop sync");
-                    });
-                }
-            }
-            catch (e) { /** Ne fait rien si échoue à stopper (ce n'était pas lancé) */ }
-        }
-    }
-    exports.BackgroundSync = new BgSyncObj;
-});
-define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base/SyncManager", "utils/helpers"], function (require, exports, main_4, FileHelper_2, SyncManager_1, helpers_3) {
+define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base/SyncManager", "utils/helpers"], function (require, exports, main_3, FileHelper_2, SyncManager_1, helpers_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ENTRIES_DIR = "forms/";
@@ -1922,19 +1980,19 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
          * @param id Identifiant de la sauvegarde
          */
         get(id) {
-            return main_4.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
+            return main_3.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
         }
         /**
          * Obtenir les fichiers associés à un formulaire sauvegardé
          * @param id Identifiant de l'entrée
          */
         async getMetadata(id) {
-            const save = await main_4.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
+            const save = await main_3.FILE_HELPER.readJSON(exports.ENTRIES_DIR + id + ".json");
             const files = {};
             for (const field in save.metadata) {
                 files[field] = [
                     save.metadata[field],
-                    await main_4.FILE_HELPER.read(exports.METADATA_DIR + id + "/" + save.metadata[field], FileHelper_2.FileHelperReadMode.fileobj)
+                    await main_3.FILE_HELPER.read(exports.METADATA_DIR + id + "/" + save.metadata[field], FileHelper_2.FileHelperReadMode.fileobj)
                 ];
             }
             return files;
@@ -1943,7 +2001,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
          * Liste toutes les sauvegardes disponibles (par identifiant)
          */
         async list() {
-            const files = await main_4.FILE_HELPER.entriesOf(exports.ENTRIES_DIR);
+            const files = await main_3.FILE_HELPER.entriesOf(exports.ENTRIES_DIR);
             const ids = [];
             for (const f of files) {
                 if (f.isFile) {
@@ -1953,21 +2011,21 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
             return ids;
         }
         listAsFormSave() {
-            return main_4.FILE_HELPER.readAll(exports.ENTRIES_DIR, FileHelper_2.FileHelperReadMode.json);
+            return main_3.FILE_HELPER.readAll(exports.ENTRIES_DIR, FileHelper_2.FileHelperReadMode.json);
         }
         /**
          * Supprimer tous les formulaires sauvegardés
          */
         async clear() {
             // On veut supprimer tous les fichiers
-            await main_4.FILE_HELPER.empty(exports.ENTRIES_DIR, true);
-            if (await main_4.FILE_HELPER.exists(exports.METADATA_DIR)) {
-                await main_4.FILE_HELPER.empty(exports.METADATA_DIR, true);
+            await main_3.FILE_HELPER.empty(exports.ENTRIES_DIR, true);
+            if (await main_3.FILE_HELPER.exists(exports.METADATA_DIR)) {
+                await main_3.FILE_HELPER.empty(exports.METADATA_DIR, true);
             }
-            if (device.platform === "Android" && main_4.SD_FILE_HELPER) {
+            if (device.platform === "Android" && main_3.SD_FILE_HELPER) {
                 try {
-                    await main_4.SD_FILE_HELPER.empty(exports.ENTRIES_DIR, true);
-                    await main_4.SD_FILE_HELPER.empty(exports.METADATA_DIR, true);
+                    await main_3.SD_FILE_HELPER.empty(exports.ENTRIES_DIR, true);
+                    await main_3.SD_FILE_HELPER.empty(exports.METADATA_DIR, true);
                 }
                 catch (e) {
                     // Tant pis, ça ne marche pas
@@ -1980,15 +2038,15 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
          * @param id Identifiant de l'entrée
          */
         async rm(id) {
-            await main_4.FILE_HELPER.rm(exports.ENTRIES_DIR + id + ".json");
-            if (await main_4.FILE_HELPER.exists(exports.METADATA_DIR + id)) {
-                await main_4.FILE_HELPER.rm(exports.METADATA_DIR + id, true);
+            await main_3.FILE_HELPER.rm(exports.ENTRIES_DIR + id + ".json");
+            if (await main_3.FILE_HELPER.exists(exports.METADATA_DIR + id)) {
+                await main_3.FILE_HELPER.rm(exports.METADATA_DIR + id, true);
             }
-            if (device.platform === 'Android' && main_4.SD_FILE_HELPER) {
+            if (device.platform === 'Android' && main_3.SD_FILE_HELPER) {
                 // Tente de supprimer depuis la carte SD
                 try {
-                    await main_4.SD_FILE_HELPER.rm(exports.METADATA_DIR + id, true);
-                    await main_4.SD_FILE_HELPER.rm(exports.ENTRIES_DIR + id + '.json');
+                    await main_3.SD_FILE_HELPER.rm(exports.METADATA_DIR + id, true);
+                    await main_3.SD_FILE_HELPER.rm(exports.ENTRIES_DIR + id + '.json');
                 }
                 catch (e) { }
             }
@@ -2006,17 +2064,17 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
          */
         async save(identifier, form_values, older_save) {
             async function deleteOlderFile(input_name) {
-                if (main_4.SD_FILE_HELPER) {
-                    main_4.SD_FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
+                if (main_3.SD_FILE_HELPER) {
+                    main_3.SD_FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
                 }
-                return main_4.FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
+                return main_3.FILE_HELPER.rm(exports.METADATA_DIR + identifier + "/" + older_save.fields[input_name]);
             }
             async function saveBlobToFile(filename, input_name, blob) {
                 const full_path = exports.METADATA_DIR + identifier + '/' + filename;
                 try {
-                    await main_4.FILE_HELPER.write(full_path, blob);
-                    if (device.platform === 'Android' && main_4.SD_FILE_HELPER) {
-                        main_4.SD_FILE_HELPER.write(full_path, blob).then(() => { }).catch(e => console.log(e));
+                    await main_3.FILE_HELPER.write(full_path, blob);
+                    if (device.platform === 'Android' && main_3.SD_FILE_HELPER) {
+                        main_3.SD_FILE_HELPER.write(full_path, blob).then(() => { }).catch(e => console.log(e));
                     }
                     // Enregistre le nom du fichier sauvegardé dans le formulaire,
                     // dans la valeur du champ field
@@ -2031,7 +2089,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                     }
                 }
                 catch (error) {
-                    helpers_3.showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                    helpers_3.showToast("A file couldn't be saved. Check your storage capacity.");
                     return Promise.reject(error);
                 }
             }
@@ -2077,7 +2135,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                 const file = audio.value;
                 const input_name = audio.name;
                 if (file) {
-                    const filename = helpers_3.generateId(main_4.ID_COMPLEXITY) + '.mp3';
+                    const filename = helpers_3.generateId(main_3.ID_COMPLEXITY) + '.mp3';
                     promises.push(helpers_3.urlToBlob(file).then(function (blob) {
                         return saveBlobToFile(filename, input_name, blob);
                     }));
@@ -2112,9 +2170,9 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
                     delete form_values.metadata[n];
                 }
             }
-            await main_4.FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values);
-            if (device.platform === 'Android' && main_4.SD_FILE_HELPER) {
-                main_4.SD_FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
+            await main_3.FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values);
+            if (device.platform === 'Android' && main_3.SD_FILE_HELPER) {
+                main_3.SD_FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
             }
             console.log(form_values);
             return form_values;
@@ -2122,7 +2180,7 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
     }
     exports.FormSaves = new _FormSaves;
 });
-define("base/SyncManager", ["require", "exports", "utils/logger", "localforage", "main", "utils/helpers", "base/UserManager", "utils/fetch_timeout", "utils/Settings", "base/FileHelper", "base/FormSaves"], function (require, exports, logger_1, localforage_1, main_5, helpers_4, UserManager_2, fetch_timeout_2, Settings_1, FileHelper_3, FormSaves_1) {
+define("base/SyncManager", ["require", "exports", "utils/logger", "localforage", "main", "utils/helpers", "base/UserManager", "utils/fetch_timeout", "utils/Settings", "base/FileHelper", "base/FormSaves"], function (require, exports, logger_1, localforage_1, main_4, helpers_4, UserManager_2, fetch_timeout_2, Settings_3, FileHelper_3, FormSaves_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     localforage_1 = __importDefault(localforage_1);
@@ -2196,41 +2254,41 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * Initialise la synchronisation d'arrière plan avec l'intervalle interval
          * @param interval
          */
-        initBackgroundSync(interval = Settings_1.Settings.sync_freq) {
+        initBackgroundSync(interval = Settings_3.Settings.sync_freq) {
             const success_fn = () => {
-                logger_1.Logger.info("Il s'est écoulé " + ((Date.now() - this.last_bgsync) / 1000) + " secondes depuis la dernière synchronisation.");
+                logger_1.Logger.info(((Date.now() - this.last_bgsync) / 1000) + " seconds since last bg sync.");
                 this.last_bgsync = Date.now();
                 this.launchBackgroundSync()
                     .then(() => {
-                    logger_1.Logger.info(`La synchronisation d'arrière-plan s'est bien déroulée et a duré ${((Date.now() - this.last_bgsync) / 1000)} secondes.`);
-                    Settings_1.BackgroundSync.finish();
+                    logger_1.Logger.info(`Banckground sync has been completed successfully and last ${((Date.now() - this.last_bgsync) / 1000)} seconds.`);
+                    Settings_3.BackgroundSync.finish();
                 })
                     .catch(e => {
-                    logger_1.Logger.error("Impossible de synchroniser en arrière plan.", e);
-                    Settings_1.BackgroundSync.finish();
+                    logger_1.Logger.error("Unable to do background sync.", e);
+                    Settings_3.BackgroundSync.finish();
                 });
             };
             const failure_fn = () => {
-                console.log("La synchronisation n'a pas pu se lancer.");
+                console.log("Sync could not be started");
                 const checkbox_setting_bgsync = document.getElementById('__sync_bg_checkbox_settings');
                 if (checkbox_setting_bgsync) {
-                    helpers_4.showToast("Impossible de lancer la synchronisation");
+                    helpers_4.showToast("Unable to start background synchronisation");
                     checkbox_setting_bgsync.checked = false;
                 }
             };
-            if (Settings_1.Settings.sync_bg) {
+            if (Settings_3.Settings.sync_bg) {
                 // Initialise la synchronisation en arrière plan uniquement si elle est demandée
-                if (Settings_1.BackgroundSync.isInit()) {
-                    Settings_1.BackgroundSync.initBgSync(success_fn, failure_fn, interval);
+                if (Settings_3.BackgroundSync.isInit()) {
+                    Settings_3.BackgroundSync.initBgSync(success_fn, failure_fn, interval);
                 }
                 else {
-                    Settings_1.BackgroundSync.init(success_fn, failure_fn, interval);
+                    Settings_3.BackgroundSync.init(success_fn, failure_fn, interval);
                 }
             }
         }
         changeBackgroundSyncInterval(interval) {
-            if (Settings_1.BackgroundSync.isInit()) {
-                Settings_1.BackgroundSync.changeBgSyncInterval(interval);
+            if (Settings_3.BackgroundSync.isInit()) {
+                Settings_3.BackgroundSync.changeBgSyncInterval(interval);
             }
             else {
                 this.initBackgroundSync(interval);
@@ -2240,8 +2298,8 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * Démarre la synchronisation d'arrière-plan
          */
         startBackgroundSync() {
-            if (Settings_1.BackgroundSync.isInit()) {
-                Settings_1.BackgroundSync.start();
+            if (Settings_3.BackgroundSync.isInit()) {
+                Settings_3.BackgroundSync.start();
             }
             else {
                 this.initBackgroundSync();
@@ -2251,8 +2309,8 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * Arrête la synchro d'arrière plan
          */
         stopBackgroundSync() {
-            if (Settings_1.BackgroundSync.isInit()) {
-                Settings_1.BackgroundSync.stop();
+            if (Settings_3.BackgroundSync.isInit()) {
+                Settings_3.BackgroundSync.stop();
             }
         }
         /**
@@ -2305,10 +2363,10 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
             // et de ses métadonnées a réussi.
             let content;
             try {
-                content = await main_5.FILE_HELPER.read(FormSaves_1.ENTRIES_DIR + id + ".json");
+                content = await main_4.FILE_HELPER.read(FormSaves_1.ENTRIES_DIR + id + ".json");
             }
             catch (error) {
-                logger_1.Logger.info("Impossible de lire le fichier", error.message);
+                logger_1.Logger.info("Unable to read file", error.message);
                 throw { code: "file_read", error };
             }
             if (!this.in_sync) {
@@ -2326,12 +2384,12 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     this.running_fetchs.push(controller);
                 }
                 let signal = controller ? controller.signal : undefined;
-                const response = await fetch_timeout_2.default(main_5.API_URL + "forms/send.json", {
+                const response = await fetch_timeout_2.default(Settings_3.Settings.api_url + "forms/send.json", {
                     method: "POST",
                     body: d,
                     signal,
                     headers: new Headers({ "Authorization": "Bearer " + UserManager_2.UserManager.token })
-                }, main_5.MAX_TIMEOUT_FOR_FORM);
+                }, main_4.MAX_TIMEOUT_FOR_FORM);
                 json = await response.json();
             }
             catch (error) {
@@ -2360,7 +2418,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     // Pour des raisons de charge réseau, on envoie les fichiers un par un.
                     let base64;
                     try {
-                        base64 = await main_5.FILE_HELPER.read(file, FileHelper_3.FileHelperReadMode.url);
+                        base64 = await main_4.FILE_HELPER.read(file, FileHelper_3.FileHelperReadMode.url);
                     }
                     catch (e) {
                         // Le fichier n'existe pas en local. On passe.
@@ -2382,12 +2440,12 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                             this.running_fetchs.push(controller);
                         }
                         let signal = controller ? controller.signal : undefined;
-                        const resp = await fetch_timeout_2.default(main_5.API_URL + "forms/metadata_send.json", {
+                        const resp = await fetch_timeout_2.default(Settings_3.Settings.api_url + "forms/metadata_send.json", {
                             method: "POST",
                             body: md,
                             signal,
                             headers: new Headers({ "Authorization": "Bearer " + UserManager_2.UserManager.token })
-                        }, main_5.MAX_TIMEOUT_FOR_METADATA);
+                        }, main_4.MAX_TIMEOUT_FOR_METADATA);
                         const json = await resp.json();
                         if (json.error_code) {
                             throw { code: "metadata_treatement", error_code: json.error_code, "message": json.message };
@@ -2406,12 +2464,12 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
             return this.list.listSaved();
         }
         async getSpecificFile(id) {
-            const entries = await main_5.FILE_HELPER.ls(FormSaves_1.ENTRIES_DIR, "e");
+            const entries = await main_4.FILE_HELPER.ls(FormSaves_1.ENTRIES_DIR, "e");
             const filename = id + ".json";
             for (const d in entries) {
                 for (const entry of entries[d]) {
                     if (entry.name === filename) {
-                        const json = JSON.parse(await main_5.FILE_HELPER.read(entry));
+                        const json = JSON.parse(await main_4.FILE_HELPER.read(entry));
                         return { type: json.type, metadata: json.metadata };
                     }
                 }
@@ -2423,13 +2481,13 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * Obtient tous les fichiers JSON disponibles sur l'appareil
          */
         async getAllCurrentFiles() {
-            const entries = await main_5.FILE_HELPER.ls(FormSaves_1.ENTRIES_DIR, "e");
+            const entries = await main_4.FILE_HELPER.ls(FormSaves_1.ENTRIES_DIR, "e");
             const promises = [];
             // On ajoute chaque entrée
             for (const d in entries) {
                 for (const entry of entries[d]) {
                     promises.push(new Promise(async (resolve) => {
-                        const json = JSON.parse(await main_5.FILE_HELPER.read(entry));
+                        const json = JSON.parse(await main_4.FILE_HELPER.read(entry));
                         resolve([entry.name.split('.json')[0], { type: json.type, metadata: json.metadata }]);
                     }));
                 }
@@ -2469,8 +2527,8 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          */
         graphicalSync(force_all = false, clear_cache = false) {
             const modal = helpers_4.getModal();
-            const instance = helpers_4.initModal({ dismissible: false }, helpers_4.getModalPreloader("Initialisation...", `<div class="modal-footer">
-                    <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Annuler</a>
+            const instance = helpers_4.initModal({ dismissible: false }, helpers_4.getModalPreloader("Please wait...", `<div class="modal-footer">
+                    <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Cancel</a>
                     <div class="clearb"></div>
                 </div>`));
             instance.open();
@@ -2481,20 +2539,20 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                 cancel_clicked = true;
                 this.cancelSync();
                 if (text)
-                    text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
+                    text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Cancelling...</p>`);
             };
             const receiver = new SyncEvent;
             // Actualise le texte avec des events
             receiver.addEventListener('begin', () => {
-                text.innerText = "Lecture des données à synchroniser";
+                text.innerText = "Reading files to synchronize";
             });
             receiver.addEventListener('send', (event) => {
                 const detail = event.detail;
-                text.innerHTML = `Envoi des données au serveur\n(Entrée ${detail.number}/${detail.total})`;
+                text.innerHTML = `Sending data\n(Entry ${detail.number} of ${detail.total})`;
             });
             return this.sync(force_all, clear_cache, undefined, receiver)
                 .then(data => {
-                helpers_4.showToast("Synchronisation réussie");
+                helpers_4.showToast("Synchronisation completed");
                 instance.close();
                 return data;
             })
@@ -2508,15 +2566,15 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     if (reason.code === "already") {
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
-                            <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                            <h5 class="red-text no-margin-top">One synchronisation is already running.</h5>
+                            <p class="flow-text">Try later.</p>
                             <div class="center">
-                                <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                                <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Ask for cancel</a>
                             </div>
                             <div class="clearb"></div>
                         </div>
                         <div class="modal-footer">
-                            <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                            <a href="#!" class="red-text btn-flat left modal-close">Close</a>
                             <div class="clearb"></div>
                         </div>
                         `;
@@ -2538,7 +2596,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                                     else {
                                         if (text) {
                                             text.classList.add('red-text');
-                                            text.innerText = "Synchronisation annulée.";
+                                            text.innerText = "Sync cancelled.";
                                         }
                                     }
                                 }, 500);
@@ -2549,25 +2607,25 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     else if (typeof reason.code === "string") {
                         let cause = (function (reason) {
                             switch (reason) {
-                                case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Une entrée n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
-                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
-                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
-                                default: return "Erreur inconnue.";
+                                case "aborted": return "Synchonisation has beed cancelled.";
+                                case "json_send": return "One entry could not be sent.";
+                                case "metadata_send": return "File linked to an entry could not be sent.";
+                                case "file_read": return "A file cound not be read.";
+                                case "id_getter": return "Unable to dialog with internal database.";
+                                default: return "Unknown error.";
                             }
                         })(reason.code);
                         // Modifie le texte du modal
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
+                            <h5 class="red-text no-margin-top">Unable to synchronize</h5>
                             <p class="flow-text">
                                 ${cause}<br>
-                                Veuillez réessayer ultérieurement.
+                                Please try again later.
                             </p>
                         </div>
                         <div class="modal-footer">
-                            <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
+                            <a href="#!" class="red-text btn-flat right modal-close">Close</a>
                             <div class="clearb"></div>
                         </div>
                         `;
@@ -2577,14 +2635,14 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     // Modifie le texte du modal
                     modal.innerHTML = `
                     <div class="modal-content">
-                        <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
+                        <h5 class="red-text no-margin-top">Unable to synchronize</h5>
                         <p class="flow-text">
-                            Une erreur inconnue est survenue.<br>
-                            Veuillez réessayer ultérieurement.
+                            An unknown error occurred.<br>
+                            Please try again later.
                         </p>
                     </div>
                     <div class="modal-footer">
-                        <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
+                        <a href="#!" class="red-text btn-flat right modal-close">Close</a>
                         <div class="clearb"></div>
                     </div>
                     `;
@@ -2625,25 +2683,25 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     logger_1.Logger.error("Sync fail:", reason);
                     // Si jamais la syncho a été refusée parce qu'une est déjà en cours
                     if (reason.code === "already") {
-                        helpers_4.showToast('Une synchronisation est déjà en cours.');
+                        helpers_4.showToast('One synchronisation is already running.');
                     }
                     else if (typeof reason.code === "string") {
-                        let cause = (function (reason_1) {
-                            switch (reason_1) {
-                                case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Une entrée n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
-                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
-                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
-                                default: return "Erreur inconnue.";
+                        let cause = (function (reason) {
+                            switch (reason) {
+                                case "aborted": return "Synchonisation has beed cancelled.";
+                                case "json_send": return "One entry could not be sent.";
+                                case "metadata_send": return "File linked to an entry could not be sent.";
+                                case "file_read": return "A file cound not be read.";
+                                case "id_getter": return "Unable to dialog with internal database.";
+                                default: return "Unknown error.";
                             }
                         })(reason.code);
                         // Modifie le texte du modal
-                        helpers_4.showToast("Impossible de synchroniser: " + cause);
+                        helpers_4.showToast("Unable to synchronize: " + cause);
                     }
                 }
                 else {
-                    helpers_4.showToast("Une erreur est survenue lors de la synchronisation");
+                    helpers_4.showToast("An error occurred during synchronisation process.");
                 }
                 throw reason;
             }
@@ -2655,9 +2713,9 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
          * @param receiver Récepteur aux événements lancés par la synchro
          */
         async subSyncDivider(id_getter, entries, receiver) {
-            for (let position = 0; position < entries.length; position += main_5.MAX_CONCURRENT_SYNC_ENTRIES) {
+            for (let position = 0; position < entries.length; position += main_4.MAX_CONCURRENT_SYNC_ENTRIES) {
                 // Itère par groupe de formulaire. Groupe de taille MAX_CONCURRENT_SYNC_ENTRIES
-                const subset = entries.slice(position, main_5.MAX_CONCURRENT_SYNC_ENTRIES + position);
+                const subset = entries.slice(position, main_4.MAX_CONCURRENT_SYNC_ENTRIES + position);
                 const promises = [];
                 receiver.dispatchEvent(eventCreator("groupsend", subset));
                 let i = 1;
@@ -2785,7 +2843,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
                     .catch(r => {
                     receiver.dispatchEvent(eventCreator("error", r));
                     this.in_sync = false;
-                    logger_1.Logger.info("Synchronisation échouée:", r);
+                    logger_1.Logger.info("Failed to sync:", r);
                     reject(r);
                 });
             });
@@ -2860,7 +2918,7 @@ define("base/SyncManager", ["require", "exports", "utils/logger", "localforage",
         }
     }
 });
-define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSchema", "base/SyncManager", "main", "base/FormSaves"], function (require, exports, PageManager_1, FormSchema_2, SyncManager_2, main_6, FormSaves_2) {
+define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSchema", "base/SyncManager", "main", "base/FormSaves"], function (require, exports, PageManager_1, FormSchema_2, SyncManager_2, main_5, FormSaves_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // PRELOADERS: spinners for waiting time
@@ -3144,7 +3202,7 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      * @param element HTMLImageElement
      */
     async function createImgSrc(path, element) {
-        const file = await main_6.FILE_HELPER.get(path);
+        const file = await main_5.FILE_HELPER.get(path);
         element.src = file.toURL();
         element.dataset.original = path;
     }
@@ -3463,12 +3521,12 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
             }
             // Sauvegarde du formulaire
             const id = generateId(20);
-            promises.push(main_6.FILE_HELPER.write(FormSaves_2.ENTRIES_DIR + id + ".json", save)
+            promises.push(main_5.FILE_HELPER.write(FormSaves_2.ENTRIES_DIR + id + ".json", save)
                 .then(() => {
                 return SyncManager_2.SyncManager.add(id, save);
             }));
-            if (main_6.SD_FILE_HELPER) {
-                main_6.SD_FILE_HELPER.write(FormSaves_2.ENTRIES_DIR + id + ".json", save).catch(error => console.log(error));
+            if (main_5.SD_FILE_HELPER) {
+                main_5.SD_FILE_HELPER.write(FormSaves_2.ENTRIES_DIR + id + ".json", save).catch(error => console.log(error));
             }
         }
         await Promise.all(promises);
@@ -3486,12 +3544,12 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
     }
     exports.getSdCardFolder = getSdCardFolder;
 });
-define("utils/vocal_recognition", ["require", "exports"], function (require, exports) {
+define("utils/vocal_recognition", ["require", "exports", "utils/Settings"], function (require, exports, Settings_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // options de la reconnaissance vocale
-    const options = {
-        language: "fr-FR",
+    let vocal_recognition_options = {
+        language: "",
         prompt: "Parlez maintenant"
     };
     function talk(sentence) {
@@ -3512,7 +3570,10 @@ define("utils/vocal_recognition", ["require", "exports"], function (require, exp
      */
     function prompt(prompt_text = "Parlez maintenant", as_array = false) {
         return new Promise(function (resolve, reject) {
-            options.prompt = prompt_text;
+            vocal_recognition_options = {
+                language: Settings_4.Settings.voice_lang,
+                prompt: prompt_text
+            };
             // @ts-ignore
             if (window.plugins && window.plugins.speechRecognition) {
                 // @ts-ignore
@@ -3562,7 +3623,7 @@ define("utils/vocal_recognition", ["require", "exports"], function (require, exp
                     else {
                         reject();
                     }
-                }, options);
+                }, vocal_recognition_options);
             }
             else {
                 reject();
@@ -3613,7 +3674,7 @@ define("utils/vocal_recognition", ["require", "exports"], function (require, exp
     }
     exports.testMultipleOptionsVesusExpected = testMultipleOptionsVesusExpected;
 });
-define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/logger", "main"], function (require, exports, helpers_5, logger_2, main_7) {
+define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/logger", "main"], function (require, exports, helpers_5, logger_2, main_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -3663,7 +3724,7 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
         </p>`;
             // @ts-ignore MicRecorder, credit to https://github.com/closeio/mic-recorder-to-mp3
             recorder = new MicRecorder({
-                bitRate: main_7.MP3_BITRATE
+                bitRate: main_6.MP3_BITRATE
             });
             recorder.start().then(function () {
                 player.innerHTML = `<p class='flow-text center'>
@@ -3710,7 +3771,7 @@ define("utils/audio_listener", ["require", "exports", "utils/helpers", "utils/lo
                 // Clean le modal et donc les variables associées
                 modal.innerHTML = "";
                 if (audioContent) {
-                    const duration = (blobSize / (main_7.MP3_BITRATE * 1000)) * 8;
+                    const duration = (blobSize / (main_6.MP3_BITRATE * 1000)) * 8;
                     resolve({
                         content: audioContent,
                         duration
@@ -3808,7 +3869,7 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
     }
     exports.createLocationInputSelector = createLocationInputSelector;
 });
-define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "base/UserManager", "base/PageManager", "utils/logger", "base/SyncManager", "utils/location", "base/FormSaves"], function (require, exports, main_8, helpers_7, UserManager_3, PageManager_2, Logger_1, SyncManager_3, location_1, FormSaves_3) {
+define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "base/UserManager", "base/PageManager", "utils/logger", "base/SyncManager", "utils/location", "base/FormSaves"], function (require, exports, main_7, helpers_7, UserManager_3, PageManager_2, Logger_1, SyncManager_3, location_1, FormSaves_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function scrollToAnElementOnClick(element_base, element_related, modal, center = false) {
@@ -3981,8 +4042,8 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                 <span class="red-text bold">${error[0]}</span>: 
                 <span>${error[1]}</span>
             `;
-                if (main_8.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK) {
-                    scrollToAnElementOnClick(li, error[2], instance, main_8.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK);
+                if (main_7.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK) {
+                    scrollToAnElementOnClick(li, error[2], instance, main_7.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK);
                 }
                 list.appendChild(li);
             }
@@ -3993,8 +4054,8 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
                 <span class="bold">${warning[0]}</span>: 
                 <span>${warning[1]}</span>
             `;
-                if (main_8.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK) {
-                    scrollToAnElementOnClick(li, warning[2], instance, main_8.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK);
+                if (main_7.ENABLE_SCROLL_ON_FORM_VERIFICATION_CLICK) {
+                    scrollToAnElementOnClick(li, warning[2], instance, main_7.SCROLL_TO_CENTER_ON_FORM_VERIFICATION_CLICK);
                 }
                 list.appendChild(li);
             }
@@ -4028,7 +4089,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
             save_btn.onclick = function () {
                 modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
                 modal.classList.remove('modal-fixed-footer');
-                const unique_id = force_name || helpers_7.generateId(main_8.ID_COMPLEXITY);
+                const unique_id = force_name || helpers_7.generateId(main_7.ID_COMPLEXITY);
                 PageManager_2.PageManager.lock_return_button = true;
                 saveForm(type, unique_id, location_str, form_save)
                     .then((form_values) => {
@@ -4195,7 +4256,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
     }
     exports.validConstraints = validConstraints;
 });
-define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form", "base/FormSaves"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_9, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1, FormSaves_4) {
+define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form", "base/FormSaves"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_8, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1, FormSaves_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -4852,12 +4913,12 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 wrapper.appendChild(hidden_label);
                 ////// Définition si un fichier son existe déjà
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                    main_9.FILE_HELPER.read(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], FileHelper_4.FileHelperReadMode.url)
+                    main_8.FILE_HELPER.read(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], FileHelper_4.FileHelperReadMode.url)
                         .then(base64 => {
                         button.classList.remove('blue');
                         button.classList.add('green');
                         real_input.value = base64;
-                        const duration = ((base64.length * 0.7) / (main_9.MP3_BITRATE * 1000)) * 8;
+                        const duration = ((base64.length * 0.7) / (main_8.MP3_BITRATE * 1000)) * 8;
                         button.innerText = "Enregistrement (" + duration.toFixed(0) + "s" + ")";
                     })
                         .catch(err => {
@@ -5136,7 +5197,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
             // Construction de la liste des lieux proches
             const collection = document.createElement('div');
             collection.classList.add('collection');
-            for (let i = 0; i < lieux_dispo.length && i < main_9.MAX_LIEUX_AFFICHES; i++) {
+            for (let i = 0; i < lieux_dispo.length && i < main_8.MAX_LIEUX_AFFICHES; i++) {
                 const elem = document.createElement('a');
                 elem.href = "#!";
                 elem.classList.add('collection-item');
@@ -5341,7 +5402,7 @@ define("utils/test_vocal_reco", ["require", "exports", "utils/vocal_recognition"
     }
     exports.launchQuizz = launchQuizz;
 });
-define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManager", "utils/helpers", "main", "base/FormSchema", "utils/location", "utils/test_vocal_reco", "base/FormSaves"], function (require, exports, UserManager_5, SyncManager_4, helpers_9, main_10, FormSchema_4, location_3, test_vocal_reco_1, FormSaves_5) {
+define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManager", "utils/helpers", "main", "base/FormSchema", "utils/location", "utils/test_vocal_reco", "base/FormSaves"], function (require, exports, UserManager_5, SyncManager_4, helpers_9, main_9, FormSchema_4, location_3, test_vocal_reco_1, FormSaves_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -5351,7 +5412,7 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${main_10.APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${main_9.APP_VERSION}</span>
         <p class="flow-text center">
             Bienvenue dans ${exports.APP_NAME}, l'application qui facilite le suivi d'espèces 
             sur le terrain !
@@ -5405,11 +5466,11 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
         try {
             let nb_files;
             try {
-                nb_files = (await main_10.FILE_HELPER.ls(FormSaves_5.ENTRIES_DIR)).length;
+                nb_files = (await main_9.FILE_HELPER.ls(FormSaves_5.ENTRIES_DIR)).length;
             }
             catch (e) {
                 nb_files = 0;
-                await main_10.FILE_HELPER.mkdir(FormSaves_5.ENTRIES_DIR);
+                await main_9.FILE_HELPER.mkdir(FormSaves_5.ENTRIES_DIR);
             }
             home_container.insertAdjacentHTML('beforeend', createCardPanel(`<span class="blue-text text-darken-2">${nb_files === 0 ? 'Aucune' : nb_files} entrée${nb_files > 1 ? 's' : ''} 
             ${nb_files > 1 ? 'sont' : 'est'} stockée${nb_files > 1 ? 's' : ''} sur cet appareil.</span>`));
@@ -5420,16 +5481,15 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
             <span class="red-text text-darken-2">Cette erreur est probablement grave. 
             Nous vous conseillons de ne pas tenter d'enregistrer d'entrée et de vérifier votre stockage interne.</span>`));
         }
-        FormSchema_4.Schemas.onReady(function (available, current) {
-            if (FormSchema_4.Schemas.current_key === null) {
-                return;
+        if (FormSchema_4.Schemas.current_key !== null) {
+            const locations = FormSchema_4.Schemas.current.locations;
+            if (Object.keys(locations).length > 0) {
+                // Navigation vers nichoir
+                home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
+                <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${FormSchema_4.Schemas.current.name.toLowerCase()}</h6>`);
+                location_3.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
             }
-            const locations = current.locations;
-            // Navigation vers nichoir
-            home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
-            <h6 style="margin-left: 10px; font-size: 1.25rem">Naviguer vers un habitat de ${current.name.toLowerCase()}</h6>`);
-            location_3.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
-        });
+        }
         // Initialise les champs materialize et le select
         M.updateTextFields();
         $('select').formSelect();
@@ -5476,7 +5536,7 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
         };
     }
 });
-define("pages/settings_page", ["require", "exports", "base/UserManager", "base/FormSchema", "utils/helpers", "base/SyncManager", "base/PageManager", "utils/fetch_timeout", "main", "pages/home", "utils/Settings"], function (require, exports, UserManager_6, FormSchema_5, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_11, home_1, Settings_2) {
+define("pages/settings_page", ["require", "exports", "base/UserManager", "base/FormSchema", "utils/helpers", "base/SyncManager", "base/PageManager", "utils/fetch_timeout", "main", "pages/home", "utils/Settings"], function (require, exports, UserManager_6, FormSchema_5, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_10, home_1, Settings_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -5645,16 +5705,16 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         // Select pour choisir la fréquence de synchro
         const select_field = helpers_10.convertHTMLToElement('<div class="input-field col s12"></div>');
         const select_input = document.createElement('select');
-        for (const minutes of main_11.SYNC_FREQUENCY_POSSIBILITIES) {
+        for (const minutes of main_10.SYNC_FREQUENCY_POSSIBILITIES) {
             const opt = document.createElement('option');
             opt.value = String(minutes);
             opt.innerText = helpers_10.convertMinutesToText(minutes);
-            opt.selected = minutes === Settings_2.Settings.sync_freq;
+            opt.selected = minutes === Settings_5.Settings.sync_freq;
             select_input.appendChild(opt);
         }
         select_input.onchange = function () {
-            Settings_2.Settings.sync_freq = Number(this.value);
-            SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_2.Settings.sync_freq);
+            Settings_5.Settings.sync_freq = Number(this.value);
+            SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_5.Settings.sync_freq);
         };
         const select_label = document.createElement('label');
         select_label.innerText = "Fréquence de synchronisation";
@@ -5667,13 +5727,13 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         container.insertAdjacentHTML('beforeend', `
         <p style="margin-bottom: 20px">
             <label>
-                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_2.Settings.sync_bg ? 'checked' : ''}>
+                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_5.Settings.sync_bg ? 'checked' : ''}>
                 <span>Activer la synchronisation en arrière-plan</span>
             </label>
         </p>`);
         document.getElementById('__sync_bg_checkbox_settings').onchange = function () {
-            Settings_2.Settings.sync_bg = this.checked;
-            if (Settings_2.Settings.sync_bg) {
+            Settings_5.Settings.sync_bg = this.checked;
+            if (Settings_5.Settings.sync_bg) {
                 SyncManager_5.SyncManager.startBackgroundSync();
             }
             else {
@@ -5706,13 +5766,92 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
             }
         };
         container.appendChild(syncbtn);
+        //// PARTIE QUATRE: URL API
+        container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>${home_1.APP_NAME} server</h4>
+    <h5>Server location</h5>
+    <p class="flow-text">
+        Current location is <span class="blue-text text-darken-2 api-url">${helpers_10.escapeHTML(Settings_5.Settings.api_url)}</span>.
+    </p>
+    `);
+        const changeapibutton = document.createElement('button');
+        changeapibutton.className = "teal darken-4 col s12 btn btn-perso btn-small-margins";
+        changeapibutton.innerHTML = "Change API URL";
+        changeapibutton.onclick = changeURL;
+        container.appendChild(changeapibutton);
+        //// PARTIE CINQ: VOICE RECO LANG
+        container.insertAdjacentHTML('beforeend', `
+    <div class="clearb"></div>
+    <div class="divider divider-margin"></div>
+    <h4>Voice recognition language</h4>
+    <p class="flow-text">
+        Choose language used for voice recognition.
+    </p>
+    `);
+        const changelangselection = document.createElement('select');
+        for (const opt of Settings_5.getAvailableLanguages()) {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.innerText = opt;
+            if (opt === Settings_5.Settings.voice_lang) {
+                o.selected = true;
+            }
+            changelangselection.appendChild(o);
+        }
+        changelangselection.onchange = function () {
+            Settings_5.Settings.voice_lang = changelangselection.value;
+        };
+        container.appendChild(changelangselection);
+        M.FormSelect.init(changelangselection);
     }
     exports.initSettingsPage = initSettingsPage;
+    // Modal API URL
+    function changeURL() {
+        const modal = helpers_10.getModal();
+        const instance = helpers_10.initModal();
+        modal.innerHTML = `
+    <div class="modal-content row">
+        <h5 class="no-margin-top">API URL</h5>
+        <p>
+            Make sure you know what you're doing !
+            This will change the location where ${home_1.APP_NAME} send forms and download form models.
+            <br>
+            If you want to build our own ${home_1.APP_NAME} server, please check the docs.
+        </p>
+
+        <div class="input-field col s12">
+            <input id="__api_url_modifier" type="text">
+            <label for="__api_url_modifier">API URL</label>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a class="btn-flat modal-close red-text">Close</a>
+        <a class="btn-flat green-text" id="__api_url_save">Save</a>
+    </div>
+    `;
+        const input = document.getElementById("__api_url_modifier");
+        input.value = Settings_5.Settings.api_url;
+        document.getElementById('__api_url_save').onclick = () => {
+            try {
+                Settings_5.Settings.api_url = input.value;
+                instance.close();
+                modal.innerHTML = "";
+                document.querySelector('span.api-url').innerText = Settings_5.Settings.api_url;
+            }
+            catch (e) {
+                helpers_10.showToast("Specified URL is not a valid URL.");
+            }
+        };
+        M.updateTextFields();
+        instance.open();
+    }
     /**
      * Obtient les souscriptions disponibles depuis le serveur
      */
     async function getSubscriptions() {
-        return fetch_timeout_3.default(main_11.API_URL + "schemas/available.json", {
+        return fetch_timeout_3.default(Settings_5.Settings.api_url + "schemas/available.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "GET",
             mode: "cors"
@@ -5730,7 +5869,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(main_11.API_URL + "schemas/subscribe.json", {
+        return fetch_timeout_3.default(Settings_5.Settings.api_url + "schemas/subscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -5749,7 +5888,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(main_11.API_URL + "schemas/unsubscribe.json", {
+        return fetch_timeout_3.default(Settings_5.Settings.api_url + "schemas/unsubscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -5885,7 +6024,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         modal.appendChild(footer);
     }
 });
-define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSchema", "base/PageManager", "base/SyncManager", "utils/logger", "main", "base/FileHelper", "base/FormSaves"], function (require, exports, helpers_11, FormSchema_6, PageManager_5, SyncManager_6, logger_4, main_12, FileHelper_5, FormSaves_6) {
+define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSchema", "base/PageManager", "base/SyncManager", "utils/logger", "main", "base/FileHelper", "base/FormSaves"], function (require, exports, helpers_11, FormSchema_6, PageManager_5, SyncManager_6, logger_4, main_11, FileHelper_5, FormSaves_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /** État de sauvegarde d'une entrée */
@@ -5939,7 +6078,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
      * @param ph Element dans lequel écrire la card
      */
     async function appendFileEntry(json, ph) {
-        const save = await main_12.FILE_HELPER.readFileAs(json, FileHelper_5.FileHelperReadMode.json);
+        const save = await main_11.FILE_HELPER.readFileAs(json, FileHelper_5.FileHelperReadMode.json);
         const selector = document.createElement('li');
         selector.classList.add('collection-item');
         const container = document.createElement('div');
@@ -6067,9 +6206,9 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
     async function initSavedForm(base) {
         const placeholder = document.createElement('ul');
         placeholder.classList.add('collection', 'no-margin-top');
-        console.log(await main_12.FILE_HELPER.readAll(FormSaves_6.ENTRIES_DIR, FileHelper_5.FileHelperReadMode.fileobj));
+        console.log(await main_11.FILE_HELPER.readAll(FormSaves_6.ENTRIES_DIR, FileHelper_5.FileHelperReadMode.fileobj));
         try {
-            await main_12.FILE_HELPER.mkdir(FormSaves_6.ENTRIES_DIR);
+            await main_11.FILE_HELPER.mkdir(FormSaves_6.ENTRIES_DIR);
         }
         catch (err) {
             logger_4.Logger.error("Impossible de créer le dossier d'entrées", err.message, err.stack);
@@ -6078,7 +6217,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
         }
         FormSchema_6.Schemas.onReady()
             .then(() => {
-            return main_12.FILE_HELPER.readAll(FormSaves_6.ENTRIES_DIR, FileHelper_5.FileHelperReadMode.fileobj);
+            return main_11.FILE_HELPER.readAll(FormSaves_6.ENTRIES_DIR, FileHelper_5.FileHelperReadMode.fileobj);
         })
             .then(async (files) => {
             // Tri des fichiers; le plus récent en premier
@@ -6152,7 +6291,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
     }
     exports.initSavedForm = initSavedForm;
 });
-define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form", "pages/settings_page", "pages/saved_forms", "pages/home", "utils/logger", "main"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_2, logger_5, main_13) {
+define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form", "pages/settings_page", "pages/saved_forms", "pages/home", "utils/logger", "main"], function (require, exports, helpers_12, form_1, settings_page_1, saved_forms_1, home_2, logger_5, main_12) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SIDENAV_OBJ = null;
@@ -6162,23 +6301,23 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
      */
     exports.AppPages = {
         home: {
-            name: "Tableau de bord",
+            name: "Dashboard",
             callback: home_2.initHomePage,
             reload_on_restore: true
         },
         form: {
-            name: "Nouvelle entrée",
+            name: "New entry",
             callback: form_1.initFormPage,
             ask_change: true,
             reload_on_restore: false
         },
         saved: {
-            name: "Entrées",
+            name: "Entries",
             callback: saved_forms_1.initSavedForm,
             reload_on_restore: true
         },
         settings: {
-            name: "Paramètres",
+            name: "Settings",
             callback: settings_page_1.initSettingsPage,
             reload_on_restore: false
         }
@@ -6279,7 +6418,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
                 }
                 // On écrit le preloader dans la base et on change l'historique
                 const base = helpers_12.getBase();
-                base.innerHTML = helpers_12.getPreloader("Chargement");
+                base.innerHTML = helpers_12.getPreloader("Loading");
                 if (window.history) {
                     window.history.pushState({}, "", "?" + pagename);
                 }
@@ -6309,7 +6448,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
                 }
             }
             catch (e) {
-                logger_5.Logger.error("Erreur lors du changement de page", e);
+                logger_5.Logger.error("Error while changing pages", e);
                 return Promise.reject(e);
             }
         }
@@ -6317,7 +6456,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
          * Supprime des pages sauvegardées si la pile de page dépasse MAX_SLEEPING_PAGES
          */
         clean() {
-            while (this.pages_holder.length >= main_13.MAX_SLEEPING_PAGES) {
+            while (this.pages_holder.length >= main_12.MAX_SLEEPING_PAGES) {
                 this.pages_holder.shift();
             }
         }
@@ -6362,7 +6501,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
          */
         pop() {
             if (this.pages_holder.length === 0) {
-                this.change(main_13.DEFAULT_PAGE);
+                this.change(main_12.DEFAULT_PAGE);
                 return;
             }
             // Récupère la dernière page poussée dans le tableau
@@ -6417,7 +6556,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
                 }
             };
             if (this.should_wait || force_asking) {
-                helpers_12.askModal("Aller à la page précédente ?", "Les modifications sur la page actuelle seront perdues.", "Page précédente", "Annuler")
+                helpers_12.askModal("Go to previous page ?", "Modifications on this page will be lost.", "Previous page", "Cancel")
                     .then(stepBack)
                     .catch(() => { });
             }
@@ -6446,14 +6585,13 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
         }
     }
 });
-define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper"], function (require, exports, PageManager_6, helpers_13, Logger_2, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6) {
+define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper", "utils/Settings"], function (require, exports, PageManager_6, helpers_13, Logger_2, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6, Settings_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Constantes de l'application
     exports.APP_VERSION = 0.7;
     const FIXED_NAVBAR = true; /** Active la barre de navigation fixe */
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
-    exports.API_URL = "https://projet.alkihis.fr/"; /** MUST HAVE TRAILING SLASH */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
     exports.ID_COMPLEXITY = 20; /** Nombre de caractères aléatoires dans un ID automatique */
     exports.MP3_BITRATE = 256; /** En kb/s */
@@ -6596,7 +6734,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
                 PageManager_6.SIDENAV_OBJ.destroy();
             }
             catch (e) { }
-            helpers_13.getBase().innerHTML = helpers_13.displayErrorMessage("Impossible d'initialiser l'application", "Erreur: " + err.stack);
+            helpers_13.getBase().innerHTML = helpers_13.displayErrorMessage("Unable to initialize application", "Error: " + err.stack);
         });
     }
     function initDebug() {
@@ -6609,6 +6747,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
             testDistance: helpers_13.testDistance,
             Logger: Logger_2.Logger,
             Schemas: FormSchema_7.Schemas,
+            Settings: Settings_6.Settings,
             SyncEvent: SyncManager_7.SyncEvent,
             askModalList: helpers_13.askModalList,
             FileHelper: FileHelper_6.FileHelper,
@@ -6621,7 +6760,8 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
             prompt: vocal_recognition_3.prompt,
             createNewUser: UserManager_7.createNewUser,
             UserManager: UserManager_7.UserManager,
-            SyncManager: SyncManager_7.SyncManager
+            SyncManager: SyncManager_7.SyncManager,
+            api_url: Settings_6.Settings.api_url
         };
     }
     document.addEventListener('deviceready', appWrapper, false);

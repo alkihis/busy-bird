@@ -1,8 +1,9 @@
 import { showToast, hasConnection } from "../utils/helpers";
 import { UserManager } from "./UserManager";
-import { API_URL, ENABLE_FORM_DOWNLOAD, FILE_HELPER } from "../main";
+import { ENABLE_FORM_DOWNLOAD, FILE_HELPER } from "../main";
 import fetch from '../utils/fetch_timeout';
 import { FileHelper } from "./FileHelper";
+import { Settings } from "../utils/Settings";
 
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /* 
@@ -210,7 +211,7 @@ class FormSchemas {
         const init_text = document.getElementById('__init_text_center');
 
         if (init_text) {
-            init_text.innerText = "Mise à jour des schémas de formulaire";
+            init_text.innerText = "Updating form models";
         }
 
         if (ENABLE_FORM_DOWNLOAD && hasConnection() && UserManager.logged) {
@@ -231,7 +232,7 @@ class FormSchemas {
         // On tente d'actualiser les formulaires disponibles
         // On attend au max 20 secondes
         try {
-            const response = await fetch(API_URL + "schemas/subscribed.json", {
+            const response = await fetch(Settings.api_url + "schemas/subscribed.json", {
                 headers: new Headers({ "Authorization": "Bearer " + UserManager.token }),
                 method: "GET"
             }, timeout);
@@ -293,7 +294,7 @@ class FormSchemas {
                         this.loadFormSchemaInClass(JSON.parse((string_1 as string)));
                     })
                     .catch(() => {
-                        showToast("Impossible de charger les schémas." + " "
+                        showToast("Unable to load form models." + " "
                             + cordova.file.applicationDirectory + 'www/assets/form.json');
                     });
             }

@@ -1,7 +1,7 @@
 import { FormSave } from "./FormSchema";
 import { Logger } from "../utils/logger";
 import localforage from 'localforage';
-import { API_URL, FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
+import { FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
 import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "../utils/helpers";
 import { UserManager } from "./UserManager";
 import fetch from '../utils/fetch_timeout';
@@ -88,26 +88,26 @@ class _SyncManager {
      */
     public initBackgroundSync(interval: number = Settings.sync_freq) : void {
         const success_fn = () => {
-            Logger.info("Il s'est écoulé " + ((Date.now() - this.last_bgsync) / 1000) + " secondes depuis la dernière synchronisation.");
+            Logger.info(((Date.now() - this.last_bgsync) / 1000) + " seconds since last bg sync.");
             this.last_bgsync = Date.now();
 
             this.launchBackgroundSync()
                 .then(() => {
-                    Logger.info(`La synchronisation d'arrière-plan s'est bien déroulée et a duré ${((Date.now() - this.last_bgsync) / 1000)} secondes.`);
+                    Logger.info(`Banckground sync has been completed successfully and last ${((Date.now() - this.last_bgsync) / 1000)} seconds.`);
                     BackgroundSync.finish();
                 })
                 .catch(e => {
-                    Logger.error("Impossible de synchroniser en arrière plan.", e);
+                    Logger.error("Unable to do background sync.", e);
                     BackgroundSync.finish();
                 });
         };
 
         const failure_fn = () => {
-            console.log("La synchronisation n'a pas pu se lancer.");
+            console.log("Sync could not be started");
 
             const checkbox_setting_bgsync = document.getElementById('__sync_bg_checkbox_settings');
             if (checkbox_setting_bgsync) {
-                showToast("Impossible de lancer la synchronisation");
+                showToast("Unable to start background synchronisation");
                 (checkbox_setting_bgsync as HTMLInputElement).checked = false;
             }
         };
@@ -211,7 +211,7 @@ class _SyncManager {
         try {
             content = await FILE_HELPER.read(ENTRIES_DIR + id + ".json") as string;
         } catch (error) {
-            Logger.info("Impossible de lire le fichier", error.message);
+            Logger.info("Unable to read file", error.message);
             throw {code: "file_read", error};
         }
 
@@ -235,7 +235,7 @@ class _SyncManager {
             
             let signal = controller ? controller.signal : undefined;
 
-            const response = await fetch(API_URL + "forms/send.json", {
+            const response = await fetch(Settings.api_url + "forms/send.json", {
                 method: "POST",
                 body: d,
                 signal,
@@ -303,7 +303,7 @@ class _SyncManager {
                     
                     let signal = controller ? controller.signal : undefined;
 
-                    const resp = await fetch(API_URL + "forms/metadata_send.json", {
+                    const resp = await fetch(Settings.api_url + "forms/metadata_send.json", {
                         method: "POST",
                         body: md,
                         signal,
@@ -412,9 +412,9 @@ class _SyncManager {
         const instance = initModal(
             {dismissible: false}, 
             getModalPreloader(
-                "Initialisation...", 
+                "Please wait...", 
                 `<div class="modal-footer">
-                    <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Annuler</a>
+                    <a href="#!" class="red-text btn-flat left" id="__sync_modal_cancel">Cancel</a>
                     <div class="clearb"></div>
                 </div>`
             )
@@ -431,24 +431,24 @@ class _SyncManager {
             this.cancelSync();
 
             if (text)
-                text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Annulation en cours...</p>`);
+                text.insertAdjacentHTML("afterend", `<p class='flow-text center red-text'>Cancelling...</p>`);
         }
 
         const receiver = new SyncEvent;
 
         // Actualise le texte avec des events
         receiver.addEventListener('begin', () => {
-            text.innerText = "Lecture des données à synchroniser";
+            text.innerText = "Reading files to synchronize";
         });
 
         receiver.addEventListener('send', (event: Event) => {
             const detail = (event as CustomEvent).detail;
-            text.innerHTML = `Envoi des données au serveur\n(Entrée ${detail.number}/${detail.total})`;
+            text.innerHTML = `Sending data\n(Entry ${detail.number} of ${detail.total})`;
         });
 
         return this.sync(force_all, clear_cache, undefined, receiver)
             .then(data => {
-                showToast("Synchronisation réussie");
+                showToast("Synchronisation completed");
 
                 instance.close();
 
@@ -465,15 +465,15 @@ class _SyncManager {
                     if (reason.code === "already") {
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="red-text no-margin-top">Une synchronisation est déjà en cours.</h5>
-                            <p class="flow-text">Veuillez réessayer ultérieurement.</p>
+                            <h5 class="red-text no-margin-top">One synchronisation is already running.</h5>
+                            <p class="flow-text">Try later.</p>
                             <div class="center">
-                                <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Demander l'annulation</a>
+                                <a href="#!" id="__ask_sync_cancel" class="green-text btn-flat center">Ask for cancel</a>
                             </div>
                             <div class="clearb"></div>
                         </div>
                         <div class="modal-footer">
-                            <a href="#!" class="red-text btn-flat left modal-close">Fermer</a>
+                            <a href="#!" class="red-text btn-flat left modal-close">Close</a>
                             <div class="clearb"></div>
                         </div>
                         `;
@@ -499,7 +499,7 @@ class _SyncManager {
                                     else {
                                         if (text) {
                                             text.classList.add('red-text');
-                                            text.innerText = "Synchronisation annulée.";
+                                            text.innerText = "Sync cancelled.";
                                         }
                                     }
                                 }, 500);
@@ -511,26 +511,26 @@ class _SyncManager {
                     else if (typeof reason.code === "string") {
                         let cause = (function(reason) {
                             switch (reason) {
-                                case "aborted": return "La synchonisation a été annulée.";
-                                case "json_send": return "Une entrée n'a pas pu être envoyé.";
-                                case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
-                                case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
-                                case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
-                                default: return "Erreur inconnue.";
+                                case "aborted": return "Synchonisation has beed cancelled.";
+                                case "json_send": return "One entry could not be sent.";
+                                case "metadata_send": return "File linked to an entry could not be sent.";
+                                case "file_read": return "A file cound not be read.";
+                                case "id_getter": return "Unable to dialog with internal database.";
+                                default: return "Unknown error.";
                             }
                         })(reason.code);
 
                         // Modifie le texte du modal
                         modal.innerHTML = `
                         <div class="modal-content">
-                            <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
+                            <h5 class="red-text no-margin-top">Unable to synchronize</h5>
                             <p class="flow-text">
                                 ${cause}<br>
-                                Veuillez réessayer ultérieurement.
+                                Please try again later.
                             </p>
                         </div>
                         <div class="modal-footer">
-                            <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
+                            <a href="#!" class="red-text btn-flat right modal-close">Close</a>
                             <div class="clearb"></div>
                         </div>
                         `;
@@ -540,14 +540,14 @@ class _SyncManager {
                     // Modifie le texte du modal
                     modal.innerHTML = `
                     <div class="modal-content">
-                        <h5 class="red-text no-margin-top">Impossible de synchroniser</h5>
+                        <h5 class="red-text no-margin-top">Unable to synchronize</h5>
                         <p class="flow-text">
-                            Une erreur inconnue est survenue.<br>
-                            Veuillez réessayer ultérieurement.
+                            An unknown error occurred.<br>
+                            Please try again later.
                         </p>
                     </div>
                     <div class="modal-footer">
-                        <a href="#!" class="red-text btn-flat right modal-close">Fermer</a>
+                        <a href="#!" class="red-text btn-flat right modal-close">Close</a>
                         <div class="clearb"></div>
                     </div>
                     `;
@@ -596,25 +596,25 @@ class _SyncManager {
                 Logger.error("Sync fail:", reason);
                 // Si jamais la syncho a été refusée parce qu'une est déjà en cours
                 if (reason.code === "already") {
-                    showToast('Une synchronisation est déjà en cours.');
+                    showToast('One synchronisation is already running.');
                 }
                 else if (typeof reason.code === "string") {
-                    let cause = (function (reason_1) {
-                        switch (reason_1) {
-                            case "aborted": return "La synchonisation a été annulée.";
-                            case "json_send": return "Une entrée n'a pas pu être envoyé.";
-                            case "metadata_send": return "Un fichier associé à une entrée n'a pas pu être envoyé.";
-                            case "file_read": return "Un fichier à envoyer n'a pas pu être lu.";
-                            case "id_getter": return "Impossible de communiquer avec la base de données interne gérant la synchronisation.";
-                            default: return "Erreur inconnue.";
+                    let cause = (function(reason) {
+                        switch (reason) {
+                            case "aborted": return "Synchonisation has beed cancelled.";
+                            case "json_send": return "One entry could not be sent.";
+                            case "metadata_send": return "File linked to an entry could not be sent.";
+                            case "file_read": return "A file cound not be read.";
+                            case "id_getter": return "Unable to dialog with internal database.";
+                            default: return "Unknown error.";
                         }
                     })(reason.code);
                     // Modifie le texte du modal
-                    showToast("Impossible de synchroniser: " + cause);
+                    showToast("Unable to synchronize: " + cause);
                 }
             }
             else {
-                showToast("Une erreur est survenue lors de la synchronisation");
+                showToast("An error occurred during synchronisation process.");
             }
 
             throw reason;
@@ -779,7 +779,7 @@ class _SyncManager {
                 .catch(r => {
                     receiver.dispatchEvent(eventCreator("error", r));
                     this.in_sync = false;
-                    Logger.info("Synchronisation échouée:", r);
+                    Logger.info("Failed to sync:", r);
                     reject(r);
                 });
         });

@@ -145,7 +145,7 @@ class _FormSaves {
                 }
             }
             catch (error) {
-                showToast("Un fichier n'a pas pu être sauvegardé. Vérifiez votre espace de stockage.");
+                showToast("A file couldn't be saved. Check your storage capacity.");
                 return Promise.reject(error);
             }
         }
