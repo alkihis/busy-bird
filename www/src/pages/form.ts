@@ -158,7 +158,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
 
         loc_wrapper.appendChild(location);
         const loc_title = document.createElement('h4');
-        loc_title.innerText = "Lieu";
+        loc_title.innerText = "Place";
         placeh.appendChild(loc_title);
         placeh.appendChild(loc_wrapper);
         // Fin champ de lieu, itération sur champs
@@ -1038,7 +1038,7 @@ export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mo
     // Création du bouton de sauvegarde
     const btn = document.createElement('div');
     btn.classList.add('btn-flat', 'right', 'red-text');
-    btn.innerText = "Enregistrer";
+    btn.innerText = "Complete";
 
     const current_form_key = Schemas.current_key;
     btn.addEventListener('click', function() {
@@ -1090,7 +1090,7 @@ function callLocationSelector(current_form: Schema) : void {
     // Ouvre le modal et insère un chargeur
     instance.open();
     modal.innerHTML = getModalPreloader(
-        "Finding you location...\nThis could take up to 30 seconds",
+        "Finding your location...\nThis could take up to 30 seconds",
         `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Manual mode</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Cancel</a>

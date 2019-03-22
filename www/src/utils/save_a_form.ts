@@ -286,7 +286,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
         save_btn.innerText = "Save";
 
         save_btn.onclick = function() {
-            modal.innerHTML = getModalPreloader("Sauvegarde en cours");
+            modal.innerHTML = getModalPreloader("Save in progress");
             modal.classList.remove('modal-fixed-footer');
             const unique_id = force_name || generateId(ID_COMPLEXITY);
             PageManager.lock_return_button = true;

@@ -95,8 +95,26 @@ class AppSettings {
 
 const lang_possibilities: {[lang: string]: string} = {
     "Français": "fr-FR",
-    "Anglais": "en-US"
+    "English (US)": "en-US",
+    "English (UK)": "en-GB",
+    "Français (canadien)": "fr-CA",
+    "Français (belge)": "fr-BE",
+    "Français (suisse)": "fr-CH",
+    "Deutsch": "de-DE",
+    "Japanese": "ja-JP",
+    "Italiano": "it-IT",
+    "Espanõl": "es-ES"
 };
+
+/// INFORMAL
+/* Supported languages (à remplir l'objet si dessus si vous avez plus la foi que moi)
+["nl-NL","vi-VN","ca-ES","es-CL","ko-KR",
+  "ro-RO","en-PH","en-SG","en-IN","en-NZ","it-CH","da-DK",
+  "de-AT","pt-BR","sv-SE","ar-SA","hu-HU","fi-FI","tr-TR","nb-NO","en-ID","en-SA",
+  "pl-PL","id-ID","ms-MY",
+  "el-GR","cs-CZ","hr-HR","en-AE","he-IL","ru-RU","de-CH","en-AU","nl-BE",
+  "th-TH","pt-PT","sk-SK","en-IE","es-CO","uk-UA","es-US"];
+*/
 
 export function getAvailableLanguages() : string[] {
     return Object.keys(lang_possibilities);

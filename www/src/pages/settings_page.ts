@@ -1,12 +1,14 @@
 import { UserManager, loginUser, createNewUser } from "../base/UserManager";
 import { Schemas, FormSchema } from "../base/FormSchema";
-import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML } from "../utils/helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML, initBottomModal, getBottomModal } from "../utils/helpers";
 import { SyncManager } from "../base/SyncManager";
 import { PageManager } from "../base/PageManager";
 import fetch from '../utils/fetch_timeout';
 import { SYNC_FREQUENCY_POSSIBILITIES } from "../main";
 import { APP_NAME } from "./home";
 import { Settings, getAvailableLanguages } from '../utils/Settings';
+
+let select_for_schema: HTMLSelectElement = null;
 
 /** 
  * Lance la mise à jour des schémas via le serveur
@@ -25,6 +27,27 @@ function formActualisationModal() : void {
             showToast("Unable to update form models.");
             instance.close();
         })
+}
+
+function constructSelectForSchemas(select: HTMLSelectElement) {
+    select_for_schema = select;
+
+    select.innerHTML = "";
+
+    const available = [["", "None"], ...Schemas.available()];
+
+    for (const option of available) {
+        const o = document.createElement('option');
+        o.value = option[0];
+        o.innerText = option[1];
+
+        if (option[0] === Schemas.current_key || (option[0] === "" && Schemas.current_key === null)) {
+            o.selected = true;
+        }
+        select.appendChild(o);
+    }
+
+    M.FormSelect.init(select);
 }
 
 /**
@@ -105,23 +128,7 @@ export function initSettingsPage(base: HTMLElement) {
     select.classList.add('material-select');
 
     container.appendChild(select);
-    
-    Schemas.onReady(function() {
-        const available = [["", "None"], ...Schemas.available()];
-
-        for (const option of available) {
-            const o = document.createElement('option');
-            o.value = option[0];
-            o.innerText = option[1];
-
-            if (option[0] === Schemas.current_key || (option[0] === "" && Schemas.current_key === null)) {
-                o.selected = true;
-            }
-            select.appendChild(o);
-        }
-
-        M.FormSelect.init(select);
-    });
+    constructSelectForSchemas(select);
 
     select.addEventListener('change', function() {
         const value = select.value || null;
@@ -144,7 +151,7 @@ export function initSettingsPage(base: HTMLElement) {
 
     const subs_btn = document.createElement('button');
     subs_btn.classList.add('col', 's12', 'purple', 'btn', 'btn-perso', 'btn-small-margins');
-    subs_btn.innerHTML = "Manage subcriptions";
+    subs_btn.innerHTML = "Manage subscriptions";
     subs_btn.onclick = function() {
         if (UserManager.logged) {
             subscriptionsModal();
@@ -160,8 +167,8 @@ export function initSettingsPage(base: HTMLElement) {
     <div class="clearb"></div>
     <h5>Update models</h5>
     <p class="flow-text">
-        An automatic update is realized at every application start.
-        If you think subscribed models has been changed since the last start, you could
+        An automatic update is realized at every application startup.
+        If you think subscribed models has been changed since the last startup, you could
         update them here.
     </p>
     `);
@@ -325,7 +332,9 @@ export function initSettingsPage(base: HTMLElement) {
     M.FormSelect.init(changelangselection);
 }
 
-// Modal API URL
+/**
+ * Modal pour changer l'URL du serveur Busy Bird
+ */
 function changeURL() : void {
     const modal = getModal();
     const instance = initModal();
@@ -354,8 +363,18 @@ function changeURL() : void {
     const input = document.getElementById("__api_url_modifier") as HTMLInputElement;
     input.value = Settings.api_url;
 
-    document.getElementById('__api_url_save').onclick = () => {
+    document.getElementById('__api_url_save').onclick = async () => {
         try {
+            if (Settings.api_url !== input.value) {
+                PageManager.lock_return_button = true;
+                const valid = await verifyServerURL(input.value);
+                PageManager.lock_return_button = false;
+
+                if (!valid) {
+                    return;
+                }
+            }
+            
             Settings.api_url = input.value;
             instance.close();
             modal.innerHTML = "";
@@ -368,6 +387,57 @@ function changeURL() : void {
     M.updateTextFields();
 
     instance.open();
+}
+
+async function verifyServerURL(url: string) : Promise<boolean> {
+    // Vérifie si le serveur existe
+    const f_data = new FormData();
+    if (UserManager.logged) {
+        f_data.append("username", UserManager.username);
+        f_data.append("token", UserManager.token);
+    }
+
+    const instance = initBottomModal({ dismissible: false }, getModalPreloader("Just a second..."));
+    instance.open();
+
+    try {
+        const resp = await fetch(url.replace(/\/$/, '') + "/users/validate.json", {
+            method: "POST",
+            body: f_data
+        }, 60000).then(resp => resp.json());
+
+        if (resp.error_code) {
+            if (UserManager.logged) {
+                if (resp.error_code === 16) {
+                    showToast("Current logged user does not exists in new source server. You will be unlogged automatically.");
+                    UserManager.unlog(); instance.close(); return true;
+                }
+                else if (resp.error_code === 15) {
+                    showToast("An user does have the same username as yours in new source server, but it don't seems to be you. You will be unlogged.");
+                    UserManager.unlog(); instance.close(); return true;
+                }
+            }
+            
+            showToast("An unknown error occurred. (error code " + resp.error_code + ")");
+        }
+        else {
+            if (resp.subscriptions) {
+                // On met à jour les souscriptions
+                // On recharge pas la page... On suppose que c'est les mêmes, tant pis
+                Schemas.schemas = resp.subscriptions;
+                constructSelectForSchemas(select_for_schema);
+            }
+            else {
+                // L'utilisateur n'est pas pas précisé
+            }
+            instance.close(); return true;
+        }
+    } catch (e) {
+        showToast("Unable to find a " + APP_NAME + " compatible server at this address.");
+    }
+
+    instance.close();
+    return false;
 }
 
 // FONCTIONS RELATIVES AUX SOUSCRIPTIONS

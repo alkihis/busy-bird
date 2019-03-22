@@ -20,6 +20,8 @@ class EndPointManager {
         12 => [400, "User already exists"],
         13 => [400, "Password cant be empty"],
         14 => [400, "JSON is invalid"],
+        15 => [403, "Token mismatch"],
+        16 => [403, "User does not exists"],
     ];
 
     public function __construct() {

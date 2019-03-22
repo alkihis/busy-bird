@@ -81,8 +81,25 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
     }
     const lang_possibilities = {
         "Français": "fr-FR",
-        "Anglais": "en-US"
+        "English (US)": "en-US",
+        "English (UK)": "en-GB",
+        "Français (canadien)": "fr-CA",
+        "Français (belge)": "fr-BE",
+        "Français (suisse)": "fr-CH",
+        "Deutsch": "de-DE",
+        "Japanese": "ja-JP",
+        "Italiano": "it-IT",
+        "Espanõl": "es-ES"
     };
+    /// INFORMAL
+    /* Supported languages (à remplir l'objet si dessus si vous avez plus la foi que moi)
+    ["nl-NL","vi-VN","ca-ES","es-CL","ko-KR",
+      "ro-RO","en-PH","en-SG","en-IN","en-NZ","it-CH","da-DK",
+      "de-AT","pt-BR","sv-SE","ar-SA","hu-HU","fi-FI","tr-TR","nb-NO","en-ID","en-SA",
+      "pl-PL","id-ID","ms-MY",
+      "el-GR","cs-CZ","hr-HR","en-AE","he-IL","ru-RU","de-CH","en-AU","nl-BE",
+      "th-TH","pt-PT","sk-SK","en-IE","es-CO","uk-UA","es-US"];
+    */
     function getAvailableLanguages() {
         return Object.keys(lang_possibilities);
     }
@@ -4100,7 +4117,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
             save_btn.classList.add('btn-flat', 'right', 'green-text');
             save_btn.innerText = "Save";
             save_btn.onclick = function () {
-                modal.innerHTML = helpers_7.getModalPreloader("Sauvegarde en cours");
+                modal.innerHTML = helpers_7.getModalPreloader("Save in progress");
                 modal.classList.remove('modal-fixed-footer');
                 const unique_id = force_name || helpers_7.generateId(main_7.ID_COMPLEXITY);
                 PageManager_2.PageManager.lock_return_button = true;
@@ -4400,7 +4417,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
             }
             loc_wrapper.appendChild(location);
             const loc_title = document.createElement('h4');
-            loc_title.innerText = "Lieu";
+            loc_title.innerText = "Place";
             placeh.appendChild(loc_title);
             placeh.appendChild(loc_wrapper);
             // Fin champ de lieu, itération sur champs
@@ -5111,7 +5128,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         // Création du bouton de sauvegarde
         const btn = document.createElement('div');
         btn.classList.add('btn-flat', 'right', 'red-text');
-        btn.innerText = "Enregistrer";
+        btn.innerText = "Complete";
         const current_form_key = FormSchema_3.Schemas.current_key;
         btn.addEventListener('click', function () {
             if (edition_mode) {
@@ -5158,7 +5175,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         });
         // Ouvre le modal et insère un chargeur
         instance.open();
-        modal.innerHTML = helpers_8.getModalPreloader("Finding you location...\nThis could take up to 30 seconds", `<div class="modal-footer">
+        modal.innerHTML = helpers_8.getModalPreloader("Finding your location...\nThis could take up to 30 seconds", `<div class="modal-footer">
             <a href="#!" id="dontloc-footer-geoloc" class="btn-flat blue-text left">Manual mode</a>
             <a href="#!" id="close-footer-geoloc" class="btn-flat red-text">Cancel</a>
             <div class="clearb"></div>
@@ -5578,6 +5595,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
+    let select_for_schema = null;
     /**
      * Lance la mise à jour des schémas via le serveur
      */
@@ -5594,6 +5612,21 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
             helpers_10.showToast("Unable to update form models.");
             instance.close();
         });
+    }
+    function constructSelectForSchemas(select) {
+        select_for_schema = select;
+        select.innerHTML = "";
+        const available = [["", "None"], ...FormSchema_5.Schemas.available()];
+        for (const option of available) {
+            const o = document.createElement('option');
+            o.value = option[0];
+            o.innerText = option[1];
+            if (option[0] === FormSchema_5.Schemas.current_key || (option[0] === "" && FormSchema_5.Schemas.current_key === null)) {
+                o.selected = true;
+            }
+            select.appendChild(o);
+        }
+        M.FormSelect.init(select);
     }
     /**
      * Base pour la page des paramètres
@@ -5664,19 +5697,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         const select = document.createElement('select');
         select.classList.add('material-select');
         container.appendChild(select);
-        FormSchema_5.Schemas.onReady(function () {
-            const available = [["", "None"], ...FormSchema_5.Schemas.available()];
-            for (const option of available) {
-                const o = document.createElement('option');
-                o.value = option[0];
-                o.innerText = option[1];
-                if (option[0] === FormSchema_5.Schemas.current_key || (option[0] === "" && FormSchema_5.Schemas.current_key === null)) {
-                    o.selected = true;
-                }
-                select.appendChild(o);
-            }
-            M.FormSelect.init(select);
-        });
+        constructSelectForSchemas(select);
         select.addEventListener('change', function () {
             const value = select.value || null;
             if (FormSchema_5.Schemas.exists(value)) {
@@ -5695,7 +5716,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     `);
         const subs_btn = document.createElement('button');
         subs_btn.classList.add('col', 's12', 'purple', 'btn', 'btn-perso', 'btn-small-margins');
-        subs_btn.innerHTML = "Manage subcriptions";
+        subs_btn.innerHTML = "Manage subscriptions";
         subs_btn.onclick = function () {
             if (UserManager_6.UserManager.logged) {
                 subscriptionsModal();
@@ -5710,8 +5731,8 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     <div class="clearb"></div>
     <h5>Update models</h5>
     <p class="flow-text">
-        An automatic update is realized at every application start.
-        If you think subscribed models has been changed since the last start, you could
+        An automatic update is realized at every application startup.
+        If you think subscribed models has been changed since the last startup, you could
         update them here.
     </p>
     `);
@@ -5844,7 +5865,9 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         M.FormSelect.init(changelangselection);
     }
     exports.initSettingsPage = initSettingsPage;
-    // Modal API URL
+    /**
+     * Modal pour changer l'URL du serveur Busy Bird
+     */
     function changeURL() {
         const modal = helpers_10.getModal();
         const instance = helpers_10.initModal();
@@ -5870,8 +5893,16 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     `;
         const input = document.getElementById("__api_url_modifier");
         input.value = Settings_5.Settings.api_url;
-        document.getElementById('__api_url_save').onclick = () => {
+        document.getElementById('__api_url_save').onclick = async () => {
             try {
+                if (Settings_5.Settings.api_url !== input.value) {
+                    PageManager_4.PageManager.lock_return_button = true;
+                    const valid = await verifyServerURL(input.value);
+                    PageManager_4.PageManager.lock_return_button = false;
+                    if (!valid) {
+                        return;
+                    }
+                }
                 Settings_5.Settings.api_url = input.value;
                 instance.close();
                 modal.innerHTML = "";
@@ -5883,6 +5914,57 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         };
         M.updateTextFields();
         instance.open();
+    }
+    async function verifyServerURL(url) {
+        // Vérifie si le serveur existe
+        const f_data = new FormData();
+        if (UserManager_6.UserManager.logged) {
+            f_data.append("username", UserManager_6.UserManager.username);
+            f_data.append("token", UserManager_6.UserManager.token);
+        }
+        const instance = helpers_10.initBottomModal({ dismissible: false }, helpers_10.getModalPreloader("Just a second..."));
+        instance.open();
+        try {
+            const resp = await fetch_timeout_3.default(url.replace(/\/$/, '') + "/users/validate.json", {
+                method: "POST",
+                body: f_data
+            }, 60000).then(resp => resp.json());
+            if (resp.error_code) {
+                if (UserManager_6.UserManager.logged) {
+                    if (resp.error_code === 16) {
+                        helpers_10.showToast("Current logged user does not exists in new source server. You will be unlogged automatically.");
+                        UserManager_6.UserManager.unlog();
+                        instance.close();
+                        return true;
+                    }
+                    else if (resp.error_code === 15) {
+                        helpers_10.showToast("An user does have the same username as yours in new source server, but it don't seems to be you. You will be unlogged.");
+                        UserManager_6.UserManager.unlog();
+                        instance.close();
+                        return true;
+                    }
+                }
+                helpers_10.showToast("An unknown error occurred. (error code " + resp.error_code + ")");
+            }
+            else {
+                if (resp.subscriptions) {
+                    // On met à jour les souscriptions
+                    // On recharge pas la page... On suppose que c'est les mêmes, tant pis
+                    FormSchema_5.Schemas.schemas = resp.subscriptions;
+                    constructSelectForSchemas(select_for_schema);
+                }
+                else {
+                    // L'utilisateur n'est pas pas précisé
+                }
+                instance.close();
+                return true;
+            }
+        }
+        catch (e) {
+            helpers_10.showToast("Unable to find a " + home_1.APP_NAME + " compatible server at this address.");
+        }
+        instance.close();
+        return false;
     }
     /**
      * Obtient les souscriptions disponibles depuis le serveur
