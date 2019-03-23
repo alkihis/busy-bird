@@ -84,6 +84,35 @@ Pour plus d'informations sur les souscriptions, voir les endpoints `GET schemas/
 
 [HTTP Response] `{"access_token": "xxxxxxxxxxxxxxxxxxxxxxx", "subscriptions": FormSchema}`
 
+---
+
+### POST users/validate.json
+
+#### Description
+Endpoint used Busy Bird server signature. 
+User and token can be joined to request. 
+
+If user & token are not specified, return an empty array.
+
+If user does not exists, return error code 16.
+
+If user does exists but token mismatched with stored token, return error code 15.
+
+Otherwise, return the same data as `POST users/login.json`.
+
+#### Arguments
+| Name           | Excepted value  | Example |
+| -------------  |----------------:|---------|
+| username       | Username        | jeanne  |
+| token          | Token linked to username     | xxxxxxxx    |
+
+
+#### Example
+`POST https://busybird.lbbe.univ-lyon1.fr/users/validate.json`
+
+[Body] `username=jeanne&token=xxxxxxxxxxxx`
+
+
 ## Endpoints pour synchronisation de formulaire "forms"
 
 **Tous les endpoints "forms" doivent comporter le header Authorization formé correctement, comprenant l'`access_token` pour être utilisés.**

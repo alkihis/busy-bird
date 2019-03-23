@@ -382,7 +382,7 @@ function changeURL() : void {
         } catch (e) {
             showToast("Specified URL is not a valid URL.");
         }
-    }
+    };
 
     M.updateTextFields();
 

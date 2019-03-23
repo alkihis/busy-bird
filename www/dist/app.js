@@ -6765,7 +6765,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
     async function initApp() {
         // Change le répertoire de données
         // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
-        // Sinon, si mobile, on passe sur dataDirectory
+        // Sinon, si mobile, on passe sur externalDataDirectory
         helpers_13.changeDir();
         await exports.FILE_HELPER.waitInit();
         // @ts-ignore Force à demander la permission pour enregistrer du son
