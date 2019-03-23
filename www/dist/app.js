@@ -5805,7 +5805,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     <h5>Force synchronisation</h5>
     <p class="flow-text">
         Standard sync is located in entries page.
-        You could force full entries data send, even for already synced forms, here.
+        You could force to send all device entries, even for already synced forms, here.
     </p>
     `);
         const syncbtn = document.createElement('button');
@@ -5915,9 +5915,13 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         M.updateTextFields();
         instance.open();
     }
+    /**
+     * Vérifie si l'url est un serveur Busy Bird-compatible
+     * @param url
+     */
     async function verifyServerURL(url) {
         // Vérifie si le serveur existe
-        const f_data = new FormData();
+        const f_data = new FormData;
         if (UserManager_6.UserManager.logged) {
             f_data.append("username", UserManager_6.UserManager.username);
             f_data.append("token", UserManager_6.UserManager.token);
@@ -5927,7 +5931,8 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         try {
             const resp = await fetch_timeout_3.default(url.replace(/\/$/, '') + "/users/validate.json", {
                 method: "POST",
-                body: f_data
+                body: f_data,
+                mode: "no-cors"
             }, 60000).then(resp => resp.json());
             if (resp.error_code) {
                 if (UserManager_6.UserManager.logged) {
@@ -6707,7 +6712,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Constantes de l'application
-    exports.APP_VERSION = 0.7;
+    exports.APP_VERSION = 0.8;
     const FIXED_NAVBAR = true; /** Active la barre de navigation fixe */
     exports.MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
     exports.ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */

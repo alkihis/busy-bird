@@ -1,6 +1,6 @@
 import { UserManager, loginUser, createNewUser } from "../base/UserManager";
 import { Schemas, FormSchema } from "../base/FormSchema";
-import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML, initBottomModal, getBottomModal } from "../utils/helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML, initBottomModal } from "../utils/helpers";
 import { SyncManager } from "../base/SyncManager";
 import { PageManager } from "../base/PageManager";
 import fetch from '../utils/fetch_timeout';
@@ -255,7 +255,7 @@ export function initSettingsPage(base: HTMLElement) {
     <h5>Force synchronisation</h5>
     <p class="flow-text">
         Standard sync is located in entries page.
-        You could force full entries data send, even for already synced forms, here.
+        You could force to send all device entries, even for already synced forms, here.
     </p>
     `);
 
@@ -389,9 +389,13 @@ function changeURL() : void {
     instance.open();
 }
 
+/**
+ * Vérifie si l'url est un serveur Busy Bird-compatible
+ * @param url 
+ */
 async function verifyServerURL(url: string) : Promise<boolean> {
     // Vérifie si le serveur existe
-    const f_data = new FormData();
+    const f_data = new FormData;
     if (UserManager.logged) {
         f_data.append("username", UserManager.username);
         f_data.append("token", UserManager.token);
@@ -403,7 +407,8 @@ async function verifyServerURL(url: string) : Promise<boolean> {
     try {
         const resp = await fetch(url.replace(/\/$/, '') + "/users/validate.json", {
             method: "POST",
-            body: f_data
+            body: f_data,
+            mode: "no-cors"
         }, 60000).then(resp => resp.json());
 
         if (resp.error_code) {

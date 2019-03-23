@@ -11,7 +11,7 @@ import { FileHelper, FileHelperReadMode } from './base/FileHelper';
 import { Settings } from './utils/Settings';
 
 // Constantes de l'application
-export const APP_VERSION = 0.7;
+export const APP_VERSION = 0.8;
 const FIXED_NAVBAR = true; /** Active la barre de navigation fixe */
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
