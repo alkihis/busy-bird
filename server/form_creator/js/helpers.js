@@ -23,7 +23,7 @@ function readFile(file) {
  * @returns Promise<void | boolean> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
  * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
  */
-function askModal(title, question, text_yes = "Oui", text_no = "Non", checkbox = undefined) {
+function askModal(title, question, text_yes = "Yes", text_no = "No", checkbox = undefined) {
     const modal = getBottomModal();
     const instance = initBottomModal();
 

@@ -1,6 +1,6 @@
 import { showToast, hasConnection } from "../utils/helpers";
 import { UserManager } from "./UserManager";
-import { ENABLE_FORM_DOWNLOAD, FILE_HELPER } from "../main";
+import { ENABLE_FORM_DOWNLOAD, FILE_HELPER, ALLOW_LOAD_TEST_SCHEMAS } from "../main";
 import fetch from '../utils/fetch_timeout';
 import { FileHelper } from "./FileHelper";
 import { Settings } from "../utils/Settings";
@@ -28,26 +28,16 @@ import { Settings } from "../utils/Settings";
  * Interfaces représentant un schéma de formulaire, les lieux d'un formulaire, un champ de formulaire puis une option d'un SELECT
  */
 export interface Schema {
-    /**
-     * Nom réel du schéma (à afficher à l'écran)
-     */
+    /** Nom réel du schéma (à afficher à l'écran) */
     name: string;
-    /**
-     * Indique le nom du champ qui sert à l'ID; Ne pas préciser si il n'y en a pas
-     */
+    /** Indique le nom du champ qui sert à l'ID; Ne pas préciser si il n'y en a pas */
     id_field?: string;
-    /**
-     * Champs du formulaire. Les éléments sont affichés tel l'ordre défini dans le tableau
-     */
+    /** Champs du formulaire. Les éléments sont affichés tel l'ordre défini dans le tableau */
     fields: FormEntity[];
     
-    /**
-     * Autorise le fait que la localisation puisse ne pas être précisée (champ non obligatoire)
-     */
+    /** Autorise le fait que la localisation puisse ne pas être précisée */
     skip_location?: boolean;
-    /**
-     * Désactive la génération de l'entrée de localisation pour ce formulaire
-     */
+    /** Désactive la génération de l'entrée de localisation pour ce formulaire */
     no_location?: boolean;
     /**
      * Lieux valides pour ce schéma. 
@@ -138,7 +128,7 @@ interface SelectOption {
 export enum FormEntityType {
     integer = "integer", float = "float", select = "select", string = "string", bigstring = "textarea", 
     checkbox = "checkbox", file = "file", slider = "slider", datetime = "datetime", divider = "divider",
-    audio = "audio", date = "date", time = "time", image = "image"
+    audio = "audio", date = "date", time = "time", image = "image", title = "title"
 }
 
 // Représente tous les schémas de Formulaire dispo
@@ -278,26 +268,29 @@ class FormSchemas {
             this.loadFormSchemaInClass(JSON.parse((string as string)));
         }
         catch (e) {
-            // Il n'existe pas, on doit le charger depuis les sources de l'application
-            try {
-                const parsed = await (await fetch('assets/form.json', {})).json();
+            if (ALLOW_LOAD_TEST_SCHEMAS) {
+                // Il n'existe pas, on doit le charger depuis les sources de l'application
+                try {
+                    const parsed = await (await fetch('assets/form.json', {})).json();
 
-                this.loadFormSchemaInClass(parsed, true);
-            } catch (e2) {
-                // Essaie de lire le fichier sur le périphérique
-                const application = new FileHelper(cordova.file.applicationDirectory + 'www/');
+                    this.loadFormSchemaInClass(parsed, true);
+                } catch (e2) {
+                    // Essaie de lire le fichier sur le périphérique
+                    const application = new FileHelper(cordova.file.applicationDirectory + 'www/');
 
-                await application.waitInit();
+                    await application.waitInit();
 
-                await application.read('assets/form.json')
-                    .then(string_1 => {
-                        this.loadFormSchemaInClass(JSON.parse((string_1 as string)));
-                    })
-                    .catch(() => {
-                        showToast("Unable to load form models." + " "
-                            + cordova.file.applicationDirectory + 'www/assets/form.json');
-                    });
+                    await application.readJSON('assets/form.json')
+                        .then(schemas => {
+                            this.loadFormSchemaInClass(schemas);
+                        })
+                        .catch(() => {
+                            showToast("Unable to load form models." + " "
+                                + cordova.file.applicationDirectory + 'www/assets/form.json');
+                        });
+                }
             }
+
         }
     }
 

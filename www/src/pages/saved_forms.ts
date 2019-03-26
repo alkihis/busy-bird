@@ -1,4 +1,4 @@
-import { formatDate, displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, unclosableBottomModal, SMALL_PRELOADER } from "../utils/helpers";
+import { displayErrorMessage, displayInformalMessage, askModal, convertHTMLToElement, showToast, askModalList, unclosableBottomModal, SMALL_PRELOADER, dateFormatter } from "../utils/helpers";
 import { FormSave, Schemas } from "../base/FormSchema";
 import { PageManager, AppPages } from "../base/PageManager";
 import { SyncManager } from "../base/SyncManager";
@@ -121,7 +121,7 @@ async function appendFileEntry(json: File, ph: HTMLElement) {
     container.insertAdjacentHTML('beforeend', `
         <div class="left">
             [${type}] ${id} <br> 
-            Modifié le ${formatDate(new Date(json.lastModified), true)}
+            Modified ${dateFormatter("Y-m-d H:i:s", new Date(json.lastModified))}
         </div>`);
 
     // Ajout des actions de l'élément

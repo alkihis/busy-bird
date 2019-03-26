@@ -130,14 +130,14 @@ function addItem(type, label, existing_item = undefined) {
 
     modal.innerHTML = `
     <div class="modal-content">
-        <h5 class="no-margin-top">${existing_item ? "Modifier" : "Nouvel élement"} (${label})</h5>
+        <h5 class="no-margin-top">${existing_item ? "Edit" : "New element"} (${label})</h5>
 
         <form id="form_new_input" class="row" autocomplete="off"></form>
         <div class="clearb"></div>
     </div>
     <div class="modal-footer">
-        <a href="#!" class="red-text left modal-close btn-flat">Annuler</a>
-        <a href="#!" id="__validate" class="green-text right btn-flat">Valider</a>
+        <a href="#!" class="red-text left modal-close btn-flat">Cancel</a>
+        <a href="#!" id="__validate" class="green-text right btn-flat">Save</a>
         <div class="clearb"></div>
     </div>`;
     const form = document.getElementById('form_new_input');
@@ -175,27 +175,35 @@ function generateForm(baseElement, type, existing_item) {
 
     baseElement.insertAdjacentHTML('beforeend', `
         <div class="input-field col s12">
-            <input id="unique_name" name="unique_name" type="text" pattern="^[0-9a-zA-Z_-]+$" placeholder="Aucun espace autorisé"
+            <input id="unique_name" name="unique_name" type="text" pattern="^[0-9a-zA-Z_-]+$" placeholder="Any whitespace allowed"
                 required class="validate ${existing_item ? "" : "in"}valid">
-            <label for="unique_name">Nom interne du champ (doit être unique)</label>
-        </div>
-        <div class="input-field col s12">
-            <input id="label" name="label" type="text" required class="validate ${existing_item ? "" : "in"}valid">
-            <label for="label">Nom du champ à afficher à l'utilisateur</label>
+            <label for="unique_name">Internal name of the field (must be unique)</label>
         </div>
     `);
 
     if (existing_item) {
         document.getElementById('unique_name').value = existing_item.name;
-        document.getElementById('label').value = existing_item.label;
+    }
+
+    if (!NO_LABEL.has(type)) {
+        baseElement.insertAdjacentHTML('beforeend', `
+            <div class="input-field col s12">
+                <input id="label" name="label" type="text" required class="validate ${existing_item ? "" : "in"}valid">
+                <label for="label">Label of the field</label>
+            </div>
+        `);
+
+        if (existing_item) {
+            document.getElementById('label').value = existing_item.label;
+        }
     }
 
     if (!EMPTY_CHILDRENS.has(type)) {
         if (!NO_DEFAULT_VALUE.has(type)) {
             baseElement.insertAdjacentHTML('beforeend', `
             <div class="input-field col s12">
-                <input id="default_val" name="default_val" type="text" placeholder="Laissez vide pour aucune valeur">
-                <label for="default_val">Valeur par défaut du champ</label>
+                <input id="default_val" name="default_val" type="text" placeholder="Keep empty for no value">
+                <label for="default_val">Field default value</label>
             </div>`);
 
             if (existing_item) {
@@ -207,7 +215,7 @@ function generateForm(baseElement, type, existing_item) {
         <p class="col s12 no-margin-bottom no-margin-top">
             <label>
                 <input type="checkbox" name="required_field" id="required_checkbox_field" />
-                <span>Champ requis</span>
+                <span>Required field</span>
             </label>
         </p>`);
 
@@ -238,20 +246,26 @@ function readNewEntry(form, type, instance, f_label, existing_item) {
 
     // Récupération name & label
     const name = form.querySelector(`[name="${PROPERTIES_INTERNAL_NAME.name}"]`);
-    const label = form.querySelector(`[name="${PROPERTIES_INTERNAL_NAME.label}"]`);
 
-    if (!name || !label || name.value === "" || label.value === "") {
-        throw new Error("Nom et label requis");
+    if (!NO_LABEL.has(type)) {
+        const label = form.querySelector(`[name="${PROPERTIES_INTERNAL_NAME.label}"]`);
+        if (!label || label.value === "") {
+            throw new Error("Label required");
+        }
+        entry.label = label.value;
     }
 
+    if (!name || name.value === "") {
+        throw new Error("Name and label required");
+    }
+    
     entry.name = name.value;
-    entry.label = label.value;
 
     if (existing_item && entry.name in form_items && entry.name === existing_item.name) {
         // Si on modifie une entrée actuelle, qu'on a PAS changé le nom unique pendant la modification
     }
     else if (entry.name in form_items) {
-        throw new Error("Le nom unique est déjà pris");
+        throw new Error("Internal name is already taken");
     }
     
 
@@ -287,7 +301,7 @@ function readNewEntry(form, type, instance, f_label, existing_item) {
                 const cur_prop = form.querySelector(`[name="${cname}"]`);
 
                 if (!cur_prop.checkValidity()) {
-                    throw new Error("Un champ contient une valeur invalide (" + cname + ")");
+                    throw new Error("A field is containing a invalid value (" + cname + ")");
                 }
 
                 // Si c'est un input texte
@@ -307,7 +321,7 @@ function readNewEntry(form, type, instance, f_label, existing_item) {
     }
 
     if (!form.checkValidity()) {
-        throw new Error("Un champ contient une valeur invalide ou un champ requis n'a pas été rempli");
+        throw new Error("A field is containing a invalid value or a required field hasn't been filled");
     }
 
     // On peut enregistrer l'entrée
@@ -325,6 +339,13 @@ function readNewEntry(form, type, instance, f_label, existing_item) {
     instance.close();
 }
 
+/**
+ * 
+ * @param {HTMLElement} collection 
+ * @param {any} entry 
+ * @param {string} f_label 
+ * @param {any} existing_item 
+ */
 function createCollectionItem(collection, entry, f_label, existing_item = undefined) {
     let item;
 
@@ -334,7 +355,7 @@ function createCollectionItem(collection, entry, f_label, existing_item = undefi
         // Met à jour le nom interne et label si il a changé
         item.dataset.internalname = entry.name;
         item.innerHTML = `<div>
-            ${entry.label} (${f_label})
+            ${entry.label || entry.name} (${f_label})
             <a href="#!" class="secondary-content"><i class="material-icons">import_export</i></a>
         </div>`;
     }
@@ -366,7 +387,7 @@ function createCollectionItem(collection, entry, f_label, existing_item = undefi
         evt.stopPropagation();
         evt.preventDefault();
 
-        askModal("Supprimer cet élément ?", "Voulez vous vraiment supprimer \"" + entry.label + "\" ?")
+        askModal("Delete element ?", "Do you really want to remove \"" + entry.label + "\" ?")
             .then(() => {
                 // Oui
                 delete form_items[entry.name];
@@ -402,60 +423,59 @@ function loadLocationModal() {
     const file_input = this;
 
     if (!tsv_file) {
-        M.toast({html: "Aucun fichier chargé"});
+        M.toast({html: "No file loaded"});
         return;
     }
 
     modal.innerHTML = `
     <div class="modal-content row">
-        <h5 class="no-margin-top">Importer des localisations</h5>
+        <h5 class="no-margin-top">Import locations</h5>
 
         <p>
-            ${Object.keys(form_locations).length} localisations actuellement chargée(s).<br>
-            Les exemples donnés sont pour les données du Cincle Plongeur.
+            ${Object.keys(form_locations).length} loaded locations.<br>
+            Examples are given for "Cincle Plongeur"
         </p>
 
-        <h6>Mode d'importation<h6>
+        <h6>Import mode<h6>
         <p>
-            Choisissez si les localisations contenues dans le fichier doivent remplacer ou fusionner
-            avec les localisations actuelles.
+            Choose if locations stored in the file should replace or merge with existing locations.
         </p>
 
         <p>
             <label>
                 <input name="append_mode" type="radio" value="append" checked />
-                <span>Fusionner</span>
+                <span>Merge</span>
             </label>
         </p>
         <p>
             <label>
                 <input name="append_mode" type="radio" value="replace" />
-                <span>Remplacer</span>
+                <span>Replace</span>
             </label>
         </p>
 
-        <h6>Colonnes du TSV<h6>
+        <h6>TSV colomns<h6>
         <div class="input-field col s12">
-            <input placeholder="Insensible à la casse" id="__tsv_id_field" type="text" class="validate" required>
-            <label for="__tsv_id_field">Nom de la colonne portant l'identifiant (p.e. "Nom_nid_nichoir")</label>
+            <input placeholder="Case insensitive" id="__tsv_id_field" type="text" class="validate" required>
+            <label for="__tsv_id_field">Name of the colomn referring to identifier (p.e. "Nom_nid_nichoir")</label>
         </div>
         <div class="input-field col s12">
-            <input placeholder="Insensible à la casse" id="__tsv_label_field" type="text" class="validate">
-            <label for="__tsv_label_field">Nom de la colonne portant le label (p.e. "Localisation")</label>
+            <input placeholder="Case insensitive, optional" id="__tsv_label_field" type="text" class="validate">
+            <label for="__tsv_label_field">Name of the colomn referring to label (p.e. "Localisation")</label>
         </div>
 
         <div class="input-field col s12">
-            <input placeholder="Insensible à la casse" id="__tsv_long_field" type="text" class="validate" required>
-            <label for="__tsv_long_field">Nom de la colonne portant la longitude (p.e. "LONGITUDE")</label>
+            <input placeholder="Case insensitive" id="__tsv_long_field" type="text" class="validate" required>
+            <label for="__tsv_long_field">Name of the colomn referring to longitude (p.e. "LONGITUDE")</label>
         </div>
         <div class="input-field col s12">
-            <input placeholder="Insensible à la casse" id="__tsv_lat_field" type="text" class="validate" required>
-            <label for="__tsv_lat_field">Nom de la colonne portant la latitude (p.e. "LATITUDE")</label>
+            <input placeholder="Case insensitive" id="__tsv_lat_field" type="text" class="validate" required>
+            <label for="__tsv_lat_field">Name of the colomn referring to latitude (p.e. "LATITUDE")</label>
         </div>
     </div>
     <div class="modal-footer">
-        <a href="#!" class="btn-flat modal-close left red-text">Annuler</a>
-        <a href="#!" id="__import_tsv_file" class="btn-flat right green-text">Importer</a>
+        <a href="#!" class="btn-flat modal-close left red-text">Cancel</a>
+        <a href="#!" id="__import_tsv_file" class="btn-flat right green-text">Import</a>
         <div class="clearb"></div>
     </div>
     `;
@@ -479,7 +499,7 @@ function loadLocationModal() {
         const long = document.getElementById('__tsv_long_field').value;
 
         if (!id || !lat || !long) {
-            M.toast({html: "Les champs obligatoires ne sont pas remplis."});
+            M.toast({html: "Required fields hasn't been filled."});
             in_import = false;
             return;
         }
@@ -488,7 +508,7 @@ function loadLocationModal() {
         try {
             const imported = await loadTSV(tsv_file, mode, id, label, lat, long);
 
-            M.toast({html: "Importation de " + imported + " localisations effectuée."});
+            M.toast({html: "Import of " + imported + " locations completed."});
 
             // Reset de l'input
             file_input.value = "";
@@ -521,7 +541,7 @@ async function loadTSV(file, mode, id, label, lat, long) {
     try {
         txtfile = await readFile(file);
     } catch (e) {
-        throw new Error("Impossible de lire le fichier");
+        throw new Error("Unable to open file.");
     }
 
     const lines = txtfile.split("\n");
@@ -549,7 +569,7 @@ async function loadTSV(file, mode, id, label, lat, long) {
         
     // Vérification que tous les nums sont définis
     if (num_id === null || num_long === null || num_lat === null || num_label === null)
-        throw new Error("Un champ requis n'est pas défini dans le TSV. Vérifiez le nom des colonnes.");
+        throw new Error("One required field hasn't been defined in TSV. Check colomn names.");
 
     line = lines[1].trim();
     i = 2;
@@ -573,7 +593,7 @@ async function loadTSV(file, mode, id, label, lat, long) {
                 throw "invalid schema";
             }
         } catch (e) {
-            throw new Error(`La ligne ${i} n'est pas conforme au schéma donné dans le header du TSV ou contient une valeur invalide.`);
+            throw new Error(`Line ${i} isn't valid (does not conform header) or contain a invalid value.`);
         }
 
         line = lines[i].trim();
@@ -596,9 +616,9 @@ $(function() {
     <div class="row">
         <div class="input-field col s12" id="select_new_type_wrapper">
             <select id="select_new_type">
-                <option value="" selected disabled>Aucun</option>
+                <option value="" selected disabled>None</option>
             </select>
-            <label>Insérer un nouveau champ</label>
+            <label>Insert field</label>
         </div>
     </div>`;
 
@@ -671,7 +691,7 @@ $(function() {
 });
 
 function resetForm() {
-    askModal("Remettre à zéro ?", "Toutes les modifications sur cette page seront perdues.")
+    askModal("Reset ?", "All modifications will be lost.")
         .then(() => {
             // Oui
             form_items = {};

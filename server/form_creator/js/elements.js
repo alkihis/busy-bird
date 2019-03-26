@@ -38,23 +38,26 @@ const FORM_PROPERTIES = {
 };
 
 const FORM_TYPES = {
-    divider: {label: "Titre / séparateur", props: []},
-    string: {label: "Texte court", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
-    textarea: {label: "Paragraphe", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
-    integer: {label: "Nombre entier", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
-    float: {label: "Nombre à virgule", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "float_precision", "placeholder"]}, 
-    slider: {label: "Choix binaire", props: ["slider_options"]},
-    select: {label: "Liste de choix", props: ["allow_voice_control", "tip_on_invalid", "select_options"]}, 
-    checkbox: {label: "Case à cocher", info: "La valeur par défaut est le statut décoché ou indéterminé.", props: ['indeterminate']},
-    datetime: {label: "Date et heure", props: []},
+    divider: {label: "Separator", props: []},
+    title: {label: "Title", props: []},
+    string: {label: "Short text", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
+    textarea: {label: "Paragraph", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
+    integer: {label: "Integer number", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
+    float: {label: "Float number", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "float_precision", "placeholder"]}, 
+    slider: {label: "Binary choice", props: ["slider_options"]},
+    select: {label: "Choice list", props: ["allow_voice_control", "tip_on_invalid", "select_options"]}, 
+    checkbox: {label: "Checkbox", info: "Default value is unchecked or indeterminate.", props: ['indeterminate']},
+    datetime: {label: "Date and time", props: []},
+    image: {label: "Picture", props: []},
     date: {label: "Date", props: []},
-    time: {label: "Heure et minutes", props: []},
-    file: {label: "Fichier", props: ["file_type"]},
-    audio: {label: "Enregistrement audio", props: []}
+    time: {label: "Time", props: []},
+    file: {label: "File", props: ["file_type"]},
+    audio: {label: "Audio record", props: []}
 };
 
-const EMPTY_CHILDRENS = new Set(["divider", "checkbox", "slider"]); // > No default value & no possibility of require it
-const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "date", "time", "file", "select"]); // > No default value
+const EMPTY_CHILDRENS = new Set(["divider", "title", "checkbox", "slider"]); // > No default value & no possibility of require it
+const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "date", "time", "file", "image", "select"]); // > No default value
+const NO_LABEL = new Set(["divider"]);
 
 // dec2hex :: Integer -> String
 function dec2hex(dec) {
@@ -166,10 +169,10 @@ function makeSelectOption(required = false, def = undefined) {
         def_sel = def.selected;
     }
 
-    one_opt.insertAdjacentElement('beforeend', generateTextInput("select_option", "Option (nom interne)", false, undefined, true, def_opt));
-    one_opt.insertAdjacentElement('beforeend', generateTextInput("select_label", "Option (nom affiché)", required, undefined, true, def_label));
+    one_opt.insertAdjacentElement('beforeend', generateTextInput("select_option", "Option (internal name)", false, undefined, true, def_opt));
+    one_opt.insertAdjacentElement('beforeend', generateTextInput("select_label", "Option (label)", required, undefined, true, def_label));
 
-    const chkbox = convertHTMLToElement(generateCheckbox("select_selected", "Sélectionnée par défaut", def_sel));
+    const chkbox = convertHTMLToElement(generateCheckbox("select_selected", "Selected by default", def_sel));
     chkbox.classList.remove('s12');
     one_opt.insertAdjacentElement('beforeend', chkbox);
 
@@ -190,7 +193,7 @@ function makeSelectOption(required = false, def = undefined) {
 function generateIndeterminate(base, existing_item = {}) {
     base.insertAdjacentHTML(
         'beforeend', 
-        generateCheckbox('indeterminate_chk', "La case a un statut indéterminé par défaut", existing_item.indeterminate || false)
+        generateCheckbox('indeterminate_chk', "Checkbox has an indeterminate state by default", existing_item.indeterminate || false)
     );
 }
 
@@ -201,13 +204,13 @@ function generateIndeterminate(base, existing_item = {}) {
 function generatePlaceholder(base, existing_item = {}) {
     base.insertAdjacentElement(
         'beforeend', 
-        generateTextInput('placeholder_text', "Suggestion dans le champ de texte", false, undefined, false, existing_item.placeholder || "")
+        generateTextInput('placeholder_text', "Placeholder for the field", false, undefined, false, existing_item.placeholder || "")
     );
 }
 
 function generateSuggested(base, existing_item = {}) {
     base.insertAdjacentHTML('beforeend', 
-        generateCheckbox('suggested_blank', "Suggérer le remplissage du champ", existing_item.suggested_not_blank || false)
+        generateCheckbox('suggested_blank', "Suggest filling of this input", existing_item.suggested_not_blank || false)
     );
 }
 
@@ -232,15 +235,15 @@ function generateRange(base, existing_item) {
         }
     }
 
-    opt1.insertAdjacentElement('beforeend', generateNumberInput('range_opt_min', "Minimum", false, null, null, "Laissez vide si aucun", min_r));
-    opt2.insertAdjacentElement('beforeend', generateNumberInput('range_opt_max', "Maximum", false, null, null, "Laissez vide si aucun", max_r));
+    opt1.insertAdjacentElement('beforeend', generateNumberInput('range_opt_min', "Minimum", false, null, null, "Keep empty if none", min_r));
+    opt2.insertAdjacentElement('beforeend', generateNumberInput('range_opt_max', "Maximum", false, null, null, "Keep empty if none", max_r));
 
     base.appendChild(wrapper);
 }
 
 function generateSelectOpt(base, existing_item) {
     // Element le plus complexe. Deux options obligatoires, on doit pouvoir en rajouter autant que l'on veut après
-    base.insertAdjacentHTML('beforeend', `<p class="flow-text">Options de la liste</p>`);
+    base.insertAdjacentHTML('beforeend', `<p class="flow-text">List options</p>`);
 
     const opt_wrapper = document.createElement('div');
     opt_wrapper.classList.add('select-opt-wrapper');
@@ -256,7 +259,7 @@ function generateSelectOpt(base, existing_item) {
         }
     }
 
-    opt_wrapper.insertAdjacentHTML('beforeend', generateCheckbox("select_multiple", "Liste à choix multiples", multiple_select));
+    opt_wrapper.insertAdjacentHTML('beforeend', generateCheckbox("select_multiple", "Multiple choices", multiple_select));
     opt_wrapper.insertAdjacentHTML('beforeend', `<div class="clearb" style="margin-top: 10px;"></div>`);
 
     const choices_wrapper = document.createElement('div');
@@ -277,7 +280,7 @@ function generateSelectOpt(base, existing_item) {
     // Ajout du bouton pour créer une nouvelle entrée
     const new_entry = document.createElement('div');
     new_entry.classList.add('col', 's12', 'delete-btn', 'btn-flat', 'center-align', 'green-text');
-    new_entry.innerHTML = "<i class='material-icons valign-bottom'>add</i> Ajouter option";
+    new_entry.innerHTML = "<i class='material-icons valign-bottom'>add</i> Add option";
     new_entry.onclick = function() { choices_wrapper.appendChild(makeSelectOption()); };
 
     opt_wrapper.appendChild(new_entry);
@@ -290,7 +293,7 @@ function generateSliderOpt(base, existing_item) {
     wrapper.classList.add('slider-opt-wrapper');
 
     const opt1 = document.createElement('div');
-    opt1.innerHTML = "<p class='flow-text no-margin-bottom'>Option 1</p><p class='no-margin-bottom'>L'option 1 est l'option sélectionnée par défaut.</p>";
+    opt1.innerHTML = "<p class='flow-text no-margin-bottom'>Option 1</p><p class='no-margin-bottom'>Option 1 is selected by default.</p>";
     wrapper.appendChild(opt1);
 
     const opt2 = document.createElement('div');
@@ -306,46 +309,40 @@ function generateSliderOpt(base, existing_item) {
         sel_opt2i = existing_item.slider_options[1].name;
     }
 
-    opt1.insertAdjacentElement('beforeend', generateTextInput('slider_opt_1_i', "Nom interne", true, undefined, undefined, sel_opt1i));
-    opt1.insertAdjacentElement('beforeend', generateTextInput('slider_opt_1', "Nom affiché", true, undefined, undefined, sel_opt1));
-    opt2.insertAdjacentElement('beforeend', generateTextInput('slider_opt_2_i', "Nom interne", true, undefined, undefined, sel_opt2i));
-    opt2.insertAdjacentElement('beforeend', generateTextInput('slider_opt_2', "Nom affiché", true, undefined, undefined, sel_opt2));
+    opt1.insertAdjacentElement('beforeend', generateTextInput('slider_opt_1_i', "Internal name", true, undefined, undefined, sel_opt1i));
+    opt1.insertAdjacentElement('beforeend', generateTextInput('slider_opt_1', "Label", true, undefined, undefined, sel_opt1));
+    opt2.insertAdjacentElement('beforeend', generateTextInput('slider_opt_2_i', "Internal name", true, undefined, undefined, sel_opt2i));
+    opt2.insertAdjacentElement('beforeend', generateTextInput('slider_opt_2', "Label", true, undefined, undefined, sel_opt2));
 
     base.appendChild(wrapper);
 }
 
 function generateFileType(base, existing_item = {}) {
     base.insertAdjacentElement('beforeend',
-    generateTextInput('file_type', "Type MIME du fichier accepté", false, undefined, false, existing_item.file_type || ""));
+    generateTextInput('file_type', "MIME type of the file", false, undefined, false, existing_item.file_type || ""));
 }
 
 function generateFloatPrec(base, existing_item = {}) {
     base.insertAdjacentElement('beforeend', 
-    generateNumberInput('float_prec', "Précision numérique (de 0.001 à 0.99)", false, undefined, undefined, undefined, existing_item.float_precision || "")
+    generateNumberInput('float_prec', "Float precision (from 0.001 to 0.99)", false, undefined, undefined, undefined, existing_item.float_precision || "")
     );
 }
 
 function generateInvalidTip(base, existing_item = {}) {
     base.insertAdjacentElement('beforeend', 
-    generateTextInput('invalid_tip', "Aide affichée si champ invalide", false, undefined, false, existing_item.tip_on_invalid || "")
+    generateTextInput('invalid_tip', "Help text when field is invalid", false, undefined, false, existing_item.tip_on_invalid || "")
     );
 }
 
 function generateAllowVoice(base, existing_item = {}) {
     base.insertAdjacentHTML('beforeend', 
-    generateCheckbox('vocal_command', "Autoriser commande vocale", existing_item.allow_voice_control || false)
+    generateCheckbox('vocal_command', "Allow vocal command", existing_item.allow_voice_control || false)
     );
 }
 
 function generateRmWhitespace(base, existing_item = {}) {
     base.insertAdjacentHTML('beforeend', 
-    generateCheckbox('rm_whitesp', "Supprimer les espaces lors de la saisie vocale", existing_item.remove_whitespaces || false)
-    );
-}
-
-function generateExternalC(base, existing_item = {}) {
-    base.insertAdjacentElement('beforeend', 
-    generateTextInput('external_c', "Contraintes externes (voir manuel)", false, undefined, false, existing_item.external_constraints || "")
+    generateCheckbox('rm_whitesp', "Remove whitespaces during vocal recognition", existing_item.remove_whitespaces || false)
     );
 }
 
@@ -399,7 +396,7 @@ function acquireDataFromInput(form, entry, prop) {
                 entry.range.max = Number(max);
 
                 if (entry.range.min > entry.range.max) {
-                    throw new Error("Le minimum ne peut être supérieur au maximum");
+                    throw new Error("Minimum shoud not be superior to maximum");
                 }
             }
             else {

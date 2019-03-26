@@ -9,6 +9,22 @@ function checkRequired() : array {
     }
 }
 
+function checkIfInMetadata(string $type, string $id, string $filename) : bool {
+    if (!file_exists(UPLOAD_FILE_PATH . "$type/$id.json")) {
+        EndPointManager::error(9);
+    }
+    
+    $entry = json_decode(file_get_contents(UPLOAD_FILE_PATH . "$type/$id.json"), true);
+
+    foreach ($entry['metadata'] as $m) {
+        if ($m === $filename) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function loadEndpoint(string $method) : array {
     if ($method !== 'POST') {
         EndPointManager::error(4);
@@ -21,8 +37,9 @@ function loadEndpoint(string $method) : array {
     }
 
     list($id, $name, $type, $data) = checkRequired();
-    
-    if (!file_exists(UPLOAD_FILE_PATH . "$type/$id.json")) {
+
+    // Vérifie que le nom du fichier existe dans les métadonnées du JSON concerné
+    if (!checkIfInMetadata($type, $id, $name)) {
         EndPointManager::error(9);
     }
 

@@ -7,6 +7,7 @@ class AppSettings {
     protected _sync_bg: boolean; /** Activer la sync en arrière plan */
     protected _api_url: string; /** URL du serveur. DOIT avoir un slash final !! */
     protected _voice_lang: string; /** Langage utilisé pour la reconnaissance vocale */
+    protected _popup_location: boolean; /** Modal de localisation à ouvrir automatiquement à la nouvelle entrée */
 
     constructor() {
         this.initDefaults();
@@ -16,6 +17,9 @@ class AppSettings {
         }
         if (localStorage.getItem('_settings_sync_bg')) {
             this._sync_bg = localStorage.getItem('_settings_sync_bg') === 'true';
+        }
+        if (localStorage.getItem('_settings_popup_location')) {
+            this._popup_location = localStorage.getItem('_settings_popup_location') === 'true';
         }
         if (localStorage.getItem('_settings_api_url')) {
             this._api_url = localStorage.getItem('_settings_api_url');
@@ -30,6 +34,17 @@ class AppSettings {
         this._sync_freq = 30;
         this._api_url = "https://projet.alkihis.fr/";
         this._voice_lang = "fr-FR";
+        this._popup_location = false;
+    }
+
+    public set popup_location(val: boolean) {
+        this._popup_location = val;
+
+        localStorage.setItem('_settings_popup_location', String(val));
+    }
+
+    public get popup_location() : boolean {
+        return this._popup_location;
     }
 
     public set sync_bg(val: boolean) {
@@ -90,6 +105,7 @@ class AppSettings {
         this.sync_freq = this._sync_freq;
         this.api_url = this._api_url;
         this.voice_lang = this._voice_lang;
+        this.popup_location = this._popup_location;
     }
 }
 

@@ -10,6 +10,7 @@ import { createLocationInputSelector } from "../utils/location";
 import { FileHelperReadMode } from "../base/FileHelper";
 import { beginFormSave } from "../utils/save_a_form";
 import { METADATA_DIR } from "../base/FormSaves";
+import { Settings } from "../utils/Settings";
 
 /**
  * Crée une base classique dans lequel insérer un input texte ou number.
@@ -134,6 +135,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
         location.type = "text";
         location.readOnly = true;
         location.name = "__location__";
+        location.placeholder = "Place / location";
         location.id = "__location__id";
         location.addEventListener('click', function(this: HTMLInputElement) {
             this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
@@ -167,9 +169,8 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
     for (const ele of current_form.fields) {
         let element_to_add: HTMLElement = null;
 
-        if (ele.type === FormEntityType.divider) {
+        if (ele.type === FormEntityType.title) {
             // C'est un titre
-            // On divide
             const clearer = document.createElement('div');
             clearer.classList.add('clearb');
             placeh.appendChild(clearer);
@@ -179,7 +180,15 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             htmle.id = "id_" + ele.name;
 
             placeh.appendChild(htmle);
-            continue;
+        }
+
+        else if (ele.type === FormEntityType.divider) {
+            // On crée un diviseur
+            placeh.insertAdjacentHTML('beforeend', `
+                <div class="clearb"></div>
+                <div class="divider divider-margin" id="id_${ele.name}"></div>
+                <div class="clearb"></div>
+            `);
         }
 
         else if (ele.type === FormEntityType.integer || ele.type === FormEntityType.float) {
@@ -988,11 +997,9 @@ export function initFormPage(base: HTMLElement, edition_mode?: {save: FormSave, 
  * @param edition_mode
  */
 export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mode?: {save: FormSave, name: string}) {
-    base.innerHTML = "";
-
     if (!edition_mode && !UserManager.logged) {
         // Si on est en mode création et qu'on est pas connecté
-        base.innerHTML = base.innerHTML = displayErrorMessage(
+        base.innerHTML = displayErrorMessage(
             "You have to login to register a new entry.", 
             "Login in settings."
         );
@@ -1017,13 +1024,9 @@ export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mo
         constructForm(placeh, current_form);
     }
 
-    base.appendChild(base_block);
-
-    M.updateTextFields();
-    $('select').formSelect();
-
-    // Lance le sélecteur de localisation uniquement si on est pas en mode édition et si le formulaire autorise les lieux
-    if (!edition_mode) {
+    // Lance automatiquement le sélecteur de localisation uniquement si on est pas en mode édition,
+    // si c'est autorisé par l'utilisateur dans les paramètres et si le formulaire autorise les lieux
+    if (!edition_mode && Settings.popup_location) {
         if (!(current_form.no_location || current_form.skip_location)) {
             callLocationSelector(current_form);
         }
@@ -1054,24 +1057,29 @@ export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mo
         }
     });
 
+    base.innerHTML = "";
+    base.appendChild(base_block);
     base_block.appendChild(btn);
+    M.updateTextFields();
+    $('select').formSelect();
 }
 
 /**
  * Annule la sélection de lieu
  * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
  */
-function cancelGeoLocModal(required = true) : void {
+function cancelGeoLocModal() : void {
     // On veut fermer; Deux possibilités.
     // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
 
-    if (!required || (document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
-        // On ferme juste le modal
-    }
-    else {
-        // Sinon, on ramène à la page précédente
-        PageManager.back();
-    }
+    // Plus de retour à la page précédente suggérée: contre-intuitif
+    // if (!required || (document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
+    //     // On ferme juste le modal
+    // }
+    // else {
+    //     // Sinon, on ramène à la page précédente
+    //     PageManager.back();
+    // }
 
     getModalInstance().close();
     getModal().classList.remove('modal-fixed-footer');
@@ -1101,20 +1109,20 @@ function callLocationSelector(current_form: Schema) : void {
     let is_loc_canceled = false;
     document.getElementById("close-footer-geoloc").onclick = function() {
         is_loc_canceled = true;
-        cancelGeoLocModal(!current_form.skip_location);
+        cancelGeoLocModal();
     };
     document.getElementById('dontloc-footer-geoloc').onclick = function() {
         is_loc_canceled = true;
-        locationSelector(modal, current_form.locations, false, !current_form.skip_location);
+        locationSelector(modal, current_form.locations, false);
     };
 
     // Cherche la localisation et remplit le modal
     getLocation(function(coords: Position) {
         if (!is_loc_canceled)
-            locationSelector(modal, current_form.locations, coords, !current_form.skip_location);
+            locationSelector(modal, current_form.locations, coords);
     }, function() {
         if (!is_loc_canceled)
-            locationSelector(modal, current_form.locations, undefined, !current_form.skip_location);
+            locationSelector(modal, current_form.locations, undefined);
     });
 }
 
@@ -1136,7 +1144,7 @@ function textDistance(distance: number) : string {
  * @param current_location Position actuelle. Si échec de localisation, undefined. Si explicitement non donnée, false.
  * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
  */
-function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false, required = true) {
+function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false) {
     // Met le modal en modal avec footer fixé
     modal.classList.add('modal-fixed-footer');
 
@@ -1254,7 +1262,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
     cancel.href = "#!";
     cancel.innerText = "Annuler";
     cancel.classList.add("btn-flat", "red-text", "left");
-    cancel.addEventListener('click', () => { cancelGeoLocModal(required); });
+    cancel.addEventListener('click', cancelGeoLocModal);
     footer.appendChild(cancel);
 
     modal.appendChild(footer);

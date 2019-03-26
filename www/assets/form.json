@@ -1,6 +1,6 @@
 {
-    "cincle_plongeur": {
-        "name": "Cincle plongeur",
+    "cincle_plongeur_test": {
+        "name": "Cincle plongeur (test)",
         "id_field": "ringnb",
         "fields": [{
             "name": "title_general",
@@ -538,23 +538,19 @@
         }, {
             "name": "pic_belly_white",
             "label": "Photo ventre blanc",
-            "type": "file",
-            "file_type": "image/*"
+            "type": "image"
         }, {
             "name": "pic_belly_brown",
             "label": "Photo ventre marron",
-            "type": "file",
-            "file_type": "image/*"
+            "type": "image"
         }, {
             "name": "pic_eye",
             "label": "Photo oeil",
-            "type": "file",
-            "file_type": "image/*"
+            "type": "image"
         }, {
             "name": "pic_coverts",
             "label": "Photo coverts",
-            "type": "file",
-            "file_type": "image/*"
+            "type": "image"
         }, {
             "name": "complement_info",
             "label": "Compl\u00e9ment d'information",

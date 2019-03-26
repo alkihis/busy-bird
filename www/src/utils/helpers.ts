@@ -255,7 +255,7 @@ export function formatDate(date: Date, withTime: boolean = false) : string {
  * Pour comprendre les significations des lettres du schéma, se référer à : http://php.net/manual/fr/function.date.php
  * @param schema string Schéma de la chaîne. Supporte Y, m, d, g, H, i, s, n, N, v, z, w
  * @param date Date Date depuis laquelle effectuer le formatage
- * @returns string La châine formatée
+ * @returns string La chaîne formatée
  */
 export function dateFormatter(schema: string, date = new Date()) : string {
     function getDayOfTheYear(now: Date) : number {

@@ -10,48 +10,48 @@ function exportFormModal() {
 
     modal.innerHTML = `
     <div class="modal-content row no-margin-bottom no-padding-bottom">
-        <h5 class="no-margin-top">Exporter le formulaire</h5>
+        <h5 class="no-margin-top">Export modal</h5>
 
         <p>
-            ${Object.keys(form_locations).length} localisations chargée(s).<br>
+            ${Object.keys(form_locations).length} loaded locations.<br>
         </p>
 
-        <h6>Paramètres du formulaire<h6>
+        <h6>Modal settings<h6>
 
         <div class="input-field col s12">
-            <input id="__form_key" placeholder="Contient uniquement des caractères alphanumériques" 
+            <input id="__form_key" placeholder="Only alpha-numerical characters" 
                 type="text" class="validate" required pattern="[a-zA-Z0-9_-]+" value="${form_key}">
-            <label for="__form_key">Nom interne</label>
+            <label for="__form_key">Internal name</label>
         </div>
 
         <div class="input-field col s12">
-            <input id="__form_label" placeholder="Par exemple, 'Cincle Plongeur'" type="text" class="validate" required value="${form_name}">
-            <label for="__form_label">Nom affiché du formulaire</label>
+            <input id="__form_label" placeholder="For example, 'Cincle Plongeur'" type="text" class="validate" required value="${form_name}">
+            <label for="__form_label">Label of model</label>
         </div>
 
         <div class="input-field col s12">
-            <input id="__form_id_f" placeholder="Par exemple, 'ringnb'" type="text" class="validate" value="${form_id_field}">
-            <label for="__form_id_f">Champ correspondant à un identifiant dans le formulaire (nom interne)</label>
+            <input id="__form_id_f" placeholder="For example, 'ringnb'" type="text" class="validate" value="${form_id_field}">
+            <label for="__form_id_f">Field referring to a ID field in the model (internal name)</label>
         </div>
         
         <p class="col s12 no-margin-top no-margin-bottom">
             <label>
                 <input type="checkbox" id="__form_skip_loc" ${form_skip_loc ? 'checked' : ''} />
-                <span>La localisation peut être facultative</span>
+                <span>Location could be optional</span>
             </label>
         </p>
         <p class="col s12 no-margin-top">
             <label>
                 <input type="checkbox" id="__form_no_loc" ${form_no_loc ? 'checked' : ''} />
-                <span>Ce formulaire ne contient pas d'informations de localisation</span>
+                <span>This form type should not have location informations</span>
             </label>
         </p>
 
         <div class="clearb"></div>
     </div>
     <div class="modal-footer">
-        <a href="#!" class="btn-flat modal-close left red-text">Annuler</a>
-        <a href="#!" id="__export_form" class="btn-flat right green-text">Exporter</a>
+        <a href="#!" class="btn-flat modal-close left red-text">Cancel</a>
+        <a href="#!" id="__export_form" class="btn-flat right green-text">Export</a>
         <div class="clearb"></div>
     </div>
     `;
@@ -64,19 +64,19 @@ function exportFormModal() {
         const nope = document.getElementById('__form_no_loc').checked;
 
         if (!name || !key) {
-            M.toast({html: "Vous devez préciser un nom et une clé valide."});
+            M.toast({html: "You must specify a valid name and label."});
             return;
         }
 
         if (!key.match(/^[0-9a-z_-]+$/i)) {
-            M.toast({html: "La clé contient des caractères invalides."});
+            M.toast({html: "Internal name is invalid."});
             return;
         }
 
         const a = document.createElement('a');
 
         a.href = exportForm(name, idf, form_locations, skip, nope);
-        a.innerText = "Télécharger";
+        a.innerText = "Download";
         a.target = '_blank';
         a.download = key + '.json';
         a.className = "flow-text";
@@ -84,12 +84,12 @@ function exportFormModal() {
         const wrapper = document.createElement('div');
         wrapper.className = "row center";
 
-        wrapper.insertAdjacentHTML('beforeend', "<p class='flow-text'>Cliquez sur télécharger pour récupérer le formulaire.</p>");
+        wrapper.insertAdjacentHTML('beforeend', "<p class='flow-text'>Click on download to retrieve the model</p>");
         wrapper.appendChild(a);
 
         modal.innerHTML = `<div class="modal-content"></div>
         <div class="modal-footer">
-            <a href="#!" class="btn-flat modal-close left red-text">Fermer</a>
+            <a href="#!" class="btn-flat modal-close left red-text">Close</a>
             <div class="clearb"></div>
         </div>
         `;

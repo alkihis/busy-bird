@@ -28,6 +28,7 @@ export const MAX_CONCURRENT_SYNC_ENTRIES = 10; /** Nombre d'entrées à envoyer 
     Attention, 1 entrée correspond au JSON + ses possibles fichiers attachés. 
 */
 export const APP_ID = "com.lbbe.busybird";
+export const ALLOW_LOAD_TEST_SCHEMAS = false; /** Autorise de charger le fichier présent dans assets/form.json */
 
 // Variables globales exportées
 export let SDCARD_PATH: string = null;

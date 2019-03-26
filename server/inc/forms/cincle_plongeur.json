@@ -3,11 +3,16 @@
     "fields": [{
         "name": "title_general",
         "label": "Général",
-        "type": "divider"
+        "type": "title"
     }, {
         "name": "__date__",
-        "label": "Date",
-        "type": "datetime",
+        "label": "Jour",
+        "type": "date",
+        "required": true
+    }, {
+        "name": "__time__",
+        "label": "Temps",
+        "type": "time",
         "required": true
     }, {
         "name": "name",
@@ -40,7 +45,7 @@
         "type": "checkbox"
     }, {
         "name": "amont_aval",
-        "label": null,
+        "label": "Amont ou aval",
         "type": "slider",
         "slider_options": [{
             "name": "amont",
@@ -101,20 +106,31 @@
         },
         "allow_voice_control": true
     }, {
-        "name": "bagues_couleur_gauche",
-        "label": "Bagues gauche",
-        "type": "divider"
+        "name": "bagues_title",
+        "label": "Bagues de l'oiseau",
+        "type": "title"
     }, {
-        "name": "bague_metal_gauche",
-        "label": "Métal",
+        "name": "bague_metal",
+        "label": "Emplacement de la bague en métal",
+        "type": "slider",
+        "slider_options": [
+            {
+                "label": "Gauche",
+                "name": "gauche"
+            }, {
+                "label": "Droite",
+                "name": "droite"
+            }
+        ]
+    }, {
+        "name": "bague_plastique_gauche_haut",
+        "label": "Plastique haut-gauche",
         "type": "select",
-        "external_constraints": "bague_metal_droite!=*",
-        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague gauche si il a une bague métal droite.",
         "select_options": {
             "multiple": false,
             "options": [{
                 "label": "Aucune",
-                "value": ""
+                "value": "none"
             }, {
                 "label": "Dark blue",
                 "value": "db"
@@ -149,59 +165,14 @@
         },
         "allow_voice_control": true
     }, {
-        "name": "bague_plastique_gauche",
-        "label": "Plastique",
+        "name": "bague_plastique_gauche_bas",
+        "label": "Plastique bas-gauche",
         "type": "select",
-        "select_options": {
-            "multiple": true,
-            "options": [{
-                "label": "Dark blue",
-                "value": "db"
-            }, {
-                "label": "Light blue",
-                "value": "lb"
-            }, {
-                "label": "Green",
-                "value": "g"
-            }, {
-                "label": "Yellow",
-                "value": "y"
-            }, {
-                "label": "White",
-                "value": "w"
-            }, {
-                "label": "Red",
-                "value": "r"
-            }, {
-                "label": "Grey",
-                "value": "gy"
-            }, {
-                "label": "Pink",
-                "value": "p"
-            }, {
-                "label": "Black",
-                "value": "b"
-            }, {
-                "label": "Orange",
-                "value": "o"
-            }]
-        },
-        "allow_voice_control": true
-    }, {
-        "name": "bagues_couleur_droite",
-        "label": "Bagues droite",
-        "type": "divider"
-    }, {
-        "name": "bague_metal_droite",
-        "label": "Métal",
-        "type": "select",
-        "external_constraints": "bague_metal_gauche!=*",
-        "tip_on_invalid": "L'oiseau ne peut pas avoir de bague droite si il a une bague métal gauche.",
         "select_options": {
             "multiple": false,
             "options": [{
                 "label": "Aucune",
-                "value": ""
+                "value": "none"
             }, {
                 "label": "Dark blue",
                 "value": "db"
@@ -236,12 +207,57 @@
         },
         "allow_voice_control": true
     }, {
-        "name": "bague_plastique_droite",
-        "label": "Plastique",
+        "name": "bague_plastique_droite_haut",
+        "label": "Plastique haut-droite",
         "type": "select",
         "select_options": {
-            "multiple": true,
+            "multiple": false,
             "options": [{
+                "label": "Aucune",
+                "value": "none"
+            }, {
+                "label": "Dark blue",
+                "value": "db"
+            }, {
+                "label": "Light blue",
+                "value": "lb"
+            }, {
+                "label": "Green",
+                "value": "g"
+            }, {
+                "label": "Yellow",
+                "value": "y"
+            }, {
+                "label": "White",
+                "value": "w"
+            }, {
+                "label": "Red",
+                "value": "r"
+            }, {
+                "label": "Grey",
+                "value": "gy"
+            }, {
+                "label": "Pink",
+                "value": "p"
+            }, {
+                "label": "Black",
+                "value": "b"
+            }, {
+                "label": "Orange",
+                "value": "o"
+            }]
+        },
+        "allow_voice_control": true
+    }, {
+        "name": "bague_plastique_droite_bas",
+        "label": "Plastique bas-droite",
+        "type": "select",
+        "select_options": {
+            "multiple": false,
+            "options": [{
+                "label": "Aucune",
+                "value": "none"
+            }, {
                 "label": "Dark blue",
                 "value": "db"
             }, {
@@ -277,7 +293,7 @@
     }, {
         "name": "additionnal_info",
         "label": "Relevés",
-        "type": "divider"
+        "type": "title"
     }, {
         "name": "transpond",
         "label": "Transpondeur",
@@ -288,7 +304,6 @@
         },
         "tip_on_invalid": "Doit être composé de 10 chiffres et lettres",
         "placeholder": "Composé de 10 chiffres et de lettres",
-        "required": true,
         "remove_whitespaces": true,
         "allow_voice_control": true
     }, {
@@ -447,107 +462,27 @@
     }, {
         "name": "blood_tubes_alc",
         "label": "Tubes de sang alcool",
-        "type": "select",
-        "select_options": {
-            "multiple": false,
-            "options": [{
-                "label": "Non",
-                "value": "n"
-            }, {
-                "label": "Low",
-                "value": "l"
-            }, {
-                "label": "Middle",
-                "value": "m"
-            }, {
-                "label": "High",
-                "value": "h"
-            }]
-        }
+        "type": "checkbox"
     }, {
         "name": "blood_tubes_microm",
         "label": "Tubes de sang micro-",
-        "type": "select",
-        "select_options": {
-            "multiple": false,
-            "options": [{
-                "label": "Non",
-                "value": "n"
-            }, {
-                "label": "Low",
-                "value": "l"
-            }, {
-                "label": "Middle",
-                "value": "m"
-            }, {
-                "label": "High",
-                "value": "h"
-            }]
-        }
+        "type": "checkbox"
     }, {
         "name": "blood_tubes_microp",
         "label": "Tubes de sang micro+",
-        "type": "select",
-        "select_options": {
-            "multiple": false,
-            "options": [{
-                "label": "Non",
-                "value": "n"
-            }, {
-                "label": "Low",
-                "value": "l"
-            }, {
-                "label": "Middle",
-                "value": "m"
-            }, {
-                "label": "High",
-                "value": "h"
-            }]
-        }
+        "type": "checkbox"
     }, {
         "name": "blood_tubes_smear",
         "label": "Tubes de sang smear",
-        "type": "select",
-        "select_options": {
-            "multiple": false,
-            "options": [{
-                "label": "Non",
-                "value": "n"
-            }, {
-                "label": "Low",
-                "value": "l"
-            }, {
-                "label": "Middle",
-                "value": "m"
-            }, {
-                "label": "High",
-                "value": "h"
-            }]
-        }
+        "type": "checkbox"
     }, {
         "name": "blood_tubes_mito",
         "label": "Tubes de sang mito",
-        "type": "select",
-        "select_options": {
-            "multiple": false,
-            "options": [{
-                "label": "Non",
-                "value": "n"
-            }, {
-                "label": "Low",
-                "value": "l"
-            }, {
-                "label": "Middle",
-                "value": "m"
-            }, {
-                "label": "High",
-                "value": "h"
-            }]
-        }
+        "type": "checkbox"
     }, {
         "name": "pict_divider",
         "label": "Photos",
-        "type": "divider"
+        "type": "title"
     }, {
         "name": "pic_belly_white",
         "label": "Photo ventre blanc",
@@ -571,7 +506,7 @@
     }, {
         "name": "complement_info",
         "label": "Complément d'information",
-        "type": "divider"
+        "type": "title"
     }, {
         "name": "struggle",
         "label": "Comportement",
@@ -579,6 +514,9 @@
         "select_options": {
             "multiple": false,
             "options": [{
+                "label": "Non défini",
+                "value": "none"
+            }, {
                 "label": "0",
                 "value": "0"
             }, {
@@ -595,11 +533,11 @@
         "allow_voice_control": true
     }, {
         "name": "distress",
-        "label": "Stress",
+        "label": "Distress",
         "type": "checkbox"
     }, {
         "name": "wounds",
-        "label": "Blessure",
+        "label": "Blessure(s)",
         "type": "select",
         "select_options": {
             "multiple": true,
@@ -619,6 +557,10 @@
         "label": "Commentaires",
         "type": "textarea",
         "allow_voice_control": true
+    }, {
+        "name": "comments_plus",
+        "label": "Commentaires audio",
+        "type": "audio"
     }],
     "locations": {
         "Touvat": {

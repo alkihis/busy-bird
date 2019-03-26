@@ -38,11 +38,39 @@ function loadEndpoint(string $method) : array {
     list($id, $str_form) = checkRequired();
 
     $json = @json_decode($str_form, true);
+    unset($str_form);
 
     if (!$json || !isset($json['type'], $json['metadata'])) {
         EndPointManager::error(14);
     }
     $type = $json['type'];
+
+    // Vérification du JSON. Par sécurité, copie les champs
+    $new_json = ['fields' => [], 'type' => $type, 'metadata' => [], 'location' => $json['location'], 'owner' => $json['owner']];
+    if (isset($json['type_version'])) {
+        $new_json['type_version'] = $json['type_version'];
+    }
+
+    // Tente de lire le schéma correspondant
+    $fileschema = $type . ".json";
+
+    if (!file_exists(FORMS_FILE_PATH . $fileschema)) {
+        EndPointManager::error(14);
+    }
+
+    $schema = json_decode(file_get_contents(FORMS_FILE_PATH . $fileschema), true);
+
+    // Construit le JSON
+    foreach ($schema['fields'] as $field) {
+        $id_fieldkey = $field['name'];
+
+        if (array_key_exists($id_fieldkey, $json['fields'])) {
+            $new_json['fields'][$id_fieldkey] = $json['fields'][$id_fieldkey];
+        }
+        if (array_key_exists($id_fieldkey, $json['metadata'])) {
+            $new_json['metadata'][$id_fieldkey] = $json['metadata'][$id_fieldkey];
+        }
+    }
 
     if (!file_exists(UPLOAD_FILE_PATH . $type)) {
         @mkdir(UPLOAD_FILE_PATH . $type);
@@ -51,7 +79,7 @@ function loadEndpoint(string $method) : array {
     $path = UPLOAD_FILE_PATH . "$type/$id.json";
 
     // On écrit le form
-    file_put_contents($path, $str_form);
+    file_put_contents($path, json_encode($new_json));
 
     $to_not_delete = [];
     $path = FORM_DATA_FILE_PATH . $type . "/$id/";

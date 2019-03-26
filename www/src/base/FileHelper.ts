@@ -209,10 +209,34 @@ function globToRegex(glob: string, flags: string = "") : RegExp {
     return new RegExp(reStr, flags);
 }
 
+interface FileHelperPaths {
+    app: string;
+    webroot: string;
+    data: string;
+    externalData: string;
+    cache: string;
+    externalRoot: string;
+}
+
 /**
  * Simplify file access and directory navigation with native Promise support
  */
 export class FileHelper {
+    // Filehelpers
+    // !! Initilized when cordova is ready ! //
+    public static paths: FileHelperPaths = {
+        app: "",
+        webroot: "",
+        data: "",
+        externalData: "",
+        cache: "",
+        externalRoot: ""
+    };
+    public paths = FileHelper.paths;
+
+    public static device_ready = new Promise(resolve => document.addEventListener('deviceready', resolve));
+    public device_ready = FileHelper.device_ready;
+
     protected ready: Promise<void> | null = null;
     protected root: string | null = null;
 
@@ -279,12 +303,7 @@ export class FileHelper {
     protected getBasenameOfPath(path: string) : string {
         const basename = path.split('/').pop();
 
-        if (basename === undefined) {
-            return path;
-        }
-        else {
-            return basename;
-        }
+        return basename === undefined ? path : basename;
     }
 
     /**
@@ -1074,3 +1093,14 @@ export class FileHelper {
         }
     }
 }
+
+document.addEventListener('deviceready', () => {
+    FileHelper.paths = {
+        app: cordova.file.applicationDirectory,
+        webroot: cordova.file.applicationDirectory + "www/",
+        data: cordova.file.dataDirectory,
+        externalData: cordova.file.externalDataDirectory,
+        cache: cordova.file.cacheDirectory,
+        externalRoot: cordova.file.externalRootDirectory
+    };
+}); 

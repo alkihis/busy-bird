@@ -20,6 +20,9 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
             if (localStorage.getItem('_settings_sync_bg')) {
                 this._sync_bg = localStorage.getItem('_settings_sync_bg') === 'true';
             }
+            if (localStorage.getItem('_settings_popup_location')) {
+                this._popup_location = localStorage.getItem('_settings_popup_location') === 'true';
+            }
             if (localStorage.getItem('_settings_api_url')) {
                 this._api_url = localStorage.getItem('_settings_api_url');
             }
@@ -33,6 +36,14 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
             this._sync_freq = 30;
             this._api_url = "https://projet.alkihis.fr/";
             this._voice_lang = "fr-FR";
+            this._popup_location = false;
+        }
+        set popup_location(val) {
+            this._popup_location = val;
+            localStorage.setItem('_settings_popup_location', String(val));
+        }
+        get popup_location() {
+            return this._popup_location;
         }
         set sync_bg(val) {
             this._sync_bg = val;
@@ -77,6 +88,7 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
             this.sync_freq = this._sync_freq;
             this.api_url = this._api_url;
             this.voice_lang = this._voice_lang;
+            this.popup_location = this._popup_location;
         }
     }
     const lang_possibilities = {
@@ -716,6 +728,8 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
          * @param root Root directory of the new instance
          */
         constructor(root = "") {
+            this.paths = FileHelper.paths;
+            this.device_ready = FileHelper.device_ready;
             this.ready = null;
             this.root = null;
             /** CHECK IF FH IS READY WITH waitInit(). */
@@ -763,12 +777,7 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
          */
         getBasenameOfPath(path) {
             const basename = path.split('/').pop();
-            if (basename === undefined) {
-                return path;
-            }
-            else {
-                return basename;
-            }
+            return basename === undefined ? path : basename;
         }
         /**
          * Check if path exists (either a file or a directory)
@@ -1421,7 +1430,28 @@ define("base/FileHelper", ["require", "exports"], function (require, exports) {
             }
         }
     }
+    // Filehelpers
+    // !! Initilized when cordova is ready ! //
+    FileHelper.paths = {
+        app: "",
+        webroot: "",
+        data: "",
+        externalData: "",
+        cache: "",
+        externalRoot: ""
+    };
+    FileHelper.device_ready = new Promise(resolve => document.addEventListener('deviceready', resolve));
     exports.FileHelper = FileHelper;
+    document.addEventListener('deviceready', () => {
+        FileHelper.paths = {
+            app: cordova.file.applicationDirectory,
+            webroot: cordova.file.applicationDirectory + "www/",
+            data: cordova.file.dataDirectory,
+            externalData: cordova.file.externalDataDirectory,
+            cache: cordova.file.cacheDirectory,
+            externalRoot: cordova.file.externalRootDirectory
+        };
+    });
 });
 define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserManager", "main", "utils/fetch_timeout", "base/FileHelper", "utils/Settings"], function (require, exports, helpers_2, UserManager_1, main_1, fetch_timeout_1, FileHelper_1, Settings_2) {
     "use strict";
@@ -1447,6 +1477,7 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
         FormEntityType["date"] = "date";
         FormEntityType["time"] = "time";
         FormEntityType["image"] = "image";
+        FormEntityType["title"] = "title";
     })(FormEntityType = exports.FormEntityType || (exports.FormEntityType = {}));
     /**
      * Contient les différents schémas de formulaire,
@@ -1562,23 +1593,25 @@ define("base/FormSchema", ["require", "exports", "utils/helpers", "base/UserMana
                 this.loadFormSchemaInClass(JSON.parse(string));
             }
             catch (e) {
-                // Il n'existe pas, on doit le charger depuis les sources de l'application
-                try {
-                    const parsed = await (await fetch_timeout_1.default('assets/form.json', {})).json();
-                    this.loadFormSchemaInClass(parsed, true);
-                }
-                catch (e2) {
-                    // Essaie de lire le fichier sur le périphérique
-                    const application = new FileHelper_1.FileHelper(cordova.file.applicationDirectory + 'www/');
-                    await application.waitInit();
-                    await application.read('assets/form.json')
-                        .then(string_1 => {
-                        this.loadFormSchemaInClass(JSON.parse(string_1));
-                    })
-                        .catch(() => {
-                        helpers_2.showToast("Unable to load form models." + " "
-                            + cordova.file.applicationDirectory + 'www/assets/form.json');
-                    });
+                if (main_1.ALLOW_LOAD_TEST_SCHEMAS) {
+                    // Il n'existe pas, on doit le charger depuis les sources de l'application
+                    try {
+                        const parsed = await (await fetch_timeout_1.default('assets/form.json', {})).json();
+                        this.loadFormSchemaInClass(parsed, true);
+                    }
+                    catch (e2) {
+                        // Essaie de lire le fichier sur le périphérique
+                        const application = new FileHelper_1.FileHelper(cordova.file.applicationDirectory + 'www/');
+                        await application.waitInit();
+                        await application.readJSON('assets/form.json')
+                            .then(schemas => {
+                            this.loadFormSchemaInClass(schemas);
+                        })
+                            .catch(() => {
+                            helpers_2.showToast("Unable to load form models." + " "
+                                + cordova.file.applicationDirectory + 'www/assets/form.json');
+                        });
+                    }
                 }
             }
         }
@@ -3170,7 +3203,7 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      * Pour comprendre les significations des lettres du schéma, se référer à : http://php.net/manual/fr/function.date.php
      * @param schema string Schéma de la chaîne. Supporte Y, m, d, g, H, i, s, n, N, v, z, w
      * @param date Date Date depuis laquelle effectuer le formatage
-     * @returns string La châine formatée
+     * @returns string La chaîne formatée
      */
     function dateFormatter(schema, date = new Date()) {
         function getDayOfTheYear(now) {
@@ -4286,7 +4319,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
     }
     exports.validConstraints = validConstraints;
 });
-define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form", "base/FormSaves"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_8, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1, FormSaves_4) {
+define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form", "base/FormSaves", "utils/Settings"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_8, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1, FormSaves_4, Settings_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -4397,6 +4430,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
             location.type = "text";
             location.readOnly = true;
             location.name = "__location__";
+            location.placeholder = "Place / location";
             location.id = "__location__id";
             location.addEventListener('click', function () {
                 this.blur(); // Retire le focus pour éviter de pouvoir écrire dedans
@@ -4424,9 +4458,8 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         }
         for (const ele of current_form.fields) {
             let element_to_add = null;
-            if (ele.type === FormSchema_3.FormEntityType.divider) {
+            if (ele.type === FormSchema_3.FormEntityType.title) {
                 // C'est un titre
-                // On divide
                 const clearer = document.createElement('div');
                 clearer.classList.add('clearb');
                 placeh.appendChild(clearer);
@@ -4434,7 +4467,14 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 htmle.innerText = ele.label;
                 htmle.id = "id_" + ele.name;
                 placeh.appendChild(htmle);
-                continue;
+            }
+            else if (ele.type === FormSchema_3.FormEntityType.divider) {
+                // On crée un diviseur
+                placeh.insertAdjacentHTML('beforeend', `
+                <div class="clearb"></div>
+                <div class="divider divider-margin" id="id_${ele.name}"></div>
+                <div class="clearb"></div>
+            `);
             }
             else if (ele.type === FormSchema_3.FormEntityType.integer || ele.type === FormSchema_3.FormEntityType.float) {
                 const real_wrapper = document.createElement('div');
@@ -5091,10 +5131,9 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
      * @param edition_mode
      */
     function loadFormPage(base, current_form, edition_mode) {
-        base.innerHTML = "";
         if (!edition_mode && !UserManager_4.UserManager.logged) {
             // Si on est en mode création et qu'on est pas connecté
-            base.innerHTML = base.innerHTML = helpers_8.displayErrorMessage("You have to login to register a new entry.", "Login in settings.");
+            base.innerHTML = helpers_8.displayErrorMessage("You have to login to register a new entry.", "Login in settings.");
             PageManager_3.PageManager.should_wait = false;
             return;
         }
@@ -5111,11 +5150,9 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         else {
             constructForm(placeh, current_form);
         }
-        base.appendChild(base_block);
-        M.updateTextFields();
-        $('select').formSelect();
-        // Lance le sélecteur de localisation uniquement si on est pas en mode édition et si le formulaire autorise les lieux
-        if (!edition_mode) {
+        // Lance automatiquement le sélecteur de localisation uniquement si on est pas en mode édition,
+        // si c'est autorisé par l'utilisateur dans les paramètres et si le formulaire autorise les lieux
+        if (!edition_mode && Settings_5.Settings.popup_location) {
             if (!(current_form.no_location || current_form.skip_location)) {
                 callLocationSelector(current_form);
             }
@@ -5143,23 +5180,28 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 }
             }
         });
+        base.innerHTML = "";
+        base.appendChild(base_block);
         base_block.appendChild(btn);
+        M.updateTextFields();
+        $('select').formSelect();
     }
     exports.loadFormPage = loadFormPage;
     /**
      * Annule la sélection de lieu
      * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
      */
-    function cancelGeoLocModal(required = true) {
+    function cancelGeoLocModal() {
         // On veut fermer; Deux possibilités.
         // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
-        if (!required || document.getElementById("__location__id").value.trim() !== "") {
-            // On ferme juste le modal
-        }
-        else {
-            // Sinon, on ramène à la page précédente
-            PageManager_3.PageManager.back();
-        }
+        // Plus de retour à la page précédente suggérée: contre-intuitif
+        // if (!required || (document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
+        //     // On ferme juste le modal
+        // }
+        // else {
+        //     // Sinon, on ramène à la page précédente
+        //     PageManager.back();
+        // }
         helpers_8.getModalInstance().close();
         helpers_8.getModal().classList.remove('modal-fixed-footer');
     }
@@ -5183,19 +5225,19 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         let is_loc_canceled = false;
         document.getElementById("close-footer-geoloc").onclick = function () {
             is_loc_canceled = true;
-            cancelGeoLocModal(!current_form.skip_location);
+            cancelGeoLocModal();
         };
         document.getElementById('dontloc-footer-geoloc').onclick = function () {
             is_loc_canceled = true;
-            locationSelector(modal, current_form.locations, false, !current_form.skip_location);
+            locationSelector(modal, current_form.locations, false);
         };
         // Cherche la localisation et remplit le modal
         helpers_8.getLocation(function (coords) {
             if (!is_loc_canceled)
-                locationSelector(modal, current_form.locations, coords, !current_form.skip_location);
+                locationSelector(modal, current_form.locations, coords);
         }, function () {
             if (!is_loc_canceled)
-                locationSelector(modal, current_form.locations, undefined, !current_form.skip_location);
+                locationSelector(modal, current_form.locations, undefined);
         });
     }
     /**
@@ -5214,7 +5256,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
      * @param current_location Position actuelle. Si échec de localisation, undefined. Si explicitement non donnée, false.
      * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
      */
-    function locationSelector(modal, locations, current_location, required = true) {
+    function locationSelector(modal, locations, current_location) {
         // Met le modal en modal avec footer fixé
         modal.classList.add('modal-fixed-footer');
         // Crée le contenu du modal et son footer
@@ -5313,7 +5355,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         cancel.href = "#!";
         cancel.innerText = "Annuler";
         cancel.classList.add("btn-flat", "red-text", "left");
-        cancel.addEventListener('click', () => { cancelGeoLocModal(required); });
+        cancel.addEventListener('click', cancelGeoLocModal);
         footer.appendChild(cancel);
         modal.appendChild(footer);
     }
@@ -5591,7 +5633,7 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
         };
     }
 });
-define("pages/settings_page", ["require", "exports", "base/UserManager", "base/FormSchema", "utils/helpers", "base/SyncManager", "base/PageManager", "utils/fetch_timeout", "main", "pages/home", "utils/Settings"], function (require, exports, UserManager_6, FormSchema_5, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_10, home_1, Settings_5) {
+define("pages/settings_page", ["require", "exports", "base/UserManager", "base/FormSchema", "utils/helpers", "base/SyncManager", "base/PageManager", "utils/fetch_timeout", "main", "pages/home", "utils/Settings"], function (require, exports, UserManager_6, FormSchema_5, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_10, home_1, Settings_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -5688,6 +5730,30 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
     <h4>Forms</h4>
+    <h5>Place selector</h5>
+    <p class="flow-text">
+        Choose if place/location selector should be opened 
+        automatically after arriving to "New entry" page.
+    </p>
+    `);
+        // Ajout de la checkbox
+        const should_popup_open = document.createElement('p');
+        should_popup_open.style.marginBottom = "20px";
+        const should_popup_open_label = document.createElement('label');
+        should_popup_open.appendChild(should_popup_open_label);
+        const should_popup_open_label_input = document.createElement('input');
+        should_popup_open_label.appendChild(should_popup_open_label_input);
+        should_popup_open_label_input.type = "checkbox";
+        should_popup_open_label_input.checked = Settings_6.Settings.popup_location;
+        should_popup_open_label_input.onchange = () => {
+            Settings_6.Settings.popup_location = should_popup_open_label_input.checked;
+        };
+        const should_popup_open_label_span = document.createElement('span');
+        should_popup_open_label.appendChild(should_popup_open_label_span);
+        should_popup_open_label_span.innerText = "Enable auto-open";
+        container.appendChild(should_popup_open);
+        // Modèles
+        container.insertAdjacentHTML('beforeend', `
     <h5>Active model</h5>
     <p class="flow-text">
         Active model is the model to the proposed one in "new entry" page.
@@ -5768,12 +5834,12 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
             const opt = document.createElement('option');
             opt.value = String(minutes);
             opt.innerText = helpers_10.convertMinutesToText(minutes);
-            opt.selected = minutes === Settings_5.Settings.sync_freq;
+            opt.selected = minutes === Settings_6.Settings.sync_freq;
             select_input.appendChild(opt);
         }
         select_input.onchange = function () {
-            Settings_5.Settings.sync_freq = Number(this.value);
-            SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_5.Settings.sync_freq);
+            Settings_6.Settings.sync_freq = Number(this.value);
+            SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_6.Settings.sync_freq);
         };
         const select_label = document.createElement('label');
         select_label.innerText = "Synchronisation interval";
@@ -5786,13 +5852,13 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         container.insertAdjacentHTML('beforeend', `
         <p style="margin-bottom: 20px">
             <label>
-                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_5.Settings.sync_bg ? 'checked' : ''}>
+                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_6.Settings.sync_bg ? 'checked' : ''}>
                 <span>Enable background synchronisation</span>
             </label>
         </p>`);
         document.getElementById('__sync_bg_checkbox_settings').onchange = function () {
-            Settings_5.Settings.sync_bg = this.checked;
-            if (Settings_5.Settings.sync_bg) {
+            Settings_6.Settings.sync_bg = this.checked;
+            if (Settings_6.Settings.sync_bg) {
                 SyncManager_5.SyncManager.startBackgroundSync();
             }
             else {
@@ -5831,7 +5897,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     <h4>${home_1.APP_NAME} server</h4>
     <h5>Server location</h5>
     <p class="flow-text">
-        Current location is <span class="blue-text text-darken-2 api-url">${helpers_10.escapeHTML(Settings_5.Settings.api_url)}</span>.
+        Current location is <span class="blue-text text-darken-2 api-url">${helpers_10.escapeHTML(Settings_6.Settings.api_url)}</span>.
     </p>
     `);
         const changeapibutton = document.createElement('button');
@@ -5849,17 +5915,17 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     </p>
     `);
         const changelangselection = document.createElement('select');
-        for (const opt of Settings_5.getAvailableLanguages()) {
+        for (const opt of Settings_6.getAvailableLanguages()) {
             const o = document.createElement('option');
             o.value = opt;
             o.innerText = opt;
-            if (opt === Settings_5.Settings.voice_lang) {
+            if (opt === Settings_6.Settings.voice_lang) {
                 o.selected = true;
             }
             changelangselection.appendChild(o);
         }
         changelangselection.onchange = function () {
-            Settings_5.Settings.voice_lang = changelangselection.value;
+            Settings_6.Settings.voice_lang = changelangselection.value;
         };
         container.appendChild(changelangselection);
         M.FormSelect.init(changelangselection);
@@ -5892,10 +5958,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     </div>
     `;
         const input = document.getElementById("__api_url_modifier");
-        input.value = Settings_5.Settings.api_url;
+        input.value = Settings_6.Settings.api_url;
         document.getElementById('__api_url_save').onclick = async () => {
             try {
-                if (Settings_5.Settings.api_url !== input.value) {
+                if (Settings_6.Settings.api_url !== input.value) {
                     PageManager_4.PageManager.lock_return_button = true;
                     const valid = await verifyServerURL(input.value);
                     PageManager_4.PageManager.lock_return_button = false;
@@ -5903,10 +5969,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
                         return;
                     }
                 }
-                Settings_5.Settings.api_url = input.value;
+                Settings_6.Settings.api_url = input.value;
                 instance.close();
                 modal.innerHTML = "";
-                document.querySelector('span.api-url').innerText = Settings_5.Settings.api_url;
+                document.querySelector('span.api-url').innerText = Settings_6.Settings.api_url;
             }
             catch (e) {
                 helpers_10.showToast("Specified URL is not a valid URL.");
@@ -5975,7 +6041,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
      * Obtient les souscriptions disponibles depuis le serveur
      */
     async function getSubscriptions() {
-        return fetch_timeout_3.default(Settings_5.Settings.api_url + "schemas/available.json", {
+        return fetch_timeout_3.default(Settings_6.Settings.api_url + "schemas/available.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "GET",
             mode: "cors"
@@ -5993,7 +6059,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(Settings_5.Settings.api_url + "schemas/subscribe.json", {
+        return fetch_timeout_3.default(Settings_6.Settings.api_url + "schemas/subscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -6012,7 +6078,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(Settings_5.Settings.api_url + "schemas/unsubscribe.json", {
+        return fetch_timeout_3.default(Settings_6.Settings.api_url + "schemas/unsubscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -6249,7 +6315,7 @@ define("pages/saved_forms", ["require", "exports", "utils/helpers", "base/FormSc
         container.insertAdjacentHTML('beforeend', `
         <div class="left">
             [${type}] ${id} <br> 
-            Modifié le ${helpers_11.formatDate(new Date(json.lastModified), true)}
+            Modified ${helpers_11.dateFormatter("Y-m-d H:i:s", new Date(json.lastModified))}
         </div>`);
         // Ajout des actions de l'élément
         //// ACTION 1: Modifier
@@ -6708,7 +6774,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
         }
     }
 });
-define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper", "utils/Settings"], function (require, exports, PageManager_6, helpers_13, Logger_2, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6, Settings_6) {
+define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper", "utils/Settings"], function (require, exports, PageManager_6, helpers_13, Logger_2, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6, Settings_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Constantes de l'application
@@ -6729,6 +6795,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
         Attention, 1 entrée correspond au JSON + ses possibles fichiers attachés.
     */
     exports.APP_ID = "com.lbbe.busybird";
+    exports.ALLOW_LOAD_TEST_SCHEMAS = false; /** Autorise de charger le fichier présent dans assets/form.json */
     // Variables globales exportées
     exports.SDCARD_PATH = null;
     exports.SD_FILE_HELPER = null;
@@ -6870,7 +6937,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
             testDistance: helpers_13.testDistance,
             Logger: Logger_2.Logger,
             Schemas: FormSchema_7.Schemas,
-            Settings: Settings_6.Settings,
+            Settings: Settings_7.Settings,
             SyncEvent: SyncManager_7.SyncEvent,
             askModalList: helpers_13.askModalList,
             FileHelper: FileHelper_6.FileHelper,
@@ -6884,7 +6951,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
             createNewUser: UserManager_7.createNewUser,
             UserManager: UserManager_7.UserManager,
             SyncManager: SyncManager_7.SyncManager,
-            api_url: Settings_6.Settings.api_url
+            api_url: Settings_7.Settings.api_url
         };
     }
     document.addEventListener('deviceready', appWrapper, false);

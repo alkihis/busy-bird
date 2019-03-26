@@ -118,6 +118,36 @@ export function initSettingsPage(base: HTMLElement) {
     <div class="clearb"></div>
     <div class="divider divider-margin"></div>
     <h4>Forms</h4>
+    <h5>Place selector</h5>
+    <p class="flow-text">
+        Choose if place/location selector should be opened 
+        automatically after arriving to "New entry" page.
+    </p>
+    `);
+
+    // Ajout de la checkbox
+    const should_popup_open = document.createElement('p');
+    should_popup_open.style.marginBottom = "20px";
+
+    const should_popup_open_label = document.createElement('label');
+    should_popup_open.appendChild(should_popup_open_label);
+
+    const should_popup_open_label_input = document.createElement('input');
+    should_popup_open_label.appendChild(should_popup_open_label_input);
+    should_popup_open_label_input.type = "checkbox";
+    should_popup_open_label_input.checked = Settings.popup_location;
+    should_popup_open_label_input.onchange = () => {
+        Settings.popup_location = should_popup_open_label_input.checked;
+    };
+
+    const should_popup_open_label_span = document.createElement('span');
+    should_popup_open_label.appendChild(should_popup_open_label_span);
+    should_popup_open_label_span.innerText = "Enable auto-open";
+
+    container.appendChild(should_popup_open);
+
+    // Modèles
+    container.insertAdjacentHTML('beforeend', `
     <h5>Active model</h5>
     <p class="flow-text">
         Active model is the model to the proposed one in "new entry" page.
