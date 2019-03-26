@@ -6,3 +6,4 @@ server/inc/form_data
 server/inc/forms
 .idea
 docs
+.vscode

@@ -84,6 +84,9 @@
     },
     "cordova.plugins.diagnostic": {
       "PACKAGE_NAME": "com.lbbe.busybird"
+    },
+    "com.telerik.plugins.nativepagetransitions": {
+      "PACKAGE_NAME": "com.lbbe.busybird"
     }
   },
   "dependent_plugins": {

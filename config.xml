@@ -91,6 +91,7 @@
     <plugin name="cordova-plugin-x-toast" spec="2.7.2" />
     <plugin name="cordova-plugin-background-fetch" spec="5.4.1" />
     <plugin name="cordova.plugins.diagnostic" spec="4.0.11" />
+    <plugin name="com.telerik.plugins.nativepagetransitions" spec="0.6.5" />
     <engine name="android" spec="^7.1.4" />
     <engine name="browser" spec="^5.0.4" />
 </widget>

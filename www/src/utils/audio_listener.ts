@@ -1,4 +1,4 @@
-import { getModal, initModal, getModalPreloader, blobToBase64 } from "./helpers";
+import { getModal, initModal, getModalPreloader, toBase64 } from "./helpers";
 import { Logger } from "./logger";
 import { MP3_BITRATE } from "../main";
 
@@ -88,7 +88,7 @@ export function newModalRecord(title: string, default_value?: string) : Promise<
             .then(([, blob]: [ArrayBuffer, Blob]) => {
                 blobSize = blob.size;
 
-                return blobToBase64(blob);
+                return toBase64(blob);
             })
             .then((base64: string) => {
                 audioContent = base64;

@@ -308,8 +308,11 @@ export function dateFormatter(schema: string, date = new Date()) : string {
 
 /**
  * Assigne la balise src de l'image element au contenu de l'image située dans path.
- * @param path string
- * @param element HTMLImageElement
+ * @param path Chemin vers l'image (future src)
+ * @param element Image (élément HTML)
+ * @param absolute  true: Le chemin path est absolu. 
+ *                  false: Le chemin path est relatif. 
+ *                  null: Intégrer directement path dans element.src.
  */
 export async function createImgSrc(path: string, element: HTMLImageElement, absolute = false) : Promise<void> {
     if (typeof absolute === "boolean") {
@@ -325,18 +328,24 @@ export async function createImgSrc(path: string, element: HTMLImageElement, abso
 
 /**
  * Convertit un Blob en chaîne base64.
- * @param blob Blob Données binaires à convertir en base64
+ * 
+ * @param data Données à convertir
+ *  Peut être un objet Blob ou un Blob-compatible (File, par exemple),
+ *  une chaîne de caractères, un objet ne contenant pas de fonctions,
+ *  un ArrayBuffer, un objet implémentant l'interface ArrayBufferView,
+ *  ou un objet personnalisé implémentant la méthode toString()
  */
-export function blobToBase64(blob: Blob) : Promise<string> {
-    const reader = new FileReader();
+export function toBase64(data: any) : Promise<string> {
+    const reader = new FileReader;
+    const blob = FILE_HELPER.toBlob(data);
 
-    return new Promise(function(resolve, reject) {
-        reader.onload = function() {
+    return new Promise((resolve, reject) => {
+        reader.onload = () => {
             resolve(reader.result as string);
         };
-        reader.onerror = function(e) {
-            reject(e);
-        }
+        reader.onerror = progress_event => {
+            reject(progress_event);
+        };
 
         reader.readAsDataURL(blob);
     });

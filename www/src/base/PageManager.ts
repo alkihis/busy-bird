@@ -7,6 +7,7 @@ import { Logger } from "../utils/logger";
 import { MAX_SLEEPING_PAGES, DEFAULT_PAGE } from "../main";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
+const ANIMATIONS_ON = true;
 
 interface AppPage {
     not_sidenav_close?: boolean;
@@ -99,7 +100,7 @@ class _PageManager {
         
         // Initialise le sidenav
         const elem = document.querySelector('.sidenav');
-        SIDENAV_OBJ = M.Sidenav.init(elem, {});
+        SIDENAV_OBJ = M.Sidenav.init(elem, { outDuration: 0 });
     }
     
     /**
@@ -133,7 +134,7 @@ class _PageManager {
      * @param additionnals Variable à passer en paramètre au callback de page
      * @param reset_scroll Réinitiliser le scroll de la page en haut
      */
-    public change(page: AppPage, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
+    public async change(page: AppPage, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
         // Tente de charger la page
         try {
             let pagename: string = "";
@@ -160,9 +161,15 @@ class _PageManager {
             if (delete_paused) {
                 this.pages_holder = [];
             }
+
+            // Si on a demandé à fermer le sidenav, on le ferme
+            if (!page.not_sidenav_close) {
+                SIDENAV_OBJ.close();
+            }
     
             // On écrit le preloader dans la base et on change l'historique
             const base = getBase();
+
             base.innerHTML = getPreloader("Loading");
             if (window.history) {
                 window.history.pushState({}, "", "?" + pagename);
@@ -170,11 +177,6 @@ class _PageManager {
 
             //// help linter
             page = page as AppPage;
-
-            // Si on a demandé à fermer le sidenav, on le ferme
-            if (!page.not_sidenav_close) {
-                SIDENAV_OBJ.close();
-            }
 
             this.actual_page = page;
             this._should_wait = page.ask_change;
@@ -220,7 +222,7 @@ class _PageManager {
      * @param force_name Nom à mettre dans la navbar
      * @param additionnals Variable à passer au callback de la page à charger
      */
-    public push(page: AppPage, force_name?: string | null, additionnals?: any) : Promise<any> {
+    public async push(page: AppPage, force_name?: string | null, additionnals?: any) : Promise<any> {
         if (typeof page === 'string' && !this.exists(page)) {
             throw new ReferenceError("Page does not exists");
         }
@@ -231,12 +233,46 @@ class _PageManager {
         // Récupère le contenu actuel du bloc mère
         const actual_base = getBase();
 
+        // Si on a demandé à fermer le sidenav, on le ferme
+        if (!page.not_sidenav_close) {
+            SIDENAV_OBJ.close();
+        }
+
+        const new_base = document.createElement('div');
+        actual_base.id = "";
+
+        // Crée la nouvelle base mère avec le même ID
+        new_base.id = "main_block";
+
+        // let anim_promise: Promise<void> = null;
+
+        // if (ANIMATIONS_ON) {
+        //     // Fait une animation de défilement vers gauche
+        //     // Décale le main actuel vers la gauche
+
+        //     actual_base.style.position = "absolute";
+        //     new_base.style.position = "absolute";
+            
+        //     new_base.setAttribute('style', "opacity: 0");
+            
+        //     anim_promise = new Promise(resolve => {
+        //         $(actual_base).animate({
+        //             opacity: 0, // animate slideLeft
+        //             marginLeft: "-" + window.innerWidth + "px",
+        //             marginRight: String(window.innerWidth) + "px"
+        //         }, 350, 'swing', resolve);
+        //     });
+
+        //     $(new_base).animate({
+        //         opacity: 1,
+        //     }, 250, 'swing');
+        // }
+
         // Sauvegarde de la base actuelle dans le document fragment
         // Cela supprime immédiatement le noeud du DOM
         // const save = new DocumentFragment(); // semble être trop récent
         const save = document.createDocumentFragment();
-        actual_base.id = "";
-        save.appendChild(actual_base);
+        
         // Insère la sauvegarde dans la pile de page
         this.pages_holder.push({
             save, 
@@ -245,22 +281,29 @@ class _PageManager {
             page: this.actual_page
         });
 
-        // Crée la nouvelle base mère avec le même ID
-        const new_base = document.createElement('div');
-        new_base.id = "main_block";
+        save.appendChild(actual_base);
 
         // Insère la nouvelle base vide à la racine de main
         document.getElementsByTagName('main')[0].appendChild(new_base);
 
         // Appelle la fonction pour charger la page demandée dans le bloc
-        return this.change(page, false, force_name, additionnals);
+        this.change(page, false, force_name, additionnals, undefined);
+
+        // if (!anim_promise) {
+        //     anim_promise = Promise.resolve();
+        // }
+        
+        // anim_promise.then(() => {
+        //     save.appendChild(actual_base);
+        //     new_base.style.position = "";
+        // });
     }
 
     /**
      * Revient à la page précédente.
      * Charge la page d'accueil si aucune page disponible
      */
-    public pop() : void {
+    public async pop() : Promise<void> {
         if (this.pages_holder.length === 0) {
             this.change(DEFAULT_PAGE);
             return;
@@ -272,12 +315,14 @@ class _PageManager {
         // Supprime le main actuel
         const main = getBase();
         cleanElement(main);
+
         main.parentElement.removeChild(main);
 
         const new_main = last_page.save.firstElementChild;
         new_main.id = "main_block";
         // Met le fragment dans le DOM
         document.getElementsByTagName('main')[0].appendChild(new_main);
+        
         // Remet le bon titre
         document.getElementById('nav_title').innerText = last_page.name;
         this.actual_page = last_page.page;

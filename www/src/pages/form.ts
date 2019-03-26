@@ -1335,7 +1335,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
     // Création du footer
     const ok = document.createElement('a');
     ok.href = "#!";
-    ok.innerText = "Confirmer";
+    ok.innerText = "Confirm";
     ok.classList.add("btn-flat", "green-text", "right");
     ok.addEventListener('click', function() {
         if (input.value.trim() === "") {
@@ -1360,7 +1360,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
     // Création du bouton annuler
     const cancel = document.createElement('a');
     cancel.href = "#!";
-    cancel.innerText = "Annuler";
+    cancel.innerText = "Cancel";
     cancel.classList.add("btn-flat", "red-text", "left");
     cancel.addEventListener('click', cancelGeoLocModal);
     footer.appendChild(cancel);
