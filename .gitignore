@@ -3,6 +3,6 @@ platforms/android
 platforms/browser
 www/dist/app.js
 server/inc/form_data
-server/inc/uploaded
+server/inc/forms
 .idea
 docs

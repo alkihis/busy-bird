@@ -12,8 +12,9 @@ const UNKNOWN_LABEL = "Lieu inconnu";
  * @param locations Localisations possibles
  * @param open_on_complete Ouvrir Google Maps quand l'utilisateur clique sur une suggestion
  * @param with_unknown Ajouter un champ "\_\_unknown\_\_"
+ * @param with_labels Spécifier les labels dans la sélection
  */
-export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocations, open_on_complete = false, with_unknown = false) {
+export function createLocationInputSelector(container: HTMLElement, input: HTMLInputElement, locations: FormLocations, open_on_complete = false, with_unknown = false, with_labels = false) {
     const row = document.createElement('div');
     row.classList.add('row');
     container.appendChild(row);
@@ -36,25 +37,22 @@ export function createLocationInputSelector(container: HTMLElement, input: HTMLI
 
     // Initialisation de l'autocomplétion
     const auto_complete_data: any = {};
+
+    // Et création d'un objet clé => [nom, "latitude,longitude"]
+    const labels_to_name: {[label: string]: [string, string]} = {};
+
     for (const lieu in locations) {
-        let key = lieu + " - " + locations[lieu].label;
+        const key = lieu + (with_labels ? " - " + locations[lieu].label : "");
 
         auto_complete_data[key] = null;
-    }
-
-    if (with_unknown) {
-        auto_complete_data[UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = null;
-    }
-
-    // Création d'un objet clé => [nom, "latitude,longitude"]
-    const labels_to_name: {[label: string]: [string, string]} = {};
-    for (const lieu in locations) {
-        let key = lieu + " - " + locations[lieu].label;
         labels_to_name[key] = [lieu, String(locations[lieu].latitude) + "," + String(locations[lieu].longitude)];
     }
 
     if (with_unknown) {
-        labels_to_name[UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = [UNKNOWN_NAME, ""];
+        const key = UNKNOWN_NAME + (with_labels ? " - " + UNKNOWN_LABEL : "");
+
+        auto_complete_data[key] = null;
+        labels_to_name[key] = [UNKNOWN_NAME, ""];
     }
 
     // Lance l'autocomplétion materialize

@@ -30,6 +30,9 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
                 this._voice_lang = localStorage.getItem('_settings_voice_lang');
                 ;
             }
+            if (localStorage.getItem('_settings_location_labels')) {
+                this._location_labels = localStorage.getItem('_settings_location_labels') === "true";
+            }
         }
         initDefaults() {
             this._sync_bg = true;
@@ -37,6 +40,7 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
             this._api_url = "https://projet.alkihis.fr/";
             this._voice_lang = "fr-FR";
             this._popup_location = false;
+            this._location_labels = false;
         }
         set popup_location(val) {
             this._popup_location = val;
@@ -79,6 +83,13 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
         get sync_freq() {
             return this._sync_freq;
         }
+        set location_labels(val) {
+            this._location_labels = val;
+            localStorage.setItem('_settings_location_labels', String(val));
+        }
+        get location_labels() {
+            return this._location_labels;
+        }
         /**
          * Remet à zéro les paramètres
          */
@@ -89,6 +100,7 @@ define("utils/Settings", ["require", "exports"], function (require, exports) {
             this.api_url = this._api_url;
             this.voice_lang = this._voice_lang;
             this.popup_location = this._popup_location;
+            this.location_labels = this._location_labels;
         }
     }
     const lang_possibilities = {
@@ -2149,8 +2161,21 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
             // Sauvegarde les images !
             const promises = [];
             for (const item of files_and_images_from_form) {
-                const file = item.files[0];
+                let file = item.files[0];
                 const input_name = item.name;
+                // Si on a pris une image avec takeAPicture()
+                if (item.dataset.imagemanualurl) {
+                    const url = item.dataset.imagemanualurl;
+                    // Il y a une URL vers fichier qui a été précisée
+                    // Regarde si le fichier existe encore
+                    try {
+                        const image_file_entry = await main_3.FILE_HELPER.absoluteGet(url);
+                        file = await main_3.FILE_HELPER.getFile(image_file_entry);
+                    }
+                    catch (e) {
+                        // URL invalide !
+                    }
+                }
                 if (file) {
                     const filename = file.name;
                     promises.push(saveBlobToFile(filename, input_name, file));
@@ -2225,6 +2250,8 @@ define("base/FormSaves", ["require", "exports", "main", "base/FileHelper", "base
             if (device.platform === 'Android' && main_3.SD_FILE_HELPER) {
                 main_3.SD_FILE_HELPER.write(exports.ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
             }
+            // Vide le cache de la caméra
+            helpers_3.cleanTakenPictures();
             console.log(form_values);
             return form_values;
         }
@@ -3252,10 +3279,15 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
      * @param path string
      * @param element HTMLImageElement
      */
-    async function createImgSrc(path, element) {
-        const file = await main_5.FILE_HELPER.get(path);
-        element.src = file.toURL();
-        element.dataset.original = path;
+    async function createImgSrc(path, element, absolute = false) {
+        if (typeof absolute === "boolean") {
+            const file = absolute ? await main_5.FILE_HELPER.absoluteGet(path) : await main_5.FILE_HELPER.get(path);
+            element.src = file.toURL();
+            element.dataset.original = path;
+        }
+        else {
+            element.src = path;
+        }
     }
     exports.createImgSrc = createImgSrc;
     /**
@@ -3583,6 +3615,22 @@ define("utils/helpers", ["require", "exports", "base/PageManager", "base/FormSch
         await Promise.all(promises);
     }
     exports.createRandomForms = createRandomForms;
+    function takeAPicture() {
+        return new Promise((resolve, reject) => {
+            if (device.platform === "browser") {
+                reject();
+                return;
+            }
+            navigator.camera.getPicture(resolve, reject);
+        });
+    }
+    exports.takeAPicture = takeAPicture;
+    function cleanTakenPictures() {
+        return new Promise((resolve, reject) => {
+            navigator.camera.cleanup(resolve, reject);
+        });
+    }
+    exports.cleanTakenPictures = cleanTakenPictures;
     /**
      * Obtient les répertoires sur cartes SD montés.
      * Attention, depuis KitKat, la racine de la carte SD n'est PAS accessible en écriture !
@@ -3859,8 +3907,9 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
      * @param locations Localisations possibles
      * @param open_on_complete Ouvrir Google Maps quand l'utilisateur clique sur une suggestion
      * @param with_unknown Ajouter un champ "\_\_unknown\_\_"
+     * @param with_labels Spécifier les labels dans la sélection
      */
-    function createLocationInputSelector(container, input, locations, open_on_complete = false, with_unknown = false) {
+    function createLocationInputSelector(container, input, locations, open_on_complete = false, with_unknown = false, with_labels = false) {
         const row = document.createElement('div');
         row.classList.add('row');
         container.appendChild(row);
@@ -3879,21 +3928,17 @@ define("utils/location", ["require", "exports", "utils/helpers"], function (requ
         input_f.appendChild(label);
         // Initialisation de l'autocomplétion
         const auto_complete_data = {};
-        for (const lieu in locations) {
-            let key = lieu + " - " + locations[lieu].label;
-            auto_complete_data[key] = null;
-        }
-        if (with_unknown) {
-            auto_complete_data[exports.UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = null;
-        }
-        // Création d'un objet clé => [nom, "latitude,longitude"]
+        // Et création d'un objet clé => [nom, "latitude,longitude"]
         const labels_to_name = {};
         for (const lieu in locations) {
-            let key = lieu + " - " + locations[lieu].label;
+            const key = lieu + (with_labels ? " - " + locations[lieu].label : "");
+            auto_complete_data[key] = null;
             labels_to_name[key] = [lieu, String(locations[lieu].latitude) + "," + String(locations[lieu].longitude)];
         }
         if (with_unknown) {
-            labels_to_name[exports.UNKNOWN_NAME + " - " + UNKNOWN_LABEL] = [exports.UNKNOWN_NAME, ""];
+            const key = exports.UNKNOWN_NAME + (with_labels ? " - " + UNKNOWN_LABEL : "");
+            auto_complete_data[key] = null;
+            labels_to_name[key] = [exports.UNKNOWN_NAME, ""];
         }
         // Lance l'autocomplétion materialize
         M.Autocomplete.init(input, {
@@ -4054,7 +4099,7 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
         // Éléments IMAGE
         for (const e of document.querySelectorAll('.input-image-element[required]')) {
             const filei = e;
-            if (filei.files.length === 0) {
+            if (filei.files.length === 0 && !filei.dataset.imagemanualurl) {
                 const label = document.querySelector(`input[data-for="${filei.id}"]`);
                 let name = filei.name;
                 if (label) {
@@ -4322,6 +4367,55 @@ define("utils/save_a_form", ["require", "exports", "main", "utils/helpers", "bas
 define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/FormSchema", "utils/helpers", "main", "base/PageManager", "utils/logger", "utils/audio_listener", "base/UserManager", "utils/location", "base/FileHelper", "utils/save_a_form", "base/FormSaves", "utils/Settings"], function (require, exports, vocal_recognition_1, FormSchema_3, helpers_8, main_8, PageManager_3, logger_3, audio_listener_1, UserManager_4, location_2, FileHelper_4, save_a_form_1, FormSaves_4, Settings_5) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    function resetTakePicButton(button) {
+        button.classList.add('blue', 'darken-3');
+        button.classList.remove('green');
+        button.innerText = "Take a new picture";
+    }
+    /**
+     * Crée une miniature d'image
+     * @param link Link to image
+     * @param input File input
+     * @param placeh Where the image should be created
+     * @param absolute Specify if link is absolute or relative. NULL refers to a blob: (object URL)
+     * @param f_input (optional) Input where path of file is stored
+     * @param button (optional) Button for "take a picture"
+     */
+    function createMiniature(link, input, placeh, absolute = false, f_input = null, button = null) {
+        // L'input file est déjà présent dans le formulaire
+        // on affiche une miniature
+        placeh.innerHTML = "";
+        const img_miniature = document.createElement('div');
+        img_miniature.classList.add('image-form-wrapper', 'relative-container');
+        const img_balise = document.createElement('img');
+        img_balise.classList.add('img-form-element');
+        helpers_8.createImgSrc(link, img_balise, absolute);
+        img_miniature.appendChild(img_balise);
+        placeh.appendChild(img_miniature);
+        // On crée un bouton "supprimer ce fichier"
+        const delete_file_btn = document.createElement('div');
+        delete_file_btn.className = "remove-img-btn";
+        delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
+        delete_file_btn.onclick = () => {
+            helpers_8.askModal("Remove this picture ?", "")
+                .then(() => {
+                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                input.dataset.toremove = "true";
+                img_miniature.remove();
+                // Vide l'input file et l'input picture
+                if (f_input)
+                    f_input.value = "";
+                if (button)
+                    resetTakePicButton(button);
+                input.type = "text";
+                input.value = "";
+                input.type = "file";
+                input.dataset.imagemanualurl = "";
+            })
+                .catch(() => { });
+        };
+        img_miniature.appendChild(delete_file_btn);
+    }
     /**
      * Crée une base classique dans lequel insérer un input texte ou number.
      */
@@ -4443,7 +4537,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                     current_form.locations[filled_form.location] :
                     null);
                 if (label_location) {
-                    location.value = `${filled_form.location} - ${label_location.label}`;
+                    location.value = `${filled_form.location}` + (Settings_5.Settings.location_labels ? " - " + label_location.label : "");
                 }
                 else if (filled_form.location !== null) {
                     helpers_8.showToast("Warning: Entry location does not exists in form model.");
@@ -4497,8 +4591,11 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                         htmle.max = String(ele.range.max);
                     }
                 }
-                if (ele.type === FormSchema_3.FormEntityType.float && ele.float_precision) {
-                    htmle.step = String(ele.float_precision);
+                if (ele.precision) {
+                    htmle.step = String(ele.precision);
+                }
+                else if (ele.type === FormSchema_3.FormEntityType.float) {
+                    htmle.step = "0.001";
                 }
                 // On vérifie si le champ a un message de suggestion si non rempli
                 const contraintes = [];
@@ -4895,44 +4992,41 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 // ne propose pas le choix entre prendre une nouvelle photo
                 // et choisir une image enregistrée. Le choix est FORCÉMENT
                 // de choisir une image enregistrée. 
-                // Le problème peut être contourné en créant un input personnalisé
-                // avec choix en utilisant navigator.camera et le plugin cordova camera.
+                // Le problème est contourné en créant un input personnalisé utilisant navigator.camera
                 const is_image = FormSchema_3.FormEntityType.image === ele.type || ele.file_type === "image/*";
                 let delete_file_btn = null;
-                const input = document.createElement('input');
+                // Wrapper
                 const real_wrapper = document.createElement('div');
                 real_wrapper.className = "row col s12 no-margin-bottom";
+                // Wrapper pour la miniature
+                const minia_wrapper = document.createElement('div');
+                // File input
+                const input = document.createElement('input');
+                input.type = "file";
+                input.id = "id_" + ele.name;
+                input.name = ele.name;
+                input.required = ele.required;
+                input.accept = ele.file_type || "";
+                // Text for file input
+                const f_input = document.createElement('input');
+                // Création du p exposant le titre de la photo
+                const label_file = document.createElement('p');
+                label_file.innerText = ele.label;
+                label_file.className = "flow-text";
+                label_file.style.marginTop = "5px";
+                real_wrapper.appendChild(label_file);
+                real_wrapper.appendChild(minia_wrapper);
                 if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                     if (is_image) {
                         // L'input file est déjà présent dans le formulaire
                         // on affiche une miniature
-                        const img_miniature = document.createElement('div');
-                        img_miniature.classList.add('image-form-wrapper', 'relative-container');
-                        const img_balise = document.createElement('img');
-                        img_balise.classList.add('img-form-element');
-                        helpers_8.createImgSrc(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], img_balise);
-                        img_miniature.appendChild(img_balise);
-                        placeh.appendChild(img_miniature);
-                        // On crée un bouton "supprimer ce fichier"
-                        delete_file_btn = document.createElement('div');
-                        delete_file_btn.className = "remove-img-btn";
-                        delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
-                        delete_file_btn.onclick = () => {
-                            helpers_8.askModal("Remove this file ?", "")
-                                .then(() => {
-                                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
-                                input.dataset.toremove = "true";
-                                img_miniature.remove();
-                            })
-                                .catch(() => { });
-                        };
-                        img_miniature.appendChild(delete_file_btn);
+                        createMiniature(FormSaves_4.METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name], input, minia_wrapper, false, f_input);
                     }
                     else {
                         const description = document.createElement('p');
                         description.className = "flow-text col s12";
                         description.innerText = "File " + filled_form.fields[ele.name] + " is saved.";
-                        placeh.appendChild(description);
+                        real_wrapper.appendChild(description);
                         delete_file_btn = document.createElement('div');
                         delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
                         delete_file_btn.innerText = "Delete this file";
@@ -4955,14 +5049,53 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 const divbtn = document.createElement('div');
                 divbtn.classList.add('btn');
                 const span = document.createElement('span');
-                input.type = "file";
-                input.id = "id_" + ele.name;
-                input.name = ele.name;
-                input.required = ele.required;
-                input.accept = ele.file_type || "";
+                span.style.textTransform = "none";
+                // Element DANS le bouton / input file
+                const fwrapper = document.createElement('div');
+                fwrapper.classList.add('file-path-wrapper');
+                f_input.type = "text";
+                f_input.classList.add('file-path', 'validate');
+                // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
+                f_input.dataset.label = ele.label;
+                f_input.dataset.for = input.id;
+                // Si on veut créer une image
                 if (is_image) {
                     input.classList.add('input-image-element');
-                    span.innerText = "Image";
+                    span.innerText = "Select a picture";
+                    // Création du bouton "take a new picture"
+                    const button = document.createElement('button');
+                    button.classList.add('btn', 'blue', 'darken-3', 'col', 's12', 'btn-perso');
+                    button.innerText = "Take a new picture";
+                    button.type = "button";
+                    real_wrapper.appendChild(button);
+                    real_wrapper.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
+                    button.addEventListener('click', function () {
+                        helpers_8.takeAPicture()
+                            .then(url => {
+                            input.dataset.imagemanualurl = url;
+                            button.classList.remove('blue', 'darken-3');
+                            button.classList.add('green');
+                            button.innerText = "Picture (" + url.split('/').pop() + ")";
+                            // Vide l'input
+                            f_input.value = "";
+                            input.type = "text";
+                            input.value = "";
+                            input.type = "file";
+                            // Crée la miniature
+                            createMiniature(url, input, minia_wrapper, true, f_input, button);
+                        })
+                            .catch(() => { });
+                    });
+                    // Met un listener sur le file pour vider le bouton si jamais on sélectionne une photo
+                    input.addEventListener('change', function () {
+                        // Vide le bouton
+                        input.dataset.imagemanualurl = "";
+                        resetTakePicButton(button);
+                        // Crée la miniature
+                        if (input.files.length > 0) {
+                            createMiniature(URL.createObjectURL(input.files[0]), input, minia_wrapper, null, f_input, button);
+                        }
+                    });
                 }
                 else {
                     input.classList.add('input-fileitem-element');
@@ -4971,18 +5104,11 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 divbtn.appendChild(span);
                 divbtn.appendChild(input);
                 wrapper.appendChild(divbtn);
-                const fwrapper = document.createElement('div');
-                fwrapper.classList.add('file-path-wrapper');
-                const f_input = document.createElement('input');
-                f_input.type = "text";
-                f_input.classList.add('file-path', 'validate');
-                f_input.value = ele.label;
-                // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
-                f_input.dataset.label = ele.label;
-                f_input.dataset.for = input.id;
                 fwrapper.appendChild(f_input);
                 wrapper.appendChild(fwrapper);
                 real_wrapper.appendChild(wrapper);
+                if (delete_file_btn)
+                    real_wrapper.appendChild(delete_file_btn);
                 placeh.appendChild(real_wrapper);
                 // Sépare les champ input file
                 placeh.insertAdjacentHTML('beforeend', "<div class='clearb'></div><div class='divider divider-margin'></div>");
@@ -5229,15 +5355,15 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         };
         document.getElementById('dontloc-footer-geoloc').onclick = function () {
             is_loc_canceled = true;
-            locationSelector(modal, current_form.locations, false);
+            locationSelector(modal, current_form.locations, false, Settings_5.Settings.location_labels);
         };
         // Cherche la localisation et remplit le modal
         helpers_8.getLocation(function (coords) {
             if (!is_loc_canceled)
-                locationSelector(modal, current_form.locations, coords);
+                locationSelector(modal, current_form.locations, coords, Settings_5.Settings.location_labels);
         }, function () {
             if (!is_loc_canceled)
-                locationSelector(modal, current_form.locations, undefined);
+                locationSelector(modal, current_form.locations, undefined, Settings_5.Settings.location_labels);
         });
     }
     /**
@@ -5256,7 +5382,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
      * @param current_location Position actuelle. Si échec de localisation, undefined. Si explicitement non donnée, false.
      * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
      */
-    function locationSelector(modal, locations, current_location) {
+    function locationSelector(modal, locations, current_location, with_labels = false) {
         // Met le modal en modal avec footer fixé
         modal.classList.add('modal-fixed-footer');
         // Crée le contenu du modal et son footer
@@ -5273,12 +5399,12 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
         // Vide le modal actuel et le remplace par le contenu et footer créés
         modal.innerHTML = "";
         modal.appendChild(content);
-        const labels_to_name = location_2.createLocationInputSelector(content, input, locations, undefined, true);
+        const labels_to_name = location_2.createLocationInputSelector(content, input, locations, undefined, true, with_labels);
         // Construction de la liste de lieux si la location est trouvée
         if (current_location) {
             // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
             function clickOnLocation() {
-                input.value = this.dataset.name + " - " + this.dataset.label;
+                input.value = this.dataset.name + (with_labels ? " - " + this.dataset.label : "");
                 M.updateTextFields();
             }
             // Calcul de la distance entre chaque lieu et le lieu actuel
@@ -5303,7 +5429,7 @@ define("pages/form", ["require", "exports", "utils/vocal_recognition", "base/For
                 elem.href = "#!";
                 elem.classList.add('collection-item');
                 elem.innerHTML = `
-                ${lieux_dispo[i].name} - ${lieux_dispo[i].label}
+                ${lieux_dispo[i].name} ${with_labels ? `- ${lieux_dispo[i].label}` : ""}
                 <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
             `;
                 elem.dataset.name = lieux_dispo[i].name;
@@ -5503,7 +5629,7 @@ define("utils/test_vocal_reco", ["require", "exports", "utils/vocal_recognition"
     }
     exports.launchQuizz = launchQuizz;
 });
-define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManager", "utils/helpers", "main", "base/FormSchema", "utils/location", "utils/test_vocal_reco", "base/FormSaves"], function (require, exports, UserManager_5, SyncManager_4, helpers_9, main_9, FormSchema_4, location_3, test_vocal_reco_1, FormSaves_5) {
+define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManager", "utils/helpers", "main", "base/FormSchema", "utils/location", "utils/test_vocal_reco", "base/FormSaves", "utils/Settings"], function (require, exports, UserManager_5, SyncManager_4, helpers_9, main_9, FormSchema_4, location_3, test_vocal_reco_1, FormSaves_5, Settings_6) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.APP_NAME = "Busy Bird";
@@ -5584,7 +5710,7 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
                 // Navigation vers nichoir
                 home_container.insertAdjacentHTML('beforeend', `<div class="divider divider-margin big"></div>
                 <h6 style="margin-left: 10px; font-size: 1.25rem">Navigate to an habitat of ${FormSchema_4.Schemas.current.name.toLowerCase()}</h6>`);
-                location_3.createLocationInputSelector(home_container, document.createElement('input'), locations, true);
+                location_3.createLocationInputSelector(home_container, document.createElement('input'), locations, true, false, Settings_6.Settings.location_labels);
             }
         }
         // Initialise les champs materialize et le select
@@ -5633,7 +5759,7 @@ define("pages/home", ["require", "exports", "base/UserManager", "base/SyncManage
         };
     }
 });
-define("pages/settings_page", ["require", "exports", "base/UserManager", "base/FormSchema", "utils/helpers", "base/SyncManager", "base/PageManager", "utils/fetch_timeout", "main", "pages/home", "utils/Settings"], function (require, exports, UserManager_6, FormSchema_5, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_10, home_1, Settings_6) {
+define("pages/settings_page", ["require", "exports", "base/UserManager", "base/FormSchema", "utils/helpers", "base/SyncManager", "base/PageManager", "utils/fetch_timeout", "main", "pages/home", "utils/Settings"], function (require, exports, UserManager_6, FormSchema_5, helpers_10, SyncManager_5, PageManager_4, fetch_timeout_3, main_10, home_1, Settings_7) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     fetch_timeout_3 = __importDefault(fetch_timeout_3);
@@ -5744,9 +5870,9 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         const should_popup_open_label_input = document.createElement('input');
         should_popup_open_label.appendChild(should_popup_open_label_input);
         should_popup_open_label_input.type = "checkbox";
-        should_popup_open_label_input.checked = Settings_6.Settings.popup_location;
+        should_popup_open_label_input.checked = Settings_7.Settings.popup_location;
         should_popup_open_label_input.onchange = () => {
-            Settings_6.Settings.popup_location = should_popup_open_label_input.checked;
+            Settings_7.Settings.popup_location = should_popup_open_label_input.checked;
         };
         const should_popup_open_label_span = document.createElement('span');
         should_popup_open_label.appendChild(should_popup_open_label_span);
@@ -5834,12 +5960,12 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
             const opt = document.createElement('option');
             opt.value = String(minutes);
             opt.innerText = helpers_10.convertMinutesToText(minutes);
-            opt.selected = minutes === Settings_6.Settings.sync_freq;
+            opt.selected = minutes === Settings_7.Settings.sync_freq;
             select_input.appendChild(opt);
         }
         select_input.onchange = function () {
-            Settings_6.Settings.sync_freq = Number(this.value);
-            SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_6.Settings.sync_freq);
+            Settings_7.Settings.sync_freq = Number(this.value);
+            SyncManager_5.SyncManager.changeBackgroundSyncInterval(Settings_7.Settings.sync_freq);
         };
         const select_label = document.createElement('label');
         select_label.innerText = "Synchronisation interval";
@@ -5852,13 +5978,13 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         container.insertAdjacentHTML('beforeend', `
         <p style="margin-bottom: 20px">
             <label>
-                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_6.Settings.sync_bg ? 'checked' : ''}>
+                <input type="checkbox" id="__sync_bg_checkbox_settings" ${Settings_7.Settings.sync_bg ? 'checked' : ''}>
                 <span>Enable background synchronisation</span>
             </label>
         </p>`);
         document.getElementById('__sync_bg_checkbox_settings').onchange = function () {
-            Settings_6.Settings.sync_bg = this.checked;
-            if (Settings_6.Settings.sync_bg) {
+            Settings_7.Settings.sync_bg = this.checked;
+            if (Settings_7.Settings.sync_bg) {
                 SyncManager_5.SyncManager.startBackgroundSync();
             }
             else {
@@ -5897,7 +6023,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     <h4>${home_1.APP_NAME} server</h4>
     <h5>Server location</h5>
     <p class="flow-text">
-        Current location is <span class="blue-text text-darken-2 api-url">${helpers_10.escapeHTML(Settings_6.Settings.api_url)}</span>.
+        Current location is <span class="blue-text text-darken-2 api-url">${helpers_10.escapeHTML(Settings_7.Settings.api_url)}</span>.
     </p>
     `);
         const changeapibutton = document.createElement('button');
@@ -5915,17 +6041,17 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     </p>
     `);
         const changelangselection = document.createElement('select');
-        for (const opt of Settings_6.getAvailableLanguages()) {
+        for (const opt of Settings_7.getAvailableLanguages()) {
             const o = document.createElement('option');
             o.value = opt;
             o.innerText = opt;
-            if (opt === Settings_6.Settings.voice_lang) {
+            if (opt === Settings_7.Settings.voice_lang) {
                 o.selected = true;
             }
             changelangselection.appendChild(o);
         }
         changelangselection.onchange = function () {
-            Settings_6.Settings.voice_lang = changelangselection.value;
+            Settings_7.Settings.voice_lang = changelangselection.value;
         };
         container.appendChild(changelangselection);
         M.FormSelect.init(changelangselection);
@@ -5958,10 +6084,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
     </div>
     `;
         const input = document.getElementById("__api_url_modifier");
-        input.value = Settings_6.Settings.api_url;
+        input.value = Settings_7.Settings.api_url;
         document.getElementById('__api_url_save').onclick = async () => {
             try {
-                if (Settings_6.Settings.api_url !== input.value) {
+                if (Settings_7.Settings.api_url !== input.value) {
                     PageManager_4.PageManager.lock_return_button = true;
                     const valid = await verifyServerURL(input.value);
                     PageManager_4.PageManager.lock_return_button = false;
@@ -5969,10 +6095,10 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
                         return;
                     }
                 }
-                Settings_6.Settings.api_url = input.value;
+                Settings_7.Settings.api_url = input.value;
                 instance.close();
                 modal.innerHTML = "";
-                document.querySelector('span.api-url').innerText = Settings_6.Settings.api_url;
+                document.querySelector('span.api-url').innerText = Settings_7.Settings.api_url;
             }
             catch (e) {
                 helpers_10.showToast("Specified URL is not a valid URL.");
@@ -6041,7 +6167,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
      * Obtient les souscriptions disponibles depuis le serveur
      */
     async function getSubscriptions() {
-        return fetch_timeout_3.default(Settings_6.Settings.api_url + "schemas/available.json", {
+        return fetch_timeout_3.default(Settings_7.Settings.api_url + "schemas/available.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "GET",
             mode: "cors"
@@ -6059,7 +6185,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(Settings_6.Settings.api_url + "schemas/subscribe.json", {
+        return fetch_timeout_3.default(Settings_7.Settings.api_url + "schemas/subscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -6078,7 +6204,7 @@ define("pages/settings_page", ["require", "exports", "base/UserManager", "base/F
         if (!fetch_subs) {
             form_data.append('trim_subs', 'true');
         }
-        return fetch_timeout_3.default(Settings_6.Settings.api_url + "schemas/unsubscribe.json", {
+        return fetch_timeout_3.default(Settings_7.Settings.api_url + "schemas/unsubscribe.json", {
             headers: new Headers({ "Authorization": "Bearer " + UserManager_6.UserManager.token }),
             method: "POST",
             mode: "cors",
@@ -6774,7 +6900,7 @@ define("base/PageManager", ["require", "exports", "utils/helpers", "pages/form",
         }
     }
 });
-define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper", "utils/Settings"], function (require, exports, PageManager_6, helpers_13, Logger_2, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6, Settings_7) {
+define("main", ["require", "exports", "base/PageManager", "utils/helpers", "utils/logger", "utils/audio_listener", "base/FormSchema", "utils/vocal_recognition", "base/UserManager", "base/SyncManager", "utils/test_vocal_reco", "base/FileHelper", "utils/Settings"], function (require, exports, PageManager_6, helpers_13, Logger_2, audio_listener_2, FormSchema_7, vocal_recognition_3, UserManager_7, SyncManager_7, test_vocal_reco_2, FileHelper_6, Settings_8) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Constantes de l'application
@@ -6937,7 +7063,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
             testDistance: helpers_13.testDistance,
             Logger: Logger_2.Logger,
             Schemas: FormSchema_7.Schemas,
-            Settings: Settings_7.Settings,
+            Settings: Settings_8.Settings,
             SyncEvent: SyncManager_7.SyncEvent,
             askModalList: helpers_13.askModalList,
             FileHelper: FileHelper_6.FileHelper,
@@ -6951,7 +7077,7 @@ define("main", ["require", "exports", "base/PageManager", "utils/helpers", "util
             createNewUser: UserManager_7.createNewUser,
             UserManager: UserManager_7.UserManager,
             SyncManager: SyncManager_7.SyncManager,
-            api_url: Settings_7.Settings.api_url
+            api_url: Settings_8.Settings.api_url
         };
     }
     document.addEventListener('deviceready', appWrapper, false);

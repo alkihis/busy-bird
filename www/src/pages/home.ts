@@ -6,6 +6,7 @@ import { Schemas } from "../base/FormSchema";
 import { createLocationInputSelector } from "../utils/location";
 import { launchQuizz } from "../utils/test_vocal_reco";
 import { ENTRIES_DIR } from "../base/FormSaves";
+import { Settings } from "../utils/Settings";
 
 export const APP_NAME = "Busy Bird";
 
@@ -111,7 +112,7 @@ export async function initHomePage(base: HTMLElement) {
                 <h6 style="margin-left: 10px; font-size: 1.25rem">Navigate to an habitat of ${Schemas.current.name.toLowerCase()}</h6>`
             );
 
-            createLocationInputSelector(home_container, document.createElement('input'), locations, true);
+            createLocationInputSelector(home_container, document.createElement('input'), locations, true, false, Settings.location_labels);
         }
     }
 

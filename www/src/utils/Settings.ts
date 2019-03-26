@@ -8,6 +8,7 @@ class AppSettings {
     protected _api_url: string; /** URL du serveur. DOIT avoir un slash final !! */
     protected _voice_lang: string; /** Langage utilisé pour la reconnaissance vocale */
     protected _popup_location: boolean; /** Modal de localisation à ouvrir automatiquement à la nouvelle entrée */
+    protected _location_labels: boolean; /** Affiche les labels dans les localisations */
 
     constructor() {
         this.initDefaults();
@@ -27,6 +28,9 @@ class AppSettings {
         if (localStorage.getItem('_settings_voice_lang')) {
             this._voice_lang = localStorage.getItem('_settings_voice_lang');;
         }
+        if (localStorage.getItem('_settings_location_labels')) {
+            this._location_labels = localStorage.getItem('_settings_location_labels') === "true";
+        }
     }
 
     protected initDefaults() : void {
@@ -35,6 +39,7 @@ class AppSettings {
         this._api_url = "https://projet.alkihis.fr/";
         this._voice_lang = "fr-FR";
         this._popup_location = false;
+        this._location_labels = false;
     }
 
     public set popup_location(val: boolean) {
@@ -95,6 +100,16 @@ class AppSettings {
         return this._sync_freq;
     }
 
+    public set location_labels(val: boolean) {
+        this._location_labels = val;
+
+        localStorage.setItem('_settings_location_labels', String(val));
+    }
+
+    public get location_labels() : boolean {
+        return this._location_labels;
+    }
+
     /**
      * Remet à zéro les paramètres
      */
@@ -106,6 +121,7 @@ class AppSettings {
         this.api_url = this._api_url;
         this.voice_lang = this._voice_lang;
         this.popup_location = this._popup_location;
+        this.location_labels = this._location_labels;
     }
 }
 

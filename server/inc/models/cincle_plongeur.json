@@ -21,7 +21,7 @@
         "select_options": {
             "multiple": false,
             "options": [{
-                "label": "Blandine Deligez",
+                "label": "Blandine Doligez",
                 "value": "bd"
             }, {
                 "label": "Sylvia Pardonnet",
@@ -315,7 +315,7 @@
             "max": 100
         },
         "placeholder": "Entre 30g et 100g ±0.1g",
-        "float_precision": 0.1,
+        "precision": 0.1,
         "tip_on_invalid": "Unité gramme. 30g min, 100 max, précision 0.1.",
         "allow_voice_control": true,
         "suggested_not_blank": true
@@ -328,7 +328,7 @@
             "max": 40
         },
         "placeholder": "Entre 20mm et 40mm ±0.1mm",
-        "float_precision": 0.1,
+        "precision": 0.1,
         "tip_on_invalid": "Unité mm. 20mm min, 40 max, précision 0.1",
         "allow_voice_control": true,
         "suggested_not_blank": true
@@ -341,7 +341,7 @@
             "max": 120
         },
         "placeholder": "Entre 60mm et 120mm ±0.5mm",
-        "float_precision": 0.5,
+        "precision": 0.5,
         "tip_on_invalid": "Unité mm. 60mm min, 120 max, précision 0.5",
         "allow_voice_control": true,
         "suggested_not_blank": true
@@ -372,7 +372,7 @@
             "max": 80
         },
         "placeholder": "Entre 30mm et 80mm ±0.5mm",
-        "float_precision": 0.5,
+        "precision": 0.5,
         "tip_on_invalid": "Unité mm. 30mm min, 80 max, précision 0.5",
         "allow_voice_control": true,
         "suggested_not_blank": true
@@ -385,7 +385,7 @@
             "max": 90
         },
         "placeholder": "Entre 40mm et 90mm ±0.5mm",
-        "float_precision": 0.5,
+        "precision": 0.5,
         "tip_on_invalid": "Unité mm. 40mm min, 90 max, précision 0.5",
         "allow_voice_control": true,
         "suggested_not_blank": true
@@ -398,7 +398,7 @@
             "max": 70
         },
         "placeholder": "Entre 30mm et 70mm ±0.1mm",
-        "float_precision": 0.1,
+        "precision": 0.1,
         "tip_on_invalid": "Unité mm. 30mm min, 70 max, précision 0.1",
         "allow_voice_control": true,
         "suggested_not_blank": true
@@ -411,7 +411,7 @@
             "max": 30
         },
         "placeholder": "Entre 10mm et 30mm ±0.1mm",
-        "float_precision": 0.1,
+        "precision": 0.1,
         "tip_on_invalid": "Unité mm. 10mm min, 30 max, précision 0.1",
         "allow_voice_control": true,
         "suggested_not_blank": true

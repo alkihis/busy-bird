@@ -9,7 +9,7 @@ const PROPERTIES_INTERNAL_NAME = {
     select_options: ".select-opt-wrapper", /* for type.select */
     slider_options: ".slider-opt-wrapper", /* for type.slider */
     file_type: "file_type", /* for type.file */
-    float_precision: "float_prec", /* for type.float */
+    precision: "float_prec", /* for type.float && type.integer */
     default_value: "default_val",
     tip_on_invalid: "invalid_tip",
     indeterminate: "indeterminate_chk",
@@ -28,7 +28,7 @@ const FORM_PROPERTIES = {
     select_options: generateSelectOpt, /* for type.select */
     slider_options: generateSliderOpt, /* for type.slider */
     file_type: generateFileType, /* for type.file */
-    float_precision: generateFloatPrec, /* for type.float */
+    precision: generateFloatPrec, /* for type.float && type.integer */
     indeterminate: generateIndeterminate,
     // default_value: "string | boolean", VALABLE POUR CHAQUE CHAMP
     tip_on_invalid: generateInvalidTip,
@@ -42,8 +42,8 @@ const FORM_TYPES = {
     title: {label: "Title", props: []},
     string: {label: "Short text", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
     textarea: {label: "Paragraph", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
-    integer: {label: "Integer number", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"]}, 
-    float: {label: "Float number", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "float_precision", "placeholder"]}, 
+    integer: {label: "Integer number", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "precision", "placeholder"]}, 
+    float: {label: "Float number", props: ["allow_voice_control", "suggested_not_blank", "range", "tip_on_invalid", "precision", "placeholder"]}, 
     slider: {label: "Binary choice", props: ["slider_options"]},
     select: {label: "Choice list", props: ["allow_voice_control", "tip_on_invalid", "select_options"]}, 
     checkbox: {label: "Checkbox", info: "Default value is unchecked or indeterminate.", props: ['indeterminate']},
@@ -115,7 +115,7 @@ function generateCheckbox(name, label, checked = false) {
     </p>`;
 }
 
-function generateNumberInput(name, label, required = false, min = 0.001, max = 0.9, placeholder = undefined, def_val = "") {
+function generateNumberInput(name, label, required = false, min = 0.001, max = 0.9, placeholder = undefined, def_val = "", step = 0.001) {
     const id = "id" + name;
 
     const div = document.createElement('div');
@@ -129,7 +129,7 @@ function generateNumberInput(name, label, required = false, min = 0.001, max = 0
     input.name = name;
     input.id = id;
     input.type = "number";
-    input.step = "0.001";
+    input.step = String(step);
     if (required) {
         input.required = true;
     }
@@ -324,7 +324,7 @@ function generateFileType(base, existing_item = {}) {
 
 function generateFloatPrec(base, existing_item = {}) {
     base.insertAdjacentElement('beforeend', 
-    generateNumberInput('float_prec', "Float precision (from 0.001 to 0.99)", false, undefined, undefined, undefined, existing_item.float_precision || "")
+        generateNumberInput('float_prec', "Number precision", false, null, null, undefined, existing_item.precision || "")
     );
 }
 

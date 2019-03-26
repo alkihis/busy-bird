@@ -165,7 +165,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
     for (const e of document.querySelectorAll('.input-image-element[required]')) {
         const filei = e as HTMLInputElement;
 
-        if (filei.files.length === 0) {
+        if (filei.files.length === 0 && !filei.dataset.imagemanualurl) {
             const label = document.querySelector(`input[data-for="${filei.id}"]`) as HTMLElement;
             let name = filei.name;
             if (label) {

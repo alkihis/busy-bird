@@ -1,6 +1,6 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "../utils/vocal_recognition";
 import { FormEntityType, FormEntity, Schemas, Schema, FormSave, FormLocations } from '../base/FormSchema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal } from "../utils/helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal, takeAPicture } from "../utils/helpers";
 import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "../main";
 import { PageManager } from "../base/PageManager";
 import { Logger } from "../utils/logger";
@@ -11,6 +11,66 @@ import { FileHelperReadMode } from "../base/FileHelper";
 import { beginFormSave } from "../utils/save_a_form";
 import { METADATA_DIR } from "../base/FormSaves";
 import { Settings } from "../utils/Settings";
+
+function resetTakePicButton(button: HTMLElement) : void {
+    button.classList.add('blue', 'darken-3');
+    button.classList.remove('green');
+    button.innerText = "Take a new picture";
+}
+
+/**
+ * Crée une miniature d'image
+ * @param link Link to image
+ * @param input File input
+ * @param placeh Where the image should be created
+ * @param absolute Specify if link is absolute or relative. NULL refers to a blob: (object URL)
+ * @param f_input (optional) Input where path of file is stored
+ * @param button (optional) Button for "take a picture"
+ */
+function createMiniature(link: string, input: HTMLInputElement, placeh: HTMLElement, absolute = false, f_input: HTMLInputElement = null, button: HTMLElement = null) {
+    // L'input file est déjà présent dans le formulaire
+    // on affiche une miniature
+    placeh.innerHTML = "";
+
+    const img_miniature = document.createElement('div');
+    img_miniature.classList.add('image-form-wrapper', 'relative-container');
+    const img_balise = document.createElement('img');
+    img_balise.classList.add('img-form-element');
+
+    createImgSrc(link, img_balise, absolute);
+
+    img_miniature.appendChild(img_balise);
+    placeh.appendChild(img_miniature);
+
+    // On crée un bouton "supprimer ce fichier"
+    const delete_file_btn = document.createElement('div');
+    delete_file_btn.className = "remove-img-btn";
+    delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
+
+    delete_file_btn.onclick = () => {
+        askModal("Remove this picture ?", "")
+            .then(() => {
+                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
+                input.dataset.toremove = "true";
+                img_miniature.remove();
+
+                // Vide l'input file et l'input picture
+                if (f_input)
+                    f_input.value = "";
+
+                if (button)
+                    resetTakePicButton(button);
+
+                input.type = "text";
+                input.value = "";
+                input.type = "file";
+                input.dataset.imagemanualurl = "";
+            })
+            .catch(() => { });
+    };
+
+    img_miniature.appendChild(delete_file_btn);
+}
 
 /**
  * Crée une base classique dans lequel insérer un input texte ou number.
@@ -151,7 +211,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             );
 
             if (label_location) {
-                location.value = `${filled_form.location} - ${label_location.label}`;
+                location.value = `${filled_form.location}` + (Settings.location_labels ? " - " + label_location.label : "");
             }
             else if (filled_form.location !== null) {
                 showToast("Warning: Entry location does not exists in form model.");
@@ -217,8 +277,12 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                     htmle.max = String(ele.range.max);
                 }
             }
-            if (ele.type === FormEntityType.float && ele.float_precision) {
-                htmle.step = String(ele.float_precision);
+
+            if (ele.precision) {
+                htmle.step = String(ele.precision);
+            }
+            else if (ele.type === FormEntityType.float) {
+                htmle.step = "0.001";
             }
 
             // On vérifie si le champ a un message de suggestion si non rempli
@@ -708,53 +772,47 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             // ne propose pas le choix entre prendre une nouvelle photo
             // et choisir une image enregistrée. Le choix est FORCÉMENT
             // de choisir une image enregistrée. 
-            // Le problème peut être contourné en créant un input personnalisé
-            // avec choix en utilisant navigator.camera et le plugin cordova camera.
+            // Le problème est contourné en créant un input personnalisé utilisant navigator.camera
 
             const is_image = FormEntityType.image === ele.type || ele.file_type === "image/*";
 
             let delete_file_btn: HTMLElement = null;
-            const input = document.createElement('input');
+            // Wrapper
             const real_wrapper = document.createElement('div');
             real_wrapper.className = "row col s12 no-margin-bottom";
+
+            // Wrapper pour la miniature
+            const minia_wrapper = document.createElement('div');
+
+            // File input
+            const input = document.createElement('input');
+            input.type = "file"; input.id = "id_" + ele.name; input.name = ele.name;
+            input.required = ele.required; input.accept = ele.file_type || "";
+
+            // Text for file input
+            const f_input = document.createElement('input');
+
+            // Création du p exposant le titre de la photo
+            const label_file = document.createElement('p');
+            label_file.innerText = ele.label;
+            label_file.className = "flow-text";
+            label_file.style.marginTop = "5px";
+            real_wrapper.appendChild(label_file);
+
+            real_wrapper.appendChild(minia_wrapper);
 
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
                 if (is_image) {
                     // L'input file est déjà présent dans le formulaire
                     // on affiche une miniature
-
-                    const img_miniature = document.createElement('div');
-                    img_miniature.classList.add('image-form-wrapper', 'relative-container');
-                    const img_balise = document.createElement('img');
-                    img_balise.classList.add('img-form-element');
-
-                    createImgSrc(METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name] as string, img_balise);
-
-                    img_miniature.appendChild(img_balise);
-                    placeh.appendChild(img_miniature);
-
-                    // On crée un bouton "supprimer ce fichier"
-                    delete_file_btn = document.createElement('div');
-                    delete_file_btn.className = "remove-img-btn";
-                    delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
-
-                    delete_file_btn.onclick = () => {
-                        askModal("Remove this file ?", "")
-                            .then(() => {
-                                // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
-                                input.dataset.toremove = "true";
-                                img_miniature.remove();
-                            })
-                            .catch(() => { });
-                    };
-
-                    img_miniature.appendChild(delete_file_btn);
+                    createMiniature(METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name] as string, 
+                        input, minia_wrapper, false, f_input);
                 }
                 else {
                     const description = document.createElement('p');
                     description.className = "flow-text col s12";
                     description.innerText = "File " + (filled_form.fields[ele.name] as string) + " is saved.";
-                    placeh.appendChild(description);
+                    real_wrapper.appendChild(description);
 
                     delete_file_btn = document.createElement('div');
                     delete_file_btn.className = "btn-flat col s12 red-text btn-small-margins center";
@@ -781,15 +839,63 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             divbtn.classList.add('btn');
 
             const span = document.createElement('span');
-            input.type = "file";
-            input.id = "id_" + ele.name;
-            input.name = ele.name;
-            input.required = ele.required;
-            input.accept = ele.file_type || "";
+            span.style.textTransform = "none";
 
+            // Element DANS le bouton / input file
+            const fwrapper = document.createElement('div');
+            fwrapper.classList.add('file-path-wrapper');
+            f_input.type = "text"; f_input.classList.add('file-path', 'validate');
+
+            // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
+            f_input.dataset.label = ele.label;
+            f_input.dataset.for = input.id;
+
+            // Si on veut créer une image
             if (is_image) {
                 input.classList.add('input-image-element');
-                span.innerText = "Image";
+                span.innerText = "Select a picture";
+
+                // Création du bouton "take a new picture"
+                const button = document.createElement('button');
+                button.classList.add('btn', 'blue', 'darken-3', 'col', 's12', 'btn-perso');
+
+                button.innerText = "Take a new picture";
+                button.type = "button";
+
+                real_wrapper.appendChild(button);
+                real_wrapper.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
+
+                button.addEventListener('click', function() {
+                    takeAPicture()
+                        .then(url => {
+                            input.dataset.imagemanualurl = url;
+                            button.classList.remove('blue', 'darken-3');
+                            button.classList.add('green');
+                            button.innerText = "Picture (" + url.split('/').pop() + ")";
+
+                            // Vide l'input
+                            f_input.value = "";
+                            input.type = "text";
+                            input.value = "";
+                            input.type = "file";
+
+                            // Crée la miniature
+                            createMiniature(url, input, minia_wrapper, true, f_input, button);
+                        })
+                        .catch(() => {});
+                });
+                
+                // Met un listener sur le file pour vider le bouton si jamais on sélectionne une photo
+                input.addEventListener('change', function() {
+                    // Vide le bouton
+                    input.dataset.imagemanualurl = "";
+                    resetTakePicButton(button);
+
+                    // Crée la miniature
+                    if (input.files.length > 0) {
+                        createMiniature(URL.createObjectURL(input.files[0]), input, minia_wrapper, null, f_input, button);
+                    } 
+                });
             }
             else {
                 input.classList.add('input-fileitem-element');
@@ -801,19 +907,13 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
 
             wrapper.appendChild(divbtn);
 
-            const fwrapper = document.createElement('div');
-            fwrapper.classList.add('file-path-wrapper');
-            const f_input = document.createElement('input');
-            f_input.type = "text"; f_input.classList.add('file-path', 'validate');
-            f_input.value = ele.label;
-
-            // Construit le label à retenir pour pouvoir afficher son titre dans le modal de confirmation
-            f_input.dataset.label = ele.label;
-            f_input.dataset.for = input.id;
-
             fwrapper.appendChild(f_input);
             wrapper.appendChild(fwrapper);
+            
             real_wrapper.appendChild(wrapper);
+
+            if (delete_file_btn)
+                real_wrapper.appendChild(delete_file_btn);
 
             placeh.appendChild(real_wrapper);
 
@@ -1113,16 +1213,16 @@ function callLocationSelector(current_form: Schema) : void {
     };
     document.getElementById('dontloc-footer-geoloc').onclick = function() {
         is_loc_canceled = true;
-        locationSelector(modal, current_form.locations, false);
+        locationSelector(modal, current_form.locations, false, Settings.location_labels);
     };
 
     // Cherche la localisation et remplit le modal
     getLocation(function(coords: Position) {
         if (!is_loc_canceled)
-            locationSelector(modal, current_form.locations, coords);
+            locationSelector(modal, current_form.locations, coords, Settings.location_labels);
     }, function() {
         if (!is_loc_canceled)
-            locationSelector(modal, current_form.locations, undefined);
+            locationSelector(modal, current_form.locations, undefined, Settings.location_labels);
     });
 }
 
@@ -1144,7 +1244,7 @@ function textDistance(distance: number) : string {
  * @param current_location Position actuelle. Si échec de localisation, undefined. Si explicitement non donnée, false.
  * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
  */
-function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false) {
+function locationSelector(modal: HTMLElement, locations: FormLocations, current_location?: Position | false, with_labels = false) {
     // Met le modal en modal avec footer fixé
     modal.classList.add('modal-fixed-footer');
 
@@ -1166,13 +1266,13 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
     modal.innerHTML = "";
     modal.appendChild(content);
 
-    const labels_to_name = createLocationInputSelector(content, input, locations, undefined, true);
+    const labels_to_name = createLocationInputSelector(content, input, locations, undefined, true, with_labels);
 
     // Construction de la liste de lieux si la location est trouvée
     if (current_location) {
         // Création de la fonction qui va gérer le cas où l'on appuie sur un lieu
         function clickOnLocation(this: HTMLElement) {
-            input.value = this.dataset.name + " - " + this.dataset.label;
+            input.value = this.dataset.name + (with_labels ? " - " + this.dataset.label : "");
             M.updateTextFields();
         }
 
@@ -1203,7 +1303,7 @@ function locationSelector(modal: HTMLElement, locations: FormLocations, current_
             elem.href = "#!";
             elem.classList.add('collection-item');
             elem.innerHTML = `
-                ${lieux_dispo[i].name} - ${lieux_dispo[i].label}
+                ${lieux_dispo[i].name} ${with_labels ? `- ${lieux_dispo[i].label}` : ""}
                 <span class="right grey-text lighten-1">${textDistance(lieux_dispo[i].distance)}</span>
             `;
             elem.dataset.name = lieux_dispo[i].name;

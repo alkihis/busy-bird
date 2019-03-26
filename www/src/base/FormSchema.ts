@@ -82,8 +82,8 @@ export interface FormEntity {
     slider_options?: {name: string, label: string}[];
     /** for type.file: Spécifie le type MIME du fichier accepté */
     file_type?: string;
-    /** for type.float: Précision décimale pour les nombres flottants */
-    float_precision?: number;
+    /** for type.integer && type.float: Précision à avoir sur le nombre. Peut être flottant ou non. */
+    precision?: number;
     /** Valeur par défaut pour le champ en question. 
      * boolean pour type.checkbox, string[] pour type.select AVEC multiple=true, string pour le reste */
     default_value?: string | boolean | string[];

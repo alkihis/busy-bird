@@ -2,7 +2,7 @@ import { FormSave } from "./FormSchema";
 import { FILE_HELPER, SD_FILE_HELPER, ID_COMPLEXITY } from "../main";
 import { FileHelperReadMode } from "./FileHelper";
 import { SyncManager } from "./SyncManager";
-import { urlToBlob, generateId, showToast } from "../utils/helpers";
+import { urlToBlob, generateId, showToast, cleanTakenPictures } from "../utils/helpers";
 
 export const ENTRIES_DIR = "forms/";
 export const METADATA_DIR = "form_data/";
@@ -157,9 +157,22 @@ class _FormSaves {
         const promises = [];
     
         for (const item of files_and_images_from_form) {
-            const file = (item as HTMLInputElement).files[0];
+            let file = (item as HTMLInputElement).files[0];
             const input_name = (item as HTMLInputElement).name;
     
+            // Si on a pris une image avec takeAPicture()
+            if ((item as HTMLInputElement).dataset.imagemanualurl) {
+                const url = (item as HTMLInputElement).dataset.imagemanualurl;
+                // Il y a une URL vers fichier qui a été précisée
+                // Regarde si le fichier existe encore
+                try {
+                    const image_file_entry = await FILE_HELPER.absoluteGet(url) as FileEntry;
+                    file = await FILE_HELPER.getFile(image_file_entry);
+                } catch (e) {
+                    // URL invalide !
+                }
+            }
+            
             if (file) {
                 const filename = file.name;
     
@@ -249,6 +262,9 @@ class _FormSaves {
         if (device.platform === 'Android' && SD_FILE_HELPER) {
             SD_FILE_HELPER.write(ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
         }
+
+        // Vide le cache de la caméra
+        cleanTakenPictures();
     
         console.log(form_values);
         return form_values;

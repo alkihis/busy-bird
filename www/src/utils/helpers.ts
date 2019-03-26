@@ -311,11 +311,16 @@ export function dateFormatter(schema: string, date = new Date()) : string {
  * @param path string
  * @param element HTMLImageElement
  */
-export async function createImgSrc(path: string, element: HTMLImageElement) : Promise<void> {
-    const file = await FILE_HELPER.get(path) as FileEntry;
+export async function createImgSrc(path: string, element: HTMLImageElement, absolute = false) : Promise<void> {
+    if (typeof absolute === "boolean") {
+        const file = absolute ? await FILE_HELPER.absoluteGet(path) : await FILE_HELPER.get(path);
 
-    element.src = file.toURL();
-    element.dataset.original = path;
+        element.src = file.toURL();
+        element.dataset.original = path;
+    }
+    else {
+        element.src = path;
+    }
 }
 
 /**
@@ -672,6 +677,22 @@ export async function createRandomForms(count: number = 50) : Promise<void> {
     }
 
     await Promise.all(promises);
+}
+
+export function takeAPicture() : Promise<string> {
+    return new Promise((resolve, reject) => {
+        if (device.platform === "browser") {
+            reject(); return;
+        }
+
+        navigator.camera.getPicture(resolve, reject);
+    });
+}
+
+export function cleanTakenPictures() : Promise<void> {
+    return new Promise((resolve, reject) => {
+        navigator.camera.cleanup(resolve, reject);
+    });
 }
 
 /**
