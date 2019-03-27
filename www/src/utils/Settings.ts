@@ -34,7 +34,7 @@ class AppSettings {
     }
 
     protected initDefaults() : void {
-        this._sync_bg = true;
+        this._sync_bg = false;
         this._sync_freq = 30;
         this._api_url = "https://projet.alkihis.fr/";
         this._voice_lang = "fr-FR";

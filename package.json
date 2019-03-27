@@ -42,8 +42,7 @@
     "phonegap-plugin-media-stream": "1.2.1",
     "phonegap-plugin-mobile-accessibility": "https://github.com/phonegap/phonegap-mobile-accessibility.git",
     "phonegap-plugin-speech-synthesis": "git+https://github.com/macdonst/SpeechSynthesisPlugin.git",
-    "requirejs": "^2.3.6",
-    "com.telerik.plugins.nativepagetransitions": "0.6.5"
+    "requirejs": "^2.3.6"
   },
   "devDependencies": {},
   "scripts": {
@@ -78,8 +77,7 @@
       "cordova-plugin-multi-window": {},
       "cordova-plugin-x-toast": {},
       "cordova-plugin-background-fetch": {},
-      "cordova.plugins.diagnostic": {},
-      "com.telerik.plugins.nativepagetransitions": {}
+      "cordova.plugins.diagnostic": {}
     },
     "platforms": [
       "android",

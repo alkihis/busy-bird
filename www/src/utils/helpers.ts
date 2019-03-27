@@ -714,3 +714,18 @@ export function getSdCardFolder() : Promise<{path: string, filePath: string, can
         cordova.plugins.diagnostic.external_storage.getExternalSdCardDetails(resolve, reject);
     });
 }
+
+/**
+ * Crée un objet avec des écouteurs de changement/accès aux propriétés
+ * @param param0 Objet contenant une fonction get et une fonction set
+ * @param base Optionnel. Objet duquel prélever les propriétés
+ */
+export function makeListenedObject(
+    { 
+        set = (obj: any, prop: string, value: any) => obj[prop] = value, 
+        get = (obj: any, prop: string) => prop in obj ? obj[prop] : undefined
+    } = {}, 
+    base?: any
+) {
+    return new Proxy(base ? base : {}, { set, get });
+}

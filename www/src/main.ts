@@ -1,5 +1,5 @@
 import { PageManager, SIDENAV_OBJ, AppPages } from './base/PageManager';
-import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder } from "./utils/helpers";
+import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder, makeListenedObject } from "./utils/helpers";
 import { Logger } from "./utils/Logger";
 import { newModalRecord } from "./utils/audio_listener";
 import { Schemas } from "./base/FormSchema";
@@ -185,7 +185,7 @@ function appWrapper() {
     });
 }
 
-function initDebug() {
+function initDebug() { 
     // @ts-ignore
     window["DEBUG"] = {
         launchQuizz,
@@ -204,6 +204,7 @@ function initDebug() {
         recorder: () => {
             return newModalRecord("Test");
         },
+        makeListenedObject,
         dateFormatter,
         prompt,
         createNewUser,

@@ -155,21 +155,41 @@ Cordova utilise également un système de plugins pour y ajouter des fonctions s
 Ce projet utilise PhoneGap. Pour installer un plugin, utilisez `phonegap plugin add <nomplugin>`.
 Pour compiler l'application, utilisez `phonegap build android`.
 
+Lorsque vous arrivez sur votre projet, après l'avoir récupéré de git, vous pouvez initialiser votre espace de travail avec: 
+```bash
+npm i -g phonegap
+
+phonegap platform add browser android --force
+phonegap prepare --force
+
+## Si un plugin manque, ce sera sûrement speech-synthesis
+# Vous pouvez l'ajouter manuellement au dossier plugins de cordova, il se trouve dans hooks/
+
+## puis
+phonegap prepare
+
+# Pour lancer l'émulation via navigateur, utilisez
+phonegap serve
+# Lancez un navigateur (Chrome de préférence) à l'adresse http://localhost:3000
+```
+
 Si PhoneGap râle, parce que mon dieu ça arrive, utilisez cet enchaînememnt de commandes:
 
 ```bash
 phonegap platform remove android
 phonegap platform remove browser
 
-phonegap platform add browser
+phonegap platform add browser --force
 phonegap prepare browser
 
-phonegap platform add android
-# À ce moment, il y a de fortes chances qu'un plugin râle. Utilisez alors
+# À ce moment, il y a de fortes chances qu'un plugin râle. Utilisez
 phonegap platform add android --force
 phonegap prepare android
 
 phonegap build android
+
+## Pour le lancer sur un appareil android connecté, en débogage USB, lancez
+phonegap run android --device
 ```
 
 ### Développer et prévisualiser l'application dans le navigateur

@@ -148,7 +148,7 @@ type FormCallback = (available?: FormSchema, current?: Schema) => any;
  * puis attendez la fin de l'initialisation avec onReady().
  */
 class FormSchemas {
-    protected available_forms: FormSchema;
+    protected available_forms: FormSchema = {};
     protected _current_key: string = null;
     protected _default_form_key: string = null;
     protected on_ready: Promise<void> = null;
@@ -170,17 +170,11 @@ class FormSchemas {
     /**
      * Sauvegarde les schémas actuellement chargés dans cet objet sur le stockage interne de l'appareil.
      * Retourne une promesse qui contient le FileEntry du fichier écrit.
-     * 
-     * Si aucun schéma n'est disponible (available_forms = null), la promesse est rejectée.
-     * 
-     * @throws {Error} Si aucun schéma n'est disponible => message:"Forms are not available."
+     *
      * @throws {FileError} Erreur d'écriture du fichier
      */
     public save() : Promise<FileEntry> {
-        if (this.available_forms) {
-            return FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
-        }
-        return Promise.reject(new Error("Forms are not available."));
+        return FILE_HELPER.write(this.FORM_LOCATION, this.available_forms);
     }
 
     /**
@@ -220,7 +214,7 @@ class FormSchemas {
      */
     protected async downloadSchemaFromServer(timeout = 5000, reject_on_fetch_fail = false) : Promise<void> {
         // On tente d'actualiser les formulaires disponibles
-        // On attend au max 20 secondes
+        // On attend au max timeout secondes
         try {
             const response = await fetch(Settings.api_url + "schemas/subscribed.json", {
                 headers: new Headers({ "Authorization": "Bearer " + UserManager.token }),
