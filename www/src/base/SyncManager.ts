@@ -2,7 +2,7 @@ import { FormSave } from "./FormSchema";
 import { Logger } from "../utils/logger";
 import localforage from 'localforage';
 import { FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
-import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast } from "../utils/helpers";
+import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast, getBase } from "../utils/helpers";
 import { UserManager } from "./UserManager";
 import fetch from '../utils/fetch_timeout';
 import { BackgroundSync, Settings } from "../utils/Settings";
@@ -105,7 +105,7 @@ class _SyncManager {
         const failure_fn = () => {
             console.log("Sync could not be started");
 
-            const checkbox_setting_bgsync = document.getElementById('__sync_bg_checkbox_settings');
+            const checkbox_setting_bgsync = getBase().querySelector('#__sync_bg_checkbox_settings');
             if (checkbox_setting_bgsync) {
                 showToast("Unable to start background synchronisation");
                 (checkbox_setting_bgsync as HTMLInputElement).checked = false;
@@ -448,7 +448,7 @@ class _SyncManager {
 
         return this.sync(force_all, clear_cache, undefined, receiver)
             .then(data => {
-                showToast("Synchronisation completed");
+                showToast("Synchronisation complete");
 
                 instance.close();
 
@@ -587,7 +587,7 @@ class _SyncManager {
 
         try {
             const data = await this.sync(undefined, undefined, force_specific_elements, receiver);
-            showToast("Synchronisation réussie");
+            showToast("Synchronisation complete");
 
             return data;
         }

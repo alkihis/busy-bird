@@ -1166,20 +1166,9 @@ export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mo
 
 /**
  * Annule la sélection de lieu
- * @param required true si le lieu est obligatoire. (une suggestion vers page précédente sera présentée si annulation)
  */
 function cancelGeoLocModal() : void {
-    // On veut fermer; Deux possibilités.
-    // Si le champ lieu est déjà défini et rempli, on ferme juste le modal
-
-    // Plus de retour à la page précédente suggérée: contre-intuitif
-    // if (!required || (document.getElementById("__location__id") as HTMLInputElement).value.trim() !== "") {
-    //     // On ferme juste le modal
-    // }
-    // else {
-    //     // Sinon, on ramène à la page précédente
-    //     PageManager.back();
-    // }
+    // On veut fermer
 
     getModalInstance().close();
     getModal().classList.remove('modal-fixed-footer');

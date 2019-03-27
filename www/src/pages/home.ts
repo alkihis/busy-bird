@@ -82,13 +82,7 @@ export async function initHomePage(base: HTMLElement) {
     // Nombre de formulaires enregistrés sur l'appareil
     try {
         let nb_files: number;
-        try {
-            nb_files = (await FILE_HELPER.ls(ENTRIES_DIR) as string[]).length;
-        } catch (e) {
-            nb_files = 0;
-            await FILE_HELPER.mkdir(ENTRIES_DIR);
-        }
-        
+        nb_files = (await FILE_HELPER.ls(ENTRIES_DIR) as string[]).length;
 
         home_container.insertAdjacentHTML('beforeend', createCardPanel(
             `<span class="blue-text text-darken-2">${nb_files === 0 ? 'No' : nb_files} entr${nb_files > 1 ? 'ies' : 'y'} 

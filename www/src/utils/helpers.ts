@@ -141,30 +141,6 @@ export function saveDefaultForm() {
     // writeFile('schemas/', 'default.json', new Blob([JSON.stringify(current_form)], {type: "application/json"}));
 }
 
-// Met le bon répertoire dans FOLDER. Si le stockage interne/sd n'est pas monté,
-// utilise le répertoire data (partition /data) de Android
-let FOLDER = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
-
-/**
- * Change le répertoire actif en fonction de la plateforme et l'insère dans FOLDER.
- * Fonction appelée automatiquement au démarrage de l'application dans main.initApp()
- */
-export function changeDir() {
-    if (device.platform === "browser") {
-        FOLDER = "cdvfile://localhost/temporary/";
-
-        // Permet le bouton retour sur navigateur
-        const back_btn = document.getElementById('__nav_back_button')
-        back_btn.onclick = function() {
-            PageManager.back();
-        };
-        back_btn.classList.remove('hide');
-    }
-    else if (device.platform === "iOS") {
-        FOLDER = cordova.file.dataDirectory;
-    }
-}
-
 /**
  * Renvoie un début d'URL valide pour charger des fichiers internes à l'application sur tous les périphériques.
  */

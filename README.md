@@ -164,6 +164,7 @@ phonegap prepare --force
 
 ## Si un plugin manque, ce sera sûrement speech-synthesis
 # Vous pouvez l'ajouter manuellement au dossier plugins de cordova, il se trouve dans hooks/
+phonegap plugin add hooks/phonegap-plugin-speech-synthesis --nofetch
 
 ## puis
 phonegap prepare

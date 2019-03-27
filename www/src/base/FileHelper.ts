@@ -821,7 +821,7 @@ export class FileHelper {
      * @param r Make empty recursive. (if path is a directory)
      * If r = false and path contains a directory that is not empty, empty will fail
      */
-    public async empty(path: string | Entry, r = false) : Promise<void> {
+    public async empty(path: string | Entry = "", r = false) : Promise<void> {
         let entry: Entry = path as Entry;
 
         // Si jamais le chemin est une string, on obtient son entry associée

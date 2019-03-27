@@ -5,6 +5,7 @@ import { initSavedForm } from "../pages/saved_forms";
 import { initHomePage, APP_NAME } from "../pages/home";
 import { Logger } from "../utils/logger";
 import { MAX_SLEEPING_PAGES, DEFAULT_PAGE } from "../main";
+import { loadCredits } from "../pages/credits";
 
 export let SIDENAV_OBJ: M.Sidenav = null;
 const ANIMATIONS_ON = true;
@@ -48,6 +49,11 @@ export const AppPages: { [pageId: string]: AppPage } = {
     settings: {
         name: "Settings",
         callback: initSettingsPage,
+        reload_on_restore: false
+    },
+    credits: {
+        name: "About",
+        callback: loadCredits,
         reload_on_restore: false
     }
 };
@@ -93,6 +99,7 @@ class _PageManager {
             const link = document.createElement('a');
             link.href = "#!";
             link.innerText = AppPages[page].name;
+            link.className = "waves-effect";
             li.appendChild(link);
 
             sidenav.appendChild(li);

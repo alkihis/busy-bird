@@ -1,5 +1,5 @@
 import { PageManager, SIDENAV_OBJ, AppPages } from './base/PageManager';
-import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, changeDir, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder, makeListenedObject } from "./utils/helpers";
+import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder, makeListenedObject } from "./utils/helpers";
 import { Logger } from "./utils/Logger";
 import { newModalRecord } from "./utils/audio_listener";
 import { Schemas } from "./base/FormSchema";
@@ -9,6 +9,7 @@ import { SyncManager, SyncEvent } from "./base/SyncManager";
 import { launchQuizz } from './utils/test_vocal_reco';
 import { FileHelper, FileHelperReadMode } from './base/FileHelper';
 import { Settings } from './utils/Settings';
+import { ENTRIES_DIR, METADATA_DIR } from './base/FormSaves';
 
 // Constantes de l'application
 export const APP_VERSION = 0.8;
@@ -66,11 +67,6 @@ export const app = {
 };
 
 async function initApp() {
-    // Change le répertoire de données
-    // Si c'est un navigateur, on est sur cdvfile://localhost/temporary
-    // Sinon, si mobile, on passe sur externalDataDirectory
-    changeDir();
-
     await FILE_HELPER.waitInit();
 
     // @ts-ignore Force à demander la permission pour enregistrer du son
@@ -78,14 +74,14 @@ async function initApp() {
 
     type hasPerm = { hasPermission: boolean };
 
-    await new Promise((resolve) => {
+    await new Promise(resolve => {
         permissions.requestPermission(permissions.RECORD_AUDIO, (status: hasPerm) => {
             resolve(status);
         }, (e: any) => { console.log(e); resolve(); });
     });
 
     // Force à demander la permission pour accéder à la SD
-    const permission_write: hasPerm = await new Promise((resolve) => {
+    const permission_write: hasPerm = await new Promise(resolve => {
         permissions.requestPermission(permissions.WRITE_EXTERNAL_STORAGE, (status: hasPerm) => {
             resolve(status);
         }, (e: any) => { console.log(e); resolve(); });
@@ -121,6 +117,10 @@ async function initApp() {
     Logger.init();
     Schemas.init(); 
     SyncManager.init();
+
+    // Création des répertoires obligatoires de l'application (si ils existent, ne fait rien)
+    await FILE_HELPER.mkdir(ENTRIES_DIR);
+    await FILE_HELPER.mkdir(METADATA_DIR);
 
     // @ts-ignore Désactive le dézoom automatique sur Android quand l'utilisateur a choisi une petite police
     if (window.MobileAccessibility) {
@@ -168,7 +168,7 @@ async function initApp() {
             }
     
             return prom;
-        })
+        });
 }
 
 function appWrapper() {
@@ -182,12 +182,19 @@ function appWrapper() {
         } catch (e) {}
 
         getBase().innerHTML = displayErrorMessage("Unable to initialize application", "Error: " + err.stack);
+
+        console.error(err);
     });
 }
 
+declare global {
+    interface Window {
+        DEBUG: any
+    }
+}
+
 function initDebug() { 
-    // @ts-ignore
-    window["DEBUG"] = {
+    window.DEBUG = {
         launchQuizz,
         PageManager,
         saveDefaultForm,
@@ -209,8 +216,7 @@ function initDebug() {
         prompt,
         createNewUser,
         UserManager,
-        SyncManager,
-        api_url: Settings.api_url
+        SyncManager
     };
 }
 

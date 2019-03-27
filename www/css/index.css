@@ -440,3 +440,9 @@ label, .form-audio-label {
     margin-left: 1px;
     text-align: center;
 }
+
+.lbbe-logo {
+    width: 40%;
+    height: auto;
+    margin: 4%;
+}
