@@ -62,29 +62,17 @@ async function deleteAll(): Promise<any> {
  * @param json Fichier JSON contenant l'entrée
  * @param ph Element dans lequel écrire la card
  */
-async function appendFileEntry(json: File, ph: HTMLElement) {
-    const save = await FILE_HELPER.readFileAs(json, FileHelperReadMode.json) as FormSave;
-
+async function appendFileEntry(entry_file: FileEntry, ph: HTMLElement, read_functions: Function[]) {
     const selector = document.createElement('li');
     selector.classList.add('collection-item');
 
     const container = document.createElement('div');
     container.classList.add('saved-form-item');
-    let id = json.name;
+    let id = entry_file.name;
     const id_without_json = id.split('.json')[0];
     container.dataset.formid = id_without_json;
     let state = SaveState.error;
     let type = "Type inconnu";
-
-    if (save.type !== null && Schemas.exists(save.type)) {
-        const form = Schemas.get(save.type);
-        type = form.name;
-
-        if (form.id_field) {
-            // Si un champ existe pour ce formulaire
-            id = (save.fields[form.id_field] as string) || json.name;
-        }
-    }
 
     // Recherche si il y a déjà eu synchronisation
     try {
@@ -118,43 +106,63 @@ async function appendFileEntry(json: File, ph: HTMLElement) {
     container.appendChild(sync_btn);
 
     // Ajoute le texte de l'élément
-    container.insertAdjacentHTML('beforeend', `
-        <div class="left">
+    const file_details = document.createElement('div');
+    file_details.className = "left";
+    file_details.innerHTML = "Reading...<br>Modified x-x-x x:x:x";
+    container.appendChild(file_details);
+
+    // Décale le lancement de la lecture du fichier
+    read_functions.push(async () => {
+        const file_object = await FILE_HELPER.read(entry_file, FileHelperReadMode.fileobj) as File;
+        const save = await FILE_HELPER.readFileAs(file_object, FileHelperReadMode.json) as FormSave;
+
+        if (save.type !== null && Schemas.exists(save.type)) {
+            const form = Schemas.get(save.type);
+            type = form.name;
+    
+            if (form.id_field) {
+                // Si un champ existe pour ce formulaire
+                id = (save.fields[form.id_field] as string) || entry_file.name;
+            }
+        }
+
+        file_details.innerHTML = `
             [${type}] ${id} <br> 
-            Modified ${dateFormatter("Y-m-d H:i:s", new Date(json.lastModified))}
-        </div>`);
+            Modified ${dateFormatter("Y-m-d H:i:s", new Date(file_object.lastModified))}
+        `;
 
-    // Ajout des actions de l'élément
-    //// ACTION 1: Modifier
-    const modify_element = () => {
-        editAForm(save, json.name.split(/\.json$/)[0]);
-    };
+        // Ajout des actions de l'élément
+        //// ACTION 1: Modifier
+        const modify_element = () => {
+            editAForm(save, entry_file.name.split(/\.json$/)[0]);
+        };
 
-    const delete_element = () => {
-        modalDeleteForm(json.name);
-    }
+        const delete_element = () => {
+            modalDeleteForm(entry_file.name);
+        }
 
-    // Définit l'événement de clic sur le formulaire
-    selector.addEventListener('click', function () {
-        const list = [
-            "Edit",
-            (container.dataset.synced === "true" ? "Res" : "S") + "ynchronize",
-            "Remove"
-        ];
+        // Définit l'événement de clic sur le formulaire
+        selector.addEventListener('click', function () {
+            const list = [
+                "Edit",
+                (container.dataset.synced === "true" ? "Res" : "S") + "ynchronize",
+                "Remove"
+            ];
 
-        askModalList(list)
-            .then(index => {
-                if (index === 0) {
-                    modify_element();
-                }
-                else if (index === 1) {
-                    SyncManager.inlineSync([id_without_json]);
-                }
-                else {
-                    delete_element();
-                }
-            })
-            .catch(() => { /** Refus de l'utilisateur (fermeture du modal) */ });
+            askModalList(list)
+                .then(index => {
+                    if (index === 0) {
+                        modify_element();
+                    }
+                    else if (index === 1) {
+                        SyncManager.inlineSync([id_without_json]);
+                    }
+                    else {
+                        delete_element();
+                    }
+                })
+                .catch(() => { /** Refus de l'utilisateur (fermeture du modal) */ });
+        });
     });
 
     // Clear le float
@@ -212,28 +220,18 @@ export async function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
 
-    console.log(await FILE_HELPER.readAll(ENTRIES_DIR, FileHelperReadMode.fileobj));
-
-    try {
-        await FILE_HELPER.mkdir(ENTRIES_DIR);
-    } catch (err) {
-        Logger.error("Unable to create entry directory", err.message, err.stack);
-        base.innerHTML = displayErrorMessage("Error", "Unable to load files. (" + err.message + ")");
-        return;
-    }
-
     Schemas.onReady()
         .then(() => {
-            return FILE_HELPER.readAll(ENTRIES_DIR, FileHelperReadMode.fileobj) as Promise<File[]>;
+            return FILE_HELPER.entriesOf(ENTRIES_DIR) as Promise<FileEntry[]>;
         })
-        .then(async (files: File[]) => {
-            // Tri des fichiers; le plus récent en premier
-            files = files.sort(
-                (a, b) => b.lastModified - a.lastModified
-            );
+        .then(async (files: FileEntry[]) => {
+            // De base, les fichiers sont retournés avec plus ancien en dernier
+            files = files.reverse();
+
+            const functions: Function[] = [];
 
             for (const f of files) {
-                await appendFileEntry(f, placeholder);
+                await appendFileEntry(f, placeholder, functions);
             }
 
             base.innerHTML = "";
@@ -306,6 +304,10 @@ export async function initSavedForm(base: HTMLElement) {
                 });
 
                 base.insertAdjacentElement('beforeend', delete_btn);
+            }
+
+            for (const f of functions) {
+                f();
             }
         })
         .catch(err => {
