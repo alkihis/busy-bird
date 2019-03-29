@@ -12,43 +12,6 @@ Busy Bird est programmée en [TypeScript](https://www.typescriptlang.org/), Java
 Pour sa partie serveur, Busy Bird se repose sur le couple PHP + Apache.
 La partie spécifique au développement est détaillée dans la partie sus-nommée.
 
-# Sommaire
-
-1. [Introduction]()
-2. [Utilisation]()
-   1. [Compte utilisateur]()
-      1. [Connexion]()
-      2. [Création de compte]()
-   2. [Souscrire à des schémas]()
-   3. [Saisir une entrée]()
-      1. [Lieu de saisie]()
-      2. [Formulaire]()
-      3. [Validation et sauvegarde]()
-   4. [Consulter et modifier des entrées]()
-      1. [Lister les entrées sauvegardées]()
-      2. [Modifier une entrée]()
-      3. [Supprimer des entrées]()
-   5. [Synchronisation]()
-      1. [Standard]()
-      2. [Arrière-plan]()
-      3. [Globale]()
-3. [Maintenance et développement de l'application]()
-   1. [Introduction à Cordova]()
-   2. [Plugins utilisés]()
-   3. [Organisation du code et bases structurantes]()
-      1. [Organisation générale]()
-      2. [Gestion des pages]()
-      3. [Gestion des utilisateurs]()
-      4. [Gestion des schémas de formulaire]()
-      5. [Interactions avec le système de fichiers]()
-   4. [Synchronisation]()
-   5. [Paramètres de l'application]()
-4. [Maintenance du serveur Busy Bird]()
-   1. [Introduction à l'API Busy Bird]()
-   2. [Organisation]()
-   3. [Ajouter un endpoint]()
-   4. [Schémas, entrées et utilisateurs]()
-   5. [Informations fonctionnelles sur les endpoints]()
 
 # Introduction
 
@@ -356,22 +319,4 @@ Le détail contient l'identifiant `id` de l'entrée dont l'envoi a échoué.
 #### complete
 Émis lorsque la synchronisation se termine (et que tout s'est bien passé).
 
-## Paramètres de l'application
 
-# Maintenance du serveur Busy Bird
-
-## Introduction à l'API Busy Bird
-
-## Organisation
-
-## Ajouter un endpoint
-
-## Schémas, entrées et utilisateurs
-
-### Schémas
-
-### Entrées
-
-### Utilisateurs
-
-## Informations fonctionnelles sur les endpoints

@@ -41,7 +41,7 @@
     "phonegap-plugin-media-recorder": "1.1.0",
     "phonegap-plugin-media-stream": "1.2.1",
     "phonegap-plugin-mobile-accessibility": "https://github.com/phonegap/phonegap-mobile-accessibility.git",
-    "phonegap-plugin-speech-synthesis": "git+https://github.com/macdonst/SpeechSynthesisPlugin.git",
+    "phonegap-plugin-speech-synthesis": "file:hooks/phonegap-plugin-speech-synthesis",
     "requirejs": "^2.3.6"
   },
   "devDependencies": {},
@@ -62,7 +62,6 @@
       "cordova-plugin-inappbrowser": {},
       "cordova-plugin-network-information": {},
       "cordova-plugin-vibration": {},
-      "phonegap-plugin-speech-synthesis": {},
       "cordova-plugin-speechrecognition": {},
       "cordova-plugin-file": {},
       "cordova-plugin-media": {},
@@ -77,7 +76,8 @@
       "cordova-plugin-multi-window": {},
       "cordova-plugin-x-toast": {},
       "cordova-plugin-background-fetch": {},
-      "cordova.plugins.diagnostic": {}
+      "cordova.plugins.diagnostic": {},
+      "phonegap-plugin-speech-synthesis": {}
     },
     "platforms": [
       "android",
