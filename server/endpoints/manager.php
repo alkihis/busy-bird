@@ -12,7 +12,7 @@ class EndPointManager {
         4 => [400, "Invalid HTTP method"],
         5 => [400, "Too few arguments"],
         6 => [403, "Invalid admin password"],
-        7 => [400, "Username must be alphanumerical and must begin with a letter"],
+        7 => [400, "Username or key must be alphanumerical and must begin with a letter"],
         8 => [403, "You must be logged to do that"],
         9 => [400, "Referent form does not exists"],
         10 => [403, "User does not exists"],
@@ -22,6 +22,7 @@ class EndPointManager {
         14 => [400, "JSON is invalid"],
         15 => [403, "Token mismatch"],
         16 => [403, "User does not exists"],
+        17 => [403, "You don't have the right to do that"],
     ];
 
     public function __construct() {
@@ -63,7 +64,7 @@ class EndPointManager {
                 self::error(2);
             }
         } catch (Throwable $e) {
-            self::error(1);
+            self::error(1, $e);
         }
     }
 

@@ -47,18 +47,13 @@ function loadEndpoint(string $method) : array {
 
     // Vérification du JSON. Par sécurité, copie les champs
     $new_json = ['fields' => [], 'type' => $type, 'metadata' => [], 'location' => $json['location'], 'owner' => $json['owner']];
-    if (isset($json['type_version'])) {
-        $new_json['type_version'] = $json['type_version'];
-    }
+    
+    // Obtient le schéma
+    $schema = getSchema($type);
 
-    // Tente de lire le schéma correspondant
-    $fileschema = $type . ".json";
-
-    if (!file_exists(FORMS_FILE_PATH . $fileschema)) {
+    if (!$schema) {
         EndPointManager::error(14);
     }
-
-    $schema = json_decode(file_get_contents(FORMS_FILE_PATH . $fileschema), true);
 
     // Construit le JSON
     foreach ($schema['fields'] as $field) {
@@ -72,14 +67,67 @@ function loadEndpoint(string $method) : array {
         }
     }
 
-    if (!file_exists(UPLOAD_FILE_PATH . $type)) {
-        @mkdir(UPLOAD_FILE_PATH . $type);
+    $new_json_str = json_encode($new_json);
+
+    if (ENTRIES_STORAGE === MODE_FILES) {
+        if (!file_exists(UPLOAD_FILE_PATH . $type)) {
+            @mkdir(UPLOAD_FILE_PATH . $type);
+        }
+
+        $path = UPLOAD_FILE_PATH . "$type/$id.json";
+
+        // On écrit le form
+        file_put_contents($path, $new_json_str);
     }
+    else if (ENTRIES_STORAGE === MODE_SQL) {
+        // Insère l'entrée dans la base SQL
+        $link = SQLLink::get();
 
-    $path = UPLOAD_FILE_PATH . "$type/$id.json";
+        if (!$link) {
+            EndPointManager::error(3);
+        }
+        
+        $stmt = $link->prepare("INSERT INTO Entries (uuid, type, entry, id_field, owner) VALUES (?, ?, ?, ?, ?)");
 
-    // On écrit le form
-    file_put_contents($path, json_encode($new_json));
+        $id_field = isset($schema['id_field']) ? $new_json['fields'][$schema['id_field']] ?? null : null;
+
+        $stmt->bind_param("ssssi", $id, $type, $new_json_str, $id_field, $user_obj->id);
+
+        if (!$stmt->execute()) {
+            EndPointManager::error(3);
+        }
+
+        $id_sql_entry = $link->insert_id;
+
+        // Insère les fichiers à envoyer dans la table (même si ils ne le sont pas encore)
+        foreach ($json['metadata'] as $filename) {
+            $stmt = $link->prepare("SELECT id_f FROM Files WHERE uuid=? AND filename=?");
+            $stmt->bind_param("ss", $id, $filename);
+            
+            if (!$stmt->execute()) {
+                EndPointManager::error(3);
+            }
+
+            $res = $stmt->get_result();
+
+            if ($res->num_rows) {
+                $file_id = $res->fetch_assoc()['id_f'];
+            }
+            else {
+                // On doit insérer la liaison
+                $stmt = $link->prepare("INSERT INTO Files (uuid, filename) VALUES (?, ?)");
+                $stmt->bind_param("ss", $id, $filename);
+                $stmt->execute();
+
+                $file_id = $link->insert_id;
+            }
+
+            // Insertion de la liaison
+            $stmt = $link->prepare("INSERT INTO EntriesFiles (id_f, id_e) VALUES (?, ?)");
+            $stmt->bind_param("ii", $file_id, $id_sql_entry);
+            $stmt->execute();
+        }
+    }
 
     $to_not_delete = [];
     $path = FORM_DATA_FILE_PATH . $type . "/$id/";
@@ -89,7 +137,6 @@ function loadEndpoint(string $method) : array {
         // Vérification si les métadonnées existent
         $to_send = [];
 
-        $diff = false;
         foreach ($json['metadata'] as $key => $m) {
             if (!file_exists($path . "$m")) {
                 $to_send[] = $key;
@@ -102,13 +149,17 @@ function loadEndpoint(string $method) : array {
         }
 
         if ($to_send) {
-            deleteNotRelatableExistingMetadata($path, $to_not_delete);
+            if (DELETE_OUTDATED_METADATA) {
+                deleteNotRelatableExistingMetadata($path, $to_not_delete);
+            }
             
             return ['status' => true, 'send_metadata' => $to_send];
         }
     }
 
-    deleteNotRelatableExistingMetadata($path, $to_not_delete);
+    if (DELETE_OUTDATED_METADATA) {
+        deleteNotRelatableExistingMetadata($path, $to_not_delete);
+    }
     
     // Il n'y a pas de métadonnées à envoyer
     return ['status' => true, 'send_metadata' => false];

@@ -11,21 +11,34 @@ function loadEndpoint(string $method) : array {
         EndPointManager::error(8);
     }
 
-    // Listage des formulaires disponibles
-    $files = scandir(FORMS_FILE_PATH);
-
-    if (!$files) {
-        EndPointManager::error(3);
-    }
-    
     $forms = [];
-    foreach ($files as $file) {
-        if ($file === "." || $file === "..") {
-            continue;
+
+    if (ENTRIES_STORAGE === MODE_FILES) {
+        // Listage des formulaires disponibles
+        $files = scandir(FORMS_FILE_PATH);
+
+        if (!$files) {
+            EndPointManager::error(3);
         }
 
-        $name = str_replace('.json', '', basename($file));
-        $forms[$name] = json_decode(file_get_contents(FORMS_FILE_PATH . '/' . $file), true);
+        foreach ($files as $file) {
+            if ($file === "." || $file === "..") {
+                continue;
+            }
+
+            $name = str_replace('.json', '', basename($file));
+            $forms[$name] = json_decode(file_get_contents(FORMS_FILE_PATH . '/' . $file), true);
+        }
+    }
+    else if (ENTRIES_STORAGE === MODE_SQL) {
+        // Récupération de tous les formulaires dispo
+        $models = getLastModels();
+
+        if ($models) {
+            foreach ($models as $model) {
+                $forms[$model['type']] = json_decode($model['model'], true);
+            }
+        }
     }
 
     return $forms;

@@ -233,6 +233,10 @@ class FormSchemas {
             if (reject_on_fetch_fail) {
                 return Promise.reject(error);
             }
+            else if (typeof error === 'number' && error === 8) {
+                // L'utilisateur n'a pas pu être authentifié
+                showToast("Server rejected authentification. Check your credentials.");
+            }
 
             return this.readSchemaJSONFromFile();
         }

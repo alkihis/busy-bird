@@ -21,27 +21,37 @@ function loadEndpoint(string $method) : array {
         EndPointManager::error(8);
     }
 
-    $path = UPLOAD_FILE_PATH . $type . '/';
-
-    if (!file_exists($path)) {
-        return [];
-    }
-
-    // Listage des formulaires disponibles
-    $files = scandir($path);
-
-    if (!$files) {
-        EndPointManager::error(3);
-    }
-
     $forms = [];
-    foreach ($files as $file) {
-        if ($file === "." || $file === "..") {
-            continue;
-        }
 
-        $name = str_replace('.json', '', basename($file));
-        $forms[$name] = true;
+    if (ENTRIES_STORAGE === MODE_FILES) {
+        $path = UPLOAD_FILE_PATH . $type . '/';
+
+        if (!file_exists($path)) {
+            return [];
+        }
+    
+        // Listage des formulaires disponibles
+        $files = scandir($path);
+    
+        if (!$files) {
+            EndPointManager::error(3);
+        }
+    
+        foreach ($files as $file) {
+            if ($file === "." || $file === "..") {
+                continue;
+            }
+    
+            $name = str_replace('.json', '', basename($file));
+            $forms[$name] = true;
+        }
+    }
+    else if (ENTRIES_STORAGE === MODE_SQL) {
+        $entries = getSendedForms();
+
+        foreach ($entries as $e) {
+            $forms[$e['uuid']] = true;
+        }
     }
 
     return $forms;

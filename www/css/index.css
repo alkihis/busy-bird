@@ -60,6 +60,10 @@ h1 {
     animation: fade 900ms infinite;
 }
 
+.italic {
+    font-style: italic;
+}
+
 /* PERSONNALISATION DES ELEMENTS MATERIALIZE */
 .file-field .btn, .btn-large, .btn-small {
     background-color: #6879c1;
@@ -445,4 +449,12 @@ label, .form-audio-label {
     width: 40%;
     height: auto;
     margin: 4%;
+}
+
+.error-message {
+
+}
+
+.error-details {
+    font-size: 1.1em;
 }

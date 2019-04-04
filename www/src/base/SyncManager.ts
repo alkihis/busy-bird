@@ -2,7 +2,7 @@ import { FormSave } from "./FormSchema";
 import { Logger } from "../utils/logger";
 import localforage from 'localforage';
 import { FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
-import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast, getBase } from "../utils/helpers";
+import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast, getBase, errorMessage } from "../utils/helpers";
 import { UserManager } from "./UserManager";
 import fetch from '../utils/fetch_timeout';
 import { BackgroundSync, Settings } from "../utils/Settings";
@@ -520,12 +520,14 @@ class _SyncManager {
                             }
                         })(reason.code);
 
+                        const second_cause = reason.error_code ? errorMessage(reason.error_code) + "." : "";
+
                         // Modifie le texte du modal
                         modal.innerHTML = `
                         <div class="modal-content">
                             <h5 class="red-text no-margin-top">Unable to synchronize</h5>
                             <p class="flow-text">
-                                ${cause}<br>
+                                ${cause} ${second_cause}<br>
                                 Please try again later.
                             </p>
                         </div>
@@ -609,8 +611,10 @@ class _SyncManager {
                             default: return "Unknown error.";
                         }
                     })(reason.code);
+
+                    const second_cause = reason.error_code ? errorMessage(reason.error_code) + "." : "";
                     // Modifie le texte du modal
-                    showToast("Unable to synchronize: " + cause);
+                    showToast("Unable to synchronize: " + cause + second_cause);
                 }
             }
             else {

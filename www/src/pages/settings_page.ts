@@ -1,12 +1,13 @@
 import { UserManager, loginUser, createNewUser } from "../base/UserManager";
 import { Schemas, FormSchema } from "../base/FormSchema";
-import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML, initBottomModal } from "../utils/helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML, initBottomModal, formattedError, errorMessage } from "../utils/helpers";
 import { SyncManager } from "../base/SyncManager";
 import { PageManager } from "../base/PageManager";
 import fetch from '../utils/fetch_timeout';
 import { SYNC_FREQUENCY_POSSIBILITIES } from "../main";
 import { APP_NAME } from "./home";
 import { Settings, getAvailableLanguages } from '../utils/Settings';
+import { Logger } from "../utils/logger";
 
 let select_for_schema: HTMLSelectElement = null;
 
@@ -23,8 +24,13 @@ function formActualisationModal() : void {
             instance.close();
             PageManager.reload();
         })
-        .catch(() => {
-            showToast("Unable to update form models.");
+        .catch(e => {
+            if (typeof e === 'number' && e === 8) {
+                showToast("Unable to update form models. " + errorMessage(e) + ".");
+            }
+            else {
+                showToast("Unable to update form models.");
+            }
             instance.close();
         })
 }
@@ -435,11 +441,12 @@ async function verifyServerURL(url: string) : Promise<boolean> {
     instance.open();
 
     try {
-        const resp = await fetch(url.replace(/\/$/, '') + "/users/validate.json", {
+        let resp: any = await fetch(url.replace(/\/$/, '') + "/users/validate.json", {
             method: "POST",
-            body: f_data,
-            mode: "no-cors"
-        }, 60000).then(resp => resp.json());
+            body: f_data
+        }, 60000).then(resp => resp.text());
+
+        resp = JSON.parse(resp);
 
         if (resp.error_code) {
             if (UserManager.logged) {
@@ -517,7 +524,8 @@ async function subscribe(ids: string[], fetch_subs: boolean) : Promise<void | Fo
         mode: "cors",
         body: form_data
     }, 60000)
-        .then(response => response.json());
+        .then(response => response.json())
+        .then(json => json.error_code ? Promise.reject(json) : json);
 }
 
 /**
@@ -538,7 +546,8 @@ async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | 
         mode: "cors",
         body: form_data
     }, 60000)
-        .then(response => response.json());
+        .then(response => response.json())
+        .then(json => json.error_code ? Promise.reject(json) : json);
 }
 
 /**
@@ -565,14 +574,26 @@ async function subscriptionsModal() : Promise<void> {
     let subscriptions: SubscriptionObject;
     try {
         subscriptions = await getSubscriptions();
+
+        if (subscriptions.error_code) {
+            throw subscriptions;
+        }
     } catch (e) {
-        modal.innerHTML = `
+        let str = `
         <div class="modal-content">
             <h5 class="red-text no-margin-top">Error</h5>
-            <p class="flow-text">Unable to obtain subscriptions.</p>
-        </div>
-        <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Close</a></div>
         `;
+
+        if (e.error_code) {
+            str += formattedError(e, "Unable to get subscriptions.");
+        }
+        else {
+            str += '<p class="flow-text">Unable to get subscriptions.</p>';
+        }
+
+        modal.innerHTML = str + `
+        </div>
+        <div class="modal-footer"><a href="#!" class="btn-flat red-text modal-close">Close</a></div>`;
         return;
     }
 
@@ -687,6 +708,7 @@ async function subscriptionsModal() : Promise<void> {
             }
         } catch (e) {
             showToast("Unable to update subscriptions.\nCheck your Internet connection.");
+            Logger.error(e);
             instance.close();
         }
 
