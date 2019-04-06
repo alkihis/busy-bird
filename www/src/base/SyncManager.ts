@@ -8,6 +8,7 @@ import fetch from '../utils/fetch_timeout';
 import { BackgroundSync, Settings } from "../utils/Settings";
 import { FileHelperReadMode, EntryObject } from "./FileHelper";
 import { ENTRIES_DIR, METADATA_DIR } from "./FormSaves";
+import { APIHandler, APIResp } from "./APIHandler";
 
 class _SyncList {
     public init() {
@@ -225,24 +226,18 @@ class _SyncManager {
 
         let json: any;
         try {
-            // Contrôleur pour arrêter les fetch si abort
-            let controller: AbortController;
+            const req = APIHandler.req(
+                "forms/send.json", 
+                { method: "POST", body: d }, 
+                APIResp.JSON, 
+                true, 
+                MAX_TIMEOUT_FOR_FORM
+            );
 
-            if ("AbortController" in window) {
-                controller = new AbortController();
-                this.running_fetchs.push(controller);
-            }
-            
-            let signal = controller ? controller.signal : undefined;
+            if (req[1])
+                this.running_fetchs.push(req[1]);
 
-            const response = await fetch(Settings.api_url + "forms/send.json", {
-                method: "POST",
-                body: d,
-                signal,
-                headers: new Headers({"Authorization": "Bearer " + UserManager.token})
-            }, MAX_TIMEOUT_FOR_FORM);
-
-            json = await response.json();
+            json = await req[0];
         } catch (error) {
             throw {code: "json_send", error};
         }
@@ -293,24 +288,19 @@ class _SyncManager {
                 md.append("data", base64);
                 
                 try {
-                    // Contrôleur pour arrêter les fetch si abort
-                    let controller: AbortController;
+                    const req = APIHandler.req(
+                        "forms/metadata_send.json", 
+                        { method: "POST", body: md }, 
+                        APIResp.JSON, 
+                        true, 
+                        MAX_TIMEOUT_FOR_METADATA
+                    );
 
-                    if ("AbortController" in window) {
-                        controller = new AbortController();
-                        this.running_fetchs.push(controller);
-                    }
-                    
-                    let signal = controller ? controller.signal : undefined;
+                    // Ajoute le controlleur abort dans la liste
+                    if (req[1])
+                        this.running_fetchs.push(req[1]);
 
-                    const resp = await fetch(Settings.api_url + "forms/metadata_send.json", {
-                        method: "POST",
-                        body: md,
-                        signal,
-                        headers: new Headers({"Authorization": "Bearer " + UserManager.token})
-                    }, MAX_TIMEOUT_FOR_METADATA);
-
-                    const json = await resp.json();
+                    const json = await req[0];
                     if (json.error_code) {
                         throw {code: "metadata_treatement", error_code: json.error_code, "message": json.message};
                     }

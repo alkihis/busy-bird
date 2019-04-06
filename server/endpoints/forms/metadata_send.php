@@ -56,25 +56,6 @@ function loadEndpoint(string $method) : array {
     $path .= "/$name";
 
     file_put_contents($path, base64_decode($data));
-
-    if (ENTRIES_STORAGE === MODE_SQL) {
-        // Enregistre l'ajout d'une métadonnée dans la dernière entrée existante
-        $link = SQLLink::get();
-
-        $uuid = $link->escape_string($id);
-        $q = $link->query("SELECT id_e FROM Entries WHERE uuid='$uuid' ORDER BY date_e DESC LIMIT 1");
-
-        $id_e = $q->fetch_assoc()['id_e'];
-
-        if ($id_e) {
-            $stmt = $link->prepare("INSERT INTO EntriesFiles (id_e, filename) VALUES (?, ?)");
-            $stmt->bind_param('ss', $id_e, $name);
-            
-            if (!$stmt->execute()) {
-                EndPointManager::error(3);
-            }
-        }
-    }
     
     return ['status' => true];
 }

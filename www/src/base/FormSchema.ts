@@ -4,6 +4,7 @@ import { ENABLE_FORM_DOWNLOAD, FILE_HELPER, ALLOW_LOAD_TEST_SCHEMAS } from "../m
 import fetch from '../utils/fetch_timeout';
 import { FileHelper } from "./FileHelper";
 import { Settings } from "../utils/Settings";
+import { APIHandler, APIResp } from "./APIHandler";
 
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
 /* 
@@ -216,16 +217,12 @@ class FormSchemas {
         // On tente d'actualiser les formulaires disponibles
         // On attend au max timeout secondes
         try {
-            const response = await fetch(Settings.api_url + "schemas/subscribed.json", {
-                headers: new Headers({ "Authorization": "Bearer " + UserManager.token }),
-                method: "GET"
-            }, timeout);
+            const json = await APIHandler.req("schemas/subscribed.json", {}, APIResp.JSON, true, timeout)[0];
 
-            const json_2 = await response.json();
-            if (json_2.error_code)
-                throw json_2.error_code;
+            if (json.error_code)
+                throw json.error_code;
 
-            this.loadFormSchemaInClass(json_2, true);
+            this.loadFormSchemaInClass(json, true);
         }
         catch (error) {
             console.log("Timeout/fail for forms");

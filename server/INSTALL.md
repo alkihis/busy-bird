@@ -62,3 +62,36 @@ sudo certbot --apache -d {your_server_domain}
 # Congrats ! https://{your_server_domain} is now a valid Busy Bird server !
 ```
 
+By default, server use FILES to store entries and models.
+You can use an MySQL server to store those data (files attached to entries will stay stored in inc/form_data/ folder).
+
+```bash
+sudo nano inc/cst.php
+```
+
+Edit here `SQL_*` constants to match to your SQL server settings
+Set `ENTRIES_STORAGE` constant to `MODE_SQL`.
+
+```php
+const SQL_USER = "xxx";
+const SQL_PASSWORD = "xxx";
+const SQL_ADDRESS = "xxx";
+const SQL_DATABASE = "busybird"; // Remains untouched
+const ENTRIES_STORAGE = MODE_SQL;
+
+// Optional: You can customise "admin password", the password used to create accounts !
+const ADMIN_PASSWORD_AUTH = "xxxxxxxx";
+```
+
+Then, push base.sql file into your SQL server
+```bash
+mysql -u {username}
+
+## Into MySQL prompt
+SET autocommit=0; 
+source src/base.sql; 
+COMMIT;
+SET autocommit=1; 
+```
+
+Busy Bird server is ready !

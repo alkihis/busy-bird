@@ -599,7 +599,8 @@ class User {
             if ($link) {
                 $stmt = $link->prepare("INSERT INTO Users (name, token, password, status) VALUES (?, ?, ?, ?)");
 
-                $stmt->bind_param("sssi", $username, $new_token, $hash, DEFAULT_USER_LEVEL);
+                $level = DEFAULT_USER_LEVEL;
+                $stmt->bind_param("sssi", $username, $new_token, $hash, $level);
 
                 if (!$stmt->execute()) {
                     throw new Exception("SQL error when inserting new user");

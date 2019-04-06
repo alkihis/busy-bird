@@ -1,6 +1,8 @@
 import { getModal, initModal, getModalPreloader, showToast } from "../utils/helpers";
 import { Schemas } from "./FormSchema";
 import { Settings } from "../utils/Settings";
+import { PageManager } from "./PageManager";
+import { APIHandler, APIResp } from "./APIHandler";
 
 /**
  * Permet de gérer l'utilisateur connecté, ou la création d'un nouvel utilisateur.
@@ -43,12 +45,9 @@ class _UserManager {
             data.append("username", username);
             data.append('password', password);
 
-            fetch(Settings.api_url + "users/login.json", {body: data, method: 'POST'})
-                .then((response) => {
-                    return response.json();
-                })
-                .then((json) => {
-                    if (json.error_code) throw json.error_code;
+            APIHandler.req("users/login.json", { body: data, method: "POST" }, APIResp.JSON, false)[0]
+                .then(json => {
+                    if (json.error_code) return Promise.reject(json.error_code);
 
                     this.logSomeone(username, json.access_token);
                     // On sauvegarde les schémas envoyés
@@ -98,27 +97,18 @@ class _UserManager {
      * @param password 
      * @param admin_password 
      */
-    public createUser(username: string, password: string, admin_password: string) : Promise<void> {
+    public async createUser(username: string, password: string, admin_password: string) : Promise<void> {
         const data = new FormData();
         data.append("username", username);
         data.append("password", password);
         data.append("admin_password", admin_password);
 
-        return new Promise((resolve, reject) => {
-            fetch(Settings.api_url + "users/create.json", {
-                method: "POST",
-                body: data
-            }).then((response) => {
-                return response.json();
-            }).then((json) => {
-                if (json.error_code) throw json.error_code;
+        const json = await APIHandler.req("users/create.json", { body: data, method: "POST" }, APIResp.JSON, false)[0];
 
-                this.logSomeone(username, json.access_token);
-                resolve();
-            }).catch((error) => {
-                reject(error);
-            });
-        }); 
+        if (json.error_code)
+            throw json.error_code;
+
+        this.logSomeone(username, json.access_token);
     }
 }
 
@@ -212,6 +202,7 @@ export function createNewUser() : void {
             .then(function() {
                 showToast("User has been created successfully.");
                 instance.close();
+                PageManager.reload();
             }).catch(function(error) {
                 console.log(error);
                 if (typeof error === 'number') {

@@ -8,6 +8,7 @@ import { SYNC_FREQUENCY_POSSIBILITIES } from "../main";
 import { APP_NAME } from "./home";
 import { Settings, getAvailableLanguages } from '../utils/Settings';
 import { Logger } from "../utils/logger";
+import { APIHandler, APIResp } from "../base/APIHandler";
 
 let select_for_schema: HTMLSelectElement = null;
 
@@ -498,12 +499,7 @@ interface SubscriptionObject {
  * Obtient les souscriptions disponibles depuis le serveur
  */
 async function getSubscriptions() : Promise<SubscriptionObject> {
-    return fetch(Settings.api_url + "schemas/available.json", {
-        headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
-        method: "GET",
-        mode: "cors"
-    }, 30000)
-        .then(response => response.json());
+    return APIHandler.req("schemas/available.json", {}, APIResp.JSON, true, 30000)[0];
 }
 
 /**
@@ -518,13 +514,7 @@ async function subscribe(ids: string[], fetch_subs: boolean) : Promise<void | Fo
         form_data.append('trim_subs', 'true');
     }
 
-    return fetch(Settings.api_url + "schemas/subscribe.json", {
-        headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
-        method: "POST",
-        mode: "cors",
-        body: form_data
-    }, 60000)
-        .then(response => response.json())
+    return APIHandler.req("schemas/subscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000)[0]
         .then(json => json.error_code ? Promise.reject(json) : json);
 }
 
@@ -540,13 +530,7 @@ async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | 
         form_data.append('trim_subs', 'true');
     }
 
-    return fetch(Settings.api_url + "schemas/unsubscribe.json", {
-        headers: new Headers({"Authorization": "Bearer " + UserManager.token}),
-        method: "POST",
-        mode: "cors",
-        body: form_data
-    }, 60000)
-        .then(response => response.json())
+    return APIHandler.req("schemas/unsubscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000)[0]
         .then(json => json.error_code ? Promise.reject(json) : json);
 }
 
