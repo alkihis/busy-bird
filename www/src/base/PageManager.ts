@@ -109,6 +109,25 @@ class _PageManager {
         const elem = document.querySelector('.sidenav');
         SIDENAV_OBJ = M.Sidenav.init(elem, { outDuration: 0 });
     }
+
+    /**
+     * Itère sur les pages stockées dans le PageManager
+     * @yields Page actuelle jusqu'à la page stockée la plus vieille
+     */
+    public *[Symbol.iterator]() : Iterable<PageSave> {
+        const base = getBase() as unknown as DocumentFragment;
+        // Implémente getById pour faire croire à un document fragment
+        base.getElementById = function(id: string) { return this.querySelector('#' + id); };
+
+        yield { 
+            save: base, 
+            name: document.getElementById('nav_title').innerText,
+            page: this.actual_page,
+            ask: this._should_wait
+        };
+
+        yield* this.pages_holder.reverse();
+    }
     
     /**
      * Met à jour le bouton retour sur PC
@@ -186,7 +205,7 @@ class _PageManager {
             page = page as AppPage;
 
             this.actual_page = page;
-            this._should_wait = page.ask_change;
+            this._should_wait = !!page.ask_change;
             this.lock_return_button = false;
     
             // On met le titre de la page dans la barre de navigation
