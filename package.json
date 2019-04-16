@@ -38,6 +38,7 @@
     "es6-promise-plugin": "4.2.2",
     "geolib": "^2.0.24",
     "localforage": "^1.7.3",
+    "phonegap": "^8.2.2",
     "phonegap-plugin-media-recorder": "1.1.0",
     "phonegap-plugin-media-stream": "1.2.1",
     "phonegap-plugin-mobile-accessibility": "https://github.com/phonegap/phonegap-mobile-accessibility.git",

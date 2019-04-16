@@ -11,12 +11,19 @@ import { Settings } from "../utils/Settings";
 export const APP_NAME = "Busy Bird";
 
 export async function initHomePage(base: HTMLElement) {
+    let app_version_text = String(APP_VERSION);
+
+    if (typeof APP_VERSION === 'number' && app_version_text.indexOf('.') === -1) {
+        // Il n'y a pas de .
+        app_version_text = APP_VERSION.toFixed(1);
+    }
+
     base.innerHTML = `
     <div class="flex-center-aligner home-top-element">
         <img id="__home_logo_clicker" src="img/logo.png" class="home-logo">
     </div>
     <div class="container relative-container">
-        <span class="very-tiny-text version-text">Version ${APP_VERSION}</span>
+        <span class="very-tiny-text version-text">Version ${app_version_text}</span>
         <p class="flow-text center">
             Welcome to ${APP_NAME}, the application that makes specie tracking easy !
         </p>
@@ -138,7 +145,7 @@ function createTestHome() : void {
             timeout_click = setTimeout(function() {
                 allow_to_click_to_terrain = true;
 
-                setTimeout(function() {
+                setTimeout(() => {
                     allow_to_click_to_terrain = false;
                 }, 20000);
             }, 1500); 

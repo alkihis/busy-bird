@@ -1,14 +1,14 @@
-import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance } from "../utils/helpers";
+import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance, displayErrorMessage } from "../utils/helpers";
 import { initFormPage } from "../pages/form";
 import { initSettingsPage } from "../pages/settings_page";
 import { initSavedForm } from "../pages/saved_forms";
 import { initHomePage, APP_NAME } from "../pages/home";
 import { Logger } from "../utils/logger";
-import { MAX_SLEEPING_PAGES, DEFAULT_PAGE } from "../main";
+import { MAX_SLEEPING_PAGES, DEFAULT_PAGE, APP_DEBUG_MODE } from "../main";
 import { loadCredits } from "../pages/credits";
 
-export let SIDENAV_OBJ: M.Sidenav = null;
-const ANIMATIONS_ON = true;
+const NAV_TITLE_ID = 'nav_title';
+const NAV_SIDE_ID = "__sidenav_base_menu";
 
 interface AppPage {
     not_sidenav_close?: boolean;
@@ -59,6 +59,183 @@ export const AppPages: { [pageId: string]: AppPage } = {
 };
 
 /**
+ * Handle title bar and sidenav element
+ *
+ * @class _Navigation
+ */
+class _Navigation {
+    protected text: HTMLElement;
+    protected sidenav: HTMLElement;
+    protected navbar: HTMLElement;
+    protected instance: M.Sidenav;
+
+    constructor() {
+        this.text = document.getElementById(NAV_TITLE_ID);
+        this.navbar = document.getElementsByTagName('nav')[0];
+
+        this.sidenav = document.getElementById(NAV_SIDE_ID);
+        this.init();
+    }
+
+    get color() {
+        if (this.sidenav.style.backgroundColor) {
+            return this.sidenav.style.backgroundColor;
+        }
+
+        return "#98b3c3";
+    }
+    
+    set color(color: string) {
+        this.sidenav.style.backgroundColor = color;
+    }
+
+    get title() {
+        return this.text.textContent;
+    }
+
+    set title(text: string) {
+        this.text.innerText = text;
+    }
+
+    /**
+     * Init sidenav
+     *
+     * @memberof _Navigation
+     */
+    init() {
+        try {
+            this.destroy();
+        } catch (e) { }
+
+        this.instance = M.Sidenav.init(this.sidenav, { outDuration: 0 });
+
+        // Création des pages : Génération du sidenav
+        this.sidenav.innerHTML = "";
+
+        // Ajout de la bannière
+        this.sidenav.insertAdjacentHTML('beforeend', `<li>
+            <div class="user-view">
+                <div class="background">
+                <img src="img/sidenav_background.jpg">
+                </div>
+                <a href="#!"><img class="circle" src="img/logo.png"></a>
+                <a href="#!"><span class="white-text email">${APP_NAME}</span></a>
+            </div>
+        </li>`);
+
+        // Ajoute chaque page au menu
+        for (const page in AppPages) {
+            this.add(page, AppPages[page]);
+        }
+    }
+
+    /**
+     * Add a page in sidenav
+     *
+     * @param {string} name Page ID
+     * @param {AppPage} page Page AppPage element
+     * @param {number} [place=-1] Where the new page should be placed. 
+     * -1 if it should be in the last position.
+     * @memberof _Navigation
+     */
+    add(name: string, page: AppPage, place: number = -1) {
+        AppPages[name] = page;
+
+        const li = document.createElement('li');
+        li.id = "__sidenav_base_element_" + name;
+        li.onclick = () => {
+            PageManager.push(page);
+        };
+
+        const link = document.createElement('a');
+        link.href = "#!";
+        link.innerText = page.name;
+        link.className = "waves-effect";
+        li.appendChild(link);
+
+        let node_interesting: Node = null;
+
+        if (place >= 0) {
+            for (const child of this.sidenav.querySelectorAll('[id^="__sidenav_base_element_"]')) {
+                node_interesting = child;
+
+                place--;
+                if (place < 0) {
+                    break;
+                }
+            }
+        }
+        
+        if (place < 0) {
+            this.sidenav.appendChild(li);
+        }
+        else {
+            this.sidenav.insertBefore(li, node_interesting);
+        }
+    }
+
+    /**
+     * Remove page ID "name" from the sidenav
+     *
+     * @param {string} name
+     * @memberof _Navigation
+     */
+    remove(name: string) {
+        const ele = document.getElementById('__sidenav_base_element_' + name);
+
+        if (ele) {
+            ele.remove();
+        }
+        else {
+            throw new ReferenceError("Page not found");
+        }
+    }
+
+    /**
+     * Check if page ID "name" is in sidenav
+     *
+     * @param {string} name
+     * @returns {boolean}
+     * @memberof _Navigation
+     */
+    has(name: string) : boolean {
+        return document.getElementById('__sidenav_base_element_' + name) !== null;
+    }
+
+    /**
+     * Open sidenav
+     *
+     * @memberof _Navigation
+     */
+    open() {
+        if (this.instance)
+            this.instance.open();
+    }
+
+    /**
+     * Close sidenav
+     *
+     * @memberof _Navigation
+     */
+    close() {
+        if (this.instance)
+            this.instance.close();
+    }
+
+    /**
+     * Close sidenav and destroy the instance
+     *
+     * @memberof _Navigation
+     */
+    destroy() {
+        if (this.instance)
+            this.instance.destroy();
+    }
+}
+
+export const Navigation = new _Navigation;
+
+/**
  * Gère les pages de l'application.
  * Utilisée pour gérer le système de pile de pages.
  * Pour pousser une nouvelle page sur les autres, utilisez push().
@@ -72,43 +249,6 @@ class _PageManager {
     public lock_return_button: boolean = false;
 
     protected pages_holder: PageSave[] = [];
-
-    constructor() {
-        // Génération du sidenav
-        const sidenav = document.getElementById('__sidenav_base_menu');
-
-        // Ajout de la bannière
-        sidenav.insertAdjacentHTML('beforeend', `<li>
-            <div class="user-view">
-                <div class="background">
-                <img src="img/sidenav_background.jpg">
-                </div>
-                <a href="#!"><img class="circle" src="img/logo.png"></a>
-                <a href="#!"><span class="white-text email">${APP_NAME}</span></a>
-            </div>
-        </li>`);
-
-        // Ajoute chaque page au menu
-        for (const page in AppPages) {
-            const li = document.createElement('li');
-            li.id = "__sidenav_base_element_" + page;
-            li.onclick = () => {
-                PageManager.push(AppPages[page]);
-            };
-
-            const link = document.createElement('a');
-            link.href = "#!";
-            link.innerText = AppPages[page].name;
-            link.className = "waves-effect";
-            li.appendChild(link);
-
-            sidenav.appendChild(li);
-        }
-        
-        // Initialise le sidenav
-        const elem = document.querySelector('.sidenav');
-        SIDENAV_OBJ = M.Sidenav.init(elem, { outDuration: 0 });
-    }
     
     /**
      * Met à jour le bouton retour sur PC
@@ -130,7 +270,7 @@ class _PageManager {
      * Recharge la page actuelle. (la vide et réexécute le callback configuré dans la AppPageObj)
      */
     public reload(additionnals?: any, reset_scroll = false) {
-        this.change(this.actual_page, false, document.getElementById('nav_title').innerText, additionnals, reset_scroll);
+        this.change(this.actual_page, false, Navigation.title, additionnals, reset_scroll);
     }
 
     /**
@@ -144,24 +284,17 @@ class _PageManager {
     public async change(page: AppPage, delete_paused: boolean = true, force_name?: string | null, additionnals?: any, reset_scroll = true) : Promise<any> {
         // Tente de charger la page
         try {
-            let pagename: string = "";
-            if (typeof page === 'string') {
-                // AppPageName
-                if (!this.exists(page)) {
-                    throw new ReferenceError("Page does not exists");
+            let pagename: string = undefined;
+            // Recherche de la clé correspondante
+            for (const k in AppPages) {
+                if (AppPages[k] === page) {
+                    pagename = k;
+                    break;
                 }
-                
-                pagename = page;
-                page = AppPages[page];
             }
-            else {
-                // Recherche de la clé correspondante
-                for (const k in AppPages) {
-                    if (AppPages[k] === page) {
-                        pagename = k;
-                        break;
-                    }
-                }
+
+            if (typeof pagename === 'undefined') {
+                throw new ReferenceError("Selected page does not exists");
             }
     
             // Si on veut supprimer les pages en attente, on vide le tableau
@@ -171,7 +304,7 @@ class _PageManager {
 
             // Si on a demandé à fermer le sidenav, on le ferme
             if (!page.not_sidenav_close) {
-                SIDENAV_OBJ.close();
+                Navigation.close();
             }
     
             // On écrit le preloader dans la base et on change l'historique
@@ -190,7 +323,7 @@ class _PageManager {
             this.lock_return_button = false;
     
             // On met le titre de la page dans la barre de navigation
-            document.getElementById('nav_title').innerText = force_name || page.name;
+            Navigation.title = force_name || page.name;
     
             // On appelle la fonction de création de la page
             const result = page.callback(base, additionnals);
@@ -203,15 +336,38 @@ class _PageManager {
             this.updateReturnBtn();
     
             if (result instanceof Promise) {
-                return result;
+                return result.then(r => {
+                    if (APP_DEBUG_MODE && base.innerHTML === getPreloader("Loading")) {
+                        // Si rien n'a bougé
+                        this.displayInactivePage(base);
+                    }
+
+                    return r;
+                });
             }
             else {
+                if (APP_DEBUG_MODE && base.innerHTML === getPreloader("Loading")) {
+                    // Si rien n'a bougé
+                    this.displayInactivePage(base);
+                }
+                
                 return Promise.resolve(result);
             }
         } catch (e) {
             Logger.error("Error while changing pages", e);
             return Promise.reject(e);
         }
+    }
+
+    /**
+     * Display a message showing that current page hasn't changed any HTML.
+     *
+     * @protected
+     * @param {HTMLElement} base
+     * @memberof _PageManager
+     */
+    protected displayInactivePage(base: HTMLElement) {
+        base.innerHTML = displayErrorMessage("This page does not work", "Any HTML has been changed by callback() function.");
     }
 
     /**
@@ -242,7 +398,7 @@ class _PageManager {
 
         // Si on a demandé à fermer le sidenav, on le ferme
         if (!page.not_sidenav_close) {
-            SIDENAV_OBJ.close();
+            Navigation.close();
         }
 
         const new_base = document.createElement('div');
@@ -284,7 +440,7 @@ class _PageManager {
         this.pages_holder.push({
             save, 
             ask: this._should_wait,
-            name: document.getElementById('nav_title').innerText,
+            name: Navigation.title,
             page: this.actual_page
         });
 
@@ -331,7 +487,7 @@ class _PageManager {
         document.getElementsByTagName('main')[0].appendChild(new_main);
         
         // Remet le bon titre
-        document.getElementById('nav_title').innerText = last_page.name;
+        Navigation.title = last_page.name;
         this.actual_page = last_page.page;
         this._should_wait = last_page.ask;
         this.lock_return_button = false;

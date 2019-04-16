@@ -220,7 +220,7 @@ export async function initSavedForm(base: HTMLElement) {
     const placeholder = document.createElement('ul');
     placeholder.classList.add('collection', 'no-margin-top');
 
-    Schemas.onReady()
+    return Schemas.onReady()
         .then(() => {
             return FILE_HELPER.entriesOf(ENTRIES_DIR) as Promise<FileEntry[]>;
         })

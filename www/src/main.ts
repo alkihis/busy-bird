@@ -1,4 +1,4 @@
-import { PageManager, SIDENAV_OBJ, AppPages } from './base/PageManager';
+import { PageManager, AppPages, Navigation } from './base/PageManager';
 import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder, makeListenedObject } from "./utils/helpers";
 import { Logger } from "./utils/Logger";
 import { newModalRecord } from "./utils/audio_listener";
@@ -12,7 +12,8 @@ import { Settings } from './utils/Settings';
 import { ENTRIES_DIR, METADATA_DIR } from './base/FormSaves';
 
 // Constantes de l'application
-export const APP_VERSION = 0.8;
+export const APP_VERSION = 1.0;
+export const APP_DEBUG_MODE = true;
 const FIXED_NAVBAR = true; /** Active la barre de navigation fixe */
 export const MAX_LIEUX_AFFICHES = 20; /** Maximum de lieux affichés dans le modal de sélection de lieu */
 export const ENABLE_FORM_DOWNLOAD = true; /** Active le téléchargement automatique des schémas de formulaire au démarrage */
@@ -132,10 +133,15 @@ async function initApp() {
     document.addEventListener("backbutton", function() {
         PageManager.back();
     }, false);
+    document.getElementById('__nav_back_button')!.addEventListener('click', function() {
+        document.dispatchEvent(new Event("backbutton"));
+    });
 
     // app.initialize();
     // Initialise le mode de debug
-    initDebug();
+    if (APP_DEBUG_MODE)
+        initDebug();
+        
     initModal();
 
     if (FIXED_NAVBAR) {
@@ -178,7 +184,7 @@ function appWrapper() {
 
         // Bloque le sidenav pour empêcher de naviguer
         try {
-            SIDENAV_OBJ.destroy();
+            Navigation.destroy();
         } catch (e) {}
 
         getBase().innerHTML = displayErrorMessage("Unable to initialize application", "Error: " + err.stack);
@@ -216,7 +222,8 @@ function initDebug() {
         prompt,
         createNewUser,
         UserManager,
-        SyncManager
+        SyncManager,
+        Navigation
     };
 }
 
