@@ -217,10 +217,7 @@ class FormSchemas {
         // On tente d'actualiser les formulaires disponibles
         // On attend au max timeout secondes
         try {
-            const json = await APIHandler.req("schemas/subscribed.json", {}, APIResp.JSON, true, timeout)[0];
-
-            if (json.error_code)
-                throw json.error_code;
+            const json = await APIHandler.req("schemas/subscribed.json", {}, APIResp.JSON, true, timeout);
 
             this.loadFormSchemaInClass(json, true);
         }
@@ -230,7 +227,7 @@ class FormSchemas {
             if (reject_on_fetch_fail) {
                 return Promise.reject(error);
             }
-            else if (typeof error === 'number' && error === 8) {
+            else if (typeof error.error_code === 'number' && error.error_code === 8) {
                 // L'utilisateur n'a pas pu être authentifié
                 showToast("Server rejected authentification. Check your credentials.");
             }

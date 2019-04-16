@@ -2,9 +2,7 @@ import { FormSave } from "./FormSchema";
 import { Logger } from "../utils/logger";
 import localforage from 'localforage';
 import { FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
-import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast, getBase, errorMessage } from "../utils/helpers";
-import { UserManager } from "./UserManager";
-import fetch from '../utils/fetch_timeout';
+import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast, getBase } from "../utils/helpers";
 import { BackgroundSync, Settings } from "../utils/Settings";
 import { FileHelperReadMode, EntryObject } from "./FileHelper";
 import { ENTRIES_DIR, METADATA_DIR } from "./FormSaves";
@@ -234,16 +232,15 @@ class _SyncManager {
                 MAX_TIMEOUT_FOR_FORM
             );
 
-            if (req[1])
-                this.running_fetchs.push(req[1]);
+            if (APIHandler.getControl(req))
+                this.running_fetchs.push(APIHandler.getControl(req));
 
-            json = await req[0];
+            json = await req;
         } catch (error) {
-            throw {code: "json_send", error};
-        }
+            if (error.error_code)
+                throw {code: "json_treatement", error_code: error.error_code, "message": error.message};
 
-        if (json.error_code) {
-            throw {code: "json_treatement", error_code: json.error_code, "message": json.message};
+            throw {code: "json_send", error};
         }
             
         // On peut envoyer les métadonnées du json !
@@ -297,17 +294,17 @@ class _SyncManager {
                     );
 
                     // Ajoute le controlleur abort dans la liste
-                    if (req[1])
-                        this.running_fetchs.push(req[1]);
+                    if (APIHandler.getControl(req))
+                        this.running_fetchs.push(APIHandler.getControl(req));
 
-                    const json = await req[0];
-                    if (json.error_code) {
-                        throw {code: "metadata_treatement", error_code: json.error_code, "message": json.message};
-                    }
+                    await req; // On attend que le fichier s'envoie
 
                     // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
                 } catch (error) {
                     showToast("Impossible d'envoyer " + basename + ".");
+                    if (error.error_code)
+                        throw {code: "metadata_treatement", error_code: error.error_code, "message": error.message};
+
                     throw {code: "metadata_send", error};
                 }
             } // end for in
@@ -510,7 +507,7 @@ class _SyncManager {
                             }
                         })(reason.code);
 
-                        const second_cause = reason.error_code ? errorMessage(reason.error_code) + "." : "";
+                        const second_cause = reason.error_code ? APIHandler.errMessage(reason.error_code) + "." : "";
 
                         // Modifie le texte du modal
                         modal.innerHTML = `
@@ -602,7 +599,7 @@ class _SyncManager {
                         }
                     })(reason.code);
 
-                    const second_cause = reason.error_code ? errorMessage(reason.error_code) + "." : "";
+                    const second_cause = reason.error_code ? APIHandler.errMessage(reason.error_code) + "." : "";
                     // Modifie le texte du modal
                     showToast("Unable to synchronize: " + cause + second_cause);
                 }

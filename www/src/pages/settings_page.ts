@@ -1,6 +1,6 @@
 import { UserManager, loginUser, createNewUser } from "../base/UserManager";
 import { Schemas, FormSchema } from "../base/FormSchema";
-import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML, initBottomModal, formattedError, errorMessage } from "../utils/helpers";
+import { askModal, initModal, getModalPreloader, informalBottomModal, showToast, getModal, convertHTMLToElement, convertMinutesToText, escapeHTML, initBottomModal } from "../utils/helpers";
 import { SyncManager } from "../base/SyncManager";
 import { PageManager } from "../base/PageManager";
 import fetch from '../utils/fetch_timeout';
@@ -26,8 +26,8 @@ function formActualisationModal() : void {
             PageManager.reload();
         })
         .catch(e => {
-            if (typeof e === 'number' && e === 8) {
-                showToast("Unable to update form models. " + errorMessage(e) + ".");
+            if (e && typeof e.error_code === 'number' && e.error_code === 8) {
+                showToast("Unable to update form models. " + APIHandler.errMessage(e.error_code) + ".");
             }
             else {
                 showToast("Unable to update form models.");
@@ -499,7 +499,7 @@ interface SubscriptionObject {
  * Obtient les souscriptions disponibles depuis le serveur
  */
 async function getSubscriptions() : Promise<SubscriptionObject> {
-    return APIHandler.req("schemas/available.json", {}, APIResp.JSON, true, 30000)[0];
+    return APIHandler.req("schemas/available.json", {}, APIResp.JSON, true, 30000);
 }
 
 /**
@@ -514,8 +514,7 @@ async function subscribe(ids: string[], fetch_subs: boolean) : Promise<void | Fo
         form_data.append('trim_subs', 'true');
     }
 
-    return APIHandler.req("schemas/subscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000)[0]
-        .then(json => json.error_code ? Promise.reject(json) : json);
+    return APIHandler.req("schemas/subscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000);
 }
 
 /**
@@ -530,8 +529,7 @@ async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | 
         form_data.append('trim_subs', 'true');
     }
 
-    return APIHandler.req("schemas/unsubscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000)[0]
-        .then(json => json.error_code ? Promise.reject(json) : json);
+    return APIHandler.req("schemas/unsubscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000);
 }
 
 /**
@@ -558,10 +556,6 @@ async function subscriptionsModal() : Promise<void> {
     let subscriptions: SubscriptionObject;
     try {
         subscriptions = await getSubscriptions();
-
-        if (subscriptions.error_code) {
-            throw subscriptions;
-        }
     } catch (e) {
         let str = `
         <div class="modal-content">
@@ -569,7 +563,7 @@ async function subscriptionsModal() : Promise<void> {
         `;
 
         if (e.error_code) {
-            str += formattedError(e, "Unable to get subscriptions.");
+            str += APIHandler.errFormat(e, "Unable to get subscriptions.");
         }
         else {
             str += '<p class="flow-text">Unable to get subscriptions.</p>';

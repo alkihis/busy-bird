@@ -40,29 +40,20 @@ class _UserManager {
      * @param password 
      */
     public login(username: string, password: string) : Promise<void> {
-        return new Promise((resolve, reject) => {
-            let data = new FormData();
-            data.append("username", username);
-            data.append('password', password);
+        let data = new FormData();
+        data.append("username", username);
+        data.append('password', password);
 
-            APIHandler.req("users/login.json", { body: data, method: "POST" }, APIResp.JSON, false)[0]
-                .then(json => {
-                    if (json.error_code) return Promise.reject(json.error_code);
+        return APIHandler.req("users/login.json", { body: data, method: "POST" }, APIResp.JSON, false)
+            .then(json => {
+                this.logSomeone(username, json.access_token);
+                // On sauvegarde les schémas envoyés
+                if (Array.isArray(json.subscriptions)) {
+                    json.subscriptions = {};
+                }
 
-                    this.logSomeone(username, json.access_token);
-                    // On sauvegarde les schémas envoyés
-                    if (Array.isArray(json.subscriptions)) {
-                        json.subscriptions = {};
-                    }
-
-                    Schemas.schemas = json.subscriptions;
-                    
-                    resolve();
-                })
-                .catch((error) => {
-                    reject(error);
-                });
-        }); 
+                Schemas.schemas = json.subscriptions;
+            });
     }
 
     /**
@@ -103,10 +94,7 @@ class _UserManager {
         data.append("password", password);
         data.append("admin_password", admin_password);
 
-        const json = await APIHandler.req("users/create.json", { body: data, method: "POST" }, APIResp.JSON, false)[0];
-
-        if (json.error_code)
-            throw json.error_code;
+        const json = await APIHandler.req("users/create.json", { body: data, method: "POST" }, APIResp.JSON, false);
 
         this.logSomeone(username, json.access_token);
     }
@@ -205,16 +193,8 @@ export function createNewUser() : void {
                 PageManager.reload();
             }).catch(function(error) {
                 console.log(error);
-                if (typeof error === 'number') {
-                    if (error === 6) {
-                        showToast("Administrator password is invalid.");
-                    }
-                    else if (error === 12) {
-                        showToast("This user already exists.");
-                    }
-                    else {
-                        showToast("An unknown error occurred.");
-                    }
+                if (error && typeof error.error_code === 'number') {
+                    showToast(APIHandler.errMessage(error.error_code));
                 }
 
                 modal.innerHTML = "";
@@ -291,11 +271,11 @@ export function loginUser() : Promise<void> {
                     // RESOLUTION DE LA PROMESSE
                     resolve();
                 }).catch(function(error) {
-                    if (typeof error === 'number') {
-                        if (error === 10) {
+                    if (error && typeof error.error_code === 'number') {
+                        if (error.error_code === 10) {
                             showToast("This user does not exists.");
                         }
-                        else if (error === 11) {
+                        else if (error.error_code === 11) {
                             showToast("Password is invalid.");
                         }
                         else {
