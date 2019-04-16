@@ -23,6 +23,15 @@ class EndPointManager {
         15 => [403, "Token mismatch"],
         16 => [403, "User does not exists"],
         17 => [403, "You don't have the right to do that"],
+        18 => [400, "Unknown command"],
+        19 => [400, "Media ID does not exists"],
+        20 => [400, "A part cant be bigger than total file size"],
+        21 => [400, "Invalid segment index"],
+        22 => [400, "Part is too large"],
+        23 => [400, "This media ID has been initialized by another user"],
+        24 => [400, "One part is missing"],
+        25 => [400, "Size mismatch"],
+        26 => [400, "Media ID is expired"],
     ];
 
     public function __construct() {

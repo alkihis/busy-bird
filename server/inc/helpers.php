@@ -419,6 +419,30 @@ function updateUser(User $user) : void {
     }
 }
 
+function deleteParts(string $media_id) {
+    $path = FORM_DATA_FILE_PATH . "__parts__/$media_id";
+
+    if (file_exists($path)) {
+        rrmdir($path);
+    }
+}
+
+function rrmdir($dir) {
+    if (is_dir($dir)) {
+        $objects = scandir($dir);
+
+        foreach ($objects as $object) {
+            if ($object != "." && $object != "..") {
+                if (filetype($dir . "/" . $object) == "dir") rrmdir($dir . "/" . $object);
+                else unlink($dir . "/" . $object);
+            }
+        }
+
+        reset($objects);
+        rmdir($dir);
+    }
+} 
+
 function connectBD() : ?mysqli {
     $sql = mysqli_connect(SQL_ADDRESS, SQL_USER, SQL_PASSWORD, SQL_DATABASE);
     if (mysqli_connect_errno()) {

@@ -263,43 +263,9 @@ class _SyncManager {
 
                 const file = base_path + data.metadata[metadata];
                 const basename = data.metadata[metadata];
-
-                // Envoi de tous les fichiers associés un à un
-                // Pour des raisons de charge réseau, on envoie les fichiers un par un.
-                let base64: string;
-                try {
-                    base64 = await FILE_HELPER.read(file, FileHelperReadMode.url) as string;
-                } catch (e) {
-                    // Le fichier n'existe pas en local. On passe.
-                    continue;
-                }
-
-                // On récupère la partie base64 qui nous intéresse
-                base64 = base64.split(',')[1];
-
-                // On construit le formdata à envoyer
-                const md = new FormData();
-                md.append("id", id);
-                md.append("type", data.type);
-                md.append("filename", basename);
-                md.append("data", base64);
                 
                 try {
-                    const req = APIHandler.req(
-                        "forms/metadata_send.json", 
-                        { method: "POST", body: md }, 
-                        APIResp.JSON, 
-                        true, 
-                        MAX_TIMEOUT_FOR_METADATA
-                    );
-
-                    // Ajoute le controlleur abort dans la liste
-                    if (APIHandler.getControl(req))
-                        this.running_fetchs.push(APIHandler.getControl(req));
-
-                    await req; // On attend que le fichier s'envoie
-
-                    // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
+                    await APIHandler.sendFile(file, id, data.type, "basic", this.running_fetchs);
                 } catch (error) {
                     showToast("Impossible d'envoyer " + basename + ".");
                     if (error.error_code)

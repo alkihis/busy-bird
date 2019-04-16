@@ -1,4 +1,4 @@
-import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance, displayErrorMessage } from "../utils/helpers";
+import { getBase, getPreloader, getModalInstance, askModal, getBottomModalInstance, displayErrorMessage, convertHTMLToElement } from "../utils/helpers";
 import { initFormPage } from "../pages/form";
 import { initSettingsPage } from "../pages/settings_page";
 import { initSavedForm } from "../pages/saved_forms";
@@ -14,6 +14,7 @@ interface AppPage {
     not_sidenav_close?: boolean;
     callback: (base: HTMLElement, additionnals?: any) => any;
     name: string;
+    icon?: string;
     ask_change?: boolean;
     reload_on_restore: boolean | Function;
 }
@@ -33,28 +34,33 @@ export const AppPages: { [pageId: string]: AppPage } = {
     home: {
         name: "Dashboard",
         callback: initHomePage,
-        reload_on_restore: true
+        reload_on_restore: true,
+        icon: "home"
     },
     form: {
         name: "New entry",
         callback: initFormPage,
         ask_change: true,
-        reload_on_restore: false
+        reload_on_restore: false,
+        icon: "add"
     },
     saved: {
         name: "Entries",
         callback: initSavedForm,
-        reload_on_restore: true
+        reload_on_restore: true,
+        icon: "file_copy"
     },
     settings: {
         name: "Settings",
         callback: initSettingsPage,
-        reload_on_restore: false
+        reload_on_restore: false,
+        icon: "settings"
     },
     credits: {
         name: "About",
         callback: loadCredits,
-        reload_on_restore: false
+        reload_on_restore: false,
+        icon: "info"
     }
 };
 
@@ -69,6 +75,8 @@ class _Navigation {
     protected navbar: HTMLElement;
     protected instance: M.Sidenav;
 
+    protected readonly page_order: string[] = ["home", "", "form", "saved", "", "settings", "credits"];
+
     constructor() {
         this.text = document.getElementById(NAV_TITLE_ID);
         this.navbar = document.getElementsByTagName('nav')[0];
@@ -77,6 +85,9 @@ class _Navigation {
         this.init();
     }
 
+    /**
+     * Get navigation bar color
+     */
     get color() {
         if (this.sidenav.style.backgroundColor) {
             return this.sidenav.style.backgroundColor;
@@ -85,14 +96,29 @@ class _Navigation {
         return "#98b3c3";
     }
     
+    /**
+     * Change navigation bar color
+     *
+     * @memberof _Navigation
+     */
     set color(color: string) {
         this.sidenav.style.backgroundColor = color;
     }
 
+    /**
+     * Get navigation bar text
+     *
+     * @memberof _Navigation
+     */
     get title() {
         return this.text.textContent;
     }
 
+    /**
+     * Change navigation bar text content
+     *
+     * @memberof _Navigation
+     */
     set title(text: string) {
         this.text.innerText = text;
     }
@@ -124,8 +150,13 @@ class _Navigation {
         </li>`);
 
         // Ajoute chaque page au menu
-        for (const page in AppPages) {
-            this.add(page, AppPages[page]);
+        for (const page of this.page_order) {
+            if (page === "") {
+                this.addDivider();
+            }
+            else if (page in AppPages) {
+                this.add(page, AppPages[page]);
+            }   
         }
     }
 
@@ -149,9 +180,53 @@ class _Navigation {
 
         const link = document.createElement('a');
         link.href = "#!";
-        link.innerText = page.name;
+
+        if (page.icon) {
+            const icon = document.createElement('i');
+            icon.className = "material-icons black-text left";
+            icon.textContent = page.icon;
+
+            link.appendChild(icon);
+            link.appendChild(document.createTextNode(page.name));
+        }
+        else {
+            link.innerText = page.name;
+        }
+        
         link.className = "waves-effect";
         li.appendChild(link);
+
+        let node_interesting: Node = null;
+
+        if (place >= 0) {
+            for (const child of this.sidenav.querySelectorAll('[id^="__sidenav_base_element_"]')) {
+                node_interesting = child;
+
+                place--;
+                if (place < 0) {
+                    break;
+                }
+            }
+        }
+        
+        if (place < 0) {
+            this.sidenav.appendChild(li);
+        }
+        else {
+            this.sidenav.insertBefore(li, node_interesting);
+        }
+    }
+
+    /**
+     * Add a divider to sidenav
+     * Divider does *NOT* count as an element in "place" parameter
+     *
+     * @memberof _Navigation
+     */
+    addDivider(place: number = -1) {
+        const li = convertHTMLToElement(`<li>
+            <div class="divider" style="margin-bottom: .5em"></div>
+        </li>`);
 
         let node_interesting: Node = null;
 
@@ -250,7 +325,7 @@ class _PageManager {
 
     protected pages_holder: PageSave[] = [];
 
-    /*
+    /**
      * Itère sur les pages stockées dans le PageManager
      * @yields Page actuelle jusqu'à la page stockée la plus vieille
      */

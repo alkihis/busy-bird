@@ -1,6 +1,8 @@
 import { Settings } from "../utils/Settings";
 import { UserManager } from "./UserManager";
-import { sleep } from "../utils/helpers";
+import { sleep, showToast } from "../utils/helpers";
+import { FILE_HELPER, MAX_TIMEOUT_FOR_METADATA } from "../main";
+import { FileHelperReadMode } from "./FileHelper";
 
 export enum APIResp {
     JSON, text
@@ -118,6 +120,161 @@ class _APIHandler {
                 return "You're not allowed to do that";
             default:
                 return "Unknown error";
+        }
+    }
+
+    protected async sendFileBasic(file: string, form_id: string, form_type: string, running_fetchs: AbortController[]) {
+        const basename = file.split('/').pop();
+
+        let base64: string;
+        try {
+            base64 = await FILE_HELPER.read(file, FileHelperReadMode.url) as string;
+        } catch (e) {
+            // Le fichier n'existe pas en local. On passe.
+            return;
+        }
+
+        // On récupère la partie base64 qui nous intéresse
+        base64 = base64.split(',')[1];
+
+        // On construit le formdata à envoyer
+        const md = new FormData();
+        md.append("id", form_id);
+        md.append("type", form_type);
+        md.append("filename", basename);
+        md.append("data", base64);
+        
+        const req = APIHandler.req(
+            "forms/metadata_send.json", 
+            { method: "POST", body: md }, 
+            APIResp.JSON, 
+            true, 
+            MAX_TIMEOUT_FOR_METADATA
+        );
+
+        // Ajoute le controlleur abort dans la liste
+        if (this.getControl(req))
+            running_fetchs.push(APIHandler.getControl(req));
+
+        await req; // On attend que le fichier s'envoie
+
+        // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
+    }
+
+    protected async sendFileChunked(file: string, form_id: string, form_type: string, running_fetchs: AbortController[]) {
+        const basename = file.split('/').pop();
+
+        // On a besoin de passer par des chunks, on va plutôt utiliser fileReader personnellement
+        let file_entry: File; 
+
+        try {
+            file_entry = await FILE_HELPER.read(file, FileHelperReadMode.fileobj) as File;
+        } catch (e) {
+            // Le fichier n'existe pas en local. On passe.
+            return;
+        }
+
+        const file_size = file_entry.size;
+        let offset = 0;
+
+        function nextChunk(file: File, size = 1024 * 1024) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader;
+                const current_chunk = file.slice(offset, offset + size);
+
+                function onload() {
+                    offset += size;
+
+                    // On récupère la partie base64 qui nous intéresse
+                    const base64 = (r.result as string).split(',')[1];
+                    resolve(base64);
+                }
+
+                r.onload = onload;
+                r.onerror = reject;
+                r.readAsDataURL(current_chunk);
+            }) as Promise<string>;
+        }
+
+        //// COMMAND INIT
+        // On construit le formdata à envoyer
+        const md = new FormData();
+        md.append("id", form_id);
+        md.append("type", form_type);
+        md.append("filename", basename);
+        md.append("size", file_size.toString());
+        md.append("command", "INIT");
+        
+        const req = this.req(
+            "forms/metadata_chunk_send.json", 
+            { method: "POST", body: md }, 
+            APIResp.JSON, 
+            true, 
+            MAX_TIMEOUT_FOR_METADATA
+        );
+
+        // Ajoute le controlleur abort dans la liste
+        if (this.getControl(req))
+            running_fetchs.push(this.getControl(req));
+
+        const response = await req; // On attend que la requête renvoie quelque chose
+
+        let media_id: string = response.media_id_str;
+
+        let segment_index = 0;
+        while (offset < file_size) {
+            //// COMMAND APPEND
+            // On construit le formdata à envoyer
+            const md = new FormData();
+            md.append("media_id", media_id);
+            md.append("segment_index", segment_index.toString());
+            md.append("data", await nextChunk(file_entry));
+            md.append("command", "APPEND");
+            
+            const req = this.req(
+                "forms/metadata_chunk_send.json", 
+                { method: "POST", body: md }, 
+                APIResp.JSON, 
+                true, 
+                MAX_TIMEOUT_FOR_METADATA
+            );
+
+            // Ajoute le controlleur abort dans la liste
+            if (this.getControl(req))
+                running_fetchs.push(this.getControl(req));
+
+            await req; // On attend que la requête soit finie
+
+            segment_index++;
+        }
+
+        //// COMMAND FINALIZE
+        // On construit le formdata à envoyer
+        const md_fini = new FormData();
+        md_fini.append("media_id", media_id);
+        md_fini.append("command", "FINALIZE");
+        
+        const req2 = this.req(
+            "forms/metadata_chunk_send.json", 
+            { method: "POST", body: md }, 
+            APIResp.JSON, 
+            true, 
+            MAX_TIMEOUT_FOR_METADATA
+        );
+
+        // Ajoute le controlleur abort dans la liste
+        if (this.getControl(req2))
+            running_fetchs.push(this.getControl(req2));
+
+        await req2; // On attend que la requête renvoie quelque chose
+    }
+
+    sendFile(path: string, form_id: string, form_type: string, mode: string = "basic", running_fetchs: AbortController[] = []) {
+        if (mode === "chunked") {
+            return this.sendFileChunked(path, form_id, form_type, running_fetchs);
+        }
+        else {
+            return this.sendFileBasic(path, form_id, form_type, running_fetchs);
         }
     }
 }
