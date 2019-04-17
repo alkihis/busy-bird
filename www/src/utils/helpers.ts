@@ -678,16 +678,16 @@ export function takeAPicture() : Promise<string> {
  * Returns a PATH to a recorded video (not a base64 string !)
  *
  * @export
- * @returns {Promise<string>}
+ * @returns {Promise<MediaFile>}
  */
-export function takeAVideo() : Promise<string> {
+export function takeAVideo() : Promise<MediaFile> {
     return new Promise((resolve, reject) => {
         if (device.platform === "browser") {
 
         }
         
         navigator.device.capture.captureVideo(files => {
-            if (files[0]) resolve(files[0].fullPath);
+            if (files[0]) resolve(files[0]);
             reject("no video");
         }, reject, { limit: 1 });
     })

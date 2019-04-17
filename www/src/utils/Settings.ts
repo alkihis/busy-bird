@@ -1,3 +1,7 @@
+import { takeAVideo } from "./helpers";
+import { FILE_HELPER } from "../main";
+import { FileHelperReadMode } from "../base/FileHelper";
+
 /**
  * Représente les paramètres globaux de l'application.
  * Ils sont stockés dans le localStorage.
@@ -163,6 +167,29 @@ function validURL(str: string) : boolean {
 }
 
 export const Settings = new AppSettings;
+
+class AppGlobals {
+    protected taken_videos: string[];
+
+    cleanVideos() {
+        for (const video of this.taken_videos) {
+            URL.revokeObjectURL(video);
+        }
+    }
+
+    async makeVideo() {
+        const video = await takeAVideo();
+
+        const file_entry = await FILE_HELPER.absoluteGet(video.fullPath) as FileEntry;
+        const url = URL.createObjectURL(await FILE_HELPER.read(file_entry, FileHelperReadMode.fileobj));
+
+        this.taken_videos.push(url);
+
+        return [url, video.fullPath];
+    }
+}
+
+export const Globals = new AppGlobals;
 
 /**
  * Permet de sauvegarder en arrière-plan.

@@ -8,7 +8,7 @@ import { createNewUser, UserManager } from "./base/UserManager";
 import { SyncManager, SyncEvent } from "./base/SyncManager";
 import { launchQuizz } from './utils/test_vocal_reco';
 import { FileHelper, FileHelperReadMode } from './base/FileHelper';
-import { Settings } from './utils/Settings';
+import { Settings, Globals } from './utils/Settings';
 import { ENTRIES_DIR, METADATA_DIR } from './base/FormSaves';
 
 // Constantes de l'application
@@ -68,8 +68,6 @@ export const app = {
 };
 
 async function initApp() {
-    await FILE_HELPER.waitInit();
-
     // @ts-ignore Force à demander la permission pour enregistrer du son
     const permissions = cordova.plugins.permissions;
 
@@ -115,6 +113,7 @@ async function initApp() {
     } catch (e) {  }
 
     // Initialise les blocs principaux du code: L'utilitaire de log, les schémas de form et le gestionnaire de sync
+    await FILE_HELPER.waitInit();
     Logger.init();
     Schemas.init(); 
     SyncManager.init();
@@ -185,7 +184,7 @@ function appWrapper() {
         // Bloque le sidenav pour empêcher de naviguer
         try {
             Navigation.destroy();
-        } catch (e) {}
+        } catch (e) { }
 
         getBase().innerHTML = displayErrorMessage("Unable to initialize application", "Error: " + err.stack);
 
@@ -199,7 +198,7 @@ declare global {
     }
 }
 
-function initDebug() { 
+function initDebug() {
     window.DEBUG = {
         launchQuizz,
         PageManager,
@@ -223,7 +222,8 @@ function initDebug() {
         createNewUser,
         UserManager,
         SyncManager,
-        Navigation
+        Navigation,
+        Globals
     };
 }
 
