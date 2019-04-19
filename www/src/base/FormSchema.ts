@@ -3,7 +3,6 @@ import { UserManager } from "./UserManager";
 import { ENABLE_FORM_DOWNLOAD, FILE_HELPER, ALLOW_LOAD_TEST_SCHEMAS } from "../main";
 import fetch from '../utils/fetch_timeout';
 import { FileHelper } from "./FileHelper";
-import { Settings } from "../utils/Settings";
 import { APIHandler, APIResp } from "./APIHandler";
 
 ////// LE JSON ECRIT DANS assets/form.json DOIT ÊTRE DE TYPE
@@ -129,7 +128,7 @@ interface SelectOption {
 export enum FormEntityType {
     integer = "integer", float = "float", select = "select", string = "string", bigstring = "textarea", 
     checkbox = "checkbox", file = "file", slider = "slider", datetime = "datetime", divider = "divider",
-    audio = "audio", date = "date", time = "time", image = "image", title = "title"
+    audio = "audio", date = "date", time = "time", image = "image", video = "video", title = "title"
 }
 
 // Représente tous les schémas de Formulaire dispo

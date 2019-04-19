@@ -1,7 +1,7 @@
 import { Settings } from "../utils/Settings";
 import { UserManager } from "./UserManager";
 import { sleep, showToast } from "../utils/helpers";
-import { FILE_HELPER, MAX_TIMEOUT_FOR_METADATA } from "../main";
+import { FILE_HELPER, MAX_TIMEOUT_FOR_METADATA, MAX_LENGTH_CHUNK, MAX_CONCURRENT_PARTS } from "../main";
 import { FileHelperReadMode } from "./FileHelper";
 
 export enum APIResp {
@@ -12,6 +12,8 @@ interface ErrorObject {
     error_code: number;
     message: string;
 }
+
+const AUTO_CHUNK_MODE_THRESHOLD = 1024 * 1024; // Envoi automatique en chunk à partir d'un 1 Mo
 
 class _APIHandler {
     protected controllers = new Map<Promise<any>, AbortController>();
@@ -123,12 +125,12 @@ class _APIHandler {
         }
     }
 
-    protected async sendFileBasic(file: string, form_id: string, form_type: string, running_fetchs: AbortController[]) {
-        const basename = file.split('/').pop();
+    protected async sendFileBasic(file: File, form_id: string, form_type: string, running_fetchs: AbortController[]) {
+        const basename = file.name;
 
         let base64: string;
         try {
-            base64 = await FILE_HELPER.read(file, FileHelperReadMode.url) as string;
+            base64 = await FILE_HELPER.readFileAs(file, FileHelperReadMode.url) as string;
         } catch (e) {
             // Le fichier n'existe pas en local. On passe.
             return;
@@ -161,23 +163,16 @@ class _APIHandler {
         // Envoi réussi si ce bout de code est atteint ! On passe au fichier suivant
     }
 
-    protected async sendFileChunked(file: string, form_id: string, form_type: string, running_fetchs: AbortController[]) {
-        const basename = file.split('/').pop();
+    protected async sendFileChunked(file: File, form_id: string, form_type: string, running_fetchs: AbortController[]) {
+        const basename = file.name;
 
-        // On a besoin de passer par des chunks, on va plutôt utiliser fileReader personnellement
-        let file_entry: File; 
-
-        try {
-            file_entry = await FILE_HELPER.read(file, FileHelperReadMode.fileobj) as File;
-        } catch (e) {
-            // Le fichier n'existe pas en local. On passe.
-            return;
-        }
+        // On a besoin de passer par des chunks, on va plutôt utiliser l'objet File personnellement
+        const file_entry = file;
 
         const file_size = file_entry.size;
         let offset = 0;
 
-        function nextChunk(file: File, size = 1024 * 1024) {
+        function nextChunk(file: File, size = MAX_LENGTH_CHUNK * 1024) {
             return new Promise((resolve, reject) => {
                 const r = new FileReader;
                 const current_chunk = file.slice(offset, offset + size);
@@ -222,30 +217,37 @@ class _APIHandler {
         let media_id: string = response.media_id_str;
 
         let segment_index = 0;
+
+        //// COMMAND APPEND
         while (offset < file_size) {
-            //// COMMAND APPEND
-            // On construit le formdata à envoyer
-            const md = new FormData();
-            md.append("media_id", media_id);
-            md.append("segment_index", segment_index.toString());
-            md.append("data", await nextChunk(file_entry));
-            md.append("command", "APPEND");
-            
-            const req = this.req(
-                "forms/metadata_chunk_send.json", 
-                { method: "POST", body: md }, 
-                APIResp.JSON, 
-                true, 
-                MAX_TIMEOUT_FOR_METADATA
-            );
+            const promises: Promise<any>[] = [];
 
-            // Ajoute le controlleur abort dans la liste
-            if (this.getControl(req))
-                running_fetchs.push(this.getControl(req));
+            for (let seg = 0; seg < MAX_CONCURRENT_PARTS && offset < file_size; seg++) {
+                // On construit le formdata à envoyer
+                const md = new FormData();
+                md.append("media_id", media_id);
+                md.append("segment_index", segment_index.toString());
+                md.append("data", await nextChunk(file_entry));
+                md.append("command", "APPEND");
+                
+                const req = this.req(
+                    "forms/metadata_chunk_send.json", 
+                    { method: "POST", body: md }, 
+                    APIResp.JSON, 
+                    true, 
+                    MAX_TIMEOUT_FOR_METADATA
+                );
 
-            await req; // On attend que la requête soit finie
+                // Ajoute le controlleur abort dans la liste
+                if (this.getControl(req))
+                    running_fetchs.push(this.getControl(req));
 
-            segment_index++;
+                promises.push(req);
+
+                segment_index++;
+            }
+
+            await Promise.all(promises); // On attend que la(les) requête(s) soit(soient) finie(s)
         }
 
         //// COMMAND FINALIZE
@@ -256,7 +258,7 @@ class _APIHandler {
         
         const req2 = this.req(
             "forms/metadata_chunk_send.json", 
-            { method: "POST", body: md }, 
+            { method: "POST", body: md_fini }, 
             APIResp.JSON, 
             true, 
             MAX_TIMEOUT_FOR_METADATA
@@ -269,12 +271,14 @@ class _APIHandler {
         await req2; // On attend que la requête renvoie quelque chose
     }
 
-    sendFile(path: string, form_id: string, form_type: string, mode: string = "basic", running_fetchs: AbortController[] = []) {
-        if (mode === "chunked") {
-            return this.sendFileChunked(path, form_id, form_type, running_fetchs);
+    async sendFile(path: string, form_id: string, form_type: string, mode: string = "basic", running_fetchs: AbortController[] = []) {
+        const file = await FILE_HELPER.read(path, FileHelperReadMode.fileobj) as File;
+
+        if (mode === "chunked" || (mode === "auto" && file.size > AUTO_CHUNK_MODE_THRESHOLD)) {
+            return this.sendFileChunked(file, form_id, form_type, running_fetchs);
         }
         else {
-            return this.sendFileBasic(path, form_id, form_type, running_fetchs);
+            return this.sendFileBasic(file, form_id, form_type, running_fetchs);
         }
     }
 }

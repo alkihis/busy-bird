@@ -169,7 +169,7 @@ function validURL(str: string) : boolean {
 export const Settings = new AppSettings;
 
 class AppGlobals {
-    protected taken_videos: string[];
+    protected taken_videos: string[] = [];
 
     cleanVideos() {
         for (const video of this.taken_videos) {
@@ -177,11 +177,11 @@ class AppGlobals {
         }
     }
 
-    async makeVideo() {
+    async makeVideo() : Promise<[string, string]> {
         const video = await takeAVideo();
 
         const file_entry = await FILE_HELPER.absoluteGet(video.fullPath) as FileEntry;
-        const url = URL.createObjectURL(await FILE_HELPER.read(file_entry, FileHelperReadMode.fileobj));
+        const url = file_entry.toURL();
 
         this.taken_videos.push(url);
 

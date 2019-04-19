@@ -238,35 +238,31 @@ For a JavaScript usage, it is fairly recommanded to use *only* the **string** fo
 ### POST forms/metadata_chunk_send.json **[APPEND]**
 
 #### Description
-Send a file linked to a form to the server, but using a chunked upload method.
+Send a file linked to a form to the server, but with a chunked upload method.
 *This is **APPEND** command, used to push a file part to the server*.
 
 `data` must be base64-encoded. **EACH FILE PART SHOULD BE BASE64-ENCODED SEPARATELY**.
 
 Order of the segments (given by `segment_index` parameter) is not important, you can send multiple parts without having to deal with a particular order.
 
-*Warning*: `data` parameter must not exceed 5 MB.
+*Warning*: `data` parameter must not exceed 5 MB (before base64-encoding).
 
 #### Arguments
-| Name           | Expected value                     | Example               |
-| -------------  |----------------:                   |---------              |
-| data           | Data of the file part (base64 encoded)  | dGVzdCBwb3VyIGwnQVBJ       |
-| media_id       | Media ID returned by INIT command  | 239583902084908       |
+| Name           | Expected value                           | Example               |
+| -------------  |----------------:                         |---------              |
+| data           | Data of the file part (base64 encoded)   | dGVzdCBwb3VyIGwnQVBJ       |
+| media_id       | Media ID returned by INIT command        | 239583902084908       |
 | segment_index  | Which part of the final file it is (starting at 0, to 999 maximum) | 0               |
-| command        | Command name (case sensitive)      | APPEND                |
+| command        | Command name (case sensitive)            | APPEND                |
 
 #### Result
-| Key            | Value                       | Example                    | Type                 |
-| -------------  |----------------:            |---------                   |----------:           |
-| status         | All is working good         | true                       | boolean              |
+May be an empty HTTP 200 response, or a `{"status": true}` 200 response.
 
 
 #### Exemple
 `POST https://busybird.lbbe.univ-lyon1.fr/forms/metadata_chunk_send.json`
 
 [Body] `command=APPEND&media_id=239583902084908&segment_index=0&data=dGVzdCBwb3VyIGwnQVBJ`
-
-[HTTP Response] `{"status": true}`
 
 ---
 
@@ -285,17 +281,13 @@ When `FINALIZE` command is complete, file has been successfully uploaded.
 | command        | Command name (case sensitive)      | FINALIZE              |
 
 #### Result
-| Key            | Value                       | Example                    | Type                 |
-| -------------  |----------------:            |---------                   |----------:           |
-| status         | All is working good         | true                       | boolean              |
+May be an empty HTTP 200 response, or a `{"status": true}` 200 response.
 
 
 #### Exemple
 `POST https://busybird.lbbe.univ-lyon1.fr/forms/metadata_chunk_send.json`
 
 [Body] `command=FINALIZE&media_id=239583902084908`
-
-[HTTP Response] `{"status": true}`
 
 
 ## Endpoints pour gestions des schémas de formulaire "schemas"

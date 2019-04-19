@@ -77,7 +77,7 @@ function initCommand(User $user_obj) {
 
     // Création du fichier contenant les infos de ce média
     // Deux heures pour envoyer le fichier
-    $infos = [ "filename" => $name, "form_type" => $type, "total_size" => $size, "form_id" => $id, "owner" => $user_obj->username, "expiration" => time() + (60 * 120) ];
+    $infos = [ "filename" => $name, "form_type" => $type, "total_size" => (int)$size, "form_id" => $id, "owner" => $user_obj->username, "expiration" => time() + (60 * 120) ];
     $infos_str = json_encode($infos);
 
     file_put_contents($path . "/infos.json", $infos_str);

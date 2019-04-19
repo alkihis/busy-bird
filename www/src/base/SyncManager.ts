@@ -265,7 +265,7 @@ class _SyncManager {
                 const basename = data.metadata[metadata];
                 
                 try {
-                    await APIHandler.sendFile(file, id, data.type, "basic", this.running_fetchs);
+                    await APIHandler.sendFile(file, id, data.type, "auto", this.running_fetchs);
                 } catch (error) {
                     showToast("Impossible d'envoyer " + basename + ".");
                     if (error.error_code)

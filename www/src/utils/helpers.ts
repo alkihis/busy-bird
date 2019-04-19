@@ -290,7 +290,7 @@ export function dateFormatter(schema: string, date = new Date()) : string {
  *                  false: Le chemin path est relatif. 
  *                  null: Intégrer directement path dans element.src.
  */
-export async function createImgSrc(path: string, element: HTMLImageElement, absolute = false) : Promise<void> {
+export async function createImgSrc(path: string, element: HTMLImageElement | HTMLVideoElement, absolute = false) : Promise<void> {
     if (typeof absolute === "boolean") {
         const file = absolute ? await FILE_HELPER.absoluteGet(path) : await FILE_HELPER.get(path);
 

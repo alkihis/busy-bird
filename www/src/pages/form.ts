@@ -1,6 +1,6 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "../utils/vocal_recognition";
 import { FormEntityType, FormEntity, Schemas, Schema, FormSave, FormLocations } from '../base/FormSchema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal, takeAPicture } from "../utils/helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal, takeAPicture, takeAVideo } from "../utils/helpers";
 import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "../main";
 import { PageManager } from "../base/PageManager";
 import { Logger } from "../utils/logger";
@@ -10,7 +10,7 @@ import { createLocationInputSelector } from "../utils/location";
 import { FileHelperReadMode } from "../base/FileHelper";
 import { beginFormSave } from "../utils/save_a_form";
 import { METADATA_DIR } from "../base/FormSaves";
-import { Settings } from "../utils/Settings";
+import { Settings, Globals } from "../utils/Settings";
 
 function resetTakePicButton(button: HTMLElement) : void {
     button.classList.add('blue', 'darken-3');
@@ -27,19 +27,31 @@ function resetTakePicButton(button: HTMLElement) : void {
  * @param f_input (optional) Input where path of file is stored
  * @param button (optional) Button for "take a picture"
  */
-function createMiniature(link: string, input: HTMLInputElement, placeh: HTMLElement, absolute = false, f_input: HTMLInputElement = null, button: HTMLElement = null) {
+function createMiniature(link: string, input: HTMLInputElement, placeh: HTMLElement, absolute = false, f_input: HTMLInputElement = null, button: HTMLElement = null, is_video = false) {
     // L'input file est déjà présent dans le formulaire
     // on affiche une miniature
     placeh.innerHTML = "";
 
     const img_miniature = document.createElement('div');
     img_miniature.classList.add('image-form-wrapper', 'relative-container');
-    const img_balise = document.createElement('img');
-    img_balise.classList.add('img-form-element');
 
-    createImgSrc(link, img_balise, absolute);
+    if (is_video) {
+        const vid_balise = document.createElement('video');
+        vid_balise.classList.add('video-form-element');
 
-    img_miniature.appendChild(img_balise);
+        createImgSrc(link, vid_balise, absolute);
+
+        img_miniature.appendChild(vid_balise);
+    }
+    else {
+        const img_balise = document.createElement('img');
+        img_balise.classList.add('img-form-element');
+
+        createImgSrc(link, img_balise, absolute);
+
+        img_miniature.appendChild(img_balise);
+    }
+    
     placeh.appendChild(img_miniature);
 
     // On crée un bouton "supprimer ce fichier"
@@ -766,7 +778,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             element_to_add = wrapper;
         }
 
-        else if (ele.type === FormEntityType.image || ele.type === FormEntityType.file) {
+        else if (ele.type === FormEntityType.image || ele.type === FormEntityType.video || ele.type === FormEntityType.file) {
             //// Attention ////
             // L'input de type file pour les images, sur android,
             // ne propose pas le choix entre prendre une nouvelle photo
@@ -775,6 +787,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             // Le problème est contourné en créant un input personnalisé utilisant navigator.camera
 
             const is_image = FormEntityType.image === ele.type || ele.file_type === "image/*";
+            const is_video = FormEntityType.video === ele.type || ele.file_type === "video/*";
 
             let delete_file_btn: HTMLElement = null;
             // Wrapper
@@ -802,11 +815,11 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             real_wrapper.appendChild(minia_wrapper);
 
             if (filled_form && ele.name in filled_form.fields && filled_form.fields[ele.name] !== null) {
-                if (is_image) {
+                if (is_image || is_video) {
                     // L'input file est déjà présent dans le formulaire
                     // on affiche une miniature
                     createMiniature(METADATA_DIR + filled_form_id + "/" + filled_form.fields[ele.name] as string, 
-                        input, minia_wrapper, false, f_input);
+                        input, minia_wrapper, false, f_input, undefined, is_video);
                 }
                 else {
                     const description = document.createElement('p');
@@ -894,6 +907,53 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                     // Crée la miniature
                     if (input.files.length > 0) {
                         createMiniature(URL.createObjectURL(input.files[0]), input, minia_wrapper, null, f_input, button);
+                    } 
+                });
+            }
+            else if (is_video) {
+                input.classList.add('input-video-element');
+                span.innerText = "Select a video";
+
+                // Création du bouton "take a new picture"
+                const button = document.createElement('button');
+                button.classList.add('btn', 'blue', 'darken-3', 'col', 's12', 'btn-perso');
+
+                button.innerText = "Take a new video";
+                button.type = "button";
+
+                real_wrapper.appendChild(button);
+                real_wrapper.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
+
+                button.addEventListener('click', function() {
+                    Globals.makeVideo()
+                        .then(([url, original]) => {
+                            console.log(url, original);
+                            input.dataset.imagemanualurl = original;
+                            button.classList.remove('blue', 'darken-3');
+                            button.classList.add('green');
+                            button.innerText = "Video (" + url.split('/').pop() + ")";
+
+                            // Vide l'input
+                            f_input.value = "";
+                            input.type = "text";
+                            input.value = "";
+                            input.type = "file";
+
+                            // Crée la miniature
+                            createMiniature(url, input, minia_wrapper, true, f_input, button, is_video);
+                        })
+                        .catch((e) => console.log(e));
+                });
+                
+                // Met un listener sur le file pour vider le bouton si jamais on sélectionne une photo
+                input.addEventListener('change', function() {
+                    // Vide le bouton
+                    input.dataset.imagemanualurl = "";
+                    resetTakePicButton(button);
+
+                    // Crée la miniature
+                    if (input.files.length > 0) {
+                        createMiniature(URL.createObjectURL(input.files[0]), input, minia_wrapper, null, f_input, button, is_video);
                     } 
                 });
             }
