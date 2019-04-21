@@ -110,7 +110,7 @@ export interface FormEntity {
     voice_control_replacements?: [string, string][];
 }
 
-interface SelectOption {
+export interface SelectOption {
     /** Valeur affichée à l'écran pour ce choix */
     label: string;
     /** Valeur interne utilisée pour ce choix */

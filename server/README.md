@@ -86,6 +86,30 @@ Pour plus d'informations sur les souscriptions, voir les endpoints `GET schemas/
 
 ---
 
+### POST users/upgrade.json
+
+#### Description
+Change an user status.
+
+Available status are `basic` or `admin`.
+Users are `basic` by default.
+
+#### Arguments
+| Name            | Expected value  | Example |
+| -------------  |----------------: |---------|
+| username       | Username         | jeanne  |
+| status         | New status       | basic   |
+
+#### Response
+Empty HTTP 200 response if success.
+
+#### Example
+`POST https://busybird.lbbe.univ-lyon1.fr/users/upgrade.json`
+
+[Body] `username=jeanne&status=basic`
+
+---
+
 ### POST users/validate.json
 
 #### Description
@@ -388,3 +412,46 @@ Objet de type `FormSchema` si `trim_subs` vaut `false`, `null` sinon.
 [Body] `ids=cincle_plongeur&trim_subs=false`
 
 [HTTP Response] `{"cerf_plongeur": Form}`
+
+### POST schemas/insert.json
+
+#### Description
+Add or upgrade a form schema.
+
+#### Arguments
+| Name            | Expected value   | Example          |
+| -------------  |----------------:  |---------         |
+| type           | Form type (must be unique)  | cincle_plongeur |
+| model          | Entire form schema, in JSON format. Must implement "Schema" interface  | '{"name": "Cincle Plongeur", ...}' |
+
+If `type` refer to an existing schema, it will be updated (and served to user the next time they'll fetch it).
+
+#### Response
+Empty HTTP 200 response if success.
+
+#### Example
+
+`POST https://busybird.lbbe.univ-lyon1.fr/schemas/insert.json`
+
+[Body] `type=cincle_plongeur&model={"name": "Cincle Plongeur", ...}`
+
+### GET schemas/get.json
+
+#### Description
+Get an existing form schema.
+Does not refer to subscriptions. 
+Use it to get a form schema in order to modify it or check if it exists.
+
+#### Arguments
+| Name            | Expected value   | Example          |
+| -------------  |----------------:  |---------         |
+| type           | Form type  | cincle_plongeur |
+
+#### Response
+Object that implement `Schema` interface, HTTP 404 if schema does not exists.
+
+#### Example
+
+`GET https://busybird.lbbe.univ-lyon1.fr/schemas/get.json?type=cincle_plongeur`
+
+[HTTP Response] `{"name": "Cincle Plongeur", ...}`

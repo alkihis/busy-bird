@@ -264,7 +264,7 @@ class _FormSaves {
         }
 
         // Vide le cache de la caméra
-        cleanTakenPictures();
+        cleanTakenPictures().catch(() => {});
     
         console.log(form_values);
         return form_values;

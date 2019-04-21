@@ -32,6 +32,8 @@ class EndPointManager {
         24 => [400, "One part is missing"],
         25 => [400, "Size mismatch"],
         26 => [400, "Media ID is expired"],
+        27 => [400, "Unknown action"],
+        28 => [404, "Not found"],
     ];
 
     public function __construct() {
@@ -67,7 +69,10 @@ class EndPointManager {
             if (file_exists('endpoints/' . self::$page)) {
                 require_once 'endpoints/' . self::$page;
 
-                echo json_encode(loadEndpoint($_SERVER['REQUEST_METHOD']));
+                $data = loadEndpoint($_SERVER['REQUEST_METHOD']);
+
+                if ($data)
+                    echo json_encode($data);
             }
             else {
                 self::error(2);

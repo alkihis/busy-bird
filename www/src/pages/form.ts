@@ -12,10 +12,10 @@ import { beginFormSave } from "../utils/save_a_form";
 import { METADATA_DIR } from "../base/FormSaves";
 import { Settings, Globals } from "../utils/Settings";
 
-function resetTakePicButton(button: HTMLElement) : void {
+function resetTakePicButton(button: HTMLElement, is_video = false) : void {
     button.classList.add('blue', 'darken-3');
     button.classList.remove('green');
-    button.innerText = "Take a new picture";
+    button.innerText = "Take a new " + (is_video ? 'video' : 'picture');
 }
 
 /**
@@ -37,7 +37,8 @@ function createMiniature(link: string, input: HTMLInputElement, placeh: HTMLElem
 
     if (is_video) {
         const vid_balise = document.createElement('video');
-        vid_balise.classList.add('video-form-element');
+        vid_balise.controls = true;
+        vid_balise.classList.add('img-form-element');
 
         createImgSrc(link, vid_balise, absolute);
 
@@ -60,7 +61,7 @@ function createMiniature(link: string, input: HTMLInputElement, placeh: HTMLElem
     delete_file_btn.innerHTML = "<i class='material-icons'>close</i>";
 
     delete_file_btn.onclick = () => {
-        askModal("Remove this picture ?", "")
+        askModal(`Remove this ${is_video ? 'video' : 'picture'} ?`, "")
             .then(() => {
                 // On set un flag qui permettra, à la sauvegarde, de supprimer l'ancien fichier
                 input.dataset.toremove = "true";
@@ -71,7 +72,7 @@ function createMiniature(link: string, input: HTMLInputElement, placeh: HTMLElem
                     f_input.value = "";
 
                 if (button)
-                    resetTakePicButton(button);
+                    resetTakePicButton(button, is_video);
 
                 input.type = "text";
                 input.value = "";
@@ -864,92 +865,69 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
             f_input.dataset.for = input.id;
 
             // Si on veut créer une image
-            if (is_image) {
+            if (is_image || is_video) {
                 input.classList.add('input-image-element');
-                span.innerText = "Select a picture";
+                span.innerText = "Select a " + (is_video ? 'video' : 'picture');
 
                 // Création du bouton "take a new picture"
                 const button = document.createElement('button');
                 button.classList.add('btn', 'blue', 'darken-3', 'col', 's12', 'btn-perso');
 
-                button.innerText = "Take a new picture";
+                button.innerText = "Take a new " + (is_video ? 'video' : 'picture');;
                 button.type = "button";
 
                 real_wrapper.appendChild(button);
                 real_wrapper.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
 
-                button.addEventListener('click', function() {
-                    takeAPicture()
-                        .then(url => {
-                            input.dataset.imagemanualurl = url;
-                            button.classList.remove('blue', 'darken-3');
-                            button.classList.add('green');
-                            button.innerText = "Picture (" + url.split('/').pop() + ")";
-
-                            // Vide l'input
-                            f_input.value = "";
-                            input.type = "text";
-                            input.value = "";
-                            input.type = "file";
-
-                            // Crée la miniature
-                            createMiniature(url, input, minia_wrapper, true, f_input, button);
-                        })
-                        .catch(() => {});
-                });
+                if (is_video) {
+                    button.addEventListener('click', function() {
+                        Globals.makeVideo()
+                            .then(([url, original]) => {
+                                console.log(url, original);
+                                input.dataset.imagemanualurl = original;
+                                button.classList.remove('blue', 'darken-3');
+                                button.classList.add('green');
+                                button.innerText = "Video (" + url.split('/').pop() + ")";
+    
+                                // Vide l'input
+                                f_input.value = "";
+                                input.type = "text";
+                                input.value = "";
+                                input.type = "file";
+    
+                                // Crée la miniature
+                                createMiniature(url, input, minia_wrapper, true, f_input, button, is_video);
+                            })
+                            .catch((e) => console.log(e));
+                        });
+                }
+                else {
+                    button.addEventListener('click', function() {
+                        takeAPicture()
+                            .then(url => {
+                                input.dataset.imagemanualurl = url;
+                                button.classList.remove('blue', 'darken-3');
+                                button.classList.add('green');
+                                button.innerText = "Picture (" + url.split('/').pop() + ")";
+    
+                                // Vide l'input
+                                f_input.value = "";
+                                input.type = "text";
+                                input.value = "";
+                                input.type = "file";
+    
+                                // Crée la miniature
+                                createMiniature(url, input, minia_wrapper, true, f_input, button);
+                            })
+                            .catch(() => {});
+                    });
+                }
                 
                 // Met un listener sur le file pour vider le bouton si jamais on sélectionne une photo
                 input.addEventListener('change', function() {
                     // Vide le bouton
                     input.dataset.imagemanualurl = "";
-                    resetTakePicButton(button);
-
-                    // Crée la miniature
-                    if (input.files.length > 0) {
-                        createMiniature(URL.createObjectURL(input.files[0]), input, minia_wrapper, null, f_input, button);
-                    } 
-                });
-            }
-            else if (is_video) {
-                input.classList.add('input-video-element');
-                span.innerText = "Select a video";
-
-                // Création du bouton "take a new picture"
-                const button = document.createElement('button');
-                button.classList.add('btn', 'blue', 'darken-3', 'col', 's12', 'btn-perso');
-
-                button.innerText = "Take a new video";
-                button.type = "button";
-
-                real_wrapper.appendChild(button);
-                real_wrapper.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
-
-                button.addEventListener('click', function() {
-                    Globals.makeVideo()
-                        .then(([url, original]) => {
-                            console.log(url, original);
-                            input.dataset.imagemanualurl = original;
-                            button.classList.remove('blue', 'darken-3');
-                            button.classList.add('green');
-                            button.innerText = "Video (" + url.split('/').pop() + ")";
-
-                            // Vide l'input
-                            f_input.value = "";
-                            input.type = "text";
-                            input.value = "";
-                            input.type = "file";
-
-                            // Crée la miniature
-                            createMiniature(url, input, minia_wrapper, true, f_input, button, is_video);
-                        })
-                        .catch((e) => console.log(e));
-                });
-                
-                // Met un listener sur le file pour vider le bouton si jamais on sélectionne une photo
-                input.addEventListener('change', function() {
-                    // Vide le bouton
-                    input.dataset.imagemanualurl = "";
-                    resetTakePicButton(button);
+                    resetTakePicButton(button, is_video);
 
                     // Crée la miniature
                     if (input.files.length > 0) {

@@ -299,6 +299,10 @@ p.smiley.big-text {
     object-fit: cover;
 }
 
+video.img-form-element {
+    max-height: inherit;
+}
+
 .image-form-wrapper {
     width: 100%;
 }
@@ -449,10 +453,6 @@ label, .form-audio-label {
     width: 40%;
     height: auto;
     margin: 4%;
-}
-
-.error-message {
-
 }
 
 .error-details {

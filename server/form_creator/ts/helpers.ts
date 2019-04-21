@@ -1,16 +1,21 @@
 import { getBottomModal, initBottomModal } from "./form.js";
-export function readFile(file) {
+
+export function readFile(file: File) {
     return new Promise((resolve, reject) => {
         const fr = new FileReader();
-        fr.onload = function () {
-            resolve(this.result);
+
+        fr.onload = function() {
+            resolve(this.result as string);
         };
-        fr.onerror = function (err) {
+
+        fr.onerror = function(err) {
             reject(err);
-        };
+        }
+    
         fr.readAsText(file);
-    });
+    }) as Promise<string>;
 }
+
 /**
  * Ouvre un modal demandant à l'utilisateur de cliquer sur oui ou non
  * @param title string Titre affiché sur le modal
@@ -20,9 +25,10 @@ export function readFile(file) {
  * @returns Promise<void | boolean> Promesse se résolvant quand l'utilisateur approuve, se rompant si l'utilisateur refuse.
  * Si il y a une checkbox, la promesse résolue / rompue reçoit en valeur l'attribut checked de la checkbox
  */
-export function askModal(title, question, text_yes = "Yes", text_no = "No", checkbox = undefined) {
+export function askModal(title: string, question: string, text_yes = "Yes", text_no = "No", checkbox: string = undefined) {
     const modal = getBottomModal();
     const instance = initBottomModal();
+
     modal.innerHTML = `
     <div class="modal-content center">
         <h5 class="no-margin-top">${title}</h5>
@@ -42,12 +48,15 @@ export function askModal(title, question, text_yes = "Yes", text_no = "No", chec
         <a href="#!" id="__question_yes" class="btn-flat red-text modal-close">${text_yes}</a>
     </div>
     `;
+
     instance.open();
+
     const chk = document.getElementById("__question_checkbox");
-    return new Promise(function (resolve, reject) {
+
+    return new Promise(function(resolve, reject) {
         document.getElementById('__question_yes').addEventListener('click', () => {
             if (chk) {
-                resolve(chk.checked);
+                resolve((chk as HTMLInputElement).checked);
             }
             else {
                 resolve();
@@ -55,7 +64,7 @@ export function askModal(title, question, text_yes = "Yes", text_no = "No", chec
         });
         document.getElementById('__question_no').addEventListener('click', () => {
             if (chk) {
-                reject(chk.checked);
+                reject((chk as HTMLInputElement).checked);
             }
             else {
                 reject();
@@ -63,8 +72,9 @@ export function askModal(title, question, text_yes = "Yes", text_no = "No", chec
         });
     });
 }
-export function convertHTMLToElement(htmlString) {
+
+export function convertHTMLToElement(htmlString: string) {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlString;
-    return tempDiv.firstElementChild;
+    return tempDiv.firstElementChild as HTMLElement;
 }
