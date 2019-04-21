@@ -25,8 +25,15 @@ function loadEndpoint(string $method) : void {
     }
 
     // Check si l'user est admin
-    if ($user_obj->status < ADMIN_USER) {
+    if ($user_obj->status < ADMIN_USER && !isset($_POST['admin_password'])) {
         EndPointManager::error(17);
+    }
+    else if ($user_obj->status < ADMIN_USER) {
+        // Vérification du mot de passe
+        $psw = $_POST['admin_password'];
+        if ($psw !== ADMIN_PASSWORD_AUTH) {
+            EndPointManager::error(17);
+        }
     }
 
     // Check si l'user existe

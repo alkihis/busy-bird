@@ -59,6 +59,6 @@ function loadEndpoint(string $method) : array {
             EndPointManager::error(28);
         }
 
-        return json_decode($result->fetch_assoc()['model']);
+        return json_decode($result->fetch_assoc()['model'], true);
     }
 }

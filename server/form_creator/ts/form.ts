@@ -2,6 +2,7 @@ import { askModal, readFile } from "./helpers.js";
 import { FormEntity, FORM_TYPES, NO_LABEL, EMPTY_CHILDRENS, NO_DEFAULT_VALUE, FORM_PROPERTIES, PROPERTIES_INTERNAL_NAME, acquireDataFromInput, FormLocations, Schema } from "./elements.js";
 import { exportFormModal } from "./export.js";
 import { loginModal, settings } from "./interface_server.js";
+import { loadFromServer } from "./import.js";
 
 export function getCollection() {
     return document.getElementById('form_collection');
@@ -624,8 +625,6 @@ async function loadTSV(file: File, mode: string, id: string, label: string, lat:
 
 $(function() {
     // Fonction d'initialisation
-    const collection = getCollection();
-
     // génération du select dans la page
     const new_item = document.getElementById('new_item');
     new_item.innerHTML = `
@@ -678,24 +677,7 @@ $(function() {
             return;
         }
 
-        // Stockage
-        loaded_form = content;
-        // @ts-ignore On ajoute une donnée supplémentaire pour reconnaître le nom de fichier
-        loaded_form.key = (this as HTMLInputElement).files[0].name.split('.json')[0];
-
-        form_items = {};
-        form_locations = content.locations;
-        collection.innerHTML = "";
-
-        // Association dans form_items et création de la collection
-        for (const field of content.fields) {
-            form_items[field.name] = field;
-            try {
-                createCollectionItem(collection, field, FORM_TYPES[field.type].label);
-            } catch (e) {
-                console.log(e, field);
-            }
-        }
+        changeLoadedForm(content, (this as HTMLInputElement).files[0].name.split('.json')[0]);
 
         info.innerText = "";
     };
@@ -707,7 +689,34 @@ $(function() {
     document.getElementById('__reset_form_btn').onclick = resetForm;
 
     (document.getElementById('__settings_html_button') as HTMLElement).onclick = settings;
+
+    document.getElementById('__warning-text__').remove();
+
+    document.getElementById('__load_from_server_btn').onclick = loadFromServer;
 });
+
+export function changeLoadedForm(model: Schema, id: string) {
+    // Stockage
+    loaded_form = model;
+    // @ts-ignore On ajoute une donnée supplémentaire pour reconnaître le nom de fichier
+    loaded_form.key = id;
+
+    const collection = getCollection();
+
+    form_items = {};
+    form_locations = model.locations;
+    collection.innerHTML = "";
+
+    // Association dans form_items et création de la collection
+    for (const field of model.fields) {
+        form_items[field.name] = field;
+        try {
+            createCollectionItem(collection, field, FORM_TYPES[field.type].label);
+        } catch (e) {
+            console.log(e, field);
+        }
+    }
+}
 
 function resetForm() {
     askModal("Reset ?", "All modifications will be lost.")

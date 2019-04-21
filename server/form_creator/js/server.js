@@ -103,9 +103,11 @@ class _User {
             }
             if (Object.keys(params).length) {
                 url += "?";
+                const elements = [];
                 for (const element in params) {
-                    url += encodeURIComponent(element) + "&" + encodeURIComponent(params[element]);
+                    elements.push(encodeURIComponent(element) + "=" + encodeURIComponent(params[element]));
                 }
+                url += elements.join("&");
             }
         }
         else {

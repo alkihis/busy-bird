@@ -76,3 +76,8 @@ main {
     }
 }
 
+.btn.big {
+    height: 3rem;
+    line-height: 3rem;
+}
+
