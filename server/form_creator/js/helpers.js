@@ -63,6 +63,20 @@ export function askModal(title, question, text_yes = "Yes", text_no = "No", chec
         });
     });
 }
+export function informalModal(title, content, ok_button = "Ok", lock = false) {
+    const modal = getBottomModal();
+    const instance = initBottomModal({ dismissible: !lock });
+    modal.innerHTML = `
+    <div class="modal-content center">
+        <h5 class="no-margin-top">${title}</h5>
+        ${content}
+    </div>
+    
+    ${ok_button ? `<div class="modal-footer"><a href="#!" class="btn-flat green-text modal-close">${ok_button}</a></div>` : ''}
+    `;
+    instance.open();
+    return instance;
+}
 export function convertHTMLToElement(htmlString) {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlString;

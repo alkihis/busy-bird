@@ -1,6 +1,30 @@
-"use strict";
+import { convertHTMLToElement } from "./helpers.js";
+/**
+ * Type à préciser dans le JSON, clé "type"
+ * Le type à préciser est la chaîne de caractères
+ */
+export var FormEntityType;
+(function (FormEntityType) {
+    FormEntityType["integer"] = "integer";
+    FormEntityType["float"] = "float";
+    FormEntityType["select"] = "select";
+    FormEntityType["string"] = "string";
+    FormEntityType["bigstring"] = "textarea";
+    FormEntityType["checkbox"] = "checkbox";
+    FormEntityType["file"] = "file";
+    FormEntityType["slider"] = "slider";
+    FormEntityType["datetime"] = "datetime";
+    FormEntityType["divider"] = "divider";
+    FormEntityType["audio"] = "audio";
+    FormEntityType["date"] = "date";
+    FormEntityType["time"] = "time";
+    FormEntityType["image"] = "image";
+    FormEntityType["video"] = "video";
+    FormEntityType["title"] = "title";
+})(FormEntityType || (FormEntityType = {}));
+// END
 //// FORM ELEMENTS
-const PROPERTIES_INTERNAL_NAME = {
+export const PROPERTIES_INTERNAL_NAME = {
     name: "unique_name",
     label: "label",
     placeholder: "placeholder_text",
@@ -14,11 +38,11 @@ const PROPERTIES_INTERNAL_NAME = {
     default_value: "default_val",
     tip_on_invalid: "invalid_tip",
     indeterminate: "indeterminate_chk",
-    vocal_access_words: false,
+    vocal_access_words: "",
     allow_voice_control: "vocal_command",
     remove_whitespaces: "rm_whitesp" /* for type.string / type.bigstring; during vocal reco */
 };
-const FORM_PROPERTIES = {
+export const FORM_PROPERTIES = {
     // name: string; OBLIGATOIRE
     // label: string; OBLIGATOIRE
     placeholder: generatePlaceholder,
@@ -32,11 +56,11 @@ const FORM_PROPERTIES = {
     indeterminate: generateIndeterminate,
     // default_value: "string | boolean", VALABLE POUR CHAQUE CHAMP
     tip_on_invalid: generateInvalidTip,
-    vocal_access_words: "string[]",
+    vocal_access_words: () => { throw new Error; },
     allow_voice_control: generateAllowVoice,
     remove_whitespaces: generateRmWhitespace /* for type.string / type.bigstring; during vocal reco */
 };
-const FORM_TYPES = {
+export const FORM_TYPES = {
     divider: { label: "Separator", props: [] },
     title: { label: "Title", props: [] },
     string: { label: "Short text", props: ["allow_voice_control", "remove_whitespaces", "suggested_not_blank", "range", "tip_on_invalid", "placeholder"] },
@@ -48,14 +72,15 @@ const FORM_TYPES = {
     checkbox: { label: "Checkbox", info: "Default value is unchecked or indeterminate.", props: ['indeterminate'] },
     datetime: { label: "Date and time", props: [] },
     image: { label: "Picture", props: [] },
+    video: { label: "Video", props: [] },
     date: { label: "Date", props: [] },
     time: { label: "Time", props: [] },
     file: { label: "File", props: ["file_type"] },
     audio: { label: "Audio record", props: [] }
 };
-const EMPTY_CHILDRENS = new Set(["divider", "title", "checkbox", "slider"]); // > No default value & no possibility of require it
-const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "date", "time", "file", "image", "select"]); // > No default value
-const NO_LABEL = new Set(["divider"]);
+export const EMPTY_CHILDRENS = new Set(["divider", "title", "checkbox", "slider"]); // > No default value & no possibility of require it
+export const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "date", "time", "file", "image", "video", "select"]); // > No default value
+export const NO_LABEL = new Set(["divider"]);
 // dec2hex :: Integer -> String
 function dec2hex(dec) {
     return ('0' + dec.toString(16)).substr(-2);
@@ -64,12 +89,12 @@ function dec2hex(dec) {
  * Génère un identifiant aléatoire
  * @param {number} len Longueur de l'ID
  */
-function generateId(len = 20) {
+export function generateId(len = 32) {
     const arr = new Uint8Array((len || 40) / 2);
     window.crypto.getRandomValues(arr);
     return Array.from(arr, dec2hex).join('');
 }
-function generateTextInput(name, label, required = false, placeholder = undefined, random_id = false, def_val = "") {
+export function generateTextInput(name, label, required = false, placeholder = "", random_id = false, def_val = "") {
     const id = random_id ? generateId() : "id" + name;
     const div = document.createElement('div');
     div.className = "input-field col s12";
@@ -95,7 +120,7 @@ function generateTextInput(name, label, required = false, placeholder = undefine
     div.appendChild(ilabel);
     return div;
 }
-function generateCheckbox(name, label, checked = false) {
+export function generateCheckbox(name, label, checked = false) {
     return `<p class="col s12 no-margin-bottom no-margin-top">
         <label>
             <input name="${name}" id="id${name}" type="checkbox" ${checked ? "checked" : ""} />
@@ -103,7 +128,7 @@ function generateCheckbox(name, label, checked = false) {
         </label>
     </p>`;
 }
-function generateNumberInput(name, label, required = false, min = 0.001, max = 0.9, placeholder = undefined, def_val = "", step = 0.001) {
+export function generateNumberInput(name, label, required = false, min = 0.001, max = 0.9, placeholder = "", def_val = "", step = 0.001) {
     const id = "id" + name;
     const div = document.createElement('div');
     div.className = "input-field col s12";
@@ -121,10 +146,10 @@ function generateNumberInput(name, label, required = false, min = 0.001, max = 0
     }
     input.autocomplete = "off";
     if (min !== null) {
-        input.min = min;
+        input.min = String(min);
     }
     if (max !== null) {
-        input.max = max;
+        input.max = String(max);
     }
     if (def_val) {
         input.value = def_val;
@@ -163,18 +188,18 @@ function makeSelectOption(required = false, def = undefined) {
     one_opt.insertAdjacentHTML('beforeend', "<div class='clearb'></div>");
     return one_opt;
 }
-function generateIndeterminate(base, existing_item = {}) {
-    base.insertAdjacentHTML('beforeend', generateCheckbox('indeterminate_chk', "Checkbox has an indeterminate state by default", existing_item.indeterminate || false));
+function generateIndeterminate(base, existing_item) {
+    base.insertAdjacentHTML('beforeend', generateCheckbox('indeterminate_chk', "Checkbox has an indeterminate state by default", existing_item ? existing_item.indeterminate : false));
 }
 /**
  *
  * @param {HTMLElement} base
  */
-function generatePlaceholder(base, existing_item = {}) {
-    base.insertAdjacentElement('beforeend', generateTextInput('placeholder_text', "Placeholder for the field", false, undefined, false, existing_item.placeholder || ""));
+function generatePlaceholder(base, existing_item) {
+    base.insertAdjacentElement('beforeend', generateTextInput('placeholder_text', "Placeholder for the field", false, undefined, false, existing_item ? existing_item.placeholder : ""));
 }
-function generateSuggested(base, existing_item = {}) {
-    base.insertAdjacentHTML('beforeend', generateCheckbox('suggested_blank', "Suggest filling of this input", existing_item.suggested_not_blank || false));
+function generateSuggested(base, existing_item) {
+    base.insertAdjacentHTML('beforeend', generateCheckbox('suggested_blank', "Suggest filling of this input", existing_item ? existing_item.suggested_not_blank : false));
 }
 function generateRange(base, existing_item) {
     const wrapper = document.createElement('div');
@@ -192,8 +217,8 @@ function generateRange(base, existing_item) {
             max_r = existing_item.range.max;
         }
     }
-    opt1.insertAdjacentElement('beforeend', generateNumberInput('range_opt_min', "Minimum", false, null, null, "Keep empty if none", min_r));
-    opt2.insertAdjacentElement('beforeend', generateNumberInput('range_opt_max', "Maximum", false, null, null, "Keep empty if none", max_r));
+    opt1.insertAdjacentElement('beforeend', generateNumberInput('range_opt_min', "Minimum", false, null, null, "Keep empty if none", String(min_r)));
+    opt2.insertAdjacentElement('beforeend', generateNumberInput('range_opt_max', "Maximum", false, null, null, "Keep empty if none", String(max_r)));
     base.appendChild(wrapper);
 }
 function generateSelectOpt(base, existing_item) {
@@ -219,7 +244,7 @@ function generateSelectOpt(base, existing_item) {
     choices_wrapper.appendChild(makeSelectOption(true, first_sel_option));
     choices_wrapper.appendChild(makeSelectOption(true, second_sel_option));
     if (additionnals_options) {
-        for (a_o of additionnals_options) {
+        for (const a_o of additionnals_options) {
             // Génération des options supplémentaires
             choices_wrapper.appendChild(makeSelectOption(false, a_o));
         }
@@ -254,27 +279,27 @@ function generateSliderOpt(base, existing_item) {
     opt2.insertAdjacentElement('beforeend', generateTextInput('slider_opt_2', "Label", true, undefined, undefined, sel_opt2));
     base.appendChild(wrapper);
 }
-function generateFileType(base, existing_item = {}) {
-    base.insertAdjacentElement('beforeend', generateTextInput('file_type', "MIME type of the file", false, undefined, false, existing_item.file_type || ""));
+function generateFileType(base, existing_item) {
+    base.insertAdjacentElement('beforeend', generateTextInput('file_type', "MIME type of the file", false, undefined, false, existing_item ? existing_item.file_type : ""));
 }
-function generateFloatPrec(base, existing_item = {}) {
-    base.insertAdjacentElement('beforeend', generateNumberInput('float_prec', "Number precision", false, null, null, undefined, existing_item.precision || ""));
+function generateFloatPrec(base, existing_item) {
+    base.insertAdjacentElement('beforeend', generateNumberInput('float_prec', "Number precision", false, null, null, undefined, existing_item ? String(existing_item.precision) : ""));
 }
-function generateInvalidTip(base, existing_item = {}) {
-    base.insertAdjacentElement('beforeend', generateTextInput('invalid_tip', "Help text when field is invalid", false, undefined, false, existing_item.tip_on_invalid || ""));
+function generateInvalidTip(base, existing_item) {
+    base.insertAdjacentElement('beforeend', generateTextInput('invalid_tip', "Help text when field is invalid", false, undefined, false, existing_item ? existing_item.tip_on_invalid : ""));
 }
-function generateAllowVoice(base, existing_item = {}) {
-    base.insertAdjacentHTML('beforeend', generateCheckbox('vocal_command', "Allow vocal command", existing_item.allow_voice_control || false));
+function generateAllowVoice(base, existing_item) {
+    base.insertAdjacentHTML('beforeend', generateCheckbox('vocal_command', "Allow vocal command", existing_item ? existing_item.allow_voice_control : false));
 }
-function generateRmWhitespace(base, existing_item = {}) {
-    base.insertAdjacentHTML('beforeend', generateCheckbox('rm_whitesp', "Remove whitespaces during vocal recognition", existing_item.remove_whitespaces || false));
+function generateRmWhitespace(base, existing_item) {
+    base.insertAdjacentHTML('beforeend', generateCheckbox('rm_whitesp', "Remove whitespaces during vocal recognition", existing_item ? existing_item.remove_whitespaces : false));
 }
 /**
  * @param {HTMLFormElement} form
  * @param {any} entry
  * @param {string} prop
  */
-function acquireDataFromInput(form, entry, prop) {
+export function acquireDataFromInput(form, entry, prop) {
     if (prop === "slider_options") {
         // Récupération des deux name + label
         const name1 = form.querySelector(`[name="slider_opt_1_i"]`).value;
@@ -288,7 +313,7 @@ function acquireDataFromInput(form, entry, prop) {
     }
     else if (prop === "select_options") {
         // Récupération du select multiple
-        const sopt = {};
+        const sopt = { options: [], multiple: false };
         sopt.multiple = form.querySelector(`[name="select_multiple"]`).checked;
         sopt.options = [];
         // Récupération des options

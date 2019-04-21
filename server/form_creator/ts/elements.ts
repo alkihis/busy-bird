@@ -1,4 +1,4 @@
-import { convertHTMLToElement } from "./helpers";
+import { convertHTMLToElement } from "./helpers.js";
 
 ///// INTERFACES
 export interface Schema {
@@ -157,6 +157,7 @@ export const FORM_TYPES: { [name: string]: { label: string; props: string[]; inf
     checkbox: {label: "Checkbox", info: "Default value is unchecked or indeterminate.", props: ['indeterminate']},
     datetime: {label: "Date and time", props: []},
     image: {label: "Picture", props: []},
+    video: {label: "Video", props: []},
     date: {label: "Date", props: []},
     time: {label: "Time", props: []},
     file: {label: "File", props: ["file_type"]},
@@ -164,7 +165,7 @@ export const FORM_TYPES: { [name: string]: { label: string; props: string[]; inf
 };
 
 export const EMPTY_CHILDRENS = new Set(["divider", "title", "checkbox", "slider"]); // > No default value & no possibility of require it
-export const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "date", "time", "file", "image", "select"]); // > No default value
+export const NO_DEFAULT_VALUE = new Set(["audio", "datetime", "date", "time", "file", "image", "video", "select"]); // > No default value
 export const NO_LABEL = new Set(["divider"]);
 
 // dec2hex :: Integer -> String

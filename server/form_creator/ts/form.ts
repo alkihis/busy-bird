@@ -1,6 +1,7 @@
 import { askModal, readFile } from "./helpers.js";
 import { FormEntity, FORM_TYPES, NO_LABEL, EMPTY_CHILDRENS, NO_DEFAULT_VALUE, FORM_PROPERTIES, PROPERTIES_INTERNAL_NAME, acquireDataFromInput, FormLocations, Schema } from "./elements.js";
 import { exportFormModal } from "./export.js";
+import { loginModal, settings } from "./interface_server.js";
 
 export function getCollection() {
     return document.getElementById('form_collection');
@@ -40,7 +41,7 @@ export function getBase() {
  * et insère de l'HTML dedans avec content
  * @returns M.Modal Instance du modal instancié avec Materialize
  */
-export function initModal(options = {}, content = "") {
+export function initModal(options: Partial<M.ModalOptions> = {}, content = "") {
     const modal = getModal();
     modal.classList.remove('modal-fixed-footer');
     
@@ -55,7 +56,7 @@ export function initModal(options = {}, content = "") {
  * et insère de l'HTML dedans avec content
  * @returns M.Modal Instance du modal instancié avec Materialize
  */
-export function initBottomModal(options = {}, content = "") {
+export function initBottomModal(options: Partial<M.ModalOptions> = {}, content = "") {
     const modal = getBottomModal();
     
     if (content)
@@ -704,6 +705,8 @@ $(function() {
 
     // Initialisation du bouton de reset
     document.getElementById('__reset_form_btn').onclick = resetForm;
+
+    (document.getElementById('__settings_html_button') as HTMLElement).onclick = settings;
 });
 
 function resetForm() {

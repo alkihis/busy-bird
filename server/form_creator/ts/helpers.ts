@@ -73,6 +73,24 @@ export function askModal(title: string, question: string, text_yes = "Yes", text
     });
 }
 
+export function informalModal(title: string, content: string, ok_button: string | false = "Ok", lock = false) {
+    const modal = getBottomModal();
+    const instance = initBottomModal({ dismissible: !lock });
+
+    modal.innerHTML = `
+    <div class="modal-content center">
+        <h5 class="no-margin-top">${title}</h5>
+        ${content}
+    </div>
+    
+    ${ok_button ? `<div class="modal-footer"><a href="#!" class="btn-flat green-text modal-close">${ok_button}</a></div>` : ''}
+    `;
+
+    instance.open();
+
+    return instance;
+}
+
 export function convertHTMLToElement(htmlString: string) {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlString;

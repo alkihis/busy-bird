@@ -1,4 +1,7 @@
-import Sortable from 'sortablejs';
+import { askModal, readFile } from "./helpers.js";
+import { FORM_TYPES, NO_LABEL, EMPTY_CHILDRENS, NO_DEFAULT_VALUE, FORM_PROPERTIES, PROPERTIES_INTERNAL_NAME, acquireDataFromInput } from "./elements.js";
+import { exportFormModal } from "./export.js";
+import { settings } from "./interface_server.js";
 export function getCollection() {
     return document.getElementById('form_collection');
 }
@@ -104,9 +107,9 @@ export function getModalPreloader(text, footer = "") {
     `;
 }
 /// {[fieldName: string]: FormEntity}
-let form_items = {};
-let loaded_form = null;
-let form_locations = {};
+export let form_items = {};
+export let loaded_form = null;
+export let form_locations = {};
 function addItem(type, label, existing_item = undefined) {
     const modal = getModal();
     const instance = initModal({ dismissible: false });
@@ -209,6 +212,7 @@ function generateForm(baseElement, type, existing_item) {
  * @param {M.Modal} instance
  */
 function readNewEntry(form, type, instance, f_label, existing_item) {
+    // @ts-ignore
     const entry = { type };
     // Récupération name & label
     const name = form.querySelector(`[name="${PROPERTIES_INTERNAL_NAME.name}"]`);
@@ -259,14 +263,19 @@ function readNewEntry(form, type, instance, f_label, existing_item) {
                 }
                 // Si c'est un input texte
                 if (cur_prop.type === "text") {
-                    if (cur_prop.value)
+                    if (cur_prop.value) {
+                        // @ts-ignore
                         entry[prop] = cur_prop.value;
+                    }
                 }
                 else if (cur_prop.type === "number") {
-                    if (cur_prop.value)
+                    if (cur_prop.value) {
+                        // @ts-ignore
                         entry[prop] = Number(cur_prop.value);
+                    }
                 }
                 else if (cur_prop.type === "checkbox") {
+                    // @ts-ignore
                     entry[prop] = cur_prop.checked;
                 }
             }
@@ -332,19 +341,23 @@ function createCollectionItem(collection, entry, f_label, existing_item = undefi
             delete form_items[entry.name];
             item.remove();
             try {
+                // @ts-ignore
                 Sortable.active.destroy();
             }
             catch (e) { }
-            Sortable.create(collection, undefined);
+            // @ts-ignore
+            Sortable.create(collection);
         })
             .catch(() => { });
     };
     item.firstChild.appendChild(delete_btn);
     try {
+        // @ts-ignore
         Sortable.active.destroy();
     }
     catch (e) { }
-    Sortable.create(collection, undefined);
+    // @ts-ignore
+    Sortable.create(collection);
 }
 /**
  * {this} HTMLInputElement : File input
@@ -495,6 +508,7 @@ async function loadTSV(file, mode, id, label, lat, long) {
                 'latitude': Number(line[num_lat].replace(',', '.')),
                 'longitude': Number(line[num_long].replace(',', '.'))
             };
+            // @ts-ignore
             if (isNaN(locations[local_id].latitude) || isNaN(locations[local_id].longitude)) {
                 throw "invalid lat long";
             }
@@ -539,11 +553,11 @@ $(function () {
         }
     });
     M.FormSelect.init(type_select);
-    // Initialisation du file TSV input
+    // @ts-ignore Initialisation du file TSV input
     document.getElementById('__tsv_file_input').onchange = loadLocationModal;
     // Initilisation du file input JSON
     document.getElementById('__newfile_input').onchange = async function () {
-        let content = {};
+        let content;
         let info = document.getElementById('__newfile_info');
         try {
             info.innerText = "Lecture du fichier...";
@@ -559,6 +573,7 @@ $(function () {
         }
         // Stockage
         loaded_form = content;
+        // @ts-ignore On ajoute une donnée supplémentaire pour reconnaître le nom de fichier
         loaded_form.key = this.files[0].name.split('.json')[0];
         form_items = {};
         form_locations = content.locations;
@@ -579,6 +594,7 @@ $(function () {
     document.getElementById('__export_form_btn').onclick = exportFormModal;
     // Initialisation du bouton de reset
     document.getElementById('__reset_form_btn').onclick = resetForm;
+    document.getElementById('__settings_html_button').onclick = settings;
 });
 function resetForm() {
     askModal("Reset ?", "All modifications will be lost.")
@@ -589,6 +605,7 @@ function resetForm() {
         loaded_form = null;
         getCollection().innerHTML = "";
         try {
+            // @ts-ignore
             Sortable.active.destroy();
         }
         catch (e) { }

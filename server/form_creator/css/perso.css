@@ -20,6 +20,14 @@ main {
     padding-bottom: 0 !important;
 }
 
+.footer-btn {
+    color: rgb(215, 215, 255);
+}
+
+.page-footer {
+    background-color: #43739e;
+}
+
 .valign-middle {
     vertical-align: middle;
 }

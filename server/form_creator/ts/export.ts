@@ -1,5 +1,7 @@
-import { getModal, initModal, loaded_form, form_locations, getCollection, form_items } from "./form.js";
+import { getModal, initModal, loaded_form, form_locations, getCollection, form_items, getModalPreloader } from "./form.js";
 import { FormLocations, Schema } from "./elements.js";
+import { User } from "./server.js";
+import { informalModal } from "./helpers.js";
 
 export function exportFormModal() {
     const modal = getModal();
@@ -55,12 +57,16 @@ export function exportFormModal() {
     </div>
     <div class="modal-footer">
         <a href="#!" class="btn-flat modal-close left red-text">Cancel</a>
-        <a href="#!" id="__export_form" class="btn-flat right green-text">Export</a>
+        <a href="#!" id="__export_form" class="btn-flat right green-text">Export to file</a>
+        <a href="#!" id="__export_form_server" class="btn-flat right blue-text">Export to server</a>
         <div class="clearb"></div>
     </div>
     `;
 
-    document.getElementById('__export_form').onclick = function() {
+    document.getElementById('__export_form').onclick = () => { export_form(); };
+    document.getElementById('__export_form_server').onclick = () => { export_form(false); };
+    
+    async function export_form(export_file = true) {
         const name = (document.getElementById('__form_label') as HTMLInputElement).value;
         const key = (document.getElementById('__form_key') as HTMLInputElement).value;
         const idf = (document.getElementById('__form_id_f') as HTMLInputElement).value;
@@ -77,28 +83,57 @@ export function exportFormModal() {
             return;
         }
 
-        const a = document.createElement('a');
+        if (export_file) {
+            const a = document.createElement('a');
 
-        a.href = exportForm(name, idf, form_locations, skip, nope);
-        a.innerText = "Download";
-        a.target = '_blank';
-        a.download = key + '.json';
-        a.className = "flow-text";
+            a.href = exportForm(name, idf, form_locations, skip, nope);
+            a.innerText = "Download";
+            a.target = '_blank';
+            a.download = key + '.json';
+            a.className = "flow-text";
+    
+            const wrapper = document.createElement('div');
+            wrapper.className = "row center";
+    
+            wrapper.insertAdjacentHTML('beforeend', "<p class='flow-text'>Click on download to retrieve the model</p>");
+            wrapper.appendChild(a);
+    
+            modal.innerHTML = `<div class="modal-content"></div>
+            <div class="modal-footer">
+                <a href="#!" class="btn-flat modal-close left red-text">Close</a>
+                <div class="clearb"></div>
+            </div>
+            `;
+    
+            modal.firstChild.appendChild(wrapper);
+        }
+        else {
+            // Try exporting to server
+            if (!User.logged) {
+                M.toast({html: "Log in to send models to server"});
+                return;
+            }
 
-        const wrapper = document.createElement('div');
-        wrapper.className = "row center";
+            const ist = informalModal("Exporting", getModalPreloader("Please wait"), false, true);
 
-        wrapper.insertAdjacentHTML('beforeend', "<p class='flow-text'>Click on download to retrieve the model</p>");
-        wrapper.appendChild(a);
+            try {
+                const response = await User.req("schemas/insert.json", "POST", {
+                    type: key,
+                    model: exportForm(name, idf, form_locations, skip, nope, false)
+                });
 
-        modal.innerHTML = `<div class="modal-content"></div>
-        <div class="modal-footer">
-            <a href="#!" class="btn-flat modal-close left red-text">Close</a>
-            <div class="clearb"></div>
-        </div>
-        `;
+                if (!response.ok) {
+                    throw new Error;
+                }
 
-        modal.firstChild.appendChild(wrapper);
+                M.toast({html: "Model has been sent"});
+                instance.close();
+            } catch (e) {
+                M.toast({html: "Unable to send model. You may not be allowed to send models to server"});
+            }
+
+            ist.close();
+        }
     }
 
     M.updateTextFields();
@@ -114,7 +149,7 @@ export function exportFormModal() {
  * 
  * @returns {string} URL for schema download
  */
-export function exportForm(name: string, id_field: string, locations: FormLocations, skip_location: boolean, no_location: boolean) {
+export function exportForm(name: string, id_field: string, locations: FormLocations, skip_location: boolean, no_location: boolean, as_url = true) {
     const exported: Schema = { name, fields: [], locations: {} };
     
     if (locations && !no_location)
@@ -137,6 +172,6 @@ export function exportForm(name: string, id_field: string, locations: FormLocati
     if (skip_location)
         exported.skip_location = true;
 
-    return URL.createObjectURL(new Blob([JSON.stringify(exported)], {type: "application/json"}));
+    return as_url ? URL.createObjectURL(new Blob([JSON.stringify(exported)], {type: "application/json"})) : JSON.stringify(exported);
 }
 
