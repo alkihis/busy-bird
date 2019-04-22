@@ -229,7 +229,7 @@ Le formulaire `id` doit exister sur le serveur pour pouvoir envoyer des données
 Send a file linked to a form to the server, but using a chunked upload method.
 *This is **INIT** command, used to start an upload process*.
 
-**Notice**: This couple of endpoints use *commands* (`INIT`, `APPEND` and `FINALIZE`), like the [Twitter API](https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init). The global concept of this chunk send endpoint is the same.
+**Notice**: This couple of endpoints use *commands* (`INIT`, `APPEND`, `FINALIZE` and optional `STATUS`), like the [Twitter API](https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init). The global concept of this chunk send endpoint is the same.
 
 `media_id` is returned in number form and in string form. 
 For a JavaScript usage, it is fairly recommanded to use *only* the **string** form: `media_id` can be a 64-bit integer.
@@ -248,6 +248,7 @@ For a JavaScript usage, it is fairly recommanded to use *only* the **string** fo
 | -------------  |----------------:            |---------                   |----------:           |
 | media_id       | Media ID for other commands | 239583902084908            | integer              |
 | media_id_str   | Media ID for other commands | "239583902084908"          | string               |
+| expiration     | Timestamp when media ID will become invalid | 1555924902 | integer              |
 
 
 #### Exemple
@@ -255,7 +256,7 @@ For a JavaScript usage, it is fairly recommanded to use *only* the **string** fo
 
 [Body] `command=INIT&id=UBD782ddnuaeAy576&type=cincle_plongeur&filename=IMG_DSC0001.jpg&size=4204102`
 
-[HTTP Response] `{"media_id": 239583902084908, "media_id_str": "239583902084908"}`
+[HTTP Response] `{"media_id": 239583902084908, "media_id_str": "239583902084908", "expiration": 1555924902}`
 
 ---
 
@@ -313,6 +314,34 @@ May be an empty HTTP 200 response, or a `{"status": true}` 200 response.
 
 [Body] `command=FINALIZE&media_id=239583902084908`
 
+
+### GET forms/metadata_chunk_send.json **[STATUS]**
+
+#### Description
+Send a file linked to a form to the server, but using a chunked upload method.
+*This is **STATUS** command, used to get infos about sended file*.
+
+`STATUS`, unlike other commands, use **HTTP GET** method.
+
+#### Arguments
+| Name           | Expected value                     | Example               |
+| -------------  |----------------:                   |---------              |
+| media_id       | Media ID returned by INIT command  | 239583902084908       |
+| command        | Command name (case sensitive)      | STATUS                |
+
+#### Result
+| Key            | Value                         | Example                    | Type                 |
+| -------------  |----------------:              |---------                   |----------:           |
+| id             | Form ID                            | 117EUDHZ72            | string              |
+| type           | Form type                          | cincle_plongeur       | string |
+| filename       | Name of the file to send           | IMG_DSC0001.jpg       | string |
+| size           | Size of the file to send, in bytes | 4204102               | integer |
+| expiration     | Timestamp when media ID will become invalid | 1555924902 | integer              |
+
+#### Exemple
+`GET https://busybird.lbbe.univ-lyon1.fr/forms/metadata_chunk_send.json?command=STATUS&media_id=239583902084908`
+
+[HTTP Response] `{"id": "117EUDHZ72", "type": "cincle_plongeur", "filename": "IMG_DSC0001.jpg", size: 4204102, expiration: 1555924902} `
 
 ## Endpoints pour gestions des schémas de formulaire "schemas"
 

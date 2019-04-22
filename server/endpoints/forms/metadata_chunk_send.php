@@ -25,15 +25,21 @@ function checkIfInMetadata(string $type, string $id, string $filename) : bool {
     return false;
 }
 
-function loadEndpoint(string $method) : array {
-    if ($method !== 'POST') {
-        EndPointManager::error(4);
-    }
-
+function loadEndpoint(string $method) {
     $user_obj = userLogger();
 
     if (!$user_obj) {
         EndPointManager::error(8);
+    }
+
+    if ($method !== 'POST') {
+        // Vérification que la commande "STATUS" est demandée
+        if ($method === "GET" && isset($_GET['command']) && $_GET['command'] === "STATUS") {
+            return statusCommand($user_obj);
+        }
+
+        // Sinon, c'est invalide
+        EndPointManager::error(4);
     }
 
     list($command) = checkRequired();
@@ -131,8 +137,6 @@ function appendCommand(User $user_obj) {
     $handle = fopen($path_file, "wb");
     fwrite($handle, $data_bin);
     fclose($handle);
-
-    return ['status' => true];
 }
 
 function finishCommand(User $user_obj) {
@@ -212,6 +216,39 @@ function finishCommand(User $user_obj) {
 
     // Suppression des parties
     deleteParts($media_id);
+}
 
-    return ['status' => true];
+function statusCommand(User $user_obj) {
+    if (isset($_GET['media_id'])) {
+        list($media_id) = [$_GET['media_id']];
+    }
+    else {
+        EndPointManager::error(5);
+    }
+
+    $path = FORM_DATA_FILE_PATH . "__parts__/$media_id";
+
+    if (!file_exists($path)) {
+        EndPointManager::error(19);
+    }
+
+    $infos = json_decode(file_get_contents($path . "/infos.json"));
+
+    if ($infos->expiration < time()) {
+        deleteParts($media_id);
+        EndPointManager::error(26);
+    }
+
+    if ($infos->owner !== $user_obj->username) {
+        EndPointManager::error(23);
+    }
+
+    // Retour des informations
+    return [
+        'expiration' => $infos->expiration,
+        'filename' => $infos->filename,
+        'size' => $infos->total_size,
+        'id' => $infos->form_id,
+        'type' => $infos->form_type
+    ];
 }
