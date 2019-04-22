@@ -314,6 +314,7 @@ May be an empty HTTP 200 response, or a `{"status": true}` 200 response.
 
 [Body] `command=FINALIZE&media_id=239583902084908`
 
+---
 
 ### GET forms/metadata_chunk_send.json **[STATUS]**
 
