@@ -14,6 +14,7 @@ Dans toutes les requêtes `POST` à effectuer, le formatage du corps de la requ�
 Tout d'abord, un utilisateur doit posséder un token d'accès pour interagir avec le serveur.
 Ce token est obtenable via `POST users/login.json`.
 Chaque requête doit contenir le token dans l'entête HTTP `Authorization` sous la forme `Authorization`: `Bearer xxxxxxx` où `xxxxxxx` est le token renvoyé par `POST users/login.json`.
+Sauf précision, toute requête demande une authentification.
 
 Les réponses serveur > client s'effectuent uniquement au format JSON (format `application/json`).
 
@@ -36,6 +37,8 @@ Si aucune précision n'est faite lors de la description d'un argument, cet argum
 #### Description
 Créé un nouvel utilisateur et renvoie son token d'accès créé.
 Un mot de passe administrateur (disponible dans les constantes du serveur) est nécessaire pour créer un compte.
+
+*Cette requête ne requiert pas d'authentification.*
 
 #### Arguments
 | Nom            | Valeur attendue                    | Exemple |
@@ -62,6 +65,8 @@ Un mot de passe administrateur (disponible dans les constantes du serveur) est n
 
 #### Description
 Connecte un utilisateur via son identifiant/mot de passe et renvoie un token d'accès.
+
+*Cette requête ne requiert pas d'authentification.*
 
 #### Arguments
 | Nom            | Valeur attendue  | Exemple |
@@ -123,6 +128,8 @@ If user does not exists, return error code 16.
 If user does exists but token mismatched with stored token, return error code 15.
 
 Otherwise, return the same data as `POST users/login.json`.
+
+*Cette requête ne requiert pas d'authentification.*
 
 #### Arguments
 | Name           | Excepted value  | Example |
@@ -338,11 +345,30 @@ Send a file linked to a form to the server, but using a chunked upload method.
 | filename       | Name of the file to send           | IMG_DSC0001.jpg       | string |
 | size           | Size of the file to send, in bytes | 4204102               | integer |
 | expiration     | Timestamp when media ID will become invalid | 1555924902 | integer              |
+| sended_parts   | Parts sended to server | [{index: 0, size: 3294}, {index: 1, size: 4320}, ...] | Array of objects |
+| sended_size    | Size (in bytes) sended to server | 2296110 | integer              |
 
 #### Exemple
 `GET https://busybird.lbbe.univ-lyon1.fr/forms/metadata_chunk_send.json?command=STATUS&media_id=239583902084908`
 
-[HTTP Response] `{"id": "117EUDHZ72", "type": "cincle_plongeur", "filename": "IMG_DSC0001.jpg", size: 4204102, expiration: 1555924902} `
+[HTTP Response] 
+```json
+{
+    "id": "117EUDHZ72", 
+    "type": "cincle_plongeur", 
+    "filename": "IMG_DSC0001.jpg", 
+    "size": 4204102, 
+    "expiration": 1555924902, 
+    "sended_parts": [ {
+            "index": 0,
+            "size": 1389
+        }, {
+            "index": 1,
+            "size": 1442
+    } ], 
+    "sended_size": 32948
+}
+```
 
 ## Endpoints pour gestions des schémas de formulaire "schemas"
 

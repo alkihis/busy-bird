@@ -243,12 +243,30 @@ function statusCommand(User $user_obj) {
         EndPointManager::error(23);
     }
 
+    // Recherche des éléments envoyés
+    $size_sended = 0;
+    $files_bin = glob($path . "/*.bin");
+    $files_sended = [];
+
+    foreach ($files_bin as $file) {
+        $index = (int)(explode('.bin', basename($file))[0]);
+        $currents = filesize($file);
+        $files_sended[] = ["index" => $index, "size" => $currents];
+        $size_sended += $currents;
+    }
+
+    usort($files_sended, function($a, $b) {
+        return $a['index'] - $b['index'];
+    });
+
     // Retour des informations
     return [
         'expiration' => $infos->expiration,
         'filename' => $infos->filename,
         'size' => $infos->total_size,
         'id' => $infos->form_id,
-        'type' => $infos->form_type
+        'type' => $infos->form_type,
+        'sended_parts' => $files_sended,
+        'sended_size' => $size_sended
     ];
 }
