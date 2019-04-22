@@ -1,6 +1,6 @@
 import { getModal, initModal, loaded_form, form_locations, getCollection, form_items, getModalPreloader } from "./form.js";
 import { User } from "./server.js";
-import { informalModal } from "./helpers.js";
+import { informalModal, askModal } from "./helpers.js";
 export function exportFormModal() {
     const modal = getModal();
     const instance = initModal({ dismissible: false });
@@ -12,13 +12,13 @@ export function exportFormModal() {
     const form_skip_loc = loaded_form && loaded_form.skip_location ? true : false;
     modal.innerHTML = `
     <div class="modal-content row no-margin-bottom no-padding-bottom">
-        <h5 class="no-margin-top">Export modal</h5>
+        <h5 class="no-margin-top">Export model</h5>
 
         <p>
             ${Object.keys(form_locations).length} loaded locations.<br>
         </p>
 
-        <h6>Modal settings<h6>
+        <h6>Model settings<h6>
 
         <div class="input-field col s12">
             <input id="__form_key" placeholder="Only alpha-numerical characters" 
@@ -60,7 +60,7 @@ export function exportFormModal() {
     `;
     document.getElementById('__export_form').onclick = () => { export_form(); };
     document.getElementById('__export_form_server').onclick = () => { export_form(false); };
-    async function export_form(export_file = true) {
+    function export_form(export_file = true) {
         const name = document.getElementById('__form_label').value;
         const key = document.getElementById('__form_key').value;
         const idf = document.getElementById('__form_id_f').value;
@@ -94,27 +94,31 @@ export function exportFormModal() {
             modal.firstChild.appendChild(wrapper);
         }
         else {
-            // Try exporting to server
-            if (!User.logged) {
-                M.toast({ html: "Log in to send models to server" });
-                return;
-            }
-            const ist = informalModal("Exporting", getModalPreloader("Please wait"), false, true);
-            try {
-                const response = await User.req("schemas/insert.json", "POST", {
-                    type: key,
-                    model: exportForm(name, idf, form_locations, skip, nope, false)
-                });
-                if (!response.ok) {
-                    throw new Error;
+            askModal("Are you sure ?", "Model \"" + key + "\" will be pushed to the server.")
+                .then(async () => {
+                // Try exporting to server
+                if (!User.logged) {
+                    M.toast({ html: "Log in to send models to server" });
+                    return;
                 }
-                M.toast({ html: "Model has been sent" });
-                instance.close();
-            }
-            catch (e) {
-                M.toast({ html: "Unable to send model. You may not be allowed to send models to server" });
-            }
-            ist.close();
+                const ist = informalModal("Exporting", getModalPreloader("Please wait"), false, true);
+                try {
+                    const response = await User.req("schemas/insert.json", "POST", {
+                        type: key,
+                        model: exportForm(name, idf, form_locations, skip, nope, false)
+                    });
+                    if (!response.ok) {
+                        throw new Error;
+                    }
+                    M.toast({ html: "Model has been sent" });
+                    instance.close();
+                }
+                catch (e) {
+                    M.toast({ html: "Unable to send model. You may not be allowed to send models to server" });
+                }
+                ist.close();
+            })
+                .catch(() => { });
         }
     }
     M.updateTextFields();

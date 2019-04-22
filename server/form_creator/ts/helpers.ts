@@ -27,8 +27,7 @@ export function readFile(file: File) {
  */
 export function askModal(title: string, question: string, text_yes = "Yes", text_no = "No", checkbox: string = undefined) {
     const modal = getBottomModal();
-    const instance = initBottomModal();
-
+    
     modal.innerHTML = `
     <div class="modal-content center">
         <h5 class="no-margin-top">${title}</h5>
@@ -45,30 +44,38 @@ export function askModal(title: string, question: string, text_yes = "Yes", text
     </div>
     <div class="modal-footer">
         <a href="#!" id="__question_no" class="btn-flat green-text modal-close">${text_no}</a>
-        <a href="#!" id="__question_yes" class="btn-flat red-text modal-close">${text_yes}</a>
+        <a href="#!" id="__question_yes" class="btn-flat red-text">${text_yes}</a>
     </div>
     `;
-
-    instance.open();
 
     const chk = document.getElementById("__question_checkbox");
 
     return new Promise(function(resolve, reject) {
+        let yes_enabled = false;
+
+        const instance = initBottomModal({ outDuration: 150, onCloseEnd: () => {
+            if (yes_enabled) {
+                if (chk) {
+                    resolve((chk as HTMLInputElement).checked);
+                }
+                else {
+                    resolve();
+                }
+            }
+            else {
+                if (chk) {
+                    reject((chk as HTMLInputElement).checked);
+                }
+                else {
+                    reject();
+                }
+            }
+        } });
+        instance.open();
+
         document.getElementById('__question_yes').addEventListener('click', () => {
-            if (chk) {
-                resolve((chk as HTMLInputElement).checked);
-            }
-            else {
-                resolve();
-            }
-        });
-        document.getElementById('__question_no').addEventListener('click', () => {
-            if (chk) {
-                reject((chk as HTMLInputElement).checked);
-            }
-            else {
-                reject();
-            }
+            yes_enabled = true;
+            instance.close();
         });
     });
 }
