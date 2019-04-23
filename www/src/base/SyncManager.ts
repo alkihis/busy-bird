@@ -46,10 +46,7 @@ class _SyncList {
     }
 
     public has(id: string) : Promise<boolean> {
-        return this.get(id)
-            .then(item => {
-                return !!item;
-            });
+        return this.get(id).then(item => !!item);
     }
 }
 

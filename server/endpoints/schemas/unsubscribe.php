@@ -10,7 +10,7 @@ function checkRequired() : array {
 }
 
 // Souscrit l'utilisateur a un ou à plusieurs formulaires
-function loadEndpoint(string $method) : ?array {
+function loadEndpoint(string $method) {
     if ($method !== 'POST') {
         EndPointManager::error(4);
     }
@@ -31,7 +31,7 @@ function loadEndpoint(string $method) : ?array {
     updateUser($user_obj);
 
     if (isset($_POST['trim_subs']) && isActive($_POST['trim_subs'])) {
-        return null;
+        return;
     }
 
     $list = getListOfSubscriptions($user_obj->subscriptions);

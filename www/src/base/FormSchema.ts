@@ -117,7 +117,7 @@ export interface SelectOption {
     value: string;
     /** Champ sélectionné par défaut: oui ou non */
     selected?: boolean;
-    /** @deprecated: Champ non utilisé */
+    /** @deprecated Champ non utilisé */
     voice_hints?: string[];
 }
 

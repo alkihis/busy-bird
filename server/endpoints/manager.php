@@ -28,7 +28,7 @@ class EndPointManager {
         20 => [400, "A part cant be bigger than total file size"],
         21 => [400, "Invalid segment index"],
         22 => [400, "Part is too large"],
-        23 => [400, "This media ID has been initialized by another user"],
+        23 => [403, "This media ID has been initialized by another user"],
         24 => [400, "One part is missing"],
         25 => [400, "Size mismatch"],
         26 => [400, "Media ID is expired"],
@@ -63,16 +63,16 @@ class EndPointManager {
     }
 
     static public function run() : void {
-        header('Content-Type: application/json');
-
         try {
             if (file_exists('endpoints/' . self::$page)) {
                 require_once 'endpoints/' . self::$page;
 
                 $data = loadEndpoint($_SERVER['REQUEST_METHOD']);
 
-                if ($data)
+                if ($data) {
+                    header('Content-Type: application/json');
                     echo json_encode($data);
+                }
             }
             else {
                 self::error(2);
@@ -99,9 +99,11 @@ class EndPointManager {
 
     static public function httpError(int $code, array $error_response = []) : void {
         http_response_code($code);
-        if ($error_response)
+        if ($error_response) {
+            header('Content-Type: application/json');
             echo json_encode($error_response);
-
+        }
+        
         die();
     }
 }
