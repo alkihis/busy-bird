@@ -946,6 +946,18 @@ export class FileHelper {
         return this.pwd();
     }
 
+    public get [Symbol.toStringTag]() {
+        return "FileHelper";
+    }
+
+    public async *[Symbol.asyncIterator]() {
+        const values = (await this.ls() as string[]);
+
+        for (const v of values) {
+            yield v;
+        }
+    }
+
     /* FUNCTIONS WITH DIRECTORY ENTRIES, FILE ENTRIES */
 
     /**

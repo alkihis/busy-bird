@@ -240,7 +240,7 @@ function getSchema(string $type) : ?array {
 
         if ($link) {
             $type = $link->escape_string($type);
-            $q = $link->query("SELECT * FROM Models WHERE type='$type' ORDER BY model_time LIMIT 1");
+            $q = $link->query("SELECT * FROM Models WHERE type='$type' ORDER BY model_time DESC LIMIT 1");
 
             if ($q->num_rows) {
                 return json_decode($q->fetch_assoc()['model'], true);
@@ -396,9 +396,9 @@ function updateUser(User $user) : void {
 
         if ($link) {
             // Met à jour les données
-            $stmt = $link->prepare("UPDATE Users SET name=?, token=?, password=?");
+            $stmt = $link->prepare("UPDATE Users SET name=?, token=?, password=?, status=?");
 
-            $stmt->bind_param("sss", $user->username, $user->token, $user->password);
+            $stmt->bind_param("ssss", $user->username, $user->token, $user->password, $user->status);
             $stmt->execute();
 
             // Met à jour les souscriptions

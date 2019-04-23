@@ -14,6 +14,7 @@ Dans toutes les requêtes `POST` à effectuer, le formatage du corps de la requ�
 Tout d'abord, un utilisateur doit posséder un token d'accès pour interagir avec le serveur.
 Ce token est obtenable via `POST users/login.json`.
 Chaque requête doit contenir le token dans l'entête HTTP `Authorization` sous la forme `Authorization`: `Bearer xxxxxxx` où `xxxxxxx` est le token renvoyé par `POST users/login.json`.
+Sauf précision, toute requête demande une authentification.
 
 Les réponses serveur > client s'effectuent uniquement au format JSON (format `application/json`).
 
@@ -36,6 +37,8 @@ Si aucune précision n'est faite lors de la description d'un argument, cet argum
 #### Description
 Créé un nouvel utilisateur et renvoie son token d'accès créé.
 Un mot de passe administrateur (disponible dans les constantes du serveur) est nécessaire pour créer un compte.
+
+*Cette requête ne requiert pas d'authentification.*
 
 #### Arguments
 | Nom            | Valeur attendue                    | Exemple |
@@ -63,6 +66,8 @@ Un mot de passe administrateur (disponible dans les constantes du serveur) est n
 #### Description
 Connecte un utilisateur via son identifiant/mot de passe et renvoie un token d'accès.
 
+*Cette requête ne requiert pas d'authentification.*
+
 #### Arguments
 | Nom            | Valeur attendue  | Exemple |
 | -------------  |----------------: |---------|
@@ -86,6 +91,30 @@ Pour plus d'informations sur les souscriptions, voir les endpoints `GET schemas/
 
 ---
 
+### POST users/upgrade.json
+
+#### Description
+Change an user status.
+
+Available status are `basic` or `admin`.
+Users are `basic` by default.
+
+#### Arguments
+| Name            | Expected value  | Example |
+| -------------  |----------------: |---------|
+| username       | Username         | jeanne  |
+| status         | New status       | basic   |
+
+#### Response
+Empty HTTP 200 response if success.
+
+#### Example
+`POST https://busybird.lbbe.univ-lyon1.fr/users/upgrade.json`
+
+[Body] `username=jeanne&status=basic`
+
+---
+
 ### POST users/validate.json
 
 #### Description
@@ -99,6 +128,8 @@ If user does not exists, return error code 16.
 If user does exists but token mismatched with stored token, return error code 15.
 
 Otherwise, return the same data as `POST users/login.json`.
+
+*Cette requête ne requiert pas d'authentification.*
 
 #### Arguments
 | Name           | Excepted value  | Example |
@@ -205,7 +236,7 @@ Le formulaire `id` doit exister sur le serveur pour pouvoir envoyer des données
 Send a file linked to a form to the server, but using a chunked upload method.
 *This is **INIT** command, used to start an upload process*.
 
-**Notice**: This couple of endpoints use *commands* (`INIT`, `APPEND` and `FINALIZE`), like the [Twitter API](https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init). The global concept of this chunk send endpoint is the same.
+**Notice**: This couple of endpoints use *commands* (`INIT`, `APPEND`, `FINALIZE` and optional `STATUS`), like the [Twitter API](https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init). The global concept of this chunk send endpoint is the same.
 
 `media_id` is returned in number form and in string form. 
 For a JavaScript usage, it is fairly recommanded to use *only* the **string** form: `media_id` can be a 64-bit integer.
@@ -224,6 +255,7 @@ For a JavaScript usage, it is fairly recommanded to use *only* the **string** fo
 | -------------  |----------------:            |---------                   |----------:           |
 | media_id       | Media ID for other commands | 239583902084908            | integer              |
 | media_id_str   | Media ID for other commands | "239583902084908"          | string               |
+| expiration     | Timestamp when media ID will become invalid | 1555924902 | integer              |
 
 
 #### Exemple
@@ -231,42 +263,38 @@ For a JavaScript usage, it is fairly recommanded to use *only* the **string** fo
 
 [Body] `command=INIT&id=UBD782ddnuaeAy576&type=cincle_plongeur&filename=IMG_DSC0001.jpg&size=4204102`
 
-[HTTP Response] `{"media_id": 239583902084908, "media_id_str": "239583902084908"}`
+[HTTP Response] `{"media_id": 239583902084908, "media_id_str": "239583902084908", "expiration": 1555924902}`
 
 ---
 
 ### POST forms/metadata_chunk_send.json **[APPEND]**
 
 #### Description
-Send a file linked to a form to the server, but using a chunked upload method.
+Send a file linked to a form to the server, but with a chunked upload method.
 *This is **APPEND** command, used to push a file part to the server*.
 
 `data` must be base64-encoded. **EACH FILE PART SHOULD BE BASE64-ENCODED SEPARATELY**.
 
 Order of the segments (given by `segment_index` parameter) is not important, you can send multiple parts without having to deal with a particular order.
 
-*Warning*: `data` parameter must not exceed 5 MB.
+*Warning*: `data` parameter must not exceed 5 MB (before base64-encoding).
 
 #### Arguments
-| Name           | Expected value                     | Example               |
-| -------------  |----------------:                   |---------              |
-| data           | Data of the file part (base64 encoded)  | dGVzdCBwb3VyIGwnQVBJ       |
-| media_id       | Media ID returned by INIT command  | 239583902084908       |
+| Name           | Expected value                           | Example               |
+| -------------  |----------------:                         |---------              |
+| data           | Data of the file part (base64 encoded)   | dGVzdCBwb3VyIGwnQVBJ       |
+| media_id       | Media ID returned by INIT command        | 239583902084908       |
 | segment_index  | Which part of the final file it is (starting at 0, to 999 maximum) | 0               |
-| command        | Command name (case sensitive)      | APPEND                |
+| command        | Command name (case sensitive)            | APPEND                |
 
 #### Result
-| Key            | Value                       | Example                    | Type                 |
-| -------------  |----------------:            |---------                   |----------:           |
-| status         | All is working good         | true                       | boolean              |
+May be an empty HTTP 200 response, or a `{"status": true}` 200 response.
 
 
 #### Exemple
 `POST https://busybird.lbbe.univ-lyon1.fr/forms/metadata_chunk_send.json`
 
 [Body] `command=APPEND&media_id=239583902084908&segment_index=0&data=dGVzdCBwb3VyIGwnQVBJ`
-
-[HTTP Response] `{"status": true}`
 
 ---
 
@@ -285,9 +313,7 @@ When `FINALIZE` command is complete, file has been successfully uploaded.
 | command        | Command name (case sensitive)      | FINALIZE              |
 
 #### Result
-| Key            | Value                       | Example                    | Type                 |
-| -------------  |----------------:            |---------                   |----------:           |
-| status         | All is working good         | true                       | boolean              |
+May be an empty HTTP 200 response, or a `{"status": true}` 200 response.
 
 
 #### Exemple
@@ -295,8 +321,54 @@ When `FINALIZE` command is complete, file has been successfully uploaded.
 
 [Body] `command=FINALIZE&media_id=239583902084908`
 
-[HTTP Response] `{"status": true}`
+---
 
+### GET forms/metadata_chunk_send.json **[STATUS]**
+
+#### Description
+Send a file linked to a form to the server, but using a chunked upload method.
+*This is **STATUS** command, used to get infos about sended file*.
+
+`STATUS`, unlike other commands, use **HTTP GET** method.
+
+#### Arguments
+| Name           | Expected value                     | Example               |
+| -------------  |----------------:                   |---------              |
+| media_id       | Media ID returned by INIT command  | 239583902084908       |
+| command        | Command name (case sensitive)      | STATUS                |
+
+#### Result
+| Key            | Value                         | Example                    | Type                 |
+| -------------  |----------------:              |---------                   |----------:           |
+| id             | Form ID                            | 117EUDHZ72            | string              |
+| type           | Form type                          | cincle_plongeur       | string |
+| filename       | Name of the file to send           | IMG_DSC0001.jpg       | string |
+| size           | Size of the file to send, in bytes | 4204102               | integer |
+| expiration     | Timestamp when media ID will become invalid | 1555924902 | integer              |
+| sended_parts   | Parts sended to server | [{index: 0, size: 3294}, {index: 1, size: 4320}, ...] | Array of objects |
+| sended_size    | Size (in bytes) sended to server | 2296110 | integer              |
+
+#### Exemple
+`GET https://busybird.lbbe.univ-lyon1.fr/forms/metadata_chunk_send.json?command=STATUS&media_id=239583902084908`
+
+[HTTP Response] 
+```json
+{
+    "id": "117EUDHZ72", 
+    "type": "cincle_plongeur", 
+    "filename": "IMG_DSC0001.jpg", 
+    "size": 4204102, 
+    "expiration": 1555924902, 
+    "sended_parts": [ {
+            "index": 0,
+            "size": 1389
+        }, {
+            "index": 1,
+            "size": 1442
+    } ], 
+    "sended_size": 32948
+}
+```
 
 ## Endpoints pour gestions des schémas de formulaire "schemas"
 
@@ -396,3 +468,46 @@ Objet de type `FormSchema` si `trim_subs` vaut `false`, `null` sinon.
 [Body] `ids=cincle_plongeur&trim_subs=false`
 
 [HTTP Response] `{"cerf_plongeur": Form}`
+
+### POST schemas/insert.json
+
+#### Description
+Add or upgrade a form schema.
+
+#### Arguments
+| Name            | Expected value   | Example          |
+| -------------  |----------------:  |---------         |
+| type           | Form type (must be unique)  | cincle_plongeur |
+| model          | Entire form schema, in JSON format. Must implement "Schema" interface  | '{"name": "Cincle Plongeur", ...}' |
+
+If `type` refer to an existing schema, it will be updated (and served to user the next time they'll fetch it).
+
+#### Response
+Empty HTTP 200 response if success.
+
+#### Example
+
+`POST https://busybird.lbbe.univ-lyon1.fr/schemas/insert.json`
+
+[Body] `type=cincle_plongeur&model={"name": "Cincle Plongeur", ...}`
+
+### GET schemas/get.json
+
+#### Description
+Get an existing form schema.
+Does not refer to subscriptions. 
+Use it to get a form schema in order to modify it or check if it exists.
+
+#### Arguments
+| Name            | Expected value   | Example          |
+| -------------  |----------------:  |---------         |
+| type           | Form type  | cincle_plongeur |
+
+#### Response
+Object that implement `Schema` interface, HTTP 404 if schema does not exists.
+
+#### Example
+
+`GET https://busybird.lbbe.univ-lyon1.fr/schemas/get.json?type=cincle_plongeur`
+
+[HTTP Response] `{"name": "Cincle Plongeur", ...}`

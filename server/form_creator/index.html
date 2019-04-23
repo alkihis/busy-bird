@@ -2,23 +2,33 @@
 
 <head>
     <!--Import Google Icon Font-->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
     <!--Import materialize.css-->
     <link type="text/css" rel="stylesheet" href="css/materialize.min.css" media="screen,projection" />
     <link type="text/css" rel="stylesheet" href="css/perso.css" media="screen,projection" />
 
     <!--Let browser know website is optimized for mobile-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
 </head>
 
 <body>
     <main style="margin-bottom: 5em;">
         <div id="main_block" class="container">
-            <h1>Form model creator</h1>
+            <h2>Form model creator</h2>
             <p class="flow-text">
                 Insert new fields with field selector, then export your model with the
                 appropriated button.
+            </p>
+            <p id="__warning-text__" style="display: none">
+                <span style="font-style: italic; font-weight: bold;">Warning</span>: This form creator requires a modern navigator.
+                <br><br>
+                Supported navigators are:<br>
+                - Chrome 61 and up<br>
+                - Firefox 60 and up<br>
+                - Safari 11 and up<br>
+                - Edge 16 and up<br>
+                <span style="font-weight: bold;">Internet Explorer</span> is <span style="font-style: italic;">not</span> supported !
             </p>
 
             <ul class="collection" id="form_collection"></ul>
@@ -26,7 +36,7 @@
             <div id="new_item"></div>
 
             <div class="divider divider-margin"></div>
-            
+
             <h4>Load locations</h4>
             <p>
                 Import locations from a Tab-separated file (CSV with tabulations).
@@ -34,10 +44,10 @@
             <div class="file-field input-field">
                 <div class="btn">
                     <span>TSV location</span>
-                    <input type="file" id="__tsv_file_input" accept="text/tab-separated-values,text/plain">
+                    <input type="file" id="__tsv_file_input" accept="text/tab-separated-values,text/plain" />
                 </div>
                 <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text">
+                    <input class="file-path validate" type="text" />
                 </div>
             </div>
             <div class="clearb"></div>
@@ -47,19 +57,26 @@
             <!-- File input for file loading -->
             <h4>Load existing model</h4>
             <p>
-                Load a model from file will erase your previous modifications on this page.
+                Load a model will erase your previous modifications on this
+                page. You can load from a JSON file or directly from your Busy Bird server.
             </p>
             <p id="__newfile_info"></p>
 
-            <div class="file-field input-field">
-                <div class="btn">
-                    <span>JSON Model</span>
-                    <input type="file" id="__newfile_input" accept="application/json">
+            <div class="row">
+                <div class="file-field input-field col s8">
+                    <div class="btn">
+                        <span>JSON Model</span>
+                        <input type="file" id="__newfile_input" accept="application/json" />
+                    </div>
+                    <div class="file-path-wrapper">
+                        <input class="file-path validate" type="text" />
+                    </div>
                 </div>
-                <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text">
+                <div class="col s4 input-field center">
+                    <button class="btn big light-blue" id="__load_from_server_btn">Load from server</button>
                 </div>
             </div>
+            
             <div class="clearb"></div>
 
             <div class="divider divider-margin"></div>
@@ -83,18 +100,36 @@
     <footer class="page-footer">
         <div class="footer-copyright">
             <div class="container">
-                LBBE - Busy Bird
+                <div class=" left">
+                    LBBE - Busy Bird 
+                </div>
+                <div class="right">
+                    <span id="__login_html_text"></span>
+                    <a href="#!" class="footer-btn" id="__login_html_button">Login</a>
+                    ·
+                    <a href="#!" class="footer-btn" id="__settings_html_button">
+                        Server : <span id="__settings_html_server"></span>
+                    </a>
+                </div>
+                <div class="clearb"></div>
             </div>
         </div>
     </footer>
 
+    <script>
+        setTimeout(() => {
+            const e = document.getElementById('__warning-text__');
+
+            if (e) {
+                e.style.display = "block";
+            }
+        }, 500);
+    </script>
+
     <script src="js/jquery.min.js"></script>
     <script src="js/materialize.min.js"></script>
     <script src="js/Sortable.min.js"></script>
-    <script src="js/helpers.js"></script>
-    <script src="js/elements.js"></script>
-    <script src="js/export.js"></script>
-    <script src="js/form.js"></script>
+    <script src="js/form.js" type="module"></script>
 </body>
 
-</html> 
+</html>

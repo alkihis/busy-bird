@@ -1,15 +1,19 @@
 import { getModal, initModal, loaded_form, form_locations, getCollection, form_items, getModalPreloader } from "./form.js";
+import { FormLocations, Schema } from "./elements.js";
 import { User } from "./server.js";
 import { informalModal, askModal } from "./helpers.js";
+
 export function exportFormModal() {
     const modal = getModal();
-    const instance = initModal({ dismissible: false });
+    const instance = initModal({dismissible: false});
+
     // @ts-ignore
     const form_key = loaded_form ? loaded_form.key : "";
     const form_name = loaded_form ? loaded_form.name : "";
     const form_id_field = loaded_form && loaded_form.id_field ? loaded_form.id_field : "";
     const form_no_loc = loaded_form && loaded_form.no_location ? true : false;
     const form_skip_loc = loaded_form && loaded_form.skip_location ? true : false;
+
     modal.innerHTML = `
     <div class="modal-content row no-margin-bottom no-padding-bottom">
         <h5 class="no-margin-top">Export model</h5>
@@ -58,96 +62,120 @@ export function exportFormModal() {
         <div class="clearb"></div>
     </div>
     `;
+
     document.getElementById('__export_form').onclick = () => { export_form(); };
     document.getElementById('__export_form_server').onclick = () => { export_form(false); };
+    
     function export_form(export_file = true) {
-        const name = document.getElementById('__form_label').value;
-        const key = document.getElementById('__form_key').value;
-        const idf = document.getElementById('__form_id_f').value;
-        const skip = document.getElementById('__form_skip_loc').checked;
-        const nope = document.getElementById('__form_no_loc').checked;
+        const name = (document.getElementById('__form_label') as HTMLInputElement).value;
+        const key = (document.getElementById('__form_key') as HTMLInputElement).value;
+        const idf = (document.getElementById('__form_id_f') as HTMLInputElement).value;
+        const skip = (document.getElementById('__form_skip_loc') as HTMLInputElement).checked;
+        const nope = (document.getElementById('__form_no_loc') as HTMLInputElement).checked;
+
         if (!name || !key) {
-            M.toast({ html: "You must specify a valid name and label." });
+            M.toast({html: "You must specify a valid name and label."});
             return;
         }
+
         if (!key.match(/^[0-9a-z_-]+$/i)) {
-            M.toast({ html: "Internal name is invalid." });
+            M.toast({html: "Internal name is invalid."});
             return;
         }
+
         if (export_file) {
             const a = document.createElement('a');
+
             a.href = exportForm(name, idf, form_locations, skip, nope);
             a.innerText = "Download";
             a.target = '_blank';
             a.download = key + '.json';
             a.className = "flow-text";
+    
             const wrapper = document.createElement('div');
             wrapper.className = "row center";
+    
             wrapper.insertAdjacentHTML('beforeend', "<p class='flow-text'>Click on download to retrieve the model</p>");
             wrapper.appendChild(a);
+    
             modal.innerHTML = `<div class="modal-content"></div>
             <div class="modal-footer">
                 <a href="#!" class="btn-flat modal-close left red-text">Close</a>
                 <div class="clearb"></div>
             </div>
             `;
+    
             modal.firstChild.appendChild(wrapper);
         }
         else {
             askModal("Are you sure ?", "Model \"" + key + "\" will be pushed to the server.")
                 .then(async () => {
-                // Try exporting to server
-                if (!User.logged) {
-                    M.toast({ html: "Log in to send models to server" });
-                    return;
-                }
-                const ist = informalModal("Exporting", getModalPreloader("Please wait"), false, true);
-                try {
-                    const response = await User.req("schemas/insert.json", "POST", {
-                        type: key,
-                        model: exportForm(name, idf, form_locations, skip, nope, false)
-                    });
-                    if (!response.ok) {
-                        throw new Error;
+                    // Try exporting to server
+                    if (!User.logged) {
+                        M.toast({html: "Log in to send models to server"});
+                        return;
                     }
-                    M.toast({ html: "Model has been sent" });
-                    instance.close();
-                }
-                catch (e) {
-                    M.toast({ html: "Unable to send model. You may not be allowed to send models to server" });
-                }
-                ist.close();
-            })
-                .catch(() => { });
+
+                    const ist = informalModal("Exporting", getModalPreloader("Please wait"), false, true);
+
+                    try {
+                        const response = await User.req("schemas/insert.json", "POST", {
+                            type: key,
+                            model: exportForm(name, idf, form_locations, skip, nope, false)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error;
+                        }
+
+                        M.toast({html: "Model has been sent"});
+                        instance.close();
+                    } catch (e) {
+                        M.toast({html: "Unable to send model. You may not be allowed to send models to server"});
+                    }
+
+                    ist.close();
+                })
+                .catch(() => {});
         }
     }
+
     M.updateTextFields();
     instance.open();
 }
+
 /**
  * @param {string} name
- * @param {string} id_field
- * @param {any} locations
- * @param {boolean} skip_location
- * @param {boolean} no_location
- *
+ * @param {string} id_field 
+ * @param {any} locations 
+ * @param {boolean} skip_location 
+ * @param {boolean} no_location 
+ * 
  * @returns {string} URL for schema download
  */
-export function exportForm(name, id_field, locations, skip_location, no_location, as_url = true) {
-    const exported = { name, fields: [], locations: {} };
+export function exportForm(name: string, id_field: string, locations: FormLocations, skip_location: boolean, no_location: boolean, as_url = true) {
+    const exported: Schema = { name, fields: [], locations: {} };
+    
     if (locations && !no_location)
         exported.locations = locations;
+
     if (id_field)
         exported.id_field = id_field;
+
     const collection = getCollection();
+
     for (const li of collection.children) {
-        if (li.tagName === "LI" && li.dataset.internalname in form_items) {
-            exported.fields.push(form_items[li.dataset.internalname]);
+        if (li.tagName === "LI" && (li as HTMLElement).dataset.internalname in form_items) {
+            exported.fields.push(form_items[(li as HTMLElement).dataset.internalname]);
         }
     }
+
     if (no_location)
         exported.no_location = true;
+
     if (skip_location)
         exported.skip_location = true;
-    return as_url ? URL.createObjectURL(new Blob([JSON.stringify(exported)], { type: "application/json" })) : JSON.stringify(exported);
+
+    return as_url ? URL.createObjectURL(new Blob([JSON.stringify(exported)], {type: "application/json"})) : JSON.stringify(exported);
 }
+

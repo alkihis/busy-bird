@@ -10,7 +10,7 @@ function checkRequired() : array {
 }
 
 // Souscrit l'utilisateur a un ou à plusieurs formulaires
-function loadEndpoint(string $method) : ?array {
+function loadEndpoint(string $method) : void {
     if ($method !== 'POST') {
         EndPointManager::error(4);
     }
@@ -62,6 +62,4 @@ function loadEndpoint(string $method) : ?array {
             EndPointManager::error(3);
         }
     }
-    
-    return ['status' => true];
 }

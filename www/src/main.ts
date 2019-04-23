@@ -31,6 +31,8 @@ export const MAX_CONCURRENT_SYNC_ENTRIES = 10; /** Nombre d'entrées à envoyer 
 */
 export const APP_ID = "com.lbbe.busybird";
 export const ALLOW_LOAD_TEST_SCHEMAS = false; /** Autorise de charger le fichier présent dans assets/form.json */
+export const MAX_LENGTH_CHUNK = 512; /** En ko. Taille d'un chunk lors de l'envoi chunké des données de formulaire */
+export const MAX_CONCURRENT_PARTS = 2; /** Nombre de parties de fichier pouvant s'envoyer simulanément pour un fichier donné */
 
 // Variables globales exportées
 export let SDCARD_PATH: string = null;

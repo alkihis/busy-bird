@@ -25,15 +25,21 @@ function checkIfInMetadata(string $type, string $id, string $filename) : bool {
     return false;
 }
 
-function loadEndpoint(string $method) : array {
-    if ($method !== 'POST') {
-        EndPointManager::error(4);
-    }
-
+function loadEndpoint(string $method) {
     $user_obj = userLogger();
 
     if (!$user_obj) {
         EndPointManager::error(8);
+    }
+
+    if ($method !== 'POST') {
+        // Vérification que la commande "STATUS" est demandée
+        if ($method === "GET" && isset($_GET['command']) && $_GET['command'] === "STATUS") {
+            return statusCommand($user_obj);
+        }
+
+        // Sinon, c'est invalide
+        EndPointManager::error(4);
     }
 
     list($command) = checkRequired();
@@ -77,7 +83,7 @@ function initCommand(User $user_obj) {
 
     // Création du fichier contenant les infos de ce média
     // Deux heures pour envoyer le fichier
-    $infos = [ "filename" => $name, "form_type" => $type, "total_size" => $size, "form_id" => $id, "owner" => $user_obj->username, "expiration" => time() + (60 * 120) ];
+    $infos = [ "filename" => $name, "form_type" => $type, "total_size" => (int)$size, "form_id" => $id, "owner" => $user_obj->username, "expiration" => time() + (60 * 120) ];
     $infos_str = json_encode($infos);
 
     file_put_contents($path . "/infos.json", $infos_str);
@@ -131,8 +137,6 @@ function appendCommand(User $user_obj) {
     $handle = fopen($path_file, "wb");
     fwrite($handle, $data_bin);
     fclose($handle);
-
-    return ['status' => true];
 }
 
 function finishCommand(User $user_obj) {
@@ -212,6 +216,57 @@ function finishCommand(User $user_obj) {
 
     // Suppression des parties
     deleteParts($media_id);
+}
 
-    return ['status' => true];
+function statusCommand(User $user_obj) {
+    if (isset($_GET['media_id'])) {
+        list($media_id) = [$_GET['media_id']];
+    }
+    else {
+        EndPointManager::error(5);
+    }
+
+    $path = FORM_DATA_FILE_PATH . "__parts__/$media_id";
+
+    if (!file_exists($path)) {
+        EndPointManager::error(19);
+    }
+
+    $infos = json_decode(file_get_contents($path . "/infos.json"));
+
+    if ($infos->expiration < time()) {
+        deleteParts($media_id);
+        EndPointManager::error(26);
+    }
+
+    if ($infos->owner !== $user_obj->username) {
+        EndPointManager::error(23);
+    }
+
+    // Recherche des éléments envoyés
+    $size_sended = 0;
+    $files_bin = glob($path . "/*.bin");
+    $files_sended = [];
+
+    foreach ($files_bin as $file) {
+        $index = (int)(explode('.bin', basename($file))[0]);
+        $currents = filesize($file);
+        $files_sended[] = ["index" => $index, "size" => $currents];
+        $size_sended += $currents;
+    }
+
+    usort($files_sended, function($a, $b) {
+        return $a['index'] - $b['index'];
+    });
+
+    // Retour des informations
+    return [
+        'expiration' => $infos->expiration,
+        'filename' => $infos->filename,
+        'size' => $infos->total_size,
+        'id' => $infos->form_id,
+        'type' => $infos->form_type,
+        'sended_parts' => $files_sended,
+        'sended_size' => $size_sended
+    ];
 }
