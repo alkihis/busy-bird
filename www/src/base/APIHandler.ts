@@ -5,7 +5,7 @@ import { FILE_HELPER, MAX_TIMEOUT_FOR_METADATA } from "../main";
 import { FileHelperReadMode } from "./FileHelper";
 
 export enum APIResp {
-    JSON, text
+    JSON, text, blob
 };
 
 interface ErrorObject {
@@ -42,6 +42,9 @@ class _APIHandler {
 
         if (resp_type === APIResp.JSON) {
             resp_promise = resp.then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)));
+        }
+        else if (resp_type === APIResp.blob) {
+            resp_promise = resp.then(r => r.ok ? r.blob() : r.blob().then(d => Promise.reject(d)));
         }
         else {
             resp_promise = resp.then(r => r.ok ? r.text() : r.text().then(d => Promise.reject(d)));
