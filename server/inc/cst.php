@@ -22,6 +22,10 @@ const ENTRIES_STORAGE = MODE_FILES;
 // Où stocker les fichiers joints aux formulaires
 const FORM_DATA_FILE_PATH = "inc/form_data/";
 
+// Où stocker le fichier de cleanup
+const TIMESTAMP_FILE_PATH = "inc/date.timestamp";
+const TIME_BEFORE_CLEANUP = 86400; // en secondes (un jour ici)
+
 // Supprimer les vieux fichiers si ils ne correspondent pas à la dernière version de l'entrée
 const DELETE_OUTDATED_METADATA = ENTRIES_STORAGE === MODE_FILES;
 

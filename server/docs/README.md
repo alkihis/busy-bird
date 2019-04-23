@@ -61,7 +61,7 @@ Erros will *never* be sended with a similar-OK HTTP code (2xx).
 | 24  | 400 | At least one part of the file is missing |
 | 25  | 400 | Announced size of file does not match the actual file size |
 | 26  | 400 | Media ID is expired |
-| 27  | 400 | What do you want to do, seriously ? |
+| 27  | 400 | You try to set a invalid status |
 | 28  | 404 | Requested form does not exists |
 
 

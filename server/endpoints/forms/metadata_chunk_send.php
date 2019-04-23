@@ -48,6 +48,22 @@ function loadEndpoint(string $method) {
         return initCommand($user_obj);
     }
     else if ($command === "APPEND") {
+        // Supprime les vieilles parties
+        // TODO TOCHANGE voir si on ne peut pas faire mieux que check à CHAQUE requête
+        // Regarde si il doit exécuter le cleanup
+        $timestamp = @file_get_contents(TIMESTAMP_FILE_PATH);
+
+        if (!$timestamp) {
+            $timestamp = 0;
+        }
+
+        if ($timestamp < time()) {
+            // Do cleanup
+            cleanupOldParts();
+            // Set new timestamp
+            file_put_contents(TIMESTAMP_FILE_PATH, time() + TIME_BEFORE_CLEANUP);
+        }
+
         return appendCommand($user_obj);
     }
     else if ($command === "FINALIZE") {

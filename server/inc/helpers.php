@@ -419,6 +419,31 @@ function updateUser(User $user) : void {
     }
 }
 
+function cleanupOldParts() {
+    $path = FORM_DATA_FILE_PATH . "__parts__";
+
+    $objects = scandir($path);
+
+    // Supprime toutes les parties expirées
+    foreach ($objects as $object) {
+        if ($object != "." && $object != "..") {
+            if (filetype($path . "/" . $object) == "dir") {
+                // lecture du fichier infos
+                if (file_exists($path . "/" . $object . "/infos.json")) {
+                    $infos = json_decode(file_get_contents($path . "/" . $object . "/infos.json"));
+
+                    if ($infos->expiration < time()) {
+                        deleteParts($object);
+                    }
+                }
+                else {
+                    deleteParts($object);
+                }
+            } 
+        }
+    }
+}
+
 function deleteParts(string $media_id) {
     $path = FORM_DATA_FILE_PATH . "__parts__/$media_id";
 
