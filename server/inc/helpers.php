@@ -396,9 +396,9 @@ function updateUser(User $user) : void {
 
         if ($link) {
             // Met à jour les données
-            $stmt = $link->prepare("UPDATE Users SET name=?, token=?, password=?, status=?");
+            $stmt = $link->prepare("UPDATE Users SET name=?, token=?, password=?, status=? WHERE id_u=?");
 
-            $stmt->bind_param("ssss", $user->username, $user->token, $user->password, $user->status);
+            $stmt->bind_param("ssssi", $user->username, $user->token, $user->password, $user->status, $user->id);
             $stmt->execute();
 
             // Met à jour les souscriptions

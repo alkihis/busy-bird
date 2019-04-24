@@ -154,6 +154,15 @@ phonegap build android
 
 ## Pour le lancer sur un appareil android connecté, en débogage USB, lancez
 phonegap run android --device
+
+## Pour compiler en release et signer l'APK:
+phonegap build android --release
+cd platforms/android/app/build/outputs/apk
+jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore BusyBird.keystore release/app-release-unsigned.apk busybird
+# Entrer le mot de passe du keystore. Pour en générer un : https://stackoverflow.com/questions/26449512/how-to-create-a-signed-apk-file-using-cordova-command-line-interface
+zipalign -v 4 release/app-release-unsigned.apk app-signed.apk
+
+# L'apk app-signed.apk est prêt !
 ```
 
 ### Développer et prévisualiser l'application dans le navigateur
