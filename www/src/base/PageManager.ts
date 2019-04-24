@@ -623,7 +623,6 @@ class _PageManager {
             try { getModalInstance().close(); } catch (e) { }
             try { getBottomModalInstance().close(); } catch (e) { }
 
-            console.log(this.custom_return_fn);
             if (this.custom_return_fn) {
                 this.custom_return_fn();
                 return;
