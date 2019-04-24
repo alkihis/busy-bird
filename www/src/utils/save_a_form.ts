@@ -347,7 +347,7 @@ export async function beginFormSave(type: string, current_form: Schema, force_na
                     `;
 
                     PageManager.lock_return_button = false;
-                    Logger.error(error, error.message, error.stack);
+                    Logger.error("Unable to save form:", error, error.message, error.stack);
                 })
         };
 

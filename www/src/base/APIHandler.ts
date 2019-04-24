@@ -18,6 +18,46 @@ const AUTO_CHUNK_MODE_THRESHOLD = 1024 * 1024; // Envoi automatique en chunk à 
 class _APIHandler {
     protected controllers = new Map<Promise<any>, AbortController>();
 
+    request(url: string, params: {[name: string]: any} = {}, method = "GET", resp_type = APIResp.JSON, signed = true, timeout = 120000) : Promise<any> {
+        // Construction des paramètres
+        method = method.toUpperCase();
+
+        const req_p: RequestInit = {};
+
+        if (method === "GET" || method === "DELETE") {
+            if (url.includes('?')) {
+                let url_params: string;
+                [url, url_params] = url.split('?', 2);
+
+                for (const [key, value] of url_params.split('&').map(keyval => keyval.split('=', 2))) {
+                    params[key] = value;
+                }
+            }
+
+            if (Object.keys(params).length) {
+                url += "?";
+                const elements = [];
+                for (const element in params) {
+                    elements.push(encodeURIComponent(element) + "=" + encodeURIComponent(params[element]));
+                }
+                url += elements.join("&");
+            }
+        } 
+        else {
+            // With a body
+            const fd = new FormData;
+            for (const element in params) {
+                fd.append(element, params[element]);
+            }
+
+            req_p.body = fd;
+        }
+
+        req_p.method = method;
+
+        return this.req(url, req_p, resp_type, signed, timeout);
+    }
+
     req(url: string, options: RequestInit = {}, resp_type = APIResp.JSON, signed = true, timeout = 120000) : Promise<any> {
         if (!Settings.api_url) {
             const e = { error_code: -1, message: "API URL is not set" };
@@ -158,16 +198,10 @@ class _APIHandler {
         // On récupère la partie base64 qui nous intéresse
         base64 = base64.split(',')[1];
 
-        // On construit le formdata à envoyer
-        const md = new FormData();
-        md.append("id", form_id);
-        md.append("type", form_type);
-        md.append("filename", basename);
-        md.append("data", base64);
-        
-        const req = this.req(
+        const req = this.request(
             "forms/metadata_send.json", 
-            { method: "POST", body: md }, 
+            { id: form_id, type: form_type, filename: basename, data: base64 },
+            "POST", 
             APIResp.text, 
             true, 
             MAX_TIMEOUT_FOR_METADATA
@@ -211,17 +245,11 @@ class _APIHandler {
         }
 
         //// COMMAND INIT
-        // On construit le formdata à envoyer
-        const md = new FormData();
-        md.append("id", form_id);
-        md.append("type", form_type);
-        md.append("filename", basename);
-        md.append("size", file_size.toString());
-        md.append("command", "INIT");
-        
-        const req = this.req(
+        // On construit le formdata à envoyer        
+        const req = this.request(
             "forms/metadata_chunk_send.json", 
-            { method: "POST", body: md }, 
+            { id: form_id, type: form_type, filename: basename, size: file_size, command: "INIT" },
+            "POST",
             APIResp.JSON, 
             true, 
             MAX_TIMEOUT_FOR_METADATA
@@ -242,16 +270,11 @@ class _APIHandler {
             const promises: Promise<any>[] = [];
 
             for (let seg = 0; seg < MAX_CONCURRENT_PARTS && offset < file_size; seg++) {
-                // On construit le formdata à envoyer
-                const md = new FormData();
-                md.append("media_id", media_id);
-                md.append("segment_index", segment_index.toString());
-                md.append("data", await nextChunk(file_entry));
-                md.append("command", "APPEND");
-                
-                const req = this.req(
+                // On construit le formdata à envoyer               
+                const req = this.request(
                     "forms/metadata_chunk_send.json", 
-                    { method: "POST", body: md }, 
+                    { media_id, segment_index, data: await nextChunk(file_entry), command: "APPEND" },
+                    "POST", 
                     APIResp.text, 
                     true, 
                     MAX_TIMEOUT_FOR_METADATA
@@ -271,13 +294,10 @@ class _APIHandler {
 
         //// COMMAND FINALIZE
         // On construit le formdata à envoyer
-        const md_fini = new FormData();
-        md_fini.append("media_id", media_id);
-        md_fini.append("command", "FINALIZE");
-        
-        const req2 = this.req(
+        const req2 = this.request(
             "forms/metadata_chunk_send.json", 
-            { method: "POST", body: md_fini }, 
+            { media_id, command: "FINALIZE" },
+            "POST", 
             APIResp.text, 
             true, 
             MAX_TIMEOUT_FOR_METADATA
@@ -291,7 +311,7 @@ class _APIHandler {
     }
 
     async sendFile(path: string, form_id: string, form_type: string, mode: string = "basic", running_fetchs: AbortController[] = []) {
-        const file = await FILE_HELPER.read(path, FileHelperReadMode.fileobj) as File;
+        const file = await FILE_HELPER.getFile(path);
 
         if (mode === "chunked" || (mode === "auto" && file.size > AUTO_CHUNK_MODE_THRESHOLD)) {
             return this.sendFileChunked(file, form_id, form_type, running_fetchs);
