@@ -126,6 +126,8 @@ async function appendFileEntry(entry_file: FileEntry, ph: HTMLElement, read_func
             }
         }
 
+        selector.dataset.time = String(file_object.lastModified);
+
         file_details.innerHTML = `
             [${type}] ${id} <br> 
             Modified ${dateFormatter("Y-m-d H:i:s", new Date(file_object.lastModified))}
@@ -306,9 +308,23 @@ export async function initSavedForm(base: HTMLElement) {
                 base.insertAdjacentElement('beforeend', delete_btn);
             }
 
+            const promises: Promise<void>[] = [];
             for (const f of functions) {
-                f();
+                promises.push(f());
             }
+
+            return Promise.all(promises)
+                .then(() => {
+                    // Retrie les éléments
+                    const elements = placeholder.querySelectorAll('li[data-time]');
+
+                    const e = [...elements].sort((a, b) => {
+                        // @ts-ignore
+                        return Number(b.dataset.time) - Number(a.dataset.time);
+                    });
+
+                    placeholder.append(...e);
+                })
         })
         .catch(err => {
             Logger.error("Unable to load files", err.message, err.stack);

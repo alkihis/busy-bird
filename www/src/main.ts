@@ -1,5 +1,5 @@
 import { PageManager, AppPages, Navigation } from './base/PageManager';
-import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder, makeListenedObject } from "./utils/helpers";
+import { askModalList, saveDefaultForm, getLocation, testDistance, initModal, dateFormatter, getBase, displayErrorMessage, createRandomForms, getSdCardFolder, makeListenedObject, extendHTMLElement } from "./utils/helpers";
 import { Logger } from "./utils/Logger";
 import { newModalRecord } from "./utils/audio_listener";
 import { Schemas } from "./base/FormSchema";
@@ -229,7 +229,8 @@ function initDebug() {
         UserManager,
         SyncManager,
         Navigation,
-        Globals
+        Globals,
+        extendHTMLElement
     };
 }
 

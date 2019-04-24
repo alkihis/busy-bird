@@ -3,6 +3,7 @@ import { Schemas, FormSave, FormEntityType } from "../base/FormSchema";
 import { SyncManager } from "../base/SyncManager";
 import { FILE_HELPER, SD_FILE_HELPER } from "../main";
 import { ENTRIES_DIR } from "../base/FormSaves";
+import { Logger } from "./logger";
 
 // PRELOADERS: spinners for waiting time
 export const PRELOADER_BASE = `
@@ -605,7 +606,7 @@ export function askModalList(items: string[]) : Promise<number> {
  * Fonction de test: Crée des formulaires automatiques
  * @param count Nombre de formulaires à créer
  */
-export async function createRandomForms(count: number = 50) : Promise<void> {
+export async function createRandomForms(count: number = 50, wait_between = 0) : Promise<void> {
     if (Schemas.current_key === null) {
         throw "Unable to create entries without form model";
     }
@@ -613,6 +614,10 @@ export async function createRandomForms(count: number = 50) : Promise<void> {
     const current = Schemas.get(Schemas.current_key);
     const promises: Promise<any>[] = [];
     for (let i = 0; i < count; i++) {
+        if (wait_between) {
+            await sleep(wait_between);
+        }
+
         const save: FormSave = {
             fields: {},
             location: "",
@@ -657,7 +662,7 @@ export async function createRandomForms(count: number = 50) : Promise<void> {
         );
 
         if (SD_FILE_HELPER) {
-            SD_FILE_HELPER.write(ENTRIES_DIR + id + ".json", save).catch(error => console.log(error));
+            SD_FILE_HELPER.write(ENTRIES_DIR + id + ".json", save).catch(error => Logger.error("Error while writing to SD:", error));
         }
     }
 
