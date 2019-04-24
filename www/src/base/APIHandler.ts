@@ -168,7 +168,7 @@ class _APIHandler {
         const req = APIHandler.req(
             "forms/metadata_send.json", 
             { method: "POST", body: md }, 
-            APIResp.JSON, 
+            APIResp.text, 
             true, 
             MAX_TIMEOUT_FOR_METADATA
         );
@@ -252,7 +252,7 @@ class _APIHandler {
                 const req = this.req(
                     "forms/metadata_chunk_send.json", 
                     { method: "POST", body: md }, 
-                    APIResp.JSON, 
+                    APIResp.text, 
                     true, 
                     MAX_TIMEOUT_FOR_METADATA
                 );
@@ -278,7 +278,7 @@ class _APIHandler {
         const req2 = this.req(
             "forms/metadata_chunk_send.json", 
             { method: "POST", body: md_fini }, 
-            APIResp.JSON, 
+            APIResp.text, 
             true, 
             MAX_TIMEOUT_FOR_METADATA
         );
