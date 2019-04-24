@@ -1,0 +1,483 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>lbbe</title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="assets/js/search.js" data-base=".">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="index.html" class="title">lbbe</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+							<input type="checkbox" id="tsd-filter-externals" checked />
+							<label class="tsd-widget" for="tsd-filter-externals">Externals</label>
+							<input type="checkbox" id="tsd-filter-only-exported" />
+							<label class="tsd-widget" for="tsd-filter-only-exported">Only exported</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<ul class="tsd-breadcrumb">
+				<li>
+					<a href="globals.html">Globals</a>
+				</li>
+			</ul>
+			<h1> lbbe</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<div class="tsd-panel tsd-typography">
+				<h1 id="busy-bird">Busy Bird</h1>
+				<p>Busy Bird est une application destinée à faciliter la rédaction de fiches de terrain dans le domaine biologique.</p>
+				<p>Elle permet, sous la forme d&#39;un formulaire simulant une fiche suivant un schéma donné, d&#39;enregistrer des entrées et de les synchroniser avec un serveur centralisé distant.</p>
+				<p>Les entrées sont liées à un utilisateur qui se connecte dans l&#39;application, permettant d&#39;identifier la personne rédigeant les fiches.</p>
+				<p>L&#39;application sait gérer de multiples schémas de formulaire pour effectuer des relevés à propos de différentes espèces.</p>
+				<p>Busy Bird est programmée en <a href="https://www.typescriptlang.org/">TypeScript</a>, JavaScript, HTML &amp; CSS, et utilise le framework libre <a href="https://phonegap.com/">Adobe PhoneGap</a> / <a href="https://cordova.apache.org/">Apache Cordova</a> pour être intégrée dans une application native Android.
+					Pour sa partie serveur, Busy Bird se repose sur le couple PHP + Apache.
+				La partie spécifique au développement est détaillée dans la partie sus-nommée.</p>
+				<h1 id="sommaire">Sommaire</h1>
+				<ol>
+					<li><a href="">Introduction</a></li>
+					<li><a href="">Utilisation</a><ol>
+							<li><a href="">Compte utilisateur</a><ol>
+									<li><a href="">Connexion</a></li>
+									<li><a href="">Création de compte</a></li>
+								</ol>
+							</li>
+							<li><a href="">Souscrire à des schémas</a></li>
+							<li><a href="">Saisir une entrée</a><ol>
+									<li><a href="">Lieu de saisie</a></li>
+									<li><a href="">Formulaire</a></li>
+									<li><a href="">Validation et sauvegarde</a></li>
+								</ol>
+							</li>
+							<li><a href="">Consulter et modifier des entrées</a><ol>
+									<li><a href="">Lister les entrées sauvegardées</a></li>
+									<li><a href="">Modifier une entrée</a></li>
+									<li><a href="">Supprimer des entrées</a></li>
+								</ol>
+							</li>
+							<li><a href="">Synchronisation</a><ol>
+									<li><a href="">Standard</a></li>
+									<li><a href="">Arrière-plan</a></li>
+									<li><a href="">Globale</a></li>
+								</ol>
+							</li>
+						</ol>
+					</li>
+					<li><a href="">Maintenance et développement de l&#39;application</a><ol>
+							<li><a href="">Introduction à Cordova</a></li>
+							<li><a href="">Plugins utilisés</a></li>
+							<li><a href="">Organisation du code et bases structurantes</a><ol>
+									<li><a href="">Organisation générale</a></li>
+									<li><a href="">Gestion des pages</a></li>
+									<li><a href="">Gestion des utilisateurs</a></li>
+									<li><a href="">Gestion des schémas de formulaire</a></li>
+									<li><a href="">Interactions avec le système de fichiers</a></li>
+								</ol>
+							</li>
+							<li><a href="">Synchronisation</a></li>
+							<li><a href="">Paramètres de l&#39;application</a></li>
+						</ol>
+					</li>
+					<li><a href="">Maintenance du serveur Busy Bird</a><ol>
+							<li><a href="">Introduction à l&#39;API Busy Bird</a></li>
+							<li><a href="">Organisation</a></li>
+							<li><a href="">Ajouter un endpoint</a></li>
+							<li><a href="">Schémas, entrées et utilisateurs</a></li>
+							<li><a href="">Informations fonctionnelles sur les endpoints</a></li>
+						</ol>
+					</li>
+				</ol>
+				<h1 id="introduction">Introduction</h1>
+				<p>L&#39;application Busy Bird compte un certain nombre de termes dont la signification doit être claire :</p>
+				<ul>
+					<li>Un schéma de formulaire est une base listant les champs d&#39;un formulaire un à un.</li>
+					<li>Une entrée de formulaire est le fait de remplir un formulaire généré via son schéma et le stocker dans un fichier</li>
+					<li>La synchronisation est le fait d&#39;envoyer les entrées ainsi que leurs fichiers attachés vers un serveur, et ainsi de créer ou mettre à jour les entrées déjà stockées sur le serveur.</li>
+					<li>Une souscription à un schéma est le fait qu&#39;un utilisateur soit apte à créer une entrée d&#39;un type de schéma donné.</li>
+				</ul>
+				<h1 id="utilisation">Utilisation</h1>
+				<p>Les étapes d&#39;utilisation de l&#39;application mobile sont décrites ici.</p>
+				<h2 id="compte-utilisateur">Compte utilisateur</h2>
+				<p>L&#39;application nécessite de se connecter à son compte utilisateur pour pouvoir enregistrer des entrées et télécharger les schémas de formulaire sur l&#39;appareil.
+				Vous pouvez retrouver les options relatives au compte dans les paramètres.</p>
+				<h3 id="connexion">Connexion</h3>
+				<p>La connexion s&#39;effectue via un système nom d&#39;utilisateur + mot de passe.
+				Le mot de passe est choisi par l&#39;utilisateur à la création de compte.</p>
+				<h3 id="cr-er-un-compte">Créer un compte</h3>
+				<p>Si vous n&#39;avez pas encore de compte, vous pouvez créer un compte via les paramètres. Pour que le bouton de création de compte apparaisse, vous devez être déconnecté.
+				Pour pouvoir créer son compte, vous devez connaître le mot de passe administrateur, censé être connu de l&#39;administrateur du serveur Busy Bird.</p>
+				<h2 id="souscrire-des-sch-mas">Souscrire à des schémas</h2>
+				<p>Pour pouvoir commencer à effectuer des entrées, vous devez être abonné à des schémas une fois connecté.
+				Ouvrez la boîte de dialogue disponible dans les paramètres pour souscrire ou vous désabonner de schémas. Cocher pour vous abonner, décochez pour vous désabonner, puis confirmez votre saisie avec le bouton lié à cet effet.</p>
+				<h2 id="saisir-une-entr-e">Saisir une entrée</h2>
+				<h3 id="lieu-de-saisie">Lieu de saisie</h3>
+				<p>Si le schéma le suggère, vous devrez préciser le lieu de votre saisie avec le sélecteur de localisation dédié. Merci d&#39;activer la géolocalisation sur votre téléphone pour qu&#39;elle puisse fonctionner correctement. Si le lieu que vous recherchez n&#39;est pas disponible dans le sélecteur, un joker &quot;Lieu inconnu&quot; est toujours disponible, il vous suffit de rechercher &quot;<strong>unknown</strong>&quot; dans la barre de recherche.</p>
+				<h3 id="formulaire">Formulaire</h3>
+				<p>Remplissez les champs nécessaires. Si un champ est invalide, il est affiché en rouge et une suggestion aidant l&#39;utilisateur à comprendre son erreur peut être affichée.</p>
+				<h3 id="validation-et-sauvegarde">Validation et sauvegarde</h3>
+				<p>Un récapitulatif des possibles erreurs est présenté à l&#39;utilisateur lorsqu&#39;un enregistrement est demandé.
+				Si un champ est invalide, l&#39;utilisateur en est informé.</p>
+				<h2 id="consulter-et-modifier-des-entr-es">Consulter et modifier des entrées</h2>
+				<p>Pour consulter les entrées, rendez-vous dans le menu &quot;Entrées&quot; disponible dans le menu principal.</p>
+				<h3 id="lister-les-entr-es-sauvegard-es">Lister les entrées sauvegardées</h3>
+				<p>Les entrées sont présentées sous la forme:</p>
+				<pre><code>[<span class="hljs-name">icône</span> précisant l<span class="hljs-symbol">'état</span> de synchronisation du formulaire] [<span class="hljs-name">type</span> de formulaire] [<span class="hljs-name">identifiant</span> du formulaire]
+
+[<span class="hljs-name">date</span> de dernière modification]</code></pre><p>Une icône de synchronisation verte signifie que le serveur a déjà reçu cette entrée et la version présente sur le serveur est également la version présente sur cet appareil.
+				Si elle est grise, l&#39;entrée présente sur l&#39;appareil ne dispose pas d&#39;une version synchronisée avec le serveur.</p>
+				<p>Cliquez sur une entrée pour afficher le menu d&#39;options de celle-ci.</p>
+				<h3 id="modifier-une-entr-e">Modifier une entrée</h3>
+				<p>Lors d&#39;un clic sur modifier dans le menu d&#39;options, le formulaire correspondant au schéma adapté est affiché, vous permettant de modifier le formulaire comme si vous soumettiez une nouvelle entrée.</p>
+				<h3 id="supprimer-des-entr-es">Supprimer des entrées</h3>
+				<p>Vous pouvez supprimer une entrée individuellement en choisissant l&#39;option &quot;supprimer&quot; dans son menu d&#39;options.</p>
+				<p>Pour supprimer toutes les entrées en même temps, cliquez sur le bouton rouge en bas à droite de l&#39;écran.</p>
+				<p>Une confirmation sera demandée dans les deux cas.</p>
+				<h2 id="synchronisation">Synchronisation</h2>
+				<h3 id="standard">Standard</h3>
+				<p>La synchronisation standard envoie les entrées encore non envoyées au serveur ou n&#39;étant pas à jour. Elle s&#39;effectue via le bouton vert, en bas à droite de la page des entrées.</p>
+				<h3 id="arri-re-plan">Arrière-plan</h3>
+				<p>La synchronisation d&#39;arrière-plan s&#39;active dans les paramètres. À chaque pas de temps configuré, une synchronisation standard est lancée si la connexion à Internet est considérée comme bonne.</p>
+				<h3 id="globale">Globale</h3>
+				<p>La synchronisation globale, ou forcée, force le téléphone à envoyer toutes les entrées, même déjà synchronisées, vers le serveur. Vous pouvez déclencher ce type de synchronisation dans les paramètres, bouton &quot;forcer synchronisation&quot;.</p>
+				<h1 id="maintenance-et-d-veloppement-de-l-application">Maintenance et développement de l&#39;application</h1>
+				<h2 id="introduction-cordova">Introduction à Cordova</h2>
+				<p>Cordova étant un framework permettant de programmer avec les technologies du web pour développer des applications mobiles, cette application est intégralement écrite en HTML+CSS+JS+TS.
+				Cordova utilise également un système de plugins pour y ajouter des fonctions supplémentaires comme la reconnaissance vocale.</p>
+				<h3 id="cli-phonegap">CLI PhoneGap</h3>
+				<p>Ce projet utilise PhoneGap. Pour installer un plugin, utilisez <code>phonegap plugin add &lt;nomplugin&gt;</code>.
+				Pour compiler l&#39;application, utilisez <code>phonegap build android</code>.</p>
+				<p>Si PhoneGap râle, parce que mon dieu ça arrive, utilisez cet enchaînememnt de commandes:</p>
+				<pre><code class="language-bash">phonegap platform remove android
+phonegap platform remove browser
+
+phonegap platform add browser
+phonegap prepare browser
+
+phonegap platform add android
+<span class="hljs-comment"># À ce moment, il y a de fortes chances qu'un plugin râle. Utilisez alors</span>
+phonegap platform add android --force
+phonegap prepare android
+
+phonegap build android</code></pre>
+				<h3 id="d-velopper-et-pr-visualiser-l-application-dans-le-navigateur">Développer et prévisualiser l&#39;application dans le navigateur</h3>
+				<p>Pour lancer le serveur web intégré, utilisez <code>phonegap serve</code>.</p>
+				<p>N&#39;oubliez pas de lancer aussi dans une autre instance de bash un <code>tsc -w</code> pour compiler le TypeScript à la volée lors d&#39;une modification.
+				Ne modifiez <strong>JAMAIS</strong> le fichier <code>app.js</code> manuellement !</p>
+				<p>Lancez ensuite un navigateur web (Chrome ou Chromium, le seul à supporter la reconnaissance vocale), et accédez à l&#39;adresse <code>http://localhost:3000</code>.</p>
+				<h2 id="plugins-utilis-s">Plugins utilisés</h2>
+				<p>Veillez bien à vous assurer que ces plugins sont installés avant de compiler l&#39;application.</p>
+				<ul>
+					<li>cordova-plugin-device (pour savoir si c&#39;est Android ou le navigateur web)</li>
+					<li>cordova-plugin-media-capture (pour avoir accès à l&#39;APN)</li>
+					<li>cordova-plugin-dialogs (pour utiliser les alert() natives)</li>
+					<li>cordova-plugin-geolocation (pour accéder au GPS)</li>
+					<li>cordova-plugin-inappbrowser (pour ouvrir des pages externes, oui oui)</li>
+					<li>cordova-plugin-network-information (pour savoir sur quel réseau on se trouve)</li>
+					<li>phonegap-plugin-speech-synthesis (pour faire parler le téléphone)</li>
+					<li>cordova-plugin-speechrecognition (pour parler au téléphone)</li>
+					<li>cordova-plugin-file (sans doute le meilleur, pour avoir accès au système de fichiers)</li>
+					<li>phonegap-plugin-media-recorder (pour enregistrer du son)</li>
+					<li>cordova-plugin-android-permissions (pour demander des autorisations)</li>
+					<li>cordova-plugin-whitelist (pour avoir accès à l&#39;extérieur)</li>
+					<li>phonegap-plugin-mobile-accessibility (pour désactiver l&#39;ajustement de la police par android)</li>
+					<li>cordova-plugin-splashscreen (pour afficher un splashscreen)</li>
+					<li>cordova-plugin-multi-window (pour désactiver le multi-window qui fait reboot l&#39;application)</li>
+					<li>cordova-plugin-x-toast (pour afficher des toast Android)</li>
+					<li>cordova-plugin-background-fetch (pour synchroniser en arrière-plan)</li>
+					<li>cordova.plugins.diagnostic (pour avoir accès au chemin de la carte SD)</li>
+				</ul>
+				<p>La liste complète des plugins est disponible dans config.xml.</p>
+				<h2 id="organisation-du-code-et-bases-structurantes">Organisation du code et bases structurantes</h2>
+				<p>Le code est organisé en modules TypeScript, dans ses parties principales.
+					Pour fonctionner sur Cordova, les modules se compilent pour se charger avec <code>RequireJS</code>, qui charge <code>app.js</code>.
+				Le point d&#39;entrée de l&#39;application se fait dans <code>app.ts</code> qui charge <code>main.ts</code>. Depuis main, les fichiers sont chargés de façon classique, par module.</p>
+				<h3 id="organisation-g-n-rale">Organisation générale</h3>
+				<p>L&#39;application se structure autour de plusieurs bases importantes, représentés sous la forme d&#39;objets.</p>
+				<p>Ces objets sont:</p>
+				<ul>
+					<li><code>Forms</code> de <code>form_schema.ts</code>, un objet qui gère les schémas de formulaire</li>
+					<li><code>PageManager</code> de <code>PageManager.ts</code>, un objet qui gère les pages de l&#39;application (changer de page, empiler/dépiler le stack de pages)</li>
+					<li><code>UserManager</code> dans <code>user_manager.ts</code>, un objet pour gérer la connexion utilisateur</li>
+					<li><code>SyncManager</code> dans <code>SyncManager.ts</code>, un objet qui gère la synchronisation des entrées et tient à jour une liste d&#39;entrées à synchroniser</li>
+					<li><code>FormSaves</code> dans <code>FormSaves.ts</code>, un objet pour récupérer et supprimer des formulaires sauvegardés</li>
+					<li><code>FILE_HELPER</code>, un objet de type <code>FileHelper</code>, pour interagir avec le système de fichiers, instancié dans <code>main.ts</code></li>
+				</ul>
+				<p>De nombreuses fonctions d&#39;aide au développement sont disponibles dans <code>helpers.ts</code>.</p>
+				<p>Vous trouverez aussi dans <code>vocal_recognition.ts</code> les fonctions <code>prompt()</code> et <code>talk()</code> qui permettent respectivement de faire de l&#39;écoute de l&#39;utilisateur par reconnaissance vocale et de parler via synthèse vocale.</p>
+				<h3 id="gestion-des-pages">Gestion des pages</h3>
+				<p>Les pages de l&#39;application en fait un simple objet <code>AppPageObj</code> (voir <code>PageManager.ts</code>).
+				Cet objet lie à une clé de page une fonction d&#39;appel lorsque la page est chargée, un nom à afficher dans la barre de menu, et d&#39;autres paramètres.</p>
+				<p>Les pages sont gérées avec une pile qui permet de pousser des pages dans la pile et dépiler lors de l&#39;appui sur le bouton retour.
+					Pour ouvrir une nouvelle page et l&#39;insérer dans la pile, utilisez <code>PageMananger.pushPage(app_page_name)</code>.
+					Pour dépiler, utilisez <code>PageManager.popPage()</code>.
+				Pour simuler l&#39;appui du bouton retour, utilisez <code>PageManager.goBack()</code>.</p>
+				<p>Consulter le fichier <code>PageManager.ts</code> pour connaître la documentation fonction par fonction.</p>
+				<h3 id="gestion-des-utilisateurs">Gestion des utilisateurs</h3>
+				<p>Les utilisateurs sont gérés depuis <code>UserManager</code>, présent dans <code>user_manager.ts</code>.
+				Pour savoir si un utilisateur est connecté, utilisez <code>.logged</code>. Pour connaître son nom d&#39;utilisateur, utilisez <code>.username</code>.</p>
+				<p>Pour connecter un utilisateur, utilisez <code>.login(username, password)</code>. Pour logger artificiellement, depuis un token, utilisez <code>.logSomeone(username, token)</code>. Pour créer un utilisateur, utilisez <code>.createUser(username, password, admin_password)</code>.</p>
+				<p>Vous pouvez également vous déconnecter avec <code>.unlog()</code>.</p>
+				<h3 id="gestion-des-sch-mas-de-formulaire">Gestion des schémas de formulaire</h3>
+				<p>Les schémas de formulaire se gèrent avec l&#39;objet <code>Forms</code>.</p>
+				<p>Obtenez la clé du schéma chargé avec <code>.current_key</code>. Attention, vaut <code>null</code> si aucun schéma chargé.
+				Obtenez le formulaire chargé actuellement avec <code>.current</code>. Attention, si <code>current_key</code> vaut <code>null</code>, <code>.current</code> aura une valeur non nulle !</p>
+				<p>Toutes les autres fonctions sont disponibles et documentés dans la classe elle-même, voir le fichier <code>form_schema.ts</code>.</p>
+				<h3 id="interactions-avec-le-syst-me-de-fichiers">Interactions avec le système de fichiers</h3>
+				<p>Utilisez <code>FILE_HELPER</code> pour manipuler le système de fichiers applicatif, et <code>SD_FILE_HELPER</code> pour manipuler la carte SD (attention, vérifiez qu&#39;il ne soit pas <code>null</code>).</p>
+				<p>La documentation du type <code>FileHelper</code> est disponible dans <code>README_file_helper.md</code>.</p>
+				<h2 id="synchronisation">Synchronisation</h2>
+				<p>La synchro est gérée par <code>SyncManager</code>. Le fonctionnement interne n&#39;a pas lieu d&#39;être plus documenté que dans la classe elle-même.</p>
+				<p>Pour ajouter une nouvelle entrée dans la liste à synchro, utilisez <code>SyncManager.add(id, FormSave)</code>.
+				Pour supprimer une entrée de la liste, utilisez <code>SyncManager.remove(id)</code>.</p>
+				<ul>
+					<li><code>SyncManager.available()</code> Liste les entrées classifiées comme attendant une synchronisation</li>
+					<li><code>SyncManager.has(id)</code> Répond <code>true</code> si l&#39;entrée <code>id</code> est présente dans la liste de sync</li>
+					<li><code>SyncManager.sync(force_all, clear_cache, force_specific_elements, receiver)</code> Lance une synchronisation.<ul>
+							<li><code>force_all</code> Si <code>true</code>, force à synchroniser tout l&#39;appareil</li>
+							<li><code>clear_cache</code> Si <code>true</code>, force à vider le cache de synchro puis synchronise tout l&#39;appareil</li>
+							<li><code>force_specific_elements</code> Si <code>string[]</code>, ne synchronisera que les id passés dans le tableau</li>
+							<li><code>receiver</code> Un <code>SyncEvent</code> sur lequel on pourra attacher des événements qui se délencheront à certaines phases de la synchronisation (voir événements)</li>
+						</ul>
+					</li>
+				</ul>
+				<p><code>SyncManager</code> a de nombreuses autres méthodes décrites dans la définition de la classe par du JSDoc.</p>
+				<h3 id="-v-nements-de-synchronisation">Événements de synchronisation</h3>
+				<p>Vous pouvez instancier un <code>SyncEvent</code> sur lequel vous attacherez des événements, puis vous pouvez appeler <code>sync()</code> avec ce <code>SyncEvent</code> dans le paramètre <code>receiver</code>.</p>
+				<pre><code class="language-js"><span class="hljs-keyword">const</span> receiver = <span class="hljs-keyword">new</span> SyncEvent;
+
+receiver.addEventListener(<span class="hljs-string">"error"</span>, err =&gt; {
+    <span class="hljs-built_in">console</span>.log(err.detail);
+});
+
+<span class="hljs-keyword">await</span> SyncManager.sync(<span class="hljs-literal">false</span>, <span class="hljs-literal">false</span>, <span class="hljs-literal">undefined</span>, receiver);</code></pre>
+				<h4 id="error">error</h4>
+				<p>Une erreur est survenue et la synchronisation s&#39;est arrêtée.
+				Un paramètre <code>err</code> est joint dans le détail de l&#39;événement qui contient un objet { code: &quot;message&quot; }.</p>
+				<h4 id="abort">abort</h4>
+				<p>La synchronisation a été arrêtée manuellement.</p>
+				<h4 id="begin">begin</h4>
+				<p>Émis lorsque la synchronisation commence.</p>
+				<h4 id="beforesend">beforesend</h4>
+				<p>Émis lorsque la liste des fichiers à envoyer a été construite, juste avant l&#39;envoi.</p>
+				<h4 id="groupsend">groupsend</h4>
+				<p>Émis lorsqu&#39;un groupe d&#39;entrées est paré à être envoyé.
+				Un paramètre <code>subset</code> de type <code>string[]</code> est passé dans le détail de l&#39;événement et contient l&#39;ID des formulaires allant être envoyé.</p>
+				<h4 id="send">send</h4>
+				<p>Émis lorsqu&#39;une entrée est paré à être envoyée.
+				Le détail contient <code>{ id: id_entry, data: SList, number: current_iterator_number, total: total_entries_to_send }</code>.</p>
+				<h4 id="sended">sended</h4>
+				<p>Émis lorsqu&#39;une entrée a été envoyée.
+				Le détail contient l&#39;identifiant <code>id</code> de l&#39;entrée envoyée.</p>
+				<h4 id="groupsended">groupsended</h4>
+				<p>Émis lorsqu&#39;un groupe d&#39;entrées a été envoyé.
+				Un paramètre <code>subset</code> de type <code>string[]</code> est passé dans le détail de l&#39;événement et contient l&#39;ID des formulaires étant envoyé.</p>
+				<h4 id="groupsenderror">groupsenderror</h4>
+				<p>Émis lorsqu&#39;un groupe d&#39;entrées a échoué à être envoyé.
+				Un paramètre <code>subset</code> de type <code>string[]</code> est passé dans le détail de l&#39;événement et contient l&#39;ID des formulaires devant être envoyés.</p>
+				<h4 id="senderrorfailer">senderrorfailer</h4>
+				<p>Émis lorsqu&#39;une entrée n&#39;a pas pu être envoyée.
+				Le détail contient l&#39;identifiant <code>id</code> de l&#39;entrée dont l&#39;envoi a échoué.</p>
+				<h4 id="complete">complete</h4>
+				<p>Émis lorsque la synchronisation se termine (et que tout s&#39;est bien passé).</p>
+				<h2 id="param-tres-de-l-application">Paramètres de l&#39;application</h2>
+				<h1 id="maintenance-du-serveur-busy-bird">Maintenance du serveur Busy Bird</h1>
+				<h2 id="introduction-l-api-busy-bird">Introduction à l&#39;API Busy Bird</h2>
+				<h2 id="organisation">Organisation</h2>
+				<h2 id="ajouter-un-endpoint">Ajouter un endpoint</h2>
+				<h2 id="sch-mas-entr-es-et-utilisateurs">Schémas, entrées et utilisateurs</h2>
+				<h3 id="sch-mas">Schémas</h3>
+				<h3 id="entr-es">Entrées</h3>
+				<h3 id="utilisateurs">Utilisateurs</h3>
+				<h2 id="informations-fonctionnelles-sur-les-endpoints">Informations fonctionnelles sur les endpoints</h2>
+			</div>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class="globals  ">
+						<a href="globals.html"><em>Globals</em></a>
+					</li>
+					<li class="label tsd-is-external">
+						<span>Internals</span>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_app_.html">"app"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_base_filehelper_.html">"base/<wbr>File<wbr>Helper"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_base_formsaves_.html">"base/<wbr>Form<wbr>Saves"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_base_formschema_.html">"base/<wbr>Form<wbr>Schema"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_base_pagemanager_.html">"base/<wbr>Page<wbr>Manager"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_base_syncmanager_.html">"base/<wbr>Sync<wbr>Manager"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_base_usermanager_.html">"base/<wbr>User<wbr>Manager"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_main_.html">"main"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_pages_form_.html">"pages/form"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_pages_home_.html">"pages/home"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_pages_saved_forms_.html">"pages/saved_<wbr>forms"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_pages_settings_page_.html">"pages/settings_<wbr>page"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_settings_.html">"utils/<wbr>Settings"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_audio_listener_.html">"utils/audio_<wbr>listener"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_fetch_timeout_.html">"utils/fetch_<wbr>timeout"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_helpers_.html">"utils/helpers"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_location_.html">"utils/location"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_save_a_form_.html">"utils/save_<wbr>a_form"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_test_vocal_reco_.html">"utils/test_<wbr>vocal_<wbr>reco"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_utils_vocal_recognition_.html">"utils/vocal_<wbr>recognition"</a>
+					</li>
+					<li class="label tsd-is-external">
+						<span>Externals</span>
+					</li>
+					<li class=" tsd-kind-external-module tsd-is-external">
+						<a href="modules/_utils_logger_.html">"utils/logger"</a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-module"><span class="tsd-kind-icon">Module</span></li>
+				<li class="tsd-kind-object-literal"><span class="tsd-kind-icon">Object literal</span></li>
+				<li class="tsd-kind-variable"><span class="tsd-kind-icon">Variable</span></li>
+				<li class="tsd-kind-function"><span class="tsd-kind-icon">Function</span></li>
+				<li class="tsd-kind-function tsd-has-type-parameter"><span class="tsd-kind-icon">Function with type parameter</span></li>
+				<li class="tsd-kind-index-signature"><span class="tsd-kind-icon">Index signature</span></li>
+				<li class="tsd-kind-type-alias"><span class="tsd-kind-icon">Type alias</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-enum"><span class="tsd-kind-icon">Enumeration</span></li>
+				<li class="tsd-kind-enum-member"><span class="tsd-kind-icon">Enumeration member</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-enum"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-enum"><span class="tsd-kind-icon">Method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-interface"><span class="tsd-kind-icon">Interface</span></li>
+				<li class="tsd-kind-interface tsd-has-type-parameter"><span class="tsd-kind-icon">Interface with type parameter</span></li>
+				<li class="tsd-kind-constructor tsd-parent-kind-interface"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-interface"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-interface"><span class="tsd-kind-icon">Method</span></li>
+				<li class="tsd-kind-index-signature tsd-parent-kind-interface"><span class="tsd-kind-icon">Index signature</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-class"><span class="tsd-kind-icon">Class</span></li>
+				<li class="tsd-kind-class tsd-has-type-parameter"><span class="tsd-kind-icon">Class with type parameter</span></li>
+				<li class="tsd-kind-constructor tsd-parent-kind-class"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class"><span class="tsd-kind-icon">Method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class"><span class="tsd-kind-icon">Accessor</span></li>
+				<li class="tsd-kind-index-signature tsd-parent-kind-class"><span class="tsd-kind-icon">Index signature</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-constructor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static property</span></li>
+				<li class="tsd-kind-call-signature tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static method</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="http://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="assets/js/main.js"></script>
+<script>if (location.protocol == 'file:') document.write('<script src="assets/js/search.js"><' + '/script>');</script>
+</body>
+</html>
