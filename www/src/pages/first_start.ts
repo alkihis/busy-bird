@@ -2,7 +2,7 @@ import { UserManager, loginUser, createNewUser } from "../base/UserManager";
 import { Settings } from "../utils/Settings";
 import { Navigation, PageManager, AppPages } from "../base/PageManager";
 import { APP_NAME } from "./home";
-import { convertHTMLToElement, showToast, askModal } from "../utils/helpers";
+import { convertHTMLToElement, showToast, askModal, escapeHTML } from "../utils/helpers";
 import { verifyServerURL, subscriptionsModal } from "./settings_page";
 import { Schemas } from "../base/FormSchema";
 
@@ -15,13 +15,13 @@ export function loadFirstStart(base: HTMLElement) {
     // Premier démarrage
     try { Navigation.destroy(); } catch (e) {}
 
-    const container = convertHTMLToElement("<div class='container relative-container'></div>");
+    const container = convertHTMLToElement("<div class='container relative-container' style='margin-bottom: 70px;'></div>");
     const backcolor = convertHTMLToElement(`<div class="credits-top-element"></div>`);
     base.innerHTML = "";
     base.appendChild(backcolor);
     base.appendChild(container);
-    button_previous = convertHTMLToElement(`<a class="btn-floating waves-effect btn-large waves-light blue left hide" style="position: absolute; bottom: 10px; left: 10px;"><i class="material-icons">arrow_back</i></a>`);
-    button_next = convertHTMLToElement(`<a class="btn-floating waves-effect btn-large waves-light green right hide" style="position: absolute; bottom: 10px; right: 10px;"><i class="material-icons">arrow_forward</i></a>`);
+    button_previous = convertHTMLToElement(`<a class="btn-floating waves-effect btn-large waves-light blue left hide" style="position: fixed; bottom: 10px; left: 10px;"><i class="material-icons">arrow_back</i></a>`);
+    button_next = convertHTMLToElement(`<a class="btn-floating waves-effect btn-large waves-light green right hide" style="position: fixed; bottom: 10px; right: 10px;"><i class="material-icons">arrow_forward</i></a>`);
     base.appendChild(button_previous);
     base.appendChild(button_next);
 
@@ -63,7 +63,7 @@ function welcomePage(base: HTMLElement) {
             We will help you to set up the application for its first start.
         </p>
         <p class="flow-text">
-            Click on the "next" button to continue.
+            Tap the next button to continue.
         </p>
     `;
 
@@ -110,7 +110,7 @@ function configureAPIUrl(base: HTMLElement) {
         </div>
 
         <p class="flow-text">
-            When you think that the URL is correct, click on the "next" button.
+            When you think that the URL is correct, tap the next button.
         </p>
     `;
 
@@ -162,7 +162,7 @@ function loginOrCreate(base: HTMLElement) {
 
         <img src="img/logo.png" style="position: absolute; top: -20px; left: -10px; height: 7rem; z-index: -1;">
         <p class="flow-text">
-            In order to use the application, you need to be logged. If you don't already have an account, don't worry. You can create it now.
+            In order to use the application, you need to be logged. If you don't already have an account, don't worry. You can create one now.
         </p>
 
         <p>
@@ -180,7 +180,7 @@ function loginOrCreate(base: HTMLElement) {
 
     function createMessage() {
         (base.querySelector('.after-login') as HTMLElement).innerHTML = `
-            All right, <span class="orange-text">${UserManager.username}</span>, you can now click on the next button to jump to the next step.
+            All right, <span class="orange-text">${UserManager.username}</span>, you can now tap the next button to jump to the next step.
         `;
 
         button_next.classList.remove('hide');
@@ -261,7 +261,7 @@ function subscriptions(base: HTMLElement) {
         <img src="img/logo.png" style="position: absolute; top: -20px; left: -10px; height: 7rem; z-index: -1;">
         <p class="flow-text">
             Last step, you can now subscribe to the form models of your interest (if server already have some).
-            Just click on the button below.
+            Just tap the button below.
         </p>
 
         <p class="flow-text" id="__current_subs"></p>
@@ -312,7 +312,7 @@ function finishFirstStart(base: HTMLElement) {
 
     base.innerHTML = `
         <h4 class="right-align">${APP_NAME}</h4>
-        <h6 class="right-align">Subscriptions</h6>
+        <h6 class="right-align">Finish</h6>
 
         <img src="img/logo.png" style="position: absolute; top: -20px; left: -10px; height: 7rem; z-index: -1;">
 
@@ -324,13 +324,42 @@ function finishFirstStart(base: HTMLElement) {
 
         <p class="flow-text">
             To correct any information, use the back button.
-            If all's clear, you can now click on the next button !
+            If it's all right, you can now tap the next button !
         </p>
     `;
 
+    // Initialise infos
+    const infos = document.getElementById('__infos_first');
+    // Utilisateur
+    const user = `<span class="orange-text">${UserManager.username}</span> is logged in.`;
+    // Abonnements
+    const avail = Schemas.available();
+    const subs = avail.length ? avail.map(e => '<span class="first-sub-element">' + e[1] + '</span>').join('<br>') : "You don't have any subscription.";
+    // Schéma courant
+    const current = avail.length ? avail[0][1] : "";
+
+    infos.innerHTML = `
+        <h5>${APP_NAME} server</h5>
+        ${escapeHTML(Settings.api_url)}
+        <h5>User</h5>
+        ${user}
+        <h5>Subscriptions</h5>
+        ${subs}
+        ${current ? `
+            <h5>Selected model</h5>
+            <span class="first-sub-element">${current}</span> is selected. You can change the selected model later in settings.
+        ` : ''}
+    `;
+
     button_next.onclick = () => {
+        if (avail.length) {
+            // Autoactive le premier schéma disponible comme schéma choisi
+            Schemas.change(avail[0][0]);
+        }
+
         // Terminé !
         localStorage.setItem('__busy_bird_first_start_done', 'true');
+        Navigation.init();
         PageManager.change(AppPages.home);
     };
 }
