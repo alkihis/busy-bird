@@ -165,7 +165,7 @@ class _APIHandler {
         md.append("filename", basename);
         md.append("data", base64);
         
-        const req = APIHandler.req(
+        const req = this.req(
             "forms/metadata_send.json", 
             { method: "POST", body: md }, 
             APIResp.text, 
