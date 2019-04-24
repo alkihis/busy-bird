@@ -1,10 +1,10 @@
 import { FormSave } from "./FormSchema";
 import { Logger } from "../utils/logger";
 import localforage from 'localforage';
-import { FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_TIMEOUT_FOR_METADATA, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
+import { FILE_HELPER, MAX_TIMEOUT_FOR_FORM, MAX_CONCURRENT_SYNC_ENTRIES } from "../main";
 import { getModal, initModal, getModalPreloader, MODAL_PRELOADER_TEXT_ID, hasGoodConnection, showToast, getBase } from "../utils/helpers";
 import { BackgroundSync, Settings } from "../utils/Settings";
-import { FileHelperReadMode, EntryObject } from "./FileHelper";
+import { EntryObject } from "./FileHelper";
 import { ENTRIES_DIR, METADATA_DIR } from "./FormSaves";
 import { APIHandler, APIResp } from "./APIHandler";
 
@@ -409,8 +409,6 @@ class _SyncManager {
                     instance.close();
                 }
                 else if (reason && typeof reason === 'object') {
-                    Logger.error("Sync fail:", reason);
-
                     // Si jamais la syncho a été refusée parce qu'une est déjà en cours
                     if (reason.code === "already") {
                         modal.innerHTML = `
@@ -459,16 +457,11 @@ class _SyncManager {
                         };
                     }
                     else if (typeof reason.code === "string") {
-                        let cause = (function(reason) {
-                            switch (reason) {
-                                case "aborted": return "Synchonisation has beed cancelled.";
-                                case "json_send": return "One entry could not be sent.";
-                                case "metadata_send": return "File linked to an entry could not be sent.";
-                                case "file_read": return "A file cound not be read.";
-                                case "id_getter": return "Unable to dialog with internal database.";
-                                default: return "Unknown error.";
-                            }
-                        })(reason.code);
+                        let cause = this.cause(reason.code);
+
+                        if (reason.error) {
+                            reason = Object.assign(reason, reason.error);
+                        }
 
                         const second_cause = reason.error_code ? APIHandler.errMessage(reason.error_code) + "." : "";
 
@@ -508,6 +501,27 @@ class _SyncManager {
                 return Promise.reject(reason);
             });
     }
+    
+    /**
+     * Given a string reason, return a user-comprehensive error cause.
+     *
+     * @protected
+     * @param {string} reason
+     * @returns
+     * @memberof _SyncManager
+     */
+    protected cause(reason: string) {
+        switch (reason) {
+            case "aborted": return "Synchonisation has beed cancelled.";
+            case "json_send": return "One entry could not be sent.";
+            case "json_treatement": return "One entry has failed to be transfered to the server.";
+            case "metadata_treatement": return "One file linked to an entry has failed to be transfered to the server.";
+            case "metadata_send": return "File linked to an entry could not be sent.";
+            case "file_read": return "A file cound not be read.";
+            case "id_getter": return "Unable to dialog with internal database.";
+            default: return "Unknown error.";
+        }
+    }
 
     /**
      * Lance un synchronisation silencieuse, mais qui fait tourner des spinners sur la page des entrées
@@ -545,26 +559,20 @@ class _SyncManager {
         }
         catch (reason) {
             if (reason && typeof reason === 'object') {
-                Logger.error("Sync fail:", reason);
                 // Si jamais la syncho a été refusée parce qu'une est déjà en cours
                 if (reason.code === "already") {
                     showToast('One synchronisation is already running.');
                 }
                 else if (typeof reason.code === "string") {
-                    let cause = (function(reason) {
-                        switch (reason) {
-                            case "aborted": return "Synchonisation has beed cancelled.";
-                            case "json_send": return "One entry could not be sent.";
-                            case "metadata_send": return "File linked to an entry could not be sent.";
-                            case "file_read": return "A file cound not be read.";
-                            case "id_getter": return "Unable to dialog with internal database.";
-                            default: return "Unknown error.";
-                        }
-                    })(reason.code);
+                    let cause = this.cause(reason.code);
+
+                    if (reason.error) {
+                        reason = Object.assign(reason, reason.error);
+                    }
 
                     const second_cause = reason.error_code ? APIHandler.errMessage(reason.error_code) + "." : "";
                     // Modifie le texte du modal
-                    showToast("Unable to synchronize: " + cause + second_cause);
+                    showToast("Unable to synchronize: " + cause + " " + second_cause);
                 }
             }
             else {

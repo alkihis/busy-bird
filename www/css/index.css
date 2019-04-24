@@ -319,9 +319,22 @@ video.img-form-element {
     font-weight: bold;
 }
 
+.first-sub-element {
+    color: rgb(148, 109, 50);
+}
+
 .home-top-element {
     background: linear-gradient(rgba(147, 232, 255, 0.349), rgba(255, 255, 255, 0));
     margin-bottom: -20px;
+}
+
+.credits-top-element {
+    background: linear-gradient(rgba(130, 241, 215, 0.349), rgba(255, 255, 255, 0));
+    margin-bottom: -20px;
+    height: 300px;
+    position: absolute;
+    width: 100%;
+    top: 0;
 }
 
 img.home-logo {

@@ -120,7 +120,7 @@ Pour compiler l'application, utilisez `phonegap build android`.
 
 Lorsque vous arrivez sur votre projet, après l'avoir récupéré de git, vous pouvez initialiser votre espace de travail avec: 
 ```bash
-npm i -g phonegap
+npm i
 
 phonegap platform add browser android --force
 phonegap prepare --force
@@ -215,12 +215,12 @@ Vous trouverez aussi dans `vocal_recognition.ts` les fonctions `prompt()` et `ta
 
 ### Gestion des pages
 
-Les pages de l'application en fait un simple objet `AppPageObj` (voir `PageManager.ts`).
+Les pages de l'application en fait un simple objet `AppPage` (voir `PageManager.ts`).
 Cet objet lie à une clé de page une fonction d'appel lorsque la page est chargée, un nom à afficher dans la barre de menu, et d'autres paramètres.
 
 Les pages sont gérées avec une pile qui permet de pousser des pages dans la pile et dépiler lors de l'appui sur le bouton retour.
-Pour ouvrir une nouvelle page et l'insérer dans la pile, utilisez `PageMananger.pushPage(app_page_name)`.
-Pour dépiler, utilisez `PageManager.popPage()`.
+Pour ouvrir une nouvelle page et l'insérer dans la pile, utilisez `PageMananger.push(app_page_name)`.
+Pour dépiler, utilisez `PageManager.pop()`.
 Pour simuler l'appui du bouton retour, utilisez `PageManager.goBack()`.
 
 Consulter le fichier `PageManager.ts` pour connaître la documentation fonction par fonction.

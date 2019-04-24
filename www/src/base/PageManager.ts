@@ -6,6 +6,7 @@ import { initHomePage, APP_NAME } from "../pages/home";
 import { Logger } from "../utils/logger";
 import { MAX_SLEEPING_PAGES, DEFAULT_PAGE, APP_DEBUG_MODE } from "../main";
 import { loadCredits } from "../pages/credits";
+import { loadFirstStart } from "../pages/first_start";
 
 const NAV_TITLE_ID = 'nav_title';
 const NAV_SIDE_ID = "__sidenav_base_menu";
@@ -17,6 +18,7 @@ interface AppPage {
     icon?: string;
     ask_change?: boolean;
     reload_on_restore: boolean | Function;
+    not_enumerable?: boolean;
 }
 
 interface PageSave {
@@ -61,6 +63,11 @@ export const AppPages: { [pageId: string]: AppPage } = {
         callback: loadCredits,
         reload_on_restore: false,
         icon: "info"
+    },
+    first_start: {
+        name: "First start",
+        callback: loadFirstStart,
+        reload_on_restore: false
     }
 };
 
@@ -155,6 +162,8 @@ class _Navigation {
                 this.addDivider();
             }
             else if (page in AppPages) {
+                if (AppPages[page].not_enumerable) { continue; }
+
                 this.add(page, AppPages[page]);
             }   
         }
@@ -322,6 +331,7 @@ class _PageManager {
     protected actual_page: AppPage;
     protected _should_wait: boolean;
     public lock_return_button: boolean = false;
+    public custom_return_fn: Function;
 
     protected pages_holder: PageSave[] = [];
 
@@ -415,6 +425,7 @@ class _PageManager {
             this.actual_page = page;
             this._should_wait = !!page.ask_change;
             this.lock_return_button = false;
+            this.custom_return_fn = undefined;
     
             // On met le titre de la page dans la barre de navigation
             Navigation.title = force_name || page.name;
@@ -611,6 +622,12 @@ class _PageManager {
             // Ferme le modal possiblement ouvert
             try { getModalInstance().close(); } catch (e) { }
             try { getBottomModalInstance().close(); } catch (e) { }
+
+            console.log(this.custom_return_fn);
+            if (this.custom_return_fn) {
+                this.custom_return_fn();
+                return;
+            }
             
             if (this.isPageWaiting()) {
                 this.pop();

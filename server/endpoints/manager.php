@@ -69,7 +69,7 @@ class EndPointManager {
 
                 $data = loadEndpoint($_SERVER['REQUEST_METHOD']);
 
-                if ($data) {
+                if (!is_null($data)) {
                     header('Content-Type: application/json');
                     echo json_encode($data);
                 }

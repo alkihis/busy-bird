@@ -7,6 +7,7 @@ import { createLocationInputSelector } from "../utils/location";
 import { launchQuizz } from "../utils/test_vocal_reco";
 import { ENTRIES_DIR } from "../base/FormSaves";
 import { Settings } from "../utils/Settings";
+import { PageManager, AppPages } from "../base/PageManager";
 
 export const APP_NAME = "Busy Bird";
 
@@ -33,9 +34,21 @@ export async function initHomePage(base: HTMLElement) {
                 without being authentificated. Please log in into settings.
             ` : ''}
         </p>
+        <p class="flow-text red-text">
+            ${!Settings.api_url ? `
+                ${APP_NAME} server location is not properly set. Please go to the <span class="blue-text go-settings">settings page</span> to register the URL.
+            ` : ''}
+        </p>
         <div id="__home_container"></div>
     </div>
     `;
+
+    const go_settings = document.querySelector('span.go-settings') as HTMLElement;
+    if (go_settings) {
+        go_settings.onclick = () => {
+            PageManager.push(AppPages.settings);
+        };
+    }
 
     //////// TEST ////////
     createTestHome();

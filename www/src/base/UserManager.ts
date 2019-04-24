@@ -102,109 +102,111 @@ class _UserManager {
 
 export const UserManager = new _UserManager;
 
-export function createNewUser() : void {
-    const modal = getModal();
-    const instance = initModal({ dismissible: false });
-    modal.classList.add('modal-fixed-footer');
-
-    modal.innerHTML = `
-    <div class="modal-content">
-        <h5 class="no-margin-top">Create new user</h5>
-        <form class="row" id="__modal_form_new_user">
-            <div class="row col s12 input-field">
-                <label for="__user_new">Username</label>
-                <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
-            </div>
-            <div class="row col s12 input-field">
-                <label for="__user_psw">Password</label>
-                <input type="password" class="validate" required id="__user_psw" name="user_psw">
-            </div>
-            <div class="row col s12 input-field">
-                <label for="__user_psw_r">Password (confirmation)</label>
-                <input type="password" class="validate" required id="__user_psw_r" name="user_psw_r">
-            </div>
-            <div class="row col s12 input-field">
-                <label for="__user_psw_a">Administrator password</label>
-                <input type="password" class="validate" required id="__user_psw_a" name="user_psw_a">
-            </div>
-        </form>
-    </div>
-    <div class="modal-footer">
-        <a href="#!" class="btn-flat red-text left modal-close">Cancel</a>
-        <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Create an user</a>
-        <div class="clearb"></div>
-    </div>
-    `;
-
-    instance.open();
-
-    const orig_psw = document.getElementById('__user_psw') as HTMLInputElement;
-    document.getElementById('__user_psw_r').onchange = function(this: GlobalEventHandlers) {
-        const e = this as HTMLInputElement;
-
-        if (e.value !== orig_psw.value) {
-            e.classList.add('invalid');
-            e.classList.remove('valid');
+export function createNewUser() : Promise<void> {
+    return new Promise((resolve, reject) => {
+        const modal = getModal();
+        const instance = initModal({ dismissible: false });
+        modal.classList.add('modal-fixed-footer');
+    
+        modal.innerHTML = `
+        <div class="modal-content">
+            <h5 class="no-margin-top">Create new user</h5>
+            <form class="row" id="__modal_form_new_user">
+                <div class="row col s12 input-field">
+                    <label for="__user_new">Username</label>
+                    <input type="text" autocomplete="off" class="validate" required id="__user_new" name="user_new">
+                </div>
+                <div class="row col s12 input-field">
+                    <label for="__user_psw">Password</label>
+                    <input type="password" class="validate" required id="__user_psw" name="user_psw">
+                </div>
+                <div class="row col s12 input-field">
+                    <label for="__user_psw_r">Password (confirmation)</label>
+                    <input type="password" class="validate" required id="__user_psw_r" name="user_psw_r">
+                </div>
+                <div class="row col s12 input-field">
+                    <label for="__user_psw_a">Administrator password</label>
+                    <input type="password" class="validate" required id="__user_psw_a" name="user_psw_a">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class="btn-flat red-text left modal-close">Cancel</a>
+            <a href="#!" id="__modal_create_new_user" class="btn-flat blue-text right">Create an user</a>
+            <div class="clearb"></div>
+        </div>
+        `;
+    
+        instance.open();
+    
+        const orig_psw = document.getElementById('__user_psw') as HTMLInputElement;
+        document.getElementById('__user_psw_r').onchange = function(this: GlobalEventHandlers) {
+            const e = this as HTMLInputElement;
+    
+            if (e.value !== orig_psw.value) {
+                e.classList.add('invalid');
+                e.classList.remove('valid');
+            }
+            else {
+                e.classList.add('valid');
+                e.classList.remove('invalid');
+            }
         }
-        else {
-            e.classList.add('valid');
-            e.classList.remove('invalid');
-        }
-    }
-
-    let modal_save: DocumentFragment = null;
-
-    document.getElementById('__modal_create_new_user').onclick = function() {
-        const form = document.getElementById('__modal_form_new_user') as HTMLFormElement;
-        
-        const name = form.user_new.value.trim();
-        const psw = form.user_psw.value.trim();
-        const psw_r = form.user_psw_r.value.trim();
-        const psw_a = form.user_psw_a.value.trim();
-
-        if (!name) {
-            showToast("Name cannot be empty.");
-            return;
-        }
-        if (!psw) {
-            showToast("Password cannot be empty.");
-            return;
-        }
-        if (psw !== psw_r) {
-            showToast("Password and confirmation should be equal.");
-            return;
-        }
-        if (!psw_a) {
-            showToast("Administrator password is needed.");
-            return;
-        }
-
-        modal_save = document.createDocumentFragment();
-        let child: Node;
-        while (child = modal.firstChild) {
-            modal_save.appendChild(child);
-        }
-        
-        modal.innerHTML = getModalPreloader("Creating user...");
-        UserManager.createUser(name, psw, psw_a)
-            .then(function() {
-                showToast("User has been created successfully.");
-                instance.close();
-                PageManager.reload();
-            }).catch(function(error) {
-                console.log(error);
-                if (error && typeof error.error_code === 'number') {
-                    showToast(APIHandler.errMessage(error.error_code));
-                }
-
-                modal.innerHTML = "";
-
-                let e: Node;
-                while (e = modal_save.firstChild) {
-                    modal.appendChild(e);
-                }
-            });
-    };
+    
+        let modal_save: DocumentFragment = null;
+    
+        document.getElementById('__modal_create_new_user').onclick = function() {
+            const form = document.getElementById('__modal_form_new_user') as HTMLFormElement;
+            
+            const name = form.user_new.value.trim();
+            const psw = form.user_psw.value.trim();
+            const psw_r = form.user_psw_r.value.trim();
+            const psw_a = form.user_psw_a.value.trim();
+    
+            if (!name) {
+                showToast("Name cannot be empty.");
+                return;
+            }
+            if (!psw) {
+                showToast("Password cannot be empty.");
+                return;
+            }
+            if (psw !== psw_r) {
+                showToast("Password and confirmation should be equal.");
+                return;
+            }
+            if (!psw_a) {
+                showToast("Administrator password is needed.");
+                return;
+            }
+    
+            modal_save = document.createDocumentFragment();
+            let child: Node;
+            while (child = modal.firstChild) {
+                modal_save.appendChild(child);
+            }
+            
+            modal.innerHTML = getModalPreloader("Creating user...");
+            UserManager.createUser(name, psw, psw_a)
+                .then(function() {
+                    showToast("User has been created successfully.");
+                    instance.close();
+                    resolve();
+                }).catch(function(error) {
+                    console.log(error);
+                    if (error && typeof error.error_code === 'number') {
+                        showToast(APIHandler.errMessage(error.error_code));
+                    }
+    
+                    modal.innerHTML = "";
+    
+                    let e: Node;
+                    while (e = modal_save.firstChild) {
+                        modal.appendChild(e);
+                    }
+                });
+        };
+    });
 }
 
 export function loginUser() : Promise<void> {
@@ -277,6 +279,9 @@ export function loginUser() : Promise<void> {
                         }
                         else if (error.error_code === 11) {
                             showToast("Password is invalid.");
+                        }
+                        else if (error.error_code === -1) {
+                            showToast("API URL is not properly set.");
                         }
                         else {
                             showToast("An unknown error occurred.");

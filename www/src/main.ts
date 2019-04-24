@@ -10,6 +10,7 @@ import { launchQuizz } from './utils/test_vocal_reco';
 import { FileHelper, FileHelperReadMode } from './base/FileHelper';
 import { Settings, Globals } from './utils/Settings';
 import { ENTRIES_DIR, METADATA_DIR } from './base/FormSaves';
+import { isFirstStart } from './pages/first_start';
 
 // Constantes de l'application
 export const APP_VERSION = 1.0;
@@ -167,7 +168,10 @@ async function initApp() {
 
             let prom: Promise<any>;
 
-            if (href && PageManager.exists(href)) {
+            if (isFirstStart()) {
+                prom = PageManager.change(AppPages.first_start);
+            }
+            else if (href && PageManager.exists(href)) {
                 prom = PageManager.change(AppPages[href]);
             }
             else {

@@ -39,7 +39,6 @@
     <access origin="blob:" />
     <access origin="cdvfile://*" />
     <access origin="file:///*" />
-    <allow-navigation href="projet.alkihis.fr/*" />
     <allow-navigation href="*" />
     <allow-navigation href="file://*" />
     <allow-navigation href="blob:" />

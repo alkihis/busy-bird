@@ -1,6 +1,6 @@
 import { Settings } from "../utils/Settings";
 import { UserManager } from "./UserManager";
-import { sleep, showToast } from "../utils/helpers";
+import { sleep } from "../utils/helpers";
 import { FILE_HELPER, MAX_TIMEOUT_FOR_METADATA, MAX_LENGTH_CHUNK, MAX_CONCURRENT_PARTS } from "../main";
 import { FileHelperReadMode } from "./FileHelper";
 
@@ -19,6 +19,20 @@ class _APIHandler {
     protected controllers = new Map<Promise<any>, AbortController>();
 
     req(url: string, options: RequestInit = {}, resp_type = APIResp.JSON, signed = true, timeout = 120000) : Promise<any> {
+        if (!Settings.api_url) {
+            const e = { error_code: -1, message: "API URL is not set" };
+
+            switch (resp_type) {
+                case APIResp.JSON:
+                    return Promise.reject(e);
+                case APIResp.blob:
+                    return Promise.reject(new Blob([JSON.stringify(e)]));
+                case APIResp.text:
+                    return Promise.reject(JSON.stringify(e));
+            }
+            return Promise.reject("No API URL is set");
+        }
+
         let controller: AbortController;
 
         if ("AbortController" in window) {
@@ -92,6 +106,8 @@ class _APIHandler {
 
     errMessage(error_code: number) : string {
         switch (error_code) {
+            case -1: 
+                return "API URL is not set";
             case 1:
             case 3:
                 return "Internal server error";

@@ -116,7 +116,9 @@ export function initSettingsPage(base: HTMLElement) {
         createaccbtn.classList.add('col', 's12', 'blue-grey', 'btn', 'btn-perso', 'btn-small-margins');
         createaccbtn.innerHTML = "Create an account";
         createaccbtn.style.marginTop = "-5px";
-        createaccbtn.onclick = createNewUser;
+        createaccbtn.onclick = () => {
+            createNewUser().then(() => { PageManager.reload(); });
+        };
         container.appendChild(createaccbtn);
     }
 
@@ -191,7 +193,7 @@ export function initSettingsPage(base: HTMLElement) {
     subs_btn.innerHTML = "Manage subscriptions";
     subs_btn.onclick = function() {
         if (UserManager.logged) {
-            subscriptionsModal();
+            subscriptionsModal().then(() => { PageManager.reload(); });
         }
         else {
             informalBottomModal("Log in", "Subscription management is allowed to logged users only.");
@@ -326,13 +328,13 @@ export function initSettingsPage(base: HTMLElement) {
     <h4>${APP_NAME} server</h4>
     <h5>Server location</h5>
     <p class="flow-text">
-        Current location is <span class="blue-text text-darken-2 api-url">${escapeHTML(Settings.api_url)}</span>.
+        Current location is ${Settings.api_url ? `<span class="blue-text text-darken-2 api-url">${escapeHTML(Settings.api_url)}</span>` : `<span class="red-text api-url">not set</span>`}.
     </p>
     `);
 
     const changeapibutton = document.createElement('button');
     changeapibutton.className = "teal darken-4 col s12 btn btn-perso btn-small-margins"
-    changeapibutton.innerHTML = "Change API URL";
+    changeapibutton.innerHTML = (Settings.api_url ? "Change" : "Set") + " API URL";
     changeapibutton.onclick = changeURL;
 
     container.appendChild(changeapibutton);
@@ -402,7 +404,7 @@ function changeURL() : void {
 
     document.getElementById('__api_url_save').onclick = async () => {
         try {
-            if (Settings.api_url !== input.value) {
+            if (Settings.api_url !== input.value && input.value) {
                 PageManager.lock_return_button = true;
                 const valid = await verifyServerURL(input.value);
                 PageManager.lock_return_button = false;
@@ -415,7 +417,10 @@ function changeURL() : void {
             Settings.api_url = input.value;
             instance.close();
             modal.innerHTML = "";
-            (document.querySelector('span.api-url') as HTMLElement).innerText = Settings.api_url;
+            const element = (document.querySelector('span.api-url') as HTMLElement);
+
+            element.className = Settings.api_url ? "blue-text text-darken-2 api-url" : "red-text api-url";
+            element.innerText = Settings.api_url ? Settings.api_url : "not set";
         } catch (e) {
             showToast("Specified URL is not a valid URL.");
         }
@@ -430,7 +435,7 @@ function changeURL() : void {
  * Vérifie si l'url est un serveur Busy Bird-compatible
  * @param url 
  */
-async function verifyServerURL(url: string) : Promise<boolean> {
+export async function verifyServerURL(url: string) : Promise<boolean> {
     // Vérifie si le serveur existe
     const f_data = new FormData;
     if (UserManager.logged) {
@@ -445,7 +450,18 @@ async function verifyServerURL(url: string) : Promise<boolean> {
         let resp: any = await fetch(url.replace(/\/$/, '') + "/users/validate.json", {
             method: "POST",
             body: f_data
-        }, 60000).then(resp => resp.text());
+        }, 60000)
+        // @ts-ignore
+        .then(resp => resp.ok ? resp.text() : Promise.resolve(new Error)) as string | Error;
+
+        if (resp instanceof Error) {
+            throw resp;
+        }
+
+        if (!resp && !UserManager.logged) {
+            // Contenu vide, l'utilisateur n'a pas été envoyé avec
+            instance.close(); return true;
+        }
 
         resp = JSON.parse(resp);
 
@@ -468,7 +484,9 @@ async function verifyServerURL(url: string) : Promise<boolean> {
                 // On met à jour les souscriptions
                 // On recharge pas la page... On suppose que c'est les mêmes, tant pis
                 Schemas.schemas = resp.subscriptions;
-                constructSelectForSchemas(select_for_schema);
+
+                if (select_for_schema)
+                    constructSelectForSchemas(select_for_schema);
             }
             else {
                 // L'utilisateur n'est pas pas précisé
@@ -476,6 +494,7 @@ async function verifyServerURL(url: string) : Promise<boolean> {
             instance.close(); return true;
         }
     } catch (e) {
+        console.log(e)
         showToast("Unable to find a " + APP_NAME + " compatible server at this address.");
     }
 
@@ -514,7 +533,10 @@ async function subscribe(ids: string[], fetch_subs: boolean) : Promise<void | Fo
         form_data.append('trim_subs', 'true');
     }
 
-    return APIHandler.req("schemas/subscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000);
+    const req = await APIHandler.req("schemas/subscribe.json", { method: "POST", body: form_data }, APIResp.text, true, 60000);
+    if (req) {
+        return JSON.parse(req);
+    }
 }
 
 /**
@@ -529,13 +551,16 @@ async function unsubscribe(ids: string[], fetch_subs: boolean) : Promise<void | 
         form_data.append('trim_subs', 'true');
     }
 
-    return APIHandler.req("schemas/unsubscribe.json", { method: "POST", body: form_data }, APIResp.JSON, true, 60000);
+    const req = await APIHandler.req("schemas/unsubscribe.json", { method: "POST", body: form_data }, APIResp.text, true, 60000) as string;
+    if (req) {
+        return JSON.parse(req);
+    }
 }
 
 /**
  * Lance le modal de gestion des souscriptions
  */
-async function subscriptionsModal() : Promise<void> {
+export async function subscriptionsModal() : Promise<void> {
     // Initialise le modal
     const modal = getModal();
     const instance = initModal(
@@ -633,66 +658,6 @@ async function subscriptionsModal() : Promise<void> {
     valid_btn.href = "#!";
     valid_btn.innerText = "Save";
 
-    // Si demande d'enregistrement > lance la procédure
-    valid_btn.onclick = async function() {
-        // Récupération des checkbox; cochées et non cochées
-        const checkboxes = document.getElementsByClassName('input-subscription-element');
-
-        const to_check: string[] = [];
-        const to_uncheck: string[] = [];
-
-        for (const c of checkboxes) {
-            const ch = c as HTMLInputElement;
-
-            // Si l'élément est coché et il n'est pas présent dans la liste originale d'éléments cochés
-            if (ch.checked && !(ch.dataset.id in first_checked)) {
-                to_check.push(ch.dataset.id);
-            }
-
-            // Si l'élément est décoché mais il est présent dans la liste originale d'éléments cochés
-            else if (!ch.checked && ch.dataset.id in first_checked) {
-                to_uncheck.push(ch.dataset.id);
-            }
-        }
-
-        modal.innerHTML = getModalPreloader("Updating subscriptions<br>Please do not close this window");
-        modal.classList.remove('modal-fixed-footer');
-
-        try {
-            // Appel à unsubscribe
-            if (to_uncheck.length > 0) {
-                await unsubscribe(to_uncheck, false);
-
-                // Suppression des formulaires demandés à être unsub
-                for (const f of to_uncheck) {
-                    Schemas.delete(f, false);
-                }
-
-                Schemas.save();
-            }
-
-            let subs: FormSchema = undefined;
-            // Appel à subscribe
-            if (to_check.length > 0) {
-                subs = await subscribe(to_check, true) as FormSchema;
-            }
-    
-            showToast("Subscription update complete");
-            instance.close();
-
-            // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
-            if (subs) {
-                Schemas.schemas = subs;
-            }
-        } catch (e) {
-            showToast("Unable to update subscriptions.\nCheck your Internet connection.");
-            Logger.error(e);
-            instance.close();
-        }
-
-        PageManager.reload();
-    };
-
     footer.appendChild(valid_btn);
     footer.insertAdjacentHTML('beforeend', `<div class="clearb"></div>`);
 
@@ -700,4 +665,66 @@ async function subscriptionsModal() : Promise<void> {
     modal.innerHTML = "";
     modal.appendChild(content);
     modal.appendChild(footer);
+
+    // Si demande d'enregistrement > lance la procédure
+    return new Promise(resolve => {
+        valid_btn.onclick = async function() {
+            // Récupération des checkbox; cochées et non cochées
+            const checkboxes = document.getElementsByClassName('input-subscription-element');
+    
+            const to_check: string[] = [];
+            const to_uncheck: string[] = [];
+    
+            for (const c of checkboxes) {
+                const ch = c as HTMLInputElement;
+    
+                // Si l'élément est coché et il n'est pas présent dans la liste originale d'éléments cochés
+                if (ch.checked && !(ch.dataset.id in first_checked)) {
+                    to_check.push(ch.dataset.id);
+                }
+    
+                // Si l'élément est décoché mais il est présent dans la liste originale d'éléments cochés
+                else if (!ch.checked && ch.dataset.id in first_checked) {
+                    to_uncheck.push(ch.dataset.id);
+                }
+            }
+    
+            modal.innerHTML = getModalPreloader("Updating subscriptions<br>Please do not close this window");
+            modal.classList.remove('modal-fixed-footer');
+    
+            try {
+                // Appel à unsubscribe
+                if (to_uncheck.length > 0) {
+                    await unsubscribe(to_uncheck, false);
+    
+                    // Suppression des formulaires demandés à être unsub
+                    for (const f of to_uncheck) {
+                        Schemas.delete(f, false);
+                    }
+    
+                    Schemas.save();
+                }
+    
+                let subs: FormSchema = undefined;
+                // Appel à subscribe
+                if (to_check.length > 0) {
+                    subs = await subscribe(to_check, true) as FormSchema;
+                }
+        
+                showToast("Subscription update complete");
+                instance.close();
+    
+                // Met à jour les formulaires si ils ont changé (appel à subscribe ou unsubscribe)
+                if (subs) {
+                    Schemas.schemas = subs;
+                }
+            } catch (e) {
+                showToast("Unable to update subscriptions.\nCheck your Internet connection.");
+                Logger.error(e);
+                instance.close();
+            }
+
+            resolve();
+        };
+    });
 }
