@@ -303,6 +303,12 @@ video.img-form-element {
     max-height: inherit;
 }
 
+.form-title {
+    color: #626869;
+    font-family: "Helvetica Neue";
+    font-weight: 200;
+}
+
 .image-form-wrapper {
     width: 100%;
 }

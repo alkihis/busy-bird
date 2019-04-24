@@ -1,6 +1,6 @@
 import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } from "../utils/vocal_recognition";
 import { FormEntityType, FormEntity, Schemas, Schema, FormSave, FormLocations } from '../base/FormSchema';
-import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal, takeAPicture, takeAVideo } from "../utils/helpers";
+import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal, takeAPicture, takeAVideo, convertHTMLToElement } from "../utils/helpers";
 import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "../main";
 import { PageManager } from "../base/PageManager";
 import { Logger } from "../utils/logger";
@@ -1147,6 +1147,12 @@ export function loadFormPage(base: HTMLElement, current_form: Schema, edition_mo
 
     const base_block = document.createElement('div');
     base_block.classList.add('row', 'container');
+
+    // Titre du formulaire
+    const form_title = document.createElement('h3');
+    form_title.className = "form-title";
+    form_title.innerText = current_form.name;
+    base_block.appendChild(form_title);
 
     const placeh = document.createElement('form');
     placeh.classList.add('col', 's12');

@@ -121,6 +121,12 @@ Pour compiler l'application, utilisez `phonegap build android`.
 Lorsque vous arrivez sur votre projet, après l'avoir récupéré de git, vous pouvez initialiser votre espace de travail avec: 
 ```bash
 npm i
+# On a besoin de la cli phonegap
+npm i -g phonegap
+
+# On réinstalle si besoin
+npm i
+npm audix fix
 
 phonegap platform add browser android --force
 phonegap prepare --force
@@ -150,6 +156,11 @@ phonegap prepare browser
 phonegap platform add android --force
 phonegap prepare android
 
+# Avant de compiler pour distribuer, vous DEVEZ compiler avec typescript
+tsc
+
+# Pour compiler, il vous faudra le SDK android d'installé et configuré dans le PATH.
+# Il faudra très certainement installer Gradle (sur Mac, un brew install gradle suffit), et Java.
 phonegap build android
 
 ## Pour le lancer sur un appareil android connecté, en débogage USB, lancez
