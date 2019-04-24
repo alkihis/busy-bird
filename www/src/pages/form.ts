@@ -883,7 +883,6 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                     button.addEventListener('click', function() {
                         Globals.makeVideo()
                             .then(([url, original]) => {
-                                console.log(url, original);
                                 input.dataset.imagemanualurl = original;
                                 button.classList.remove('blue', 'darken-3');
                                 button.classList.add('green');
@@ -898,7 +897,7 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
                                 // Crée la miniature
                                 createMiniature(url, input, minia_wrapper, true, f_input, button, is_video);
                             })
-                            .catch((e) => console.log(e));
+                            .catch((e) => Logger.info("Unable to make a video", e));
                         });
                 }
                 else {

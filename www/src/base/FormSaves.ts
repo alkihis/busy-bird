@@ -3,6 +3,7 @@ import { FILE_HELPER, SD_FILE_HELPER, ID_COMPLEXITY } from "../main";
 import { FileHelperReadMode } from "./FileHelper";
 import { SyncManager } from "./SyncManager";
 import { urlToBlob, generateId, showToast, cleanTakenPictures } from "../utils/helpers";
+import { Logger } from "../utils/logger";
 
 export const ENTRIES_DIR = "forms/";
 export const METADATA_DIR = "form_data/";
@@ -129,7 +130,7 @@ class _FormSaves {
             try {
                 await FILE_HELPER.write(full_path, blob);
                 if (device.platform === 'Android' && SD_FILE_HELPER) {
-                    SD_FILE_HELPER.write(full_path, blob).then(() => {}).catch(e => console.log(e));
+                    SD_FILE_HELPER.write(full_path, blob).then(() => {}).catch(e => Logger.info("Unable to save a file to SD card", e));
                 }
                 // Enregistre le nom du fichier sauvegardé dans le formulaire,
                 // dans la valeur du champ field
@@ -260,7 +261,7 @@ class _FormSaves {
         await FILE_HELPER.write(ENTRIES_DIR + identifier + '.json', form_values);
     
         if (device.platform === 'Android' && SD_FILE_HELPER) {
-            SD_FILE_HELPER.write(ENTRIES_DIR + identifier + '.json', form_values).catch((e) => console.log(e));
+            SD_FILE_HELPER.write(ENTRIES_DIR + identifier + '.json', form_values).catch((e) => Logger.info("Unable to save a file to SD card", e));
         }
 
         // Vide le cache de la caméra

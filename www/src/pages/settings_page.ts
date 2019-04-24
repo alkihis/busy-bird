@@ -494,7 +494,8 @@ export async function verifyServerURL(url: string) : Promise<boolean> {
             instance.close(); return true;
         }
     } catch (e) {
-        console.log(e)
+        console.log(e);
+        Logger.warn("Not a busy bird compatible server", e)
         showToast("Unable to find a " + APP_NAME + " compatible server at this address.");
     }
 
