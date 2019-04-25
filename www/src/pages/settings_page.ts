@@ -310,7 +310,7 @@ export function initSettingsPage(base: HTMLElement) {
                 "Yes",
                 "No",
                 "Empty sync cache"
-            ).then(checked_val => {
+            ).catch(() => {}).then(checked_val => {
                 // L'utilisateur a dit oui
                 SyncManager.graphicalSync(true, checked_val);
             });

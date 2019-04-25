@@ -14,7 +14,7 @@ export default function (url: string, options: any, timeout = 10000) {
                 if (controller)
                     controller.abort();
 
-                reject(new Error('timeout'));
+                reject("Timeout");
             }, timeout)
         )
     ]) as Promise<Response>;

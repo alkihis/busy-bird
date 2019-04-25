@@ -118,6 +118,22 @@ async function initApp() {
     // Initialise les blocs principaux du code: L'utilitaire de log, les schémas de form et le gestionnaire de sync
     await FILE_HELPER.waitInit();
     Logger.init();
+
+    // Initialise le log d'erreurs non attrapées
+    window.onerror = function(event, source, lineno, colno, error) {
+        Logger.error("Unhandled error:", event, "in", source, "at line", lineno, "col", colno, "stack trace:", error.stack, "message:", error.message);
+    };
+    window.addEventListener('unhandledrejection', function(event) {
+        let reason = event.reason;
+
+        if (reason instanceof Error) {
+            const r = reason as Error;
+            reason = "Unhandled error: " + r.message + "\n" + r.stack;
+        }
+
+        Logger.error('Unhandled rejection: ', reason);
+    });
+
     Schemas.init(); 
     SyncManager.init();
 

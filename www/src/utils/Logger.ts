@@ -123,7 +123,7 @@ class _Logger {
             return;
         }
 
-        // En debug, on écrit dans dans le fichier
+        // En debug, on écrit pas dans le fichier
         if (level === LogLevel.debug) {
             console.log(...data);
             return;
@@ -162,7 +162,7 @@ class _Logger {
                 let final: string = this.createDateHeader(level) + " ";
 
                 for (const e of data) {
-                    final += (typeof e === 'string' ? e : JSON.stringify(e)) + "\n";
+                    final += (typeof e === 'string' ? e : (e instanceof Error ? e.message + "\n" + e.stack : JSON.stringify(e))) + "\n";
                 }
 
                 this.onWrite = true;
