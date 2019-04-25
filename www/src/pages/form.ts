@@ -2,7 +2,7 @@ import { prompt, testOptionsVersusExpected, testMultipleOptionsVesusExpected } f
 import { FormEntityType, FormEntity, Schemas, Schema, FormSave, FormLocations } from '../base/FormSchema';
 import { getLocation, getModal, getModalInstance, calculateDistance, getModalPreloader, initModal, createImgSrc, displayErrorMessage, showToast, dateFormatter, askModal, takeAPicture, takeAVideo, convertHTMLToElement } from "../utils/helpers";
 import { MAX_LIEUX_AFFICHES, MP3_BITRATE, FILE_HELPER } from "../main";
-import { PageManager } from "../base/PageManager";
+import { PageManager, Navigation } from "../base/PageManager";
 import { Logger } from "../utils/logger";
 import { newModalRecord } from "../utils/audio_listener";
 import { UserManager } from "../base/UserManager";

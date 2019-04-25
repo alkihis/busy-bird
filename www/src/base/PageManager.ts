@@ -11,6 +11,7 @@ import Hammer from 'hammerjs';
 
 const NAV_TITLE_ID = 'nav_title';
 const NAV_SIDE_ID = "__sidenav_base_menu";
+const NAV_SIDETITLE_ID = "__nav_title_side";
 
 interface AppPage {
     /** Don't close sidenav when switching to this page */
@@ -87,6 +88,7 @@ class _Navigation {
     protected text: HTMLElement;
     protected sidenav: HTMLElement;
     protected navbar: HTMLElement;
+    protected sidetext: HTMLElement;
     protected instance: M.Sidenav;
     protected hammertime: HammerManager;
 
@@ -97,6 +99,7 @@ class _Navigation {
         this.navbar = document.getElementsByTagName('nav')[0];
 
         this.sidenav = document.getElementById(NAV_SIDE_ID);
+        this.sidetext = document.getElementById(NAV_SIDETITLE_ID)
         this.init();
     }
 
@@ -136,6 +139,14 @@ class _Navigation {
      */
     set title(text: string) {
         this.text.innerText = text;
+    }
+
+    get sidetitle() {
+        return this.sidetext.textContent;
+    }
+
+    set sidetitle(v: string) {
+        this.sidetext.textContent = v;
     }
 
     /**

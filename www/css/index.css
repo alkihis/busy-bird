@@ -144,6 +144,19 @@ nav {
     background-color: #74aabf;
 }
 
+nav .nav-title {
+    padding: 0;
+    font-size: 24px;
+    padding-bottom: 10Px;
+    margin-left: 15px;
+    font-family: "Helvetica Neue";
+    font-weight: 200;
+}
+
+nav .nav-wrapper, nav .nav-content {
+    transition: .5s;
+}
+
 main {
     flex: 1 0 auto;
 }
