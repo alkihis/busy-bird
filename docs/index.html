@@ -72,60 +72,6 @@
 				<p>Busy Bird est programmée en <a href="https://www.typescriptlang.org/">TypeScript</a>, JavaScript, HTML &amp; CSS, et utilise le framework libre <a href="https://phonegap.com/">Adobe PhoneGap</a> / <a href="https://cordova.apache.org/">Apache Cordova</a> pour être intégrée dans une application native Android.
 					Pour sa partie serveur, Busy Bird se repose sur le couple PHP + Apache.
 				La partie spécifique au développement est détaillée dans la partie sus-nommée.</p>
-				<h1 id="sommaire">Sommaire</h1>
-				<ol>
-					<li><a href="">Introduction</a></li>
-					<li><a href="">Utilisation</a><ol>
-							<li><a href="">Compte utilisateur</a><ol>
-									<li><a href="">Connexion</a></li>
-									<li><a href="">Création de compte</a></li>
-								</ol>
-							</li>
-							<li><a href="">Souscrire à des schémas</a></li>
-							<li><a href="">Saisir une entrée</a><ol>
-									<li><a href="">Lieu de saisie</a></li>
-									<li><a href="">Formulaire</a></li>
-									<li><a href="">Validation et sauvegarde</a></li>
-								</ol>
-							</li>
-							<li><a href="">Consulter et modifier des entrées</a><ol>
-									<li><a href="">Lister les entrées sauvegardées</a></li>
-									<li><a href="">Modifier une entrée</a></li>
-									<li><a href="">Supprimer des entrées</a></li>
-								</ol>
-							</li>
-							<li><a href="">Synchronisation</a><ol>
-									<li><a href="">Standard</a></li>
-									<li><a href="">Arrière-plan</a></li>
-									<li><a href="">Globale</a></li>
-								</ol>
-							</li>
-						</ol>
-					</li>
-					<li><a href="">Maintenance et développement de l&#39;application</a><ol>
-							<li><a href="">Introduction à Cordova</a></li>
-							<li><a href="">Plugins utilisés</a></li>
-							<li><a href="">Organisation du code et bases structurantes</a><ol>
-									<li><a href="">Organisation générale</a></li>
-									<li><a href="">Gestion des pages</a></li>
-									<li><a href="">Gestion des utilisateurs</a></li>
-									<li><a href="">Gestion des schémas de formulaire</a></li>
-									<li><a href="">Interactions avec le système de fichiers</a></li>
-								</ol>
-							</li>
-							<li><a href="">Synchronisation</a></li>
-							<li><a href="">Paramètres de l&#39;application</a></li>
-						</ol>
-					</li>
-					<li><a href="">Maintenance du serveur Busy Bird</a><ol>
-							<li><a href="">Introduction à l&#39;API Busy Bird</a></li>
-							<li><a href="">Organisation</a></li>
-							<li><a href="">Ajouter un endpoint</a></li>
-							<li><a href="">Schémas, entrées et utilisateurs</a></li>
-							<li><a href="">Informations fonctionnelles sur les endpoints</a></li>
-						</ol>
-					</li>
-				</ol>
 				<h1 id="introduction">Introduction</h1>
 				<p>L&#39;application Busy Bird compte un certain nombre de termes dont la signification doit être claire :</p>
 				<ul>
@@ -185,19 +131,57 @@
 				<h3 id="cli-phonegap">CLI PhoneGap</h3>
 				<p>Ce projet utilise PhoneGap. Pour installer un plugin, utilisez <code>phonegap plugin add &lt;nomplugin&gt;</code>.
 				Pour compiler l&#39;application, utilisez <code>phonegap build android</code>.</p>
+				<p>Lorsque vous arrivez sur votre projet, après l&#39;avoir récupéré de git, vous pouvez initialiser votre espace de travail avec: </p>
+				<pre><code class="language-bash">npm i
+<span class="hljs-comment"># On a besoin de la cli phonegap</span>
+npm i -g phonegap
+
+<span class="hljs-comment"># On réinstalle si besoin</span>
+npm i
+npm audix fix
+
+phonegap platform add browser android --force
+phonegap prepare --force
+
+<span class="hljs-comment">## Si un plugin manque, ce sera sûrement speech-synthesis</span>
+<span class="hljs-comment"># Vous pouvez l'ajouter manuellement au dossier plugins de cordova, il se trouve dans hooks/</span>
+phonegap plugin add hooks/phonegap-plugin-speech-synthesis --nofetch
+
+<span class="hljs-comment">## puis</span>
+phonegap prepare
+
+<span class="hljs-comment"># Pour lancer l'émulation via navigateur, utilisez</span>
+phonegap serve
+<span class="hljs-comment"># Lancez un navigateur (Chrome de préférence) à l'adresse http://localhost:3000</span></code></pre>
 				<p>Si PhoneGap râle, parce que mon dieu ça arrive, utilisez cet enchaînememnt de commandes:</p>
 				<pre><code class="language-bash">phonegap platform remove android
 phonegap platform remove browser
 
-phonegap platform add browser
+phonegap platform add browser --force
 phonegap prepare browser
 
-phonegap platform add android
-<span class="hljs-comment"># À ce moment, il y a de fortes chances qu'un plugin râle. Utilisez alors</span>
+<span class="hljs-comment"># À ce moment, il y a de fortes chances qu'un plugin râle. Utilisez</span>
 phonegap platform add android --force
 phonegap prepare android
 
-phonegap build android</code></pre>
+<span class="hljs-comment"># Avant de compiler pour distribuer, vous DEVEZ compiler avec typescript</span>
+tsc
+
+<span class="hljs-comment"># Pour compiler, il vous faudra le SDK android d'installé et configuré dans le PATH.</span>
+<span class="hljs-comment"># Il faudra très certainement installer Gradle (sur Mac, un brew install gradle suffit), et Java.</span>
+phonegap build android
+
+<span class="hljs-comment">## Pour le lancer sur un appareil android connecté, en débogage USB, lancez</span>
+phonegap run android --device
+
+<span class="hljs-comment">## Pour compiler en release et signer l'APK:</span>
+phonegap build android --release
+<span class="hljs-built_in">cd</span> platforms/android/app/build/outputs/apk
+jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore BusyBird.keystore release/app-release-unsigned.apk busybird
+<span class="hljs-comment"># Entrer le mot de passe du keystore. Pour en générer un : https://stackoverflow.com/questions/26449512/how-to-create-a-signed-apk-file-using-cordova-command-line-interface</span>
+zipalign -v 4 release/app-release-unsigned.apk app-signed.apk
+
+<span class="hljs-comment"># L'apk app-signed.apk est prêt !</span></code></pre>
 				<h3 id="d-velopper-et-pr-visualiser-l-application-dans-le-navigateur">Développer et prévisualiser l&#39;application dans le navigateur</h3>
 				<p>Pour lancer le serveur web intégré, utilisez <code>phonegap serve</code>.</p>
 				<p>N&#39;oubliez pas de lancer aussi dans une autre instance de bash un <code>tsc -w</code> pour compiler le TypeScript à la volée lors d&#39;une modification.
@@ -244,11 +228,11 @@ phonegap build android</code></pre>
 				<p>De nombreuses fonctions d&#39;aide au développement sont disponibles dans <code>helpers.ts</code>.</p>
 				<p>Vous trouverez aussi dans <code>vocal_recognition.ts</code> les fonctions <code>prompt()</code> et <code>talk()</code> qui permettent respectivement de faire de l&#39;écoute de l&#39;utilisateur par reconnaissance vocale et de parler via synthèse vocale.</p>
 				<h3 id="gestion-des-pages">Gestion des pages</h3>
-				<p>Les pages de l&#39;application en fait un simple objet <code>AppPageObj</code> (voir <code>PageManager.ts</code>).
+				<p>Les pages de l&#39;application en fait un simple objet <code>AppPage</code> (voir <code>PageManager.ts</code>).
 				Cet objet lie à une clé de page une fonction d&#39;appel lorsque la page est chargée, un nom à afficher dans la barre de menu, et d&#39;autres paramètres.</p>
 				<p>Les pages sont gérées avec une pile qui permet de pousser des pages dans la pile et dépiler lors de l&#39;appui sur le bouton retour.
-					Pour ouvrir une nouvelle page et l&#39;insérer dans la pile, utilisez <code>PageMananger.pushPage(app_page_name)</code>.
-					Pour dépiler, utilisez <code>PageManager.popPage()</code>.
+					Pour ouvrir une nouvelle page et l&#39;insérer dans la pile, utilisez <code>PageMananger.push(app_page_name)</code>.
+					Pour dépiler, utilisez <code>PageManager.pop()</code>.
 				Pour simuler l&#39;appui du bouton retour, utilisez <code>PageManager.goBack()</code>.</p>
 				<p>Consulter le fichier <code>PageManager.ts</code> pour connaître la documentation fonction par fonction.</p>
 				<h3 id="gestion-des-utilisateurs">Gestion des utilisateurs</h3>
@@ -318,16 +302,6 @@ receiver.addEventListener(<span class="hljs-string">"error"</span>, err =&gt; {
 				Le détail contient l&#39;identifiant <code>id</code> de l&#39;entrée dont l&#39;envoi a échoué.</p>
 				<h4 id="complete">complete</h4>
 				<p>Émis lorsque la synchronisation se termine (et que tout s&#39;est bien passé).</p>
-				<h2 id="param-tres-de-l-application">Paramètres de l&#39;application</h2>
-				<h1 id="maintenance-du-serveur-busy-bird">Maintenance du serveur Busy Bird</h1>
-				<h2 id="introduction-l-api-busy-bird">Introduction à l&#39;API Busy Bird</h2>
-				<h2 id="organisation">Organisation</h2>
-				<h2 id="ajouter-un-endpoint">Ajouter un endpoint</h2>
-				<h2 id="sch-mas-entr-es-et-utilisateurs">Schémas, entrées et utilisateurs</h2>
-				<h3 id="sch-mas">Schémas</h3>
-				<h3 id="entr-es">Entrées</h3>
-				<h3 id="utilisateurs">Utilisateurs</h3>
-				<h2 id="informations-fonctionnelles-sur-les-endpoints">Informations fonctionnelles sur les endpoints</h2>
 			</div>
 		</div>
 		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
@@ -341,6 +315,9 @@ receiver.addEventListener(<span class="hljs-string">"error"</span>, err =&gt; {
 					</li>
 					<li class=" tsd-kind-external-module">
 						<a href="modules/_app_.html">"app"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_base_apihandler_.html">"base/APIHandler"</a>
 					</li>
 					<li class=" tsd-kind-external-module">
 						<a href="modules/_base_filehelper_.html">"base/<wbr>File<wbr>Helper"</a>
@@ -362,6 +339,12 @@ receiver.addEventListener(<span class="hljs-string">"error"</span>, err =&gt; {
 					</li>
 					<li class=" tsd-kind-external-module">
 						<a href="modules/_main_.html">"main"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_pages_credits_.html">"pages/credits"</a>
+					</li>
+					<li class=" tsd-kind-external-module">
+						<a href="modules/_pages_first_start_.html">"pages/first_<wbr>start"</a>
 					</li>
 					<li class=" tsd-kind-external-module">
 						<a href="modules/_pages_form_.html">"pages/form"</a>

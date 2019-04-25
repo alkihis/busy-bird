@@ -19,7 +19,7 @@ import { APIHandler, APIResp } from "./APIHandler";
             ...
         }
     },
-    "nom_d_un_autre_formulaire": Form
+    "nom_d_un_autre_formulaire": Schema
 }
 
 */
@@ -50,7 +50,10 @@ export interface Schema {
 export type FormLocations = {[locationId: string]: FormLocation};
 
 export interface FormLocation {
-    label: string;
+    /**
+     * Showed label of a location
+     */
+    label?: string;
     latitude: number | string;
     longitude: number | string;
 }

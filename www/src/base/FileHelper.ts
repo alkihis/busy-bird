@@ -210,11 +210,17 @@ function globToRegex(glob: string, flags: string = "") : RegExp {
 }
 
 interface FileHelperPaths {
+    /** Where app files are */
     app: string;
+    /** App files, but directly the "www" folder */
     webroot: string;
+    /** Data directory. Where Android / iOS store internal data (user does not have access to this directory) */
     data: string;
+    /** "External" data directory. In Android, this mean in internal storage (not in /data partition, but in /storage/emulated/0 usually) */
     externalData: string;
+    /** Cache directory */
     cache: string;
+    /** Root of external directory. In Android, this mean the /storage/emulated/0 */
     externalRoot: string;
 }
 
@@ -240,6 +246,8 @@ export class FileHelper {
     protected ready: Promise<void> | null = null;
     protected root: string | null = null;
 
+    protected _loaded = false;
+
     /**
      * Create a new FileHelper object using a root path.
      * Root is automatically set to cordova.file.externalDataDirectory || cordova.file.dataDirectory on mobile devices,
@@ -255,24 +263,27 @@ export class FileHelper {
      */
     public constructor(root: string | FileHelper | DirectoryEntry = "") {
         /** CHECK IF FH IS READY WITH waitInit(). */ 
-        this.ready = new Promise((resolve, reject) => {
-            document.addEventListener('deviceready', async () => {
-                if (root instanceof FileHelper) {
-                    root = root.pwd();
-                }
-                else if (typeof (root as DirectoryEntry).isDirectory !== 'undefined') {
-                    // C'est une DirectoryEntry
-                    root = (root as DirectoryEntry).toInternalURL();
-                }
+        this.ready = this.device_ready.then(() => {
+            if (root instanceof FileHelper) {
+                root = root.pwd();
+            }
+            else if (typeof (root as DirectoryEntry).isDirectory !== 'undefined') {
+                // C'est une DirectoryEntry
+                root = (root as DirectoryEntry).toInternalURL();
+            }
 
-                try {
-                    await this.cd(root as string, false);
-                    resolve();
-                } catch (e) {
-                    reject(e);
-                }
-            });
+            return this.cd(root as string, false).then(() => { this._loaded = true; });
         });
+    }
+
+    /**
+     * Return true if FileHelper is ready
+     *
+     * @readonly
+     * @memberof FileHelper
+     */
+    public get loaded() {
+        return this._loaded;
     }
 
     /**
@@ -594,7 +605,9 @@ export class FileHelper {
      * If you want to read a file, use read() instead.
      * @param path Path to file or directory
      */
-    public get(path: string = "") : Promise<Entry> {
+    public async get(path: string = "") : Promise<Entry> {
+        if (!this._loaded) await this.waitInit();
+
         if (path === "/") {
             path = "";
         }
@@ -868,6 +881,8 @@ export class FileHelper {
      * @param relative Specify if path is relative to current directory
      */
     public async cd(path: string, relative = true) : Promise<void> {
+        if (path && relative && !this._loaded) await this.waitInit();
+
         if (!path) {
             if (device.platform === "browser") {
                 path = "cdvfile://localhost/temporary/";
@@ -950,6 +965,11 @@ export class FileHelper {
         return "FileHelper";
     }
 
+    /**
+     * Same as ls() without any parameter, for use in a `for await ... of` structure
+     *
+     * @memberof FileHelper
+     */
     public async *[Symbol.asyncIterator]() {
         const values = (await this.ls() as string[]);
 

@@ -86,6 +86,7 @@
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_base_pagemanager_.apppage.html#ask_change" class="tsd-kind-icon">ask_<wbr>change</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_base_pagemanager_.apppage.html#callback" class="tsd-kind-icon">callback</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_base_pagemanager_.apppage.html#icon" class="tsd-kind-icon">icon</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_base_pagemanager_.apppage.html#name" class="tsd-kind-icon">name</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_base_pagemanager_.apppage.html#not_sidenav_close" class="tsd-kind-icon">not_<wbr>sidenav_<wbr>close</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_base_pagemanager_.apppage.html#reload_on_restore" class="tsd-kind-icon">reload_<wbr>on_<wbr>restore</a></li>
@@ -102,9 +103,14 @@
 					<div class="tsd-signature tsd-kind-icon">ask_<wbr>change<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in base/PageManager.ts:15</li>
+							<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/base/PageManager.ts#L26">base/PageManager.ts:26</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>When user click on the back button, ask for page pop</p>
+						</div>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 					<a name="callback" class="tsd-anchor"></a>
@@ -112,9 +118,15 @@
 					<div class="tsd-signature tsd-kind-icon">callback<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in base/PageManager.ts:13</li>
+							<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/base/PageManager.ts#L20">base/PageManager.ts:20</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Function to call to change to page.
+							If your function returns a Promise, this Promise is returned by .change / .push function</p>
+						</div>
+					</div>
 					<div class="tsd-type-declaration">
 						<h4>Type declaration</h4>
 						<ul class="tsd-parameters">
@@ -141,14 +153,34 @@
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
+					<a name="icon" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> icon</h3>
+					<div class="tsd-signature tsd-kind-icon">icon<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/base/PageManager.ts#L24">base/PageManager.ts:24</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>App icon in the sidenav</p>
+						</div>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 					<a name="name" class="tsd-anchor"></a>
 					<h3>name</h3>
 					<div class="tsd-signature tsd-kind-icon">name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in base/PageManager.ts:14</li>
+							<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/base/PageManager.ts#L22">base/PageManager.ts:22</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Name of the page. Will be showed in the nav title</p>
+						</div>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 					<a name="not_sidenav_close" class="tsd-anchor"></a>
@@ -156,9 +188,14 @@
 					<div class="tsd-signature tsd-kind-icon">not_<wbr>sidenav_<wbr>close<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in base/PageManager.ts:12</li>
+							<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/base/PageManager.ts#L17">base/PageManager.ts:17</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Don&#39;t close sidenav when switching to this page</p>
+						</div>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 					<a name="reload_on_restore" class="tsd-anchor"></a>
@@ -166,9 +203,14 @@
 					<div class="tsd-signature tsd-kind-icon">reload_<wbr>on_<wbr>restore<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in base/PageManager.ts:16</li>
+							<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/base/PageManager.ts#L28">base/PageManager.ts:28</a></li>
 						</ul>
 					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Re-execute callback if true, execute function if Function, do nothing if false, on page restore (.pop)</p>
+						</div>
+					</div>
 				</section>
 			</section>
 		</div>
@@ -178,79 +220,16 @@
 					<li class="globals  ">
 						<a href="../globals.html"><em>Globals</em></a>
 					</li>
-					<li class="label tsd-is-external">
-						<span>Internals</span>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_app_.html">"app"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_base_filehelper_.html">"base/<wbr>File<wbr>Helper"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_base_formsaves_.html">"base/<wbr>Form<wbr>Saves"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_base_formschema_.html">"base/<wbr>Form<wbr>Schema"</a>
-					</li>
 					<li class="current tsd-kind-external-module">
 						<a href="../modules/_base_pagemanager_.html">"base/<wbr>Page<wbr>Manager"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_base_syncmanager_.html">"base/<wbr>Sync<wbr>Manager"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_base_usermanager_.html">"base/<wbr>User<wbr>Manager"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_main_.html">"main"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_pages_form_.html">"pages/form"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_pages_home_.html">"pages/home"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_pages_saved_forms_.html">"pages/saved_<wbr>forms"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_pages_settings_page_.html">"pages/settings_<wbr>page"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_settings_.html">"utils/<wbr>Settings"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_audio_listener_.html">"utils/audio_<wbr>listener"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_fetch_timeout_.html">"utils/fetch_<wbr>timeout"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_helpers_.html">"utils/helpers"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_location_.html">"utils/location"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_save_a_form_.html">"utils/save_<wbr>a_form"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_test_vocal_reco_.html">"utils/test_<wbr>vocal_<wbr>reco"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="../modules/_utils_vocal_recognition_.html">"utils/vocal_<wbr>recognition"</a>
-					</li>
-					<li class="label tsd-is-external">
-						<span>Externals</span>
-					</li>
-					<li class=" tsd-kind-external-module tsd-is-external">
-						<a href="../modules/_utils_logger_.html">"utils/logger"</a>
 					</li>
 				</ul>
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
+					<li class=" tsd-kind-class tsd-parent-kind-external-module tsd-is-not-exported">
+						<a href="../classes/_base_pagemanager_._navigation.html" class="tsd-kind-icon">_<wbr>Navigation</a>
+					</li>
 					<li class=" tsd-kind-class tsd-parent-kind-external-module tsd-is-not-exported">
 						<a href="../classes/_base_pagemanager_._pagemanager.html" class="tsd-kind-icon">_<wbr>Page<wbr>Manager</a>
 					</li>
@@ -264,6 +243,9 @@
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 								<a href="_base_pagemanager_.apppage.html#callback" class="tsd-kind-icon">callback</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
+								<a href="_base_pagemanager_.apppage.html#icon" class="tsd-kind-icon">icon</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 								<a href="_base_pagemanager_.apppage.html#name" class="tsd-kind-icon">name</a>
@@ -281,11 +263,17 @@
 					<li class=" tsd-kind-interface tsd-parent-kind-external-module tsd-is-not-exported">
 						<a href="_base_pagemanager_.pagesave.html" class="tsd-kind-icon">Page<wbr>Save</a>
 					</li>
-					<li class=" tsd-kind-variable tsd-parent-kind-external-module">
-						<a href="../modules/_base_pagemanager_.html#pagemanager" class="tsd-kind-icon">Page<wbr>Manager</a>
+					<li class=" tsd-kind-variable tsd-parent-kind-external-module tsd-is-not-exported">
+						<a href="../modules/_base_pagemanager_.html#nav_side_id" class="tsd-kind-icon">NAV_<wbr>SIDE_<wbr>ID</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-external-module tsd-is-not-exported">
+						<a href="../modules/_base_pagemanager_.html#nav_title_id" class="tsd-kind-icon">NAV_<wbr>TITLE_<wbr>ID</a>
 					</li>
 					<li class=" tsd-kind-variable tsd-parent-kind-external-module">
-						<a href="../modules/_base_pagemanager_.html#sidenav_obj" class="tsd-kind-icon">SIDENAV_<wbr>OBJ</a>
+						<a href="../modules/_base_pagemanager_.html#navigation" class="tsd-kind-icon">Navigation</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-external-module">
+						<a href="../modules/_base_pagemanager_.html#pagemanager" class="tsd-kind-icon">Page<wbr>Manager</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-external-module tsd-is-not-exported">
 						<a href="../modules/_base_pagemanager_.html#cleanelement" class="tsd-kind-icon">clean<wbr>Element</a>

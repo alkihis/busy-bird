@@ -96,13 +96,13 @@
 					<a name="appendfileentry" class="tsd-anchor"></a>
 					<h3>append<wbr>File<wbr>Entry</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-external-module tsd-is-not-exported">
-						<li class="tsd-signature tsd-kind-icon">append<wbr>File<wbr>Entry<span class="tsd-signature-symbol">(</span>json<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">File</span>, ph<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">append<wbr>File<wbr>Entry<span class="tsd-signature-symbol">(</span>entry_file<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FileEntry</span>, ph<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, read_functions<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Function</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in pages/saved_forms.ts:65</li>
+									<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/pages/saved_forms.ts#L65">pages/saved_forms.ts:65</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -113,16 +113,16 @@
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>json: <span class="tsd-signature-type">File</span></h5>
-									<div class="tsd-comment tsd-typography">
-										<p>Fichier JSON contenant l&#39;entrée</p>
-									</div>
+									<h5>entry_file: <span class="tsd-signature-type">FileEntry</span></h5>
 								</li>
 								<li>
 									<h5>ph: <span class="tsd-signature-type">HTMLElement</span></h5>
 									<div class="tsd-comment tsd-typography">
 										<p>Element dans lequel écrire la card</p>
 									</div>
+								</li>
+								<li>
+									<h5>read_functions: <span class="tsd-signature-type">Function</span><span class="tsd-signature-symbol">[]</span></h5>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
@@ -139,7 +139,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in pages/saved_forms.ts:35</li>
+									<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/pages/saved_forms.ts#L35">pages/saved_forms.ts:35</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -161,7 +161,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in pages/saved_forms.ts:194</li>
+									<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/pages/saved_forms.ts#L204">pages/saved_forms.ts:204</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -192,7 +192,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in pages/saved_forms.ts:20</li>
+									<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/pages/saved_forms.ts#L20">pages/saved_forms.ts:20</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -229,7 +229,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in pages/saved_forms.ts:211</li>
+									<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/pages/saved_forms.ts#L221">pages/saved_forms.ts:221</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -260,7 +260,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in pages/saved_forms.ts:172</li>
+									<li>Defined in <a href="https://github.com/alkihis/busy-bird/blob/978d762/www/src/pages/saved_forms.ts#L182">pages/saved_forms.ts:182</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -289,74 +289,8 @@
 					<li class="globals  ">
 						<a href="../globals.html"><em>Globals</em></a>
 					</li>
-					<li class="label tsd-is-external">
-						<span>Internals</span>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_app_.html">"app"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_base_filehelper_.html">"base/<wbr>File<wbr>Helper"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_base_formsaves_.html">"base/<wbr>Form<wbr>Saves"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_base_formschema_.html">"base/<wbr>Form<wbr>Schema"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_base_pagemanager_.html">"base/<wbr>Page<wbr>Manager"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_base_syncmanager_.html">"base/<wbr>Sync<wbr>Manager"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_base_usermanager_.html">"base/<wbr>User<wbr>Manager"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_main_.html">"main"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_pages_form_.html">"pages/form"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_pages_home_.html">"pages/home"</a>
-					</li>
 					<li class="current tsd-kind-external-module">
 						<a href="_pages_saved_forms_.html">"pages/saved_<wbr>forms"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_pages_settings_page_.html">"pages/settings_<wbr>page"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_settings_.html">"utils/<wbr>Settings"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_audio_listener_.html">"utils/audio_<wbr>listener"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_fetch_timeout_.html">"utils/fetch_<wbr>timeout"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_helpers_.html">"utils/helpers"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_location_.html">"utils/location"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_save_a_form_.html">"utils/save_<wbr>a_form"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_test_vocal_reco_.html">"utils/test_<wbr>vocal_<wbr>reco"</a>
-					</li>
-					<li class=" tsd-kind-external-module">
-						<a href="_utils_vocal_recognition_.html">"utils/vocal_<wbr>recognition"</a>
-					</li>
-					<li class="label tsd-is-external">
-						<span>Externals</span>
-					</li>
-					<li class=" tsd-kind-external-module tsd-is-external">
-						<a href="_utils_logger_.html">"utils/logger"</a>
 					</li>
 				</ul>
 			</nav>

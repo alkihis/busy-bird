@@ -13,13 +13,19 @@ const NAV_TITLE_ID = 'nav_title';
 const NAV_SIDE_ID = "__sidenav_base_menu";
 
 interface AppPage {
+    /** Don't close sidenav when switching to this page */
     not_sidenav_close?: boolean;
+    /** Function to call to change to page. 
+     * If your function returns a Promise, this Promise is returned by .change / .push function */
     callback: (base: HTMLElement, additionnals?: any) => any;
+    /** Name of the page. Will be showed in the nav title */
     name: string;
+    /** App icon in the sidenav */
     icon?: string;
+    /** When user click on the back button, ask for page pop */
     ask_change?: boolean;
+    /** Re-execute callback if true, execute function if Function, do nothing if false, on page restore (.pop) */
     reload_on_restore: boolean | Function;
-    not_enumerable?: boolean;
 }
 
 interface PageSave {
@@ -142,7 +148,7 @@ class _Navigation {
             this.destroy();
         } catch (e) { }
 
-        this.hammertime = new Hammer(document.getElementsByTagName('main')[0], {
+        this.hammertime = new Hammer(document.getElementsByTagName('main')[0] as HTMLElement, {
             recognizers: [
                 [Hammer.Swipe, { direction: Hammer.DIRECTION_RIGHT }]
             ]
@@ -173,8 +179,6 @@ class _Navigation {
                 this.addDivider();
             }
             else if (page in AppPages) {
-                if (AppPages[page].not_enumerable) { continue; }
-
                 this.add(page, AppPages[page]);
             }   
         }
@@ -365,7 +369,7 @@ class _PageManager {
             ask: this._should_wait
         };
 
-        yield* this.pages_holder.reverse();
+        yield* [...this.pages_holder].reverse();
     }
     
     /**

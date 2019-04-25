@@ -79,7 +79,7 @@ class _Logger {
         });
 
         if (callback) {
-            oninit.then(callback);
+            return oninit.then(callback);
         }
         else {
             return oninit;
