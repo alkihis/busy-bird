@@ -354,7 +354,7 @@ function finishFirstStart(base: HTMLElement) {
     button_next.onclick = () => {
         if (avail.length) {
             // Autoactive le premier schéma disponible comme schéma choisi
-            Schemas.change(avail[0][0]);
+            Schemas.change(avail[0][0], true);
         }
 
         // Terminé !

@@ -7,6 +7,7 @@ import { Logger } from "../utils/logger";
 import { MAX_SLEEPING_PAGES, DEFAULT_PAGE, APP_DEBUG_MODE } from "../main";
 import { loadCredits } from "../pages/credits";
 import { loadFirstStart } from "../pages/first_start";
+import Hammer from 'hammerjs';
 
 const NAV_TITLE_ID = 'nav_title';
 const NAV_SIDE_ID = "__sidenav_base_menu";
@@ -81,6 +82,7 @@ class _Navigation {
     protected sidenav: HTMLElement;
     protected navbar: HTMLElement;
     protected instance: M.Sidenav;
+    protected hammertime: HammerManager;
 
     protected readonly page_order: string[] = ["home", "", "form", "saved", "", "settings", "credits"];
 
@@ -140,7 +142,16 @@ class _Navigation {
             this.destroy();
         } catch (e) { }
 
-        this.instance = M.Sidenav.init(this.sidenav, { outDuration: 0 });
+        this.hammertime = new Hammer(document.getElementsByTagName('main')[0], {
+            recognizers: [
+                [Hammer.Swipe, { direction: Hammer.DIRECTION_RIGHT }]
+            ]
+        });
+
+        this.instance = M.Sidenav.init(this.sidenav, { outDuration: 200 });
+        this.hammertime.on('swipe', () => {
+            this.instance.open();
+        });
 
         // Création des pages : Génération du sidenav
         this.sidenav.innerHTML = "";
@@ -314,6 +325,9 @@ class _Navigation {
     destroy() {
         if (this.instance)
             this.instance.destroy();
+        if (this.hammertime) 
+            this.hammertime.destroy();
+        this.hammertime = undefined;
     }
 }
 

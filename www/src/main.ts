@@ -120,15 +120,16 @@ async function initApp() {
     Logger.init();
 
     // Initialise le log d'erreurs non attrapées
+    // Erreurs classiques (bien que rares)
     window.onerror = function(event, source, lineno, colno, error) {
-        Logger.error("Unhandled error:", event, "in", source, "at line", lineno, "col", colno, "stack trace:", error.stack, "message:", error.message);
+        Logger.error("Unhandled error:", event, "in", source, "at line", lineno, "col", colno, "error:", error);
     };
-    window.addEventListener('unhandledrejection', function(event) {
+    // Promesses rejetées non attrapées
+    window.addEventListener('unhandledrejection', function(event: PromiseRejectionEvent) {
         let reason = event.reason;
 
         if (reason instanceof Error) {
-            const r = reason as Error;
-            reason = "Unhandled error: " + r.message + "\n" + r.stack;
+            reason = "Unhandled error: " + reason.message + "\n" + reason.stack;
         }
 
         Logger.error('Unhandled rejection: ', reason);

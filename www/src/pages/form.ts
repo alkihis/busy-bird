@@ -800,8 +800,11 @@ export function constructForm(placeh: HTMLElement, current_form: Schema, edition
 
             // File input
             const input = document.createElement('input');
-            input.type = "file"; input.id = "id_" + ele.name; input.name = ele.name;
-            input.required = ele.required; input.accept = ele.file_type || "";
+            input.type = "file"; 
+            input.id = "id_" + ele.name; 
+            input.name = ele.name;
+            input.required = ele.required; 
+            input.accept = (is_video ? "video/*" : (is_image ? "image/*" : (ele.file_type || "")));
 
             // Text for file input
             const f_input = document.createElement('input');

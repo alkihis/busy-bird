@@ -310,10 +310,11 @@ export function initSettingsPage(base: HTMLElement) {
                 "Yes",
                 "No",
                 "Empty sync cache"
-            ).catch(() => {}).then(checked_val => {
+            ).then(checked_val => {
                 // L'utilisateur a dit oui
-                SyncManager.graphicalSync(true, checked_val);
-            });
+                SyncManager.graphicalSync(true, checked_val)
+                    .catch(e => Logger.error(e));
+            }).catch(() => {});
         }
         else {
             informalBottomModal("Log in", "You should be logged in to perform this action.");
