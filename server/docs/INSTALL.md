@@ -19,7 +19,7 @@ Here's a configuration sample:
 
 # TODO check if this works
 # Download server and unzip it
-wget https://alkihis.fr/dl/busy_bird_server.zip -O busybird.zip 
+wget https://alkihis.fr/dl/busy_bird/busy_bird_server.zip -O busybird.zip 
 unzip busybird.zip -d busy_bird_server
 
 sudo mv busy_bird_server /var/www

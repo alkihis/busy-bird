@@ -6,6 +6,7 @@
   "dependencies": {
     "@types/cordova": "0.0.34",
     "@types/dexie": "^1.3.1",
+    "@types/hammerjs": "^2.0.36",
     "@types/localforage": "0.0.34",
     "@types/materialize-css": "^1.0.6",
     "@types/sortablejs": "^1.7.2",
@@ -38,6 +39,7 @@
     "dexie": "^2.0.4",
     "es6-promise-plugin": "4.2.2",
     "geolib": "^2.0.24",
+    "hammerjs": "^2.0.8",
     "localforage": "^1.7.3",
     "phonegap": "^8.2.2",
     "phonegap-plugin-media-recorder": "1.1.0",
